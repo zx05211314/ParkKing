@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "districtId": "beta",
+  "datasetHash": "beta-next",
+  "generatedAt": "2026-02-02T00:00:00Z",
+  "segmentsCount": 105,
+  "overridesAppliedCount": 6,
+  "signOverridesCount": 2,
+  "curbMarkingKnownRate": 0.85,
+  "restrictionTriggeredRate": 0.195,
+  "boundaryBBox": { "minX": 0, "minY": 0, "maxX": 2, "maxY": 2 },
+  "boundaryCenter": [1, 1],
+  "provenanceFetchedAt": "2026-02-05T00:00:00Z",
+  "files": {},
+  "totalBytes": 0
+}

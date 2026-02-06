@@ -1,0 +1,87 @@
+﻿{
+  "schemaVersion": 1,
+  "districtId": "xinyi",
+  "districtName": "Xinyi",
+  "generatedAt": "2026-02-02T12:00:00Z",
+  "sourceUpdatedAt": "2026-01-15T00:00:00Z",
+  "datasetHash": "fixture-xinyi-v7",
+  "publishedAt": "2026-02-03T13:00:00Z",
+  "publishMode": "atomic",
+  "signOverrideMatchToleranceMeters": 15,
+  "counts": {
+    "segments": 4,
+    "busStops": 1,
+    "hydrants": 1,
+    "intersections": 6,
+    "crosswalks": 1,
+    "signOverrides": 3,
+    "inferredCandidates": 2,
+    "zones": 9
+  },
+  "intersectionsBBox": {
+    "minX": 121.5636,
+    "minY": 25.0326,
+    "maxX": 121.5664,
+    "maxY": 25.0348
+  },
+  "crosswalksBBox": {
+    "minX": 121.5639,
+    "minY": 25.0329,
+    "maxX": 121.5641,
+    "maxY": 25.0331
+  },
+  "signOverridesBBox": {
+    "minX": 121.564,
+    "minY": 25.0326,
+    "maxX": 121.5656,
+    "maxY": 25.0346
+  },
+  "inferredCandidatesBBox": {
+    "minX": 121.5636,
+    "minY": 25.0332,
+    "maxX": 121.5639,
+    "maxY": 25.0334
+  },
+  "inferredRiskCounts": {
+    "MAJOR_ROAD": 1,
+    "HARD_ZONE_NEAR": 1,
+    "HARD_ZONE_MEDIUM": 1
+  },
+  "signOverridesUpdatedAt": "2026-01-20T00:00:00Z",
+  "signOverridesFreshnessDays": 13,
+  "files": {
+    "red_yellow.geojson": {
+      "sha256": "99a1ab43d2d03976007d95c43799e7a7f9563a6b2b734c2d5ddfbbee60216d92",
+      "bytes": 1263
+    },
+    "bus_stops.geojson": {
+      "sha256": "96564b24af1a0cd10027f7ed4b551e4f4a02ebbd0e7f568bcb41978e345f8c1b",
+      "bytes": 247
+    },
+    "hydrants.geojson": {
+      "sha256": "3914449b13309d5458111f11e41d7ce8f65ce9ad3744d3a2aac3d781f69fee79",
+      "bytes": 246
+    },
+    "intersections.geojson": {
+      "sha256": "2c39c85b9f5e351d3efe0f3414cbd927298f58844d9c1bf1574f0bf746a6816b",
+      "bytes": 1241
+    },
+    "intersections_report.json": {
+      "sha256": "f36f5e0579951341dfe95d7c3f6ae1fc069778c516c1df38e4bfe972fc0e4f4a",
+      "bytes": 236
+    },
+    "crosswalks.geojson": {
+      "sha256": "cc20c2d4b1a498e990af66201319e7cc97e7f508ba7c3f0a9af814367528ca7f",
+      "bytes": 308
+    },
+    "sign_overrides.geojson": {
+      "sha256": "85dc830fa9d98fa2d1ffcb2257465ae8b4175562036828f2531b8a230bf22636",
+      "bytes": 1374
+    },
+    "candidates_inferred.geojson": {
+      "sha256": "54cca0476e8cc485dadca56864cceae3e9eeb0e87e12de0e330852fa84c4dd04",
+      "bytes": 954
+    }
+  },
+  "totalBytes": 5869
+}

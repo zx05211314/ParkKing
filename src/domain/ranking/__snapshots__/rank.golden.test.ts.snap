@@ -1,0 +1,451 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ranking golden fixtures > matches snapshot for AGGRESSIVE @ 300m > AGGRESSIVE-300 1`] = `
+[
+  {
+    "id": "seg-hydrant-near",
+    "reasons": [
+      "ZONE_HYDRANT",
+    ],
+    "score": 7.3,
+  },
+  {
+    "id": "seg-conf-high",
+    "reasons": [
+      "OVERRIDE_APPLIED",
+    ],
+    "score": 7.088,
+  },
+  {
+    "id": "seg-inferred-close",
+    "reasons": [
+      "INFERRED_CAPPED",
+    ],
+    "score": 6.2,
+  },
+  {
+    "id": "seg-conf-med",
+    "reasons": [
+      "COVERAGE_MED",
+    ],
+    "score": 6.075,
+  },
+  {
+    "id": "seg-conf-low",
+    "reasons": [
+      "COVERAGE_LOW",
+    ],
+    "score": 5.05,
+  },
+  {
+    "id": "seg-freshness-old",
+    "reasons": [
+      "DATA_FRESHNESS_STALE",
+    ],
+    "score": 4.675,
+  },
+  {
+    "id": "seg-freshness-null",
+    "reasons": [
+      "DATA_FRESHNESS_UNKNOWN",
+    ],
+    "score": 4.6,
+  },
+  {
+    "id": "seg-yellow-curb",
+    "reasons": [
+      "RULE_YELLOW_DAY_NO_PARK",
+    ],
+    "score": 4.1,
+  },
+  {
+    "id": "seg-risk-dense",
+    "reasons": [
+      "ZONE_INTERSECTION",
+    ],
+    "score": 4.015,
+  },
+  {
+    "id": "seg-busstop-edge-in",
+    "reasons": [
+      "ZONE_BUS_STOP",
+    ],
+    "score": 3.853,
+  },
+]
+`;
+
+exports[`ranking golden fixtures > matches snapshot for AGGRESSIVE @ 600m > AGGRESSIVE-600 1`] = `
+[
+  {
+    "id": "seg-hydrant-near",
+    "reasons": [
+      "ZONE_HYDRANT",
+    ],
+    "score": 7.3,
+  },
+  {
+    "id": "seg-conf-high",
+    "reasons": [
+      "OVERRIDE_APPLIED",
+    ],
+    "score": 7.088,
+  },
+  {
+    "id": "seg-risk-near",
+    "reasons": [
+      "ZONE_BUS_STOP",
+    ],
+    "score": 6.535,
+  },
+  {
+    "id": "seg-inferred-close",
+    "reasons": [
+      "INFERRED_CAPPED",
+    ],
+    "score": 6.2,
+  },
+  {
+    "id": "seg-distance-just-in-600",
+    "reasons": [
+      "RULE_NEEDS_SIGNS_CHECK",
+    ],
+    "score": 6.103,
+  },
+  {
+    "id": "seg-conf-med",
+    "reasons": [
+      "COVERAGE_MED",
+    ],
+    "score": 6.075,
+  },
+  {
+    "id": "seg-conf-low",
+    "reasons": [
+      "COVERAGE_LOW",
+    ],
+    "score": 5.05,
+  },
+  {
+    "id": "seg-freshness-old",
+    "reasons": [
+      "DATA_FRESHNESS_STALE",
+    ],
+    "score": 4.675,
+  },
+  {
+    "id": "seg-freshness-null",
+    "reasons": [
+      "DATA_FRESHNESS_UNKNOWN",
+    ],
+    "score": 4.6,
+  },
+  {
+    "id": "seg-intersection-mid",
+    "reasons": [
+      "ZONE_INTERSECTION",
+    ],
+    "score": 4.475,
+  },
+]
+`;
+
+exports[`ranking golden fixtures > matches snapshot for CONSERVATIVE @ 300m > CONSERVATIVE-300 1`] = `
+[
+  {
+    "id": "seg-hydrant-near",
+    "reasons": [
+      "ZONE_HYDRANT",
+    ],
+    "score": 7.3,
+  },
+  {
+    "id": "seg-conf-high",
+    "reasons": [
+      "OVERRIDE_APPLIED",
+    ],
+    "score": 7.088,
+  },
+  {
+    "id": "seg-conf-med",
+    "reasons": [
+      "COVERAGE_MED",
+    ],
+    "score": 6.075,
+  },
+  {
+    "id": "seg-conf-low",
+    "reasons": [
+      "COVERAGE_LOW",
+    ],
+    "score": 5.05,
+  },
+  {
+    "id": "seg-freshness-old",
+    "reasons": [
+      "DATA_FRESHNESS_STALE",
+    ],
+    "score": 4.675,
+  },
+  {
+    "id": "seg-inferred-close",
+    "reasons": [
+      "INFERRED_CAPPED",
+    ],
+    "score": 4.6,
+  },
+  {
+    "id": "seg-freshness-null",
+    "reasons": [
+      "DATA_FRESHNESS_UNKNOWN",
+    ],
+    "score": 4.6,
+  },
+  {
+    "id": "seg-yellow-curb",
+    "reasons": [
+      "RULE_YELLOW_DAY_NO_PARK",
+    ],
+    "score": 4.1,
+  },
+  {
+    "id": "seg-busstop-edge-in",
+    "reasons": [
+      "ZONE_BUS_STOP",
+    ],
+    "score": 3.853,
+  },
+  {
+    "id": "seg-unknown-curb",
+    "reasons": [
+      "UNKNOWN_MARKING",
+    ],
+    "score": 3.35,
+  },
+]
+`;
+
+exports[`ranking golden fixtures > matches snapshot for CONSERVATIVE @ 600m > CONSERVATIVE-600 1`] = `
+[
+  {
+    "id": "seg-hydrant-near",
+    "reasons": [
+      "ZONE_HYDRANT",
+    ],
+    "score": 7.3,
+  },
+  {
+    "id": "seg-conf-high",
+    "reasons": [
+      "OVERRIDE_APPLIED",
+    ],
+    "score": 7.088,
+  },
+  {
+    "id": "seg-risk-near",
+    "reasons": [
+      "ZONE_BUS_STOP",
+    ],
+    "score": 6.215,
+  },
+  {
+    "id": "seg-distance-just-in-600",
+    "reasons": [
+      "RULE_NEEDS_SIGNS_CHECK",
+    ],
+    "score": 6.103,
+  },
+  {
+    "id": "seg-conf-med",
+    "reasons": [
+      "COVERAGE_MED",
+    ],
+    "score": 6.075,
+  },
+  {
+    "id": "seg-conf-low",
+    "reasons": [
+      "COVERAGE_LOW",
+    ],
+    "score": 5.05,
+  },
+  {
+    "id": "seg-freshness-old",
+    "reasons": [
+      "DATA_FRESHNESS_STALE",
+    ],
+    "score": 4.675,
+  },
+  {
+    "id": "seg-inferred-close",
+    "reasons": [
+      "INFERRED_CAPPED",
+    ],
+    "score": 4.6,
+  },
+  {
+    "id": "seg-freshness-null",
+    "reasons": [
+      "DATA_FRESHNESS_UNKNOWN",
+    ],
+    "score": 4.6,
+  },
+  {
+    "id": "seg-intersection-mid",
+    "reasons": [
+      "ZONE_INTERSECTION",
+    ],
+    "score": 4.475,
+  },
+]
+`;
+
+exports[`ranking golden fixtures > matches snapshot for NEUTRAL @ 300m > NEUTRAL-300 1`] = `
+[
+  {
+    "id": "seg-hydrant-near",
+    "reasons": [
+      "ZONE_HYDRANT",
+    ],
+    "score": 7.3,
+  },
+  {
+    "id": "seg-conf-high",
+    "reasons": [
+      "OVERRIDE_APPLIED",
+    ],
+    "score": 7.088,
+  },
+  {
+    "id": "seg-conf-med",
+    "reasons": [
+      "COVERAGE_MED",
+    ],
+    "score": 6.075,
+  },
+  {
+    "id": "seg-inferred-close",
+    "reasons": [
+      "INFERRED_CAPPED",
+    ],
+    "score": 5.4,
+  },
+  {
+    "id": "seg-conf-low",
+    "reasons": [
+      "COVERAGE_LOW",
+    ],
+    "score": 5.05,
+  },
+  {
+    "id": "seg-freshness-old",
+    "reasons": [
+      "DATA_FRESHNESS_STALE",
+    ],
+    "score": 4.675,
+  },
+  {
+    "id": "seg-freshness-null",
+    "reasons": [
+      "DATA_FRESHNESS_UNKNOWN",
+    ],
+    "score": 4.6,
+  },
+  {
+    "id": "seg-yellow-curb",
+    "reasons": [
+      "RULE_YELLOW_DAY_NO_PARK",
+    ],
+    "score": 4.1,
+  },
+  {
+    "id": "seg-busstop-edge-in",
+    "reasons": [
+      "ZONE_BUS_STOP",
+    ],
+    "score": 3.853,
+  },
+  {
+    "id": "seg-unknown-curb",
+    "reasons": [
+      "UNKNOWN_MARKING",
+    ],
+    "score": 3.35,
+  },
+]
+`;
+
+exports[`ranking golden fixtures > matches snapshot for NEUTRAL @ 600m > NEUTRAL-600 1`] = `
+[
+  {
+    "id": "seg-hydrant-near",
+    "reasons": [
+      "ZONE_HYDRANT",
+    ],
+    "score": 7.3,
+  },
+  {
+    "id": "seg-conf-high",
+    "reasons": [
+      "OVERRIDE_APPLIED",
+    ],
+    "score": 7.088,
+  },
+  {
+    "id": "seg-risk-near",
+    "reasons": [
+      "ZONE_BUS_STOP",
+    ],
+    "score": 6.375,
+  },
+  {
+    "id": "seg-distance-just-in-600",
+    "reasons": [
+      "RULE_NEEDS_SIGNS_CHECK",
+    ],
+    "score": 6.103,
+  },
+  {
+    "id": "seg-conf-med",
+    "reasons": [
+      "COVERAGE_MED",
+    ],
+    "score": 6.075,
+  },
+  {
+    "id": "seg-inferred-close",
+    "reasons": [
+      "INFERRED_CAPPED",
+    ],
+    "score": 5.4,
+  },
+  {
+    "id": "seg-conf-low",
+    "reasons": [
+      "COVERAGE_LOW",
+    ],
+    "score": 5.05,
+  },
+  {
+    "id": "seg-freshness-old",
+    "reasons": [
+      "DATA_FRESHNESS_STALE",
+    ],
+    "score": 4.675,
+  },
+  {
+    "id": "seg-freshness-null",
+    "reasons": [
+      "DATA_FRESHNESS_UNKNOWN",
+    ],
+    "score": 4.6,
+  },
+  {
+    "id": "seg-intersection-mid",
+    "reasons": [
+      "ZONE_INTERSECTION",
+    ],
+    "score": 4.475,
+  },
+]
+`;

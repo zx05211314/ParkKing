@@ -1,0 +1,43 @@
+{
+  "baselineCreatedAt": "2026-02-04T00:00:00Z",
+  "baselineDatasetHash": "fixture-xinyi-v7",
+  "baselineSchemaVersion": 1,
+  "baselineDistrictName": "Xinyi",
+  "generatedAt": "2026-02-04T00:00:00Z",
+  "districtId": "xinyi",
+  "datasetHash": "fixture-xinyi-v7",
+  "counts": {
+    "segments": 4,
+    "intersections": 6,
+    "inferredCandidates": 2,
+    "signOverrides": 3
+  },
+  "distributions": {
+    "day": {},
+    "night": {}
+  },
+  "performance": {
+    "day": {
+      "evalFirstMsMedian": 1,
+      "evalSecondMsMedian": 1
+    },
+    "night": {
+      "evalFirstMsMedian": 1,
+      "evalSecondMsMedian": 1
+    }
+  },
+  "reasonCodes": {
+    "day": {
+      "top": {},
+      "other": 0,
+      "total": 0,
+      "coveragePct": 0
+    },
+    "night": {
+      "top": {},
+      "other": 0,
+      "total": 0,
+      "coveragePct": 0
+    }
+  }
+}

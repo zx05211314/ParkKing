@@ -1,0 +1,20 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "segmentId": "d1",
+        "note": "Delivery only",
+        "confidence": "HIGH",
+        "timeWindows": [
+          { "label": "AM", "startHHMM": "08:00", "endHHMM": "10:00" }
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [121.551, 25.031]
+      }
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+name: Publish Packs
+
+on:
+  workflow_dispatch:
+    inputs:
+      configsGlob:
+        description: Config glob (e.g. configs/*.json)
+        required: true
+        default: configs/prod/*.json
+      allowWarn:
+        description: Allow WARN anomalies with override
+        required: false
+        type: boolean
+        default: false
+      overrideReason:
+        description: Override reason (required when allowWarn=true)
+        required: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+      - name: Install
+        run: npm ci
+      - name: Ingest and publish
+        shell: bash
+        run: |
+          cmd="npm run ingest:all -- --configs \"${{ inputs.configsGlob }}\""
+          if [ "${{ inputs.allowWarn }}" = "true" ]; then
+            if [ -z "${{ inputs.overrideReason }}" ]; then
+              echo "overrideReason is required when allowWarn=true"
+              exit 1
+            fi
+            cmd="$cmd --allowWarn --override \"${{ inputs.overrideReason }}\""
+          fi
+          eval $cmd
+      - name: Package release
+        run: npm run ops:package-release
+      - name: Upload publish artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: published-packs
+          path: |
+            public/data/generated/registry.json
+            public/data/generated/*/LATEST.json
+            public/data/generated/_ops/manifests/**
+            public/data/generated/ingest_all_report.json
+            public/data/generated/_ops/publish_gate_summary.json
+            dist/releases/*.zip
+            dist/releases/release_manifest_*.json
+          if-no-files-found: warn

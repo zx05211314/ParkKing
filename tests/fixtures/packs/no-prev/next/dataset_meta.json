@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "districtId": "alpha",
+  "datasetHash": "alpha-hash",
+  "generatedAt": "2026-02-01T00:00:00Z",
+  "segmentsCount": 10,
+  "overridesAppliedCount": 1,
+  "signOverridesCount": 1,
+  "curbMarkingKnownRate": 0.5,
+  "restrictionTriggeredRate": 0.1,
+  "boundaryBBox": { "minX": 0, "minY": 0, "maxX": 1, "maxY": 1 },
+  "boundaryCenter": [0.5, 0.5],
+  "files": {},
+  "totalBytes": 0
+}

@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+      - name: Install
+        run: npm ci
+      - name: Validate configs
+        run: npm run ops:validate-configs
+      - name: Test
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee vitest.log
+      - name: Ingest CI fixtures
+        env:
+          PARKKING_LATEST_NAME: LATEST_CI
+        run: npm run ingest:all -- --configs "configs/ci-fixtures.json" --allowWarn --override "ci"
+      - name: Smoke latest pack
+        run: npm run ops:smoke-latest -- --latestName LATEST_CI
+      - name: Upload vitest log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-log
+          path: vitest.log
+          if-no-files-found: ignore

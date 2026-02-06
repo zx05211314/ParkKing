@@ -1,0 +1,43 @@
+﻿{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "cand-1-L",
+        "name": "Inferred Lane 1 (L)",
+        "side": "L",
+        "source": "inferred",
+        "roadClass": "primary",
+        "hardZoneCount": 1,
+        "riskTags": ["MAJOR_ROAD", "HARD_ZONE_NEAR"]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [121.5636, 25.0332],
+          [121.5639, 25.0332]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "cand-1-R",
+        "name": "Inferred Lane 1 (R)",
+        "side": "R",
+        "source": "inferred",
+        "roadClass": "residential",
+        "hardZoneCount": 2,
+        "riskTags": ["HARD_ZONE_MEDIUM"]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [121.5636, 25.0334],
+          [121.5639, 25.0334]
+        ]
+      }
+    }
+  ]
+}

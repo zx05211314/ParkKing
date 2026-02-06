@@ -1,0 +1,64 @@
+﻿{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "segmentId": "seg-1",
+        "note": "School pickup zone",
+        "confidence": "MED",
+        "verifiedAt": "2026-01-20",
+        "timeWindows": [
+          {
+            "label": "AM",
+            "startHHMM": "07:30",
+            "endHHMM": "09:00"
+          }
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [121.564, 25.033]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "segment_id": "seg-2",
+        "note": "Loading only",
+        "confidence": "HIGH",
+        "verifiedAt": "2026-01-18",
+        "timeWindows": [
+          {
+            "label": "Weekday",
+            "startHHMM": "10:00",
+            "endHHMM": "12:00"
+          }
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [121.5656, 25.0326]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "note": "Event signage",
+        "confidence": "LOW",
+        "verifiedAt": "2026-01-10",
+        "timeWindows": [
+          {
+            "label": "Evening",
+            "startHHMM": "18:00",
+            "endHHMM": "22:00"
+          }
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [121.5646, 25.0346]
+      }
+    }
+  ]
+}

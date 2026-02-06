@@ -1,0 +1,46 @@
+{
+  "districtId": "xinyi",
+  "configPath": "./prod/xinyi.json",
+  "sources": [
+    {
+      "url": "https://data.taipei/api/frontstage/tpeod/dataset/resource.download?rid=d8b7eb29-136f-49fc-b14b-3489d3656122",
+      "dest": "../data/sources/shared/district_bounds.zip",
+      "notes": "Taipei district boundaries (SHP ZIP)"
+    },
+    {
+      "url": "https://data.taipei/api/frontstage/tpeod/dataset/resource.download?rid=7e2f32a0-9201-4666-a0ed-11034e6c2b66",
+      "dest": "../data/sources/shared/parking_spaces.zip",
+      "notes": "Taipei parking spaces (SHP ZIP)"
+    },
+    {
+      "url": "https://data.taipei/api/frontstage/tpeod/dataset/resource.download?rid=48d59dbf-7056-42e2-94b1-41f41169b886",
+      "dest": "../data/sources/shared/red_yellow.zip",
+      "notes": "Taipei red/yellow curb markings (SHP ZIP)"
+    },
+    {
+      "url": "https://data.taipei/api/frontstage/tpeod/dataset/resource.download?rid=d56fe03c-0fbd-4a8b-998e-205a5e169211",
+      "dest": "../data/sources/shared/crosswalks.zip",
+      "notes": "Taipei crosswalks (SHP ZIP)"
+    },
+    {
+      "url": "https://data.taipei/api/frontstage/tpeod/dataset/resource.download?rid=dfd68d8e-d3b9-44df-b614-8850c103239f",
+      "dest": "../data/sources/shared/bus_stops.zip",
+      "notes": "Taipei bus stops (SHP ZIP)"
+    },
+    {
+      "url": "https://data.taipei/api/frontstage/tpeod/dataset/resource.download?rid=b9f8154d-c627-48a8-b3ef-512ed9cde9e7",
+      "dest": "../data/sources/shared/hydrants.csv",
+      "notes": "Taipei hydrants (CSV)"
+    },
+    {
+      "url": "https://data.taipei/api/frontstage/tpeod/dataset/resource.download?rid=9da220ce-f5a9-40a8-aacc-dc17978f3a87",
+      "dest": "../data/sources/shared/signals.csv",
+      "notes": "Taipei signals (CSV, optional)"
+    },
+    {
+      "url": "https://data.taipei/api/frontstage/tpeod/dataset/resource.download?rid=074a401d-45a2-4748-bf62-7d5372d53d45",
+      "dest": "../data/sources/shared/road_centerlines_gt8m.zip",
+      "notes": "Taipei road centerlines >8m (SHP ZIP)"
+    }
+  ]
+}

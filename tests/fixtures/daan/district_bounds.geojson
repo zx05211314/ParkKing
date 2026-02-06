@@ -1,0 +1,43 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "daan",
+        "name": "Daan"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [121.54, 25.02],
+            [121.56, 25.02],
+            [121.56, 25.04],
+            [121.54, 25.04],
+            [121.54, 25.02]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "xinyi",
+        "name": "Xinyi"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [121.56, 25.03],
+            [121.58, 25.03],
+            [121.58, 25.05],
+            [121.56, 25.05],
+            [121.56, 25.03]
+          ]
+        ]
+      }
+    }
+  ]
+}

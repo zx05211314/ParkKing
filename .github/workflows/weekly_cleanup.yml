@@ -1,0 +1,66 @@
+name: Weekly Cleanup
+
+on:
+  schedule:
+    - cron: '15 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+      - name: Install
+        run: npm ci
+      - name: Run cleanup
+        shell: bash
+        run: |
+          mkdir -p .tmp
+          BACKUP_ROOT="public/data/generated/.backup"
+          STAGING_ROOT="public/data/generated/.staging"
+
+          backup_before=0
+          staging_before=0
+          if [ -d "$BACKUP_ROOT" ]; then
+            backup_before=$(find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+          fi
+          if [ -d "$STAGING_ROOT" ]; then
+            staging_before=$(find "$STAGING_ROOT" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+          fi
+
+          npm run ops:cleanup -- --maxBackups 10 --maxAgeDays 30 | tee .tmp/cleanup.log
+
+          backup_after=0
+          staging_after=0
+          if [ -d "$BACKUP_ROOT" ]; then
+            backup_after=$(find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+          fi
+          if [ -d "$STAGING_ROOT" ]; then
+            staging_after=$(find "$STAGING_ROOT" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+          fi
+
+          {
+            echo "generatedAt=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            echo "command=npm run ops:cleanup -- --maxBackups 10 --maxAgeDays 30"
+            echo "backupDirsBefore=$backup_before"
+            echo "backupDirsAfter=$backup_after"
+            echo "stagingDirsBefore=$staging_before"
+            echo "stagingDirsAfter=$staging_after"
+          } > .tmp/cleanup-summary.txt
+      - name: Upload cleanup summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-cleanup-summary
+          path: |
+            .tmp/cleanup-summary.txt
+            .tmp/cleanup.log
+          if-no-files-found: warn

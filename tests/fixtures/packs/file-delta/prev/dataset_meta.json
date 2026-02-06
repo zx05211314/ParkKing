@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "districtId": "gamma",
+  "datasetHash": "gamma-prev",
+  "generatedAt": "2026-02-01T00:00:00Z",
+  "segmentsCount": 50,
+  "overridesAppliedCount": 4,
+  "signOverridesCount": 1,
+  "curbMarkingKnownRate": 0.7,
+  "restrictionTriggeredRate": 0.15,
+  "boundaryBBox": { "minX": 0, "minY": 0, "maxX": 3, "maxY": 3 },
+  "boundaryCenter": [1.5, 1.5],
+  "files": {},
+  "totalBytes": 0
+}

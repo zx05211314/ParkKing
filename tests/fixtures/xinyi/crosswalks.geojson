@@ -1,0 +1,18 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Crosswalk A"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [121.5639, 25.0329],
+          [121.5641, 25.0331]
+        ]
+      }
+    }
+  ]
+}

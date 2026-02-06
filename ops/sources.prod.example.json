@@ -1,0 +1,58 @@
+{
+  "districts": [
+    {
+      "districtId": "xinyi",
+      "configPath": "configs/prod/xinyi.json",
+      "sources": [
+        {
+          "url": "https://example.com/taipei/xinyi/district_bounds.zip",
+          "dest": "data/raw/xinyi/district_bounds.zip",
+          "sha256": "<replace-with-sha256>",
+          "notes": "District boundary source bundle"
+        },
+        {
+          "url": "https://example.com/taipei/xinyi/curb_inputs.zip",
+          "dest": "data/raw/xinyi/curb_inputs.zip",
+          "sha256": "<replace-with-sha256>",
+          "notes": "red_yellow / bus_stops / hydrants / road_centerlines / crosswalks"
+        }
+      ]
+    },
+    {
+      "districtId": "daan",
+      "configPath": "configs/prod/daan.json",
+      "sources": [
+        {
+          "url": "https://example.com/taipei/daan/district_bounds.zip",
+          "dest": "data/raw/daan/district_bounds.zip",
+          "sha256": "<replace-with-sha256>",
+          "notes": "District boundary source bundle"
+        },
+        {
+          "url": "https://example.com/taipei/daan/curb_inputs.zip",
+          "dest": "data/raw/daan/curb_inputs.zip",
+          "sha256": "<replace-with-sha256>",
+          "notes": "red_yellow / bus_stops / hydrants / road_centerlines / crosswalks"
+        }
+      ]
+    },
+    {
+      "districtId": "zhongshan",
+      "configPath": "configs/prod/zhongshan.json",
+      "sources": [
+        {
+          "url": "https://example.com/taipei/zhongshan/district_bounds.zip",
+          "dest": "data/raw/zhongshan/district_bounds.zip",
+          "sha256": "<replace-with-sha256>",
+          "notes": "District boundary source bundle"
+        },
+        {
+          "url": "https://example.com/taipei/zhongshan/curb_inputs.zip",
+          "dest": "data/raw/zhongshan/curb_inputs.zip",
+          "sha256": "<replace-with-sha256>",
+          "notes": "red_yellow / bus_stops / hydrants / road_centerlines / crosswalks"
+        }
+      ]
+    }
+  ]
+}

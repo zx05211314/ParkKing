@@ -1,0 +1,65 @@
+{
+  "inputs": {
+    "districtBounds": "data/raw/district_bounds.shp",
+    "redYellow": "data/raw/red_yellow.shp",
+    "busStops": "data/raw/bus_stops.shp",
+    "hydrants": "data/raw/hydrants.shp",
+    "road_centerlines": "data/raw/road_centerlines.shp",
+    "crosswalks": "data/raw/crosswalks.shp",
+    "sign_overrides": "data/raw/sign_overrides.geojson"
+  },
+  "outputs": {
+    "generatedDir": "data/generated/xinyi",
+    "publicDir": "public/data/generated/xinyi"
+  },
+  "crs": {
+    "default": "EPSG:3826"
+  },
+  "intersections": {
+    "snapToleranceMeters": 10,
+    "angleDiversityDegrees": 25,
+    "includeRoadClasses": [],
+    "excludeRoadClasses": []
+  },
+  "crosswalks": {
+    "bufferMeters": 6
+  },
+  "signOverrides": {
+    "matchToleranceMeters": 15
+  },
+  "inferredCandidates": {
+    "offsetMeters": 3.5,
+    "includeRoadClasses": [],
+    "excludeRoadClasses": []
+  },
+  "validation": {
+    "minCounts": {
+      "districtBounds": 1,
+      "redYellow": 10,
+      "busStops": 5,
+      "hydrants": 5,
+      "intersections": 5,
+      "crosswalks": 1,
+      "signOverrides": 0,
+      "inferredCandidates": 1
+    }
+  },
+  "ops": {
+    "thresholds": {
+      "counts": {
+        "segments": 20,
+        "intersections": 20,
+        "inferredCandidates": 30,
+        "signOverrides": 30
+      },
+      "tierDistributionMaxDeltaPct": 15,
+      "perfRegressionMaxDeltaPct": 30,
+      "maxReasonCodeDeltaPct": 20,
+      "maxNewReasonCodePct": 5
+    },
+    "retention": {
+      "maxBackupsPerDistrict": 5,
+      "maxBackupAgeDays": 30
+    }
+  }
+}

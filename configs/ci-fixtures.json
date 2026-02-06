@@ -1,0 +1,49 @@
+{
+  "districtId": "xinyi",
+  "districtName": "Xinyi (CI Fixtures)",
+  "includeConfigs": ["ci-fixtures-daan.json"],
+  "ciSafe": true,
+  "inputs": {
+    "districtBounds": "../tests/fixtures/xinyi/xinyi_boundary.geojson",
+    "redYellow": "../tests/fixtures/xinyi/red_yellow.geojson",
+    "busStops": "../tests/fixtures/xinyi/bus_stops.geojson",
+    "hydrants": "../tests/fixtures/xinyi/hydrants.geojson",
+    "intersections": "../tests/fixtures/xinyi/intersections.geojson",
+    "crosswalks": "../tests/fixtures/xinyi/crosswalks.geojson",
+    "sign_overrides": "../tests/fixtures/xinyi/sign_overrides.geojson",
+    "candidates_inferred": "../tests/fixtures/xinyi/candidates_inferred.geojson"
+  },
+  "outputs": {
+    "generatedDir": "../data/generated/xinyi",
+    "publicDir": "../public/data/generated/xinyi"
+  },
+  "crs": {
+    "default": "EPSG:4326"
+  },
+  "ops": {
+    "thresholds": {
+      "counts": {
+        "segments": 1000,
+        "intersections": 1000,
+        "inferredCandidates": 1000,
+        "signOverrides": 1000
+      },
+      "tierDistributionMaxDeltaPct": 10000,
+      "perfRegressionMaxDeltaPct": 10000,
+      "maxReasonCodeDeltaPct": 10000,
+      "maxNewReasonCodePct": 10000
+    }
+  },
+  "validation": {
+    "minCounts": {
+      "districtBounds": 1,
+      "redYellow": 1,
+      "busStops": 1,
+      "hydrants": 1,
+      "intersections": 1,
+      "crosswalks": 1,
+      "signOverrides": 1,
+      "inferredCandidates": 1
+    }
+  }
+}

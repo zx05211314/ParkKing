@@ -1,0 +1,34 @@
+name: Ingest Dry Run
+
+on:
+  pull_request:
+
+jobs:
+  ingest-dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+      - name: Install
+        run: npm ci
+      - name: Validate configs
+        run: npm run ops:validate-configs
+      - name: Snapshot public/ before
+        run: npx tsx scripts/ops/assertNoPublicWrites.ts --baseline .tmp/public_snapshot.json
+      - name: Ingest dry-run + gate
+        run: npm run ingest:all:dry -- --configs "configs/ci-fixtures.json"
+      - name: Assert no public writes
+        run: npx tsx scripts/ops/assertNoPublicWrites.ts --check .tmp/public_snapshot.json
+      - name: Upload dry-run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ingest-dry-run
+          path: |
+            data/generated/ingest_all_report_dry.json
+            data/generated/_ops/publish_gate_summary.json
+          if-no-files-found: warn

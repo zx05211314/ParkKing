@@ -1,0 +1,65 @@
+﻿{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "seg-1",
+        "name": "Xinyi Rd Sec 5",
+        "color": "yellow"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [121.5638, 25.033],
+          [121.5642, 25.033]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "seg-2",
+        "name": "Songzhi Rd",
+        "color": "red"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [121.5655, 25.0325],
+          [121.5657, 25.0327]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "seg-3",
+        "name": "Keelung Rd",
+        "color": "yellow"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [121.5658, 25.034],
+          [121.5662, 25.034]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "seg-4",
+        "name": "Songgao Rd",
+        "color": "yellow"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [121.5645, 25.0345],
+          [121.5648, 25.0347]
+        ]
+      }
+    }
+  ]
+}

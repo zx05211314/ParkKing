@@ -1,0 +1,20 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "d1",
+        "name": "Daan Rd Sec 1",
+        "color": "YELLOW"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [121.545, 25.025],
+          [121.555, 25.03]
+        ]
+      }
+    }
+  ]
+}

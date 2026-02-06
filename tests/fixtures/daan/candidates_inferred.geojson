@@ -1,0 +1,19 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ic1",
+        "riskTags": ["HARD_ZONE_NEAR"]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [121.5455, 25.0265],
+          [121.5465, 25.0275]
+        ]
+      }
+    }
+  ]
+}

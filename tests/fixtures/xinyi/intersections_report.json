@@ -1,0 +1,16 @@
+{
+  "counts": {
+    "inputNodes": 10,
+    "filteredBoundary": 6,
+    "finalIntersections": 6
+  },
+  "angleSpreadHistogram": {
+    "0-25": 1,
+    "25-50": 2,
+    "50-90": 3
+  },
+  "removed": {
+    "colinear": 1,
+    "lowDegree": 3
+  }
+}

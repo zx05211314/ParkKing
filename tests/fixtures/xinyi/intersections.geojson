@@ -1,0 +1,65 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Intersection A"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [121.564, 25.033]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Intersection B"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [121.5656, 25.0326]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Intersection C"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [121.5661, 25.0341]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Intersection D"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [121.5636, 25.0342]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Intersection E"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [121.5664, 25.0348]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Intersection F"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [121.5644, 25.0338]
+      }
+    }
+  ]
+}

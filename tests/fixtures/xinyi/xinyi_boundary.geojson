@@ -1,0 +1,23 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Xinyi Fixture Boundary"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [121.563, 25.032],
+            [121.567, 25.032],
+            [121.567, 25.035],
+            [121.563, 25.035],
+            [121.563, 25.032]
+          ]
+        ]
+      }
+    }
+  ]
+}

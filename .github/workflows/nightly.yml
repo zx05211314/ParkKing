@@ -1,0 +1,59 @@
+name: Nightly Pack Diff
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  nightly:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+      - name: Restore pack cache
+        uses: actions/cache@v4
+        with:
+          path: public/data/generated
+          key: nightly-pack-cache-${{ github.run_id }}
+          restore-keys: |
+            nightly-pack-cache-
+      - name: Install
+        run: npm ci
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Ingest + publish fixtures
+        env:
+          PARKKING_LATEST_NAME: LATEST_CI
+        run: npm run ingest:all -- --configs "configs/ci-fixtures.json" --allowWarn --override "ci"
+      - name: Smoke latest pack
+        run: npm run ops:smoke-latest -- --latestName LATEST_CI
+      - name: Notify nightly warnings
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DIFF_ARGS=$(node -e "const fs = require('fs'); const data = JSON.parse(fs.readFileSync('public/data/generated/registry.json', 'utf-8')); const args = (data.districts || []).map(d => '--diff public/data/generated/' + d.districtId); console.log(args.join(' '));")
+          if [ -z \"$DIFF_ARGS\" ]; then
+            echo \"No districts found for notify-nightly.\"
+            exit 0
+          fi
+          npm run ops:notify-nightly -- $DIFF_ARGS
+      - name: Upload diff reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pack-diff-report
+          path: |
+            public/data/generated/*/diff_report.json
+            public/data/generated/*/diff_report.md
+          if-no-files-found: warn
