@@ -13,10 +13,10 @@ import {
   type SmokeGeneratedPacksResult,
 } from './smokeGeneratedPacks'
 import {
-  runSmokeParkingAnswerService,
-  type SmokeParkingAnswerServiceOptions,
-  type SmokeParkingAnswerServiceSummary,
-} from './smokeParkingAnswerService'
+  runSmokeParkingAnswerServices,
+  type SmokeParkingAnswerServicesOptions,
+  type SmokeParkingAnswerServicesResult,
+} from './smokeParkingAnswerServices'
 import {
   packageRelease,
   type PackageReleaseResult,
@@ -63,7 +63,7 @@ export interface P3ReleaseReadinessResult {
   inputs: P3ReleaseReadinessInputs
   districtMatrix: P3ReleaseReadinessCheck<DistrictReadinessMatrixResult>
   generatedPacks: P3ReleaseReadinessCheck<SmokeGeneratedPacksResult>
-  parkingAnswerApis: P3ReleaseReadinessCheck<SmokeParkingAnswerServiceSummary[]>
+  parkingAnswerApis: P3ReleaseReadinessCheck<SmokeParkingAnswerServicesResult>
   releasePackage: P3ReleaseReadinessCheck<PackageReleaseResult>
   packageValidation: P3ReleaseReadinessCheck<ValidateReleasePackageResult>
   blockers: string[]
@@ -76,9 +76,9 @@ export interface P3ReleaseReadinessRunners {
   runSmokeGeneratedPacks: (
     options: SmokeGeneratedPacksOptions,
   ) => Promise<SmokeGeneratedPacksResult>
-  runSmokeParkingAnswerService: (
-    options: SmokeParkingAnswerServiceOptions,
-  ) => Promise<SmokeParkingAnswerServiceSummary>
+  runSmokeParkingAnswerServices: (
+    options: SmokeParkingAnswerServicesOptions,
+  ) => Promise<SmokeParkingAnswerServicesResult>
   packageRelease: typeof packageRelease
   validateReleasePackage: (
     args: ValidateReleasePackageArgs,
@@ -93,7 +93,7 @@ const DEFAULT_OUT_DIR = 'dist/releases'
 const defaultRunners: P3ReleaseReadinessRunners = {
   runDistrictReadinessMatrix,
   runSmokeGeneratedPacks,
-  runSmokeParkingAnswerService,
+  runSmokeParkingAnswerServices,
   packageRelease,
   validateReleasePackage,
 }
@@ -252,19 +252,15 @@ export const runP3ReleaseReadiness = async (
   )
   const parkingAnswerApis = await runCheck(
     'Parking answer APIs',
-    async () => {
-      const summaries: SmokeParkingAnswerServiceSummary[] = []
-      for (const districtId of inputs.districtIds) {
-        summaries.push(
-          await runners.runSmokeParkingAnswerService({
-            district: districtId,
-            casesPath: path.join(answerCasesDir, `${districtId}.answer-cases.json`),
-          }),
-        )
-      }
-      return summaries
-    },
-    (summaries) => summaries.every((summary) => summary.failed === 0),
+    () =>
+      runners.runSmokeParkingAnswerServices({
+        root: inputs.root,
+        registryPath: inputs.registryPath,
+        answerCasesDir,
+        useReviewedCases: true,
+        requiredReviewedCaseDistricts: inputs.districtIds,
+      }),
+    (summary) => !summary.hasErrors,
   )
   const releasePackage = await runCheck(
     'Release package',
@@ -326,10 +322,10 @@ const formatGeneratedPacks = (summary: SmokeGeneratedPacksResult | null) =>
     : '-'
 
 const formatParkingAnswerApis = (
-  summary: SmokeParkingAnswerServiceSummary[] | null,
+  summary: SmokeParkingAnswerServicesResult | null,
 ) =>
   summary
-    ? `${summary.filter((district) => district.failed === 0).length}/${summary.length} districts`
+    ? `${summary.packResults.filter((pack) => pack.errors.length === 0).length}/${summary.packResults.length} packs`
     : '-'
 
 const formatPackage = (summary: PackageReleaseResult | null) =>

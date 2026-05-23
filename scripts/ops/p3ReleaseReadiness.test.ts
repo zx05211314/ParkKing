@@ -4,7 +4,7 @@ import * as path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import type { DistrictReadinessMatrixResult } from './districtReadinessMatrix'
 import type { SmokeGeneratedPacksResult } from './smokeGeneratedPacks'
-import type { SmokeParkingAnswerServiceSummary } from './smokeParkingAnswerService'
+import type { SmokeParkingAnswerServicesResult } from './smokeParkingAnswerServices'
 import type { PackageReleaseResult } from './packageRelease'
 import type { ValidateReleasePackageResult } from './validateReleasePackage'
 import {
@@ -33,18 +33,18 @@ const generatedPacksPass = {
   ],
 } as unknown as SmokeGeneratedPacksResult
 
-const parkingAnswerApiPass = (
-  district: string,
-): SmokeParkingAnswerServiceSummary => ({
-  endpoint: `http://127.0.0.1/${district}`,
-  district,
-  casesPath: `configs/prod/${district}.answer-cases.json`,
-  datasetHash: `hash-${district}`,
-  probes: ['health', 'ready'],
-  passed: 2,
-  failed: 0,
-  results: [],
-})
+const parkingAnswerApisPass: SmokeParkingAnswerServicesResult = {
+  root: 'public/data/generated',
+  registryPath: 'public/data/generated/registry.json',
+  reportPath: null,
+  errors: [],
+  hasErrors: false,
+  packResults: [
+    { districtId: 'xinyi', errors: [] },
+    { districtId: 'daan', errors: [] },
+    { districtId: 'zhongshan', errors: [] },
+  ],
+} as unknown as SmokeParkingAnswerServicesResult
 
 const releasePackagePass: PackageReleaseResult = {
   releaseId: 'release-1',
@@ -73,11 +73,7 @@ const makeRunners = (
 ): P3ReleaseReadinessRunners => ({
   runDistrictReadinessMatrix: vi.fn().mockResolvedValue(matrixPass),
   runSmokeGeneratedPacks: vi.fn().mockResolvedValue(generatedPacksPass),
-  runSmokeParkingAnswerService: vi
-    .fn()
-    .mockImplementation(({ district }) =>
-      Promise.resolve(parkingAnswerApiPass(district ?? 'xinyi')),
-    ),
+  runSmokeParkingAnswerServices: vi.fn().mockResolvedValue(parkingAnswerApisPass),
   packageRelease: vi.fn().mockResolvedValue(releasePackagePass),
   validateReleasePackage: vi.fn().mockResolvedValue(packageValidationPass),
   ...overrides,
@@ -156,11 +152,15 @@ describe('p3ReleaseReadiness', () => {
         districtIds: ['xinyi', 'daan', 'zhongshan'],
       }),
     )
-    expect(runners.runSmokeParkingAnswerService).toHaveBeenCalledTimes(3)
-    const apiCalls = vi.mocked(runners.runSmokeParkingAnswerService).mock.calls
-    expect(apiCalls[0]?.[0]).toMatchObject({ district: 'xinyi' })
-    expect(apiCalls[0]?.[0].casesPath?.replace(/\\/g, '/')).toBe(
-      'configs/prod/xinyi.answer-cases.json',
+    const apiCall = vi.mocked(runners.runSmokeParkingAnswerServices).mock.calls[0]?.[0]
+    expect(apiCall).toMatchObject({
+      root: 'public/data/generated',
+      answerCasesDir: 'configs/prod',
+      useReviewedCases: true,
+      requiredReviewedCaseDistricts: ['xinyi', 'daan', 'zhongshan'],
+    })
+    expect(apiCall?.registryPath?.replace(/\\/g, '/')).toBe(
+      'public/data/generated/registry.json',
     )
     expect(runners.validateReleasePackage).toHaveBeenCalledWith(
       expect.objectContaining({
