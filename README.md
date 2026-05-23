@@ -410,7 +410,8 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   This discovers reviewed districts from `configs/prod/*.answer-cases.json`, runs the strict district readiness matrix, runs reviewed generated-pack smoke with reviewed cases required for each reviewed district, probes the HTTP parking-answer API for each reviewed district, writes a district-scoped release package, and validates that package against the expected district set. The current reviewed release set is Xinyi, Daan, and Zhongshan. Use `npm run ops:package-release:reviewed` and `npm run ops:validate-release-package:reviewed` when you only need the reviewed release archive and validation report.
 - Registry-scoped UI smoke check for reviewed generated packs:
   `npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --require-reviewed-cases xinyi,daan,zhongshan --timeout-ms 25000`
-  Add `--view MAP` when you want the same reviewed-pack discovery path to exercise map/list mode instead of list mode.
+  Add `--view MAP --limit 1` when you want the same reviewed-pack discovery path to exercise map/list mode instead of list mode:
+  `npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --require-reviewed-cases xinyi,daan,zhongshan --view MAP --limit 1 --timeout-ms 25000`
 - Static validation for committed reviewed answer-case files:
   `npm run ops:validate-answer-cases`
 - Query one exact coordinate for a parking answer:

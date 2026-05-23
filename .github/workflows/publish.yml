@@ -54,6 +54,8 @@ jobs:
         run: npm run ops:smoke-api-services -- --start-preview --timeout-ms 25000
       - name: Smoke reviewed UI answers
         run: npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --require-reviewed-cases xinyi,daan,zhongshan --timeout-ms 25000
+      - name: Smoke reviewed MAP UI answers
+        run: npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --require-reviewed-cases xinyi,daan,zhongshan --view MAP --limit 1 --timeout-ms 25000
       - name: P1 release readiness
         if: ${{ inputs.configsGlob == 'configs/prod/*.json' }}
         run: npm run ops:p1-release-readiness
