@@ -30,6 +30,7 @@ describe('writeMetricsHistory', () => {
       segmentsCount: 12,
       overridesAppliedCount: 1,
       signOverridesCount: 2,
+      signOverrideUnmatchedNamedCount: 1,
       curbMarkingKnownRate: 0.5,
       restrictionTriggeredRate: 0.2,
     })
@@ -57,6 +58,7 @@ describe('writeMetricsHistory', () => {
       segmentsCount: 5,
       overridesAppliedCount: 0,
       signOverridesCount: 1,
+      signOverrideUnmatchedNamedCount: 0,
       curbMarkingKnownRate: 0.4,
       restrictionTriggeredRate: 0.1,
     })
@@ -66,6 +68,7 @@ describe('writeMetricsHistory', () => {
       segmentsCount: 7,
       overridesAppliedCount: 1,
       signOverridesCount: 2,
+      signOverrideUnmatchedNamedCount: 1,
       curbMarkingKnownRate: 0.6,
       restrictionTriggeredRate: 0.2,
     })
@@ -89,6 +92,7 @@ describe('writeMetricsHistory', () => {
       segmentsCount: 10,
       overridesAppliedCount: 0,
       signOverridesCount: 1,
+      signOverrideUnmatchedNamedCount: 0,
       curbMarkingKnownRate: 0.4,
       restrictionTriggeredRate: 0.1,
     })
@@ -101,6 +105,7 @@ describe('writeMetricsHistory', () => {
       segmentsCount: 9,
       overridesAppliedCount: 0,
       signOverridesCount: 1,
+      signOverrideUnmatchedNamedCount: 0,
       curbMarkingKnownRate: 0.3,
       restrictionTriggeredRate: 0.1,
       provenanceFetchedAt: null,
@@ -117,6 +122,7 @@ describe('writeMetricsHistory', () => {
       segmentsCount: 11,
       overridesAppliedCount: 1,
       signOverridesCount: 2,
+      signOverrideUnmatchedNamedCount: 1,
       curbMarkingKnownRate: 0.45,
       restrictionTriggeredRate: 0.12,
     })
@@ -139,6 +145,7 @@ describe('writeMetricsHistory', () => {
       segmentsCount: 10,
       overridesAppliedCount: 0,
       signOverridesCount: 1,
+      signOverrideUnmatchedNamedCount: 0,
       curbMarkingKnownRate: 0.4,
       restrictionTriggeredRate: 0.1,
     })
@@ -153,6 +160,7 @@ describe('writeMetricsHistory', () => {
         segmentsCount: index,
         overridesAppliedCount: 0,
         signOverridesCount: 1,
+        signOverrideUnmatchedNamedCount: 0,
         curbMarkingKnownRate: 0.3,
         restrictionTriggeredRate: 0.1,
         provenanceFetchedAt: null,
@@ -171,6 +179,7 @@ describe('writeMetricsHistory', () => {
       segmentsCount: 999,
       overridesAppliedCount: 2,
       signOverridesCount: 3,
+      signOverrideUnmatchedNamedCount: 2,
       curbMarkingKnownRate: 0.55,
       restrictionTriggeredRate: 0.15,
     })

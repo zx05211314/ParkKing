@@ -1,12 +1,19 @@
 import type { Feature, FeatureCollection, Geometry, Point } from 'geojson'
 import { createBufferFromGeometry, createBufferPolygon } from './buffers'
+import {
+  BUS_STOP_BUFFER_METERS,
+  CROSSWALK_BUFFER_METERS,
+  HYDRANT_BUFFER_METERS,
+  INTERSECTION_NO_STOP_M,
+} from './constants'
 import { ZoneType, type Zone } from './zoneTypes'
-
-export const BUS_STOP_BUFFER_METERS = 10
-export const HYDRANT_BUFFER_METERS = 5
-export const INTERSECTION_NO_STOP_M = 8
-export const CROSSWALK_BUFFER_METERS = 6
-export const ZONE_PARAMS_VERSION = `bus-${BUS_STOP_BUFFER_METERS}-hydrant-${HYDRANT_BUFFER_METERS}-intersection-${INTERSECTION_NO_STOP_M}-crosswalk-${CROSSWALK_BUFFER_METERS}-v1`
+export {
+  BUS_STOP_BUFFER_METERS,
+  CROSSWALK_BUFFER_METERS,
+  HYDRANT_BUFFER_METERS,
+  INTERSECTION_NO_STOP_M,
+  ZONE_PARAMS_VERSION,
+} from './constants'
 
 const getPointCoord = (feature: Feature<Point>): [number, number] | null => {
   const coords = feature.geometry.coordinates

@@ -1,43 +1,85 @@
 {
-  "baselineCreatedAt": "2026-02-04T00:00:00Z",
-  "baselineDatasetHash": "fixture-xinyi-v7",
+  "baselineCreatedAt": "2026-05-09T06:28:42.043Z",
+  "baselineDatasetHash": "bd71b53a837a88c328f5a225bea353218e4b4be660afa2733ef742ab1a24960a",
   "baselineSchemaVersion": 1,
+  "baselineSourceMetaSha256": "3968323e3a1a2c33d1e0b2ea4f9f42789b98bb7f8642e64e78850680097608cb",
   "baselineDistrictName": "Xinyi",
-  "generatedAt": "2026-02-04T00:00:00Z",
+  "generatedAt": "2026-05-09T06:28:42.045Z",
   "districtId": "xinyi",
-  "datasetHash": "fixture-xinyi-v7",
+  "datasetHash": "bd71b53a837a88c328f5a225bea353218e4b4be660afa2733ef742ab1a24960a",
   "counts": {
-    "segments": 4,
-    "intersections": 6,
-    "inferredCandidates": 2,
-    "signOverrides": 3
+    "segments": 11232,
+    "intersections": 183,
+    "inferredCandidates": 1420,
+    "signOverrides": 7,
+    "signOverrideUnmatchedNamedCount": 0
   },
   "distributions": {
-    "day": {},
-    "night": {}
+    "day": {
+      "YELLOW|TEMP_STOP": 2933,
+      "RED|NO_STOP": 17880,
+      "GREEN|PARK": 4
+    },
+    "night": {
+      "GREEN|PARK": 328,
+      "RED|NO_STOP": 17880,
+      "YELLOW|PARK": 2609
+    }
   },
   "performance": {
     "day": {
-      "evalFirstMsMedian": 1,
-      "evalSecondMsMedian": 1
+      "evalFirstMsMedian": 657,
+      "evalSecondMsMedian": 538
     },
     "night": {
-      "evalFirstMsMedian": 1,
-      "evalSecondMsMedian": 1
+      "evalFirstMsMedian": 583,
+      "evalSecondMsMedian": 580
     }
   },
   "reasonCodes": {
     "day": {
-      "top": {},
+      "top": {
+        "DATA_FRESHNESS_STALE": 15548,
+        "RULE_RED_NO_STOP": 14595,
+        "RULE_YELLOW_DAY_NO_PARK": 6210,
+        "DATA_FRESHNESS_UNKNOWN": 5269,
+        "COVERAGE_LOW": 5262,
+        "INFERRED_CAPPED": 5262,
+        "INFERRED_RISK_HIGH_ZONE_DENSITY": 4730,
+        "ZONE_CROSSWALK": 4056,
+        "ZONE_HYDRANT": 3069,
+        "ZONE_INTERSECTION": 944,
+        "ZONE_BUS_STOP": 651,
+        "PARKING_SPACE_EVIDENCE": 477,
+        "OVERRIDE_APPLIED": 12,
+        "OVERRIDE_STATUS_ILLEGAL": 7,
+        "OVERRIDE_STATUS_LEGAL": 5
+      },
       "other": 0,
-      "total": 0,
-      "coveragePct": 0
+      "total": 20817,
+      "coveragePct": 100
     },
     "night": {
-      "top": {},
+      "top": {
+        "DATA_FRESHNESS_STALE": 15548,
+        "RULE_RED_NO_STOP": 14595,
+        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 6210,
+        "DATA_FRESHNESS_UNKNOWN": 5269,
+        "COVERAGE_LOW": 5262,
+        "INFERRED_CAPPED": 5262,
+        "INFERRED_RISK_HIGH_ZONE_DENSITY": 4730,
+        "ZONE_CROSSWALK": 4056,
+        "ZONE_HYDRANT": 3069,
+        "ZONE_INTERSECTION": 944,
+        "ZONE_BUS_STOP": 651,
+        "PARKING_SPACE_EVIDENCE": 477,
+        "OVERRIDE_APPLIED": 12,
+        "OVERRIDE_STATUS_ILLEGAL": 7,
+        "OVERRIDE_STATUS_LEGAL": 5
+      },
       "other": 0,
-      "total": 0,
-      "coveragePct": 0
+      "total": 20817,
+      "coveragePct": 100
     }
   }
 }

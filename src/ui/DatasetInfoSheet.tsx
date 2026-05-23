@@ -118,7 +118,16 @@ export const DatasetInfoSheet = ({ open, info, onClose }: DatasetInfoSheetProps)
                 <li>Published: {info.health.publishedAt}</li>
                 <li>Segments: {info.health.segmentsCount}</li>
                 <li>Sign overrides: {info.health.signOverridesCount}</li>
+                <li>
+                  Sign overrides matched by segment id:{' '}
+                  {info.health.signOverrideMatchedSegmentCount}
+                </li>
+                <li>
+                  Sign overrides matched by spatial fallback:{' '}
+                  {info.health.signOverrideSpatialMatchCount}
+                </li>
                 <li>Overrides applied: {info.health.overridesAppliedCount}</li>
+                <li>Unmatched named overrides: {info.health.signOverrideUnmatchedNamedCount}</li>
                 <li>Curb marking known: {info.health.curbMarkingKnownRate}</li>
                 <li>Restrictions triggered: {info.health.restrictionTriggeredRate}</li>
               </ul>

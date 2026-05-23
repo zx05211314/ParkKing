@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "districtId": "xinyi",
+  "datasetHash": "bd71b53a837a88c328f5a225bea353218e4b4be660afa2733ef742ab1a24960a",
+  "cases": [
+    {
+      "id": "xinyi-reviewed-legal-seg-8953-part-2",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.570443,
+      "lat": 25.025664,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-8953-part-2",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 5
+    },
+    {
+      "id": "xinyi-reviewed-legal-seg-181",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.570044,
+      "lat": 25.025832,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-181",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 2
+    },
+    {
+      "id": "xinyi-reviewed-illegal-seg-6567-part-1",
+      "label": "Reviewed no-stop answer with marked-space evidence",
+      "lng": 121.568226,
+      "lat": 25.029328,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-6567-part-1",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 2
+    },
+    {
+      "id": "xinyi-reviewed-legal-seg-1016",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.569443,
+      "lat": 25.025968,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-1016",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 4
+    },
+    {
+      "id": "xinyi-reviewed-illegal-seg-1671",
+      "label": "Reviewed no-stop answer with marked-space evidence",
+      "lng": 121.574808,
+      "lat": 25.033003,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-1671",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 9
+    },
+    {
+      "id": "xinyi-reviewed-legal-seg-478",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.568305,
+      "lat": 25.026907,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-478",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 5
+    },
+    {
+      "id": "xinyi-reviewed-illegal-seg-8124-part-5",
+      "label": "Reviewed no-stop answer with marked-space evidence",
+      "lng": 121.56693,
+      "lat": 25.030511,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-8124-part-5",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 2
+    }
+  ]
+}

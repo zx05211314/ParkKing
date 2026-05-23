@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '24.x'
           cache: 'npm'
       - name: Restore pack cache
         uses: actions/cache@v4
@@ -32,22 +32,111 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      - name: Validate reviewed answer cases
+        run: npm run ops:validate-answer-cases
+      - name: Preflight sign overrides
+        env:
+          PARKKING_OVERRIDE_REPORTS_DIR: .tmp/ci-overrides
+        run: npm run ops:preflight-sign-overrides:batch -- --configs configs/ci-fixtures.json --out-dir .tmp/sign-override-preflight
       - name: Ingest + publish fixtures
         env:
           PARKKING_LATEST_NAME: LATEST_CI
+          PARKKING_OVERRIDE_REPORTS_DIR: .tmp/ci-overrides
         run: npm run ingest:all -- --configs "configs/ci-fixtures.json" --allowWarn --override "ci"
       - name: Smoke latest pack
         run: npm run ops:smoke-latest -- --latestName LATEST_CI
+      - name: Smoke parking answers
+        run: npm run ops:smoke-generated-packs -- --root public/data/generated --registry public/data/generated/registry.json --fixture-thresholds
+      - name: Smoke parking answer API
+        run: npm run ops:smoke-parking-answer-api -- --district xinyi --no-cases --timeout-ms 25000 --minParkAnswers 1 --minNoStopAnswers 1 --minMarkedSpaceParkAnswers 1
+      - name: Smoke API service probes
+        run: npm run ops:smoke-api-services -- --start-preview --timeout-ms 25000
+      - name: Inventory generated packs
+        run: npm run ops:generated-pack-inventory -- --root public/data/generated
+      - name: Build nightly issue triage artifacts
+        run: npm run ops:issue-report-artifacts -- --limit 5 --out-root .tmp/nightly-issue-artifacts --packet-issue-limit 5 --publish-gate-summary public/data/generated/_ops/publish_gate_summary.json
+      - name: Summarize sign override preflight
+        if: always()
+        run: npm run ops:append-workflow-summary -- --append-glob ".tmp/sign-override-preflight/*.md"
+      - name: Summarize nightly publish gate
+        if: always()
+        run: npm run ops:append-workflow-summary -- --append-file public/data/generated/_ops/publish_gate_summary.md
+      - name: Upload nightly issue packets
+        id: upload_issue_packets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-issue-packets
+          path: |
+            .tmp/nightly-issue-artifacts/packets/**
+          if-no-files-found: warn
+      - name: Upload nightly publish gate summary artifact
+        id: upload_publish_gate_summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-publish-gate-summary
+          path: |
+            public/data/generated/_ops/publish_gate_summary.json
+            public/data/generated/_ops/publish_gate_summary.md
+          if-no-files-found: warn
+      - name: Upload sign override preflight artifacts
+        id: upload_sign_override_preflight
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-sign-override-preflight
+          path: .tmp/sign-override-preflight/**
+          if-no-files-found: warn
+      - name: Upload nightly issue csv
+        id: upload_issue_csv
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-issue-csv
+          path: |
+            .tmp/nightly-issue-artifacts/csv/**
+          if-no-files-found: warn
+      - name: Refresh nightly issue artifact index
+        if: always()
+        env:
+          ISSUE_PACKET_ARTIFACT_URL: ${{ steps.upload_issue_packets.outputs['artifact-url'] }}
+          ISSUE_CSV_ARTIFACT_URL: ${{ steps.upload_issue_csv.outputs['artifact-url'] }}
+          PUBLISH_GATE_SUMMARY_ARTIFACT_URL: ${{ steps.upload_publish_gate_summary.outputs['artifact-url'] }}
+        run: npm run ops:refresh-workflow-issue-artifacts -- --manifest .tmp/nightly-issue-artifacts/manifest.json --label "Nightly" --packet-root-url-env ISSUE_PACKET_ARTIFACT_URL --csv-root-url-env ISSUE_CSV_ARTIFACT_URL --publish-gate-summary-url-env PUBLISH_GATE_SUMMARY_ARTIFACT_URL
+      - name: Upload nightly issue index
+        id: upload_issue_index
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-issue-index
+          path: |
+            .tmp/nightly-issue-artifacts/summary.md
+            .tmp/nightly-issue-artifacts/index-summary.md
+            .tmp/nightly-issue-artifacts/index-summary.json
+            .tmp/nightly-issue-artifacts/index-surface.json
+            .tmp/nightly-issue-artifacts/manifest.json
+            .tmp/nightly-issue-artifacts/artifact-index.json
+          if-no-files-found: warn
+      - name: Validate nightly issue manifests
+        if: always()
+        env:
+          ISSUE_INDEX_ARTIFACT_URL: ${{ steps.upload_issue_index.outputs['artifact-url'] }}
+          PUBLISH_GATE_SUMMARY_ARTIFACT_URL: ${{ steps.upload_publish_gate_summary.outputs['artifact-url'] }}
+        run: npm run ops:append-workflow-issue-summary -- --manifest .tmp/nightly-issue-artifacts/manifest.json --label "Nightly" --input-url-env ISSUE_INDEX_ARTIFACT_URL --publish-gate-summary-url-env PUBLISH_GATE_SUMMARY_ARTIFACT_URL
+      - name: Append nightly issue artifact links
+        if: always()
+        env:
+          PUBLISH_GATE_SUMMARY_ARTIFACT_URL: ${{ steps.upload_publish_gate_summary.outputs['artifact-url'] }}
+          SIGN_OVERRIDE_PREFLIGHT_ARTIFACT_URL: ${{ steps.upload_sign_override_preflight.outputs['artifact-url'] }}
+          ISSUE_INDEX_ARTIFACT_URL: ${{ steps.upload_issue_index.outputs['artifact-url'] }}
+          ISSUE_PACKET_ARTIFACT_URL: ${{ steps.upload_issue_packets.outputs['artifact-url'] }}
+          ISSUE_CSV_ARTIFACT_URL: ${{ steps.upload_issue_csv.outputs['artifact-url'] }}
+        run: npm run ops:append-workflow-summary -- --heading "Publish gate summary" --env-link "Nightly publish gate summary=PUBLISH_GATE_SUMMARY_ARTIFACT_URL" --heading "Sign override preflight" --env-link "Nightly sign override preflight=SIGN_OVERRIDE_PREFLIGHT_ARTIFACT_URL" --heading "Issue artifact downloads" --env-link "Nightly issue index=ISSUE_INDEX_ARTIFACT_URL" --env-link "Nightly issue packets=ISSUE_PACKET_ARTIFACT_URL" --env-link "Nightly issue csv=ISSUE_CSV_ARTIFACT_URL"
       - name: Notify nightly warnings
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          DIFF_ARGS=$(node -e "const fs = require('fs'); const data = JSON.parse(fs.readFileSync('public/data/generated/registry.json', 'utf-8')); const args = (data.districts || []).map(d => '--diff public/data/generated/' + d.districtId); console.log(args.join(' '));")
-          if [ -z \"$DIFF_ARGS\" ]; then
-            echo \"No districts found for notify-nightly.\"
-            exit 0
-          fi
-          npm run ops:notify-nightly -- $DIFF_ARGS
+        run: npm run ops:notify-nightly-from-registry -- --registry public/data/generated/registry.json --root public/data/generated --issue-input .tmp/nightly-issue-artifacts/manifest.json --issue-limit 5 --publish-gate-summary public/data/generated/_ops/publish_gate_summary.json --publish-gate-summary-url "${{ steps.upload_publish_gate_summary.outputs['artifact-url'] }}" --issue-input-url "${{ steps.upload_issue_index.outputs['artifact-url'] }}" --issue-packet-url "${{ steps.upload_issue_packets.outputs['artifact-url'] }}" --issue-csv-url "${{ steps.upload_issue_csv.outputs['artifact-url'] }}"
       - name: Upload diff reports
         if: always()
         uses: actions/upload-artifact@v4

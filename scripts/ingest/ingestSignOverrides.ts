@@ -1,10 +1,22 @@
 import { bbox, booleanIntersects, featureCollection } from '@turf/turf'
-import type { Feature, Geometry } from 'geojson'
+import type {
+  Feature,
+  FeatureCollection,
+  Geometry,
+  LineString,
+  MultiLineString,
+} from 'geojson'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readConfig, type ResolvedConfig } from './readConfig'
+import { resolveOverrideReportsPath } from './overrideReportsPath'
 import { loadBoundary, readDataset, writeGeoJson } from './utils'
+import {
+  buildInferredSegmentsFromFeature,
+  buildSegmentsFromFeature,
+} from '../../src/data/segmentBuilder'
+import type { Segment } from '../../src/ui/types'
 
 const pickSignOverrideProperties = (properties: Feature['properties']) => {
   if (!properties) {
@@ -42,6 +54,86 @@ const fileExists = async (filePath: string) => {
 
 const normalizeSegmentId = (value: string) => value.replace(/-part-\d+$/i, '')
 
+type PointCoordinate = [number, number]
+
+type OverrideGeometrySource = 'SEGMENT_GEOMETRY' | 'DISTRICT_CENTER_FALLBACK'
+
+type SegmentOverridePointIndex = Map<string, PointCoordinate>
+type SegmentBuilder = (
+  feature: Feature<LineString | MultiLineString>,
+  index: number,
+  meta: null,
+) => Segment[]
+
+const centerFromPositions = (positions: PointCoordinate[]): PointCoordinate | null => {
+  if (positions.length === 0) {
+    return null
+  }
+  const total = positions.reduce(
+    (sum, position) => [sum[0] + position[0], sum[1] + position[1]] as PointCoordinate,
+    [0, 0] as PointCoordinate,
+  )
+  return [total[0] / positions.length, total[1] / positions.length]
+}
+
+const centerFromPath = (path: [number, number][]) =>
+  centerFromPositions(path.map(([lng, lat]) => [lng, lat] as PointCoordinate))
+
+const readGeneratedSegmentCollection = async (
+  config: ResolvedConfig,
+  fileName: string,
+) => {
+  const filePath = path.resolve(config.outputs.generatedDir, fileName)
+  if (!(await fileExists(filePath))) {
+    return null
+  }
+
+  const raw = await fs.readFile(filePath, 'utf-8')
+  return JSON.parse(raw) as FeatureCollection<LineString | MultiLineString>
+}
+
+const addSegmentOverridePoints = (
+  points: SegmentOverridePointIndex,
+  collection: FeatureCollection<LineString | MultiLineString>,
+  buildSegments: SegmentBuilder,
+) => {
+  collection.features.forEach((feature, index) => {
+    buildSegments(feature, index, null).forEach((segment) => {
+      const center = centerFromPath(segment.path)
+      if (center) {
+        points.set(segment.id, center)
+      }
+    })
+  })
+}
+
+const loadSegmentOverridePoints = async (
+  config: ResolvedConfig,
+): Promise<SegmentOverridePointIndex> => {
+  try {
+    const points: SegmentOverridePointIndex = new Map()
+    const redYellow = await readGeneratedSegmentCollection(config, 'red_yellow.geojson')
+    const inferred = await readGeneratedSegmentCollection(
+      config,
+      'candidates_inferred.geojson',
+    )
+
+    if (redYellow) {
+      addSegmentOverridePoints(points, redYellow, buildSegmentsFromFeature)
+    }
+    if (inferred) {
+      addSegmentOverridePoints(points, inferred, buildInferredSegmentsFromFeature)
+    }
+
+    return points
+  } catch {
+    console.warn(
+      'Unable to load segment geometry for user overrides; using district center fallback.',
+    )
+    return new Map()
+  }
+}
+
 const isReportStatus = (value: string): value is ReportStatus => {
   return value === 'LEGAL' || value === 'ILLEGAL' || value === 'UNCLEAR'
 }
@@ -65,13 +157,9 @@ const buildOverrideNote = (status: ReportStatus, note?: string | null) => {
 const loadOverrideReports = async (
   config: ResolvedConfig,
   overridePoint: [number, number],
+  segmentOverridePoints: SegmentOverridePointIndex,
 ) => {
-  const overridesPath = path.resolve(
-    process.cwd(),
-    'data',
-    'overrides',
-    `${config.districtId}.jsonl`,
-  )
+  const overridesPath = resolveOverrideReportsPath(config.districtId)
   if (!(await fileExists(overridesPath))) {
     return { features: [], count: 0 }
   }
@@ -91,19 +179,23 @@ const loadOverrideReports = async (
         typeof parsed.segmentId === 'string' ? normalizeSegmentId(parsed.segmentId) : null
       const status =
         typeof parsed.status === 'string' ? parsed.status.trim().toUpperCase() : ''
-      if (!segmentId || !isReportStatus(status)) {
+      const userNote = typeof parsed.note === 'string' ? parsed.note.trim() : ''
+      const verifiedAt =
+        typeof parsed.createdAt === 'string' ? parsed.createdAt.trim() : ''
+      if (!segmentId || !isReportStatus(status) || !userNote || !verifiedAt) {
         return
       }
       const schemaVersion = parseSchemaVersion(parsed.schemaVersion)
-      const note = buildOverrideNote(status, parsed.note ?? null)
-      const verifiedAt =
-        typeof parsed.createdAt === 'string' && parsed.createdAt.length > 0
-          ? parsed.createdAt
-          : undefined
+      const note = buildOverrideNote(status, userNote)
+      const segmentPoint = segmentOverridePoints.get(segmentId)
+      const coordinates = segmentPoint ?? overridePoint
+      const geometrySource: OverrideGeometrySource = segmentPoint
+        ? 'SEGMENT_GEOMETRY'
+        : 'DISTRICT_CENTER_FALLBACK'
 
       features.push({
         type: 'Feature',
-        geometry: { type: 'Point', coordinates: overridePoint },
+        geometry: { type: 'Point', coordinates },
         properties: {
           segmentId,
           override_note: note,
@@ -112,6 +204,7 @@ const loadOverrideReports = async (
           override_status: status,
           override_schema_version: schemaVersion,
           override_source: 'USER',
+          override_geometry_source: geometrySource,
         },
       })
     } catch {
@@ -131,7 +224,12 @@ export const ingestSignOverrides = async (config: ResolvedConfig) => {
     (bounds[1] + bounds[3]) / 2,
   ]
 
-  const overridePayload = await loadOverrideReports(config, overridePoint)
+  const segmentOverridePoints = await loadSegmentOverridePoints(config)
+  const overridePayload = await loadOverrideReports(
+    config,
+    overridePoint,
+    segmentOverridePoints,
+  )
 
   let filteredFeatures: Feature[] = []
   if (inputPath) {

@@ -24,24 +24,51 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '24.x'
           cache: 'npm'
       - name: Install
         run: npm ci
+      - name: Preflight sign overrides
+        run: npm run ops:preflight-sign-overrides:batch -- --configs "${{ inputs.configsGlob }}" --out-dir .tmp/sign-override-preflight
       - name: Ingest and publish
-        shell: bash
-        run: |
-          cmd="npm run ingest:all -- --configs \"${{ inputs.configsGlob }}\""
-          if [ "${{ inputs.allowWarn }}" = "true" ]; then
-            if [ -z "${{ inputs.overrideReason }}" ]; then
-              echo "overrideReason is required when allowWarn=true"
-              exit 1
-            fi
-            cmd="$cmd --allowWarn --override \"${{ inputs.overrideReason }}\""
-          fi
-          eval $cmd
+        env:
+          CONFIGS_GLOB: ${{ inputs.configsGlob }}
+          ALLOW_WARN: ${{ inputs.allowWarn }}
+          OVERRIDE_REASON: ${{ inputs.overrideReason }}
+        run: npm run ops:workflow-publish-ingest
+      - name: Summarize sign override preflight
+        if: always()
+        run: npm run ops:append-workflow-summary -- --append-glob ".tmp/sign-override-preflight/*.md"
+      - name: Summarize publish gate
+        if: always()
+        run: npm run ops:append-workflow-summary -- --append-file public/data/generated/_ops/publish_gate_summary.md
+      - name: Smoke parking answers
+        run: npm run ops:smoke-generated-packs -- --root public/data/generated --registry public/data/generated/registry.json --use-reviewed-cases --require-reviewed-cases xinyi
+      - name: Smoke parking answer API
+        run: npm run ops:smoke-parking-answer-api -- --district xinyi --timeout-ms 25000
+      - name: Inventory generated packs
+        run: npm run ops:generated-pack-inventory -- --root public/data/generated
+      - name: Build production UI
+        run: npm run build
+      - name: Smoke API service probes
+        run: npm run ops:smoke-api-services -- --start-preview --timeout-ms 25000
+      - name: Smoke reviewed UI answers
+        run: npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --require-reviewed-cases xinyi --timeout-ms 25000
+      - name: P1 release readiness
+        if: ${{ inputs.configsGlob == 'configs/prod/*.json' }}
+        run: npm run ops:p1-release-readiness
+      - name: Package P1 release
+        if: ${{ inputs.configsGlob == 'configs/prod/*.json' }}
+        run: npm run ops:package-release:xinyi
+      - name: Validate P1 release package
+        if: ${{ inputs.configsGlob == 'configs/prod/*.json' }}
+        run: npm run ops:validate-release-package:xinyi -- --out .tmp/p1-release-package.md --json-out .tmp/p1-release-package.json
       - name: Package release
+        if: ${{ inputs.configsGlob != 'configs/prod/*.json' }}
         run: npm run ops:package-release
+      - name: Build publish issue triage artifacts
+        if: always()
+        run: npm run ops:issue-report-artifacts -- --out-root .tmp/publish-issue-artifacts --limit 5 --packet-issue-limit 5 --publish-gate-summary public/data/generated/_ops/publish_gate_summary.json
       - name: Upload publish artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -53,6 +80,79 @@ jobs:
             public/data/generated/_ops/manifests/**
             public/data/generated/ingest_all_report.json
             public/data/generated/_ops/publish_gate_summary.json
+            public/data/generated/_ops/publish_gate_summary.md
             dist/releases/*.zip
             dist/releases/release_manifest_*.json
+            .tmp/p1-release-package.md
+            .tmp/p1-release-package.json
           if-no-files-found: warn
+      - name: Upload publish gate summary artifact
+        id: upload_publish_gate_summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish-gate-summary
+          path: |
+            public/data/generated/_ops/publish_gate_summary.json
+            public/data/generated/_ops/publish_gate_summary.md
+          if-no-files-found: warn
+      - name: Upload sign override preflight artifacts
+        id: upload_sign_override_preflight
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish-sign-override-preflight
+          path: .tmp/sign-override-preflight/**
+          if-no-files-found: warn
+      - name: Upload publish issue packets
+        id: upload_issue_packets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish-issue-packets
+          path: .tmp/publish-issue-artifacts/packets/**
+          if-no-files-found: warn
+      - name: Upload publish issue csv
+        id: upload_issue_csv
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish-issue-csv
+          path: .tmp/publish-issue-artifacts/csv/**
+          if-no-files-found: warn
+      - name: Refresh publish issue artifact index
+        if: always()
+        env:
+          ISSUE_PACKET_ARTIFACT_URL: ${{ steps.upload_issue_packets.outputs['artifact-url'] }}
+          ISSUE_CSV_ARTIFACT_URL: ${{ steps.upload_issue_csv.outputs['artifact-url'] }}
+          PUBLISH_GATE_SUMMARY_ARTIFACT_URL: ${{ steps.upload_publish_gate_summary.outputs['artifact-url'] }}
+        run: npm run ops:refresh-workflow-issue-artifacts -- --manifest .tmp/publish-issue-artifacts/manifest.json --label "Publish" --packet-root-url-env ISSUE_PACKET_ARTIFACT_URL --csv-root-url-env ISSUE_CSV_ARTIFACT_URL --publish-gate-summary-url-env PUBLISH_GATE_SUMMARY_ARTIFACT_URL
+      - name: Upload publish issue index
+        id: upload_issue_index
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish-issue-index
+          path: |
+            .tmp/publish-issue-artifacts/summary.md
+            .tmp/publish-issue-artifacts/index-summary.md
+            .tmp/publish-issue-artifacts/index-summary.json
+            .tmp/publish-issue-artifacts/index-surface.json
+            .tmp/publish-issue-artifacts/manifest.json
+            .tmp/publish-issue-artifacts/artifact-index.json
+          if-no-files-found: warn
+      - name: Validate publish issue manifests
+        if: always()
+        env:
+          ISSUE_INDEX_ARTIFACT_URL: ${{ steps.upload_issue_index.outputs['artifact-url'] }}
+          PUBLISH_GATE_SUMMARY_ARTIFACT_URL: ${{ steps.upload_publish_gate_summary.outputs['artifact-url'] }}
+        run: npm run ops:append-workflow-issue-summary -- --manifest .tmp/publish-issue-artifacts/manifest.json --label "Publish" --input-url-env ISSUE_INDEX_ARTIFACT_URL --publish-gate-summary-url-env PUBLISH_GATE_SUMMARY_ARTIFACT_URL
+      - name: Append publish issue artifact links
+        if: always()
+        env:
+          PUBLISH_GATE_SUMMARY_ARTIFACT_URL: ${{ steps.upload_publish_gate_summary.outputs['artifact-url'] }}
+          SIGN_OVERRIDE_PREFLIGHT_ARTIFACT_URL: ${{ steps.upload_sign_override_preflight.outputs['artifact-url'] }}
+          ISSUE_INDEX_ARTIFACT_URL: ${{ steps.upload_issue_index.outputs['artifact-url'] }}
+          ISSUE_PACKET_ARTIFACT_URL: ${{ steps.upload_issue_packets.outputs['artifact-url'] }}
+          ISSUE_CSV_ARTIFACT_URL: ${{ steps.upload_issue_csv.outputs['artifact-url'] }}
+        run: npm run ops:append-workflow-summary -- --heading "Publish gate summary" --env-link "Publish gate summary=PUBLISH_GATE_SUMMARY_ARTIFACT_URL" --heading "Sign override preflight" --env-link "Publish sign override preflight=SIGN_OVERRIDE_PREFLIGHT_ARTIFACT_URL" --heading "Issue artifact downloads" --env-link "Publish issue index=ISSUE_INDEX_ARTIFACT_URL" --env-link "Publish issue packets=ISSUE_PACKET_ARTIFACT_URL" --env-link "Publish issue csv=ISSUE_CSV_ARTIFACT_URL"

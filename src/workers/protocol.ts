@@ -7,6 +7,7 @@ export interface WorkerInitPayload {
   zones: Zone[]
   datasetHash: string
   zoneParamsVersion: string
+  degradedEvaluationOnly?: boolean
 }
 
 export interface WorkerEvaluatePayload {
@@ -18,6 +19,7 @@ export interface WorkerEvaluatedPayload {
   segments: EvaluatedSegment[]
   requestId: number
   cacheStats?: ClipCacheStats
+  degraded?: boolean
 }
 
 export type WorkerMessage =

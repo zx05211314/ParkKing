@@ -1,0 +1,103 @@
+import type {
+  UseSharedAppStateControllerOptions,
+  UseSharedAppStateControllerResult,
+} from './sharedAppStateControllerTypes'
+import { useSharedAppStateApply } from './useSharedAppStateApply'
+import { useSharedAppStateHistoryEffects } from './useSharedAppStateHistoryEffects'
+import { useSharedAppUrlState } from './useSharedAppUrlState'
+
+export const useSharedAppStateController = ({
+  sharedAppState,
+  hasShareableState,
+  defaultRecommendationRankMode,
+  defaultRouteProfile,
+  defaultRiskMode,
+  defaultRadiusMeters,
+  cameraRequestIdRef,
+  geocodeRequestIdRef,
+  routeRequestIdRef,
+  selectedRouteRequestIdRef,
+  selectedRouteEtaRequestIdRef,
+  setDatasetId,
+  setFilterQuery,
+  setAddressQuery,
+  setGeocodeResults,
+  setGeocodeStatus,
+  setGeocodeError,
+  setSearchAnchor,
+  setSelectedId,
+  setSelectedParkingSpaceKeyBySegment,
+  setRecommendationRankMode,
+  setSelectedRouteProfile,
+  setSelectedRoutePath,
+  setSelectedRouteStatus,
+  setSelectedRouteError,
+  setSelectedTargetRouteEta,
+  setRouteEtaBySegmentId,
+  setRouteEtaStatus,
+  setRouteEtaError,
+  setRiskMode,
+  setActionFilter,
+  setIncludeInferred,
+  setMarkedSpacesOnly,
+  setHideReportedIllegal,
+  setRadiusMeters,
+  setMode,
+  setNowHHMM,
+  setActiveView,
+}: UseSharedAppStateControllerOptions): UseSharedAppStateControllerResult => {
+  const { shareSearch, currentShareUrl, buildShareUrlForState } = useSharedAppUrlState({
+    sharedAppState,
+    hasShareableState,
+  })
+  const { makeCameraKey, applySharedState } = useSharedAppStateApply({
+    defaultRecommendationRankMode,
+    defaultRouteProfile,
+    defaultRiskMode,
+    defaultRadiusMeters,
+    cameraRequestIdRef,
+    geocodeRequestIdRef,
+    routeRequestIdRef,
+    selectedRouteRequestIdRef,
+    selectedRouteEtaRequestIdRef,
+    setDatasetId,
+    setFilterQuery,
+    setAddressQuery,
+    setGeocodeResults,
+    setGeocodeStatus,
+    setGeocodeError,
+    setSearchAnchor,
+    setSelectedId,
+    setSelectedParkingSpaceKeyBySegment,
+    setRecommendationRankMode,
+    setSelectedRouteProfile,
+    setSelectedRoutePath,
+    setSelectedRouteStatus,
+    setSelectedRouteError,
+    setSelectedTargetRouteEta,
+    setRouteEtaBySegmentId,
+    setRouteEtaStatus,
+    setRouteEtaError,
+    setRiskMode,
+    setActionFilter,
+    setIncludeInferred,
+    setMarkedSpacesOnly,
+    setHideReportedIllegal,
+    setRadiusMeters,
+    setMode,
+    setNowHHMM,
+    setActiveView,
+  })
+
+  useSharedAppStateHistoryEffects({
+    shareSearch,
+    applySharedState,
+  })
+
+  return {
+    currentShareUrl,
+    buildShareUrlForState,
+    makeCameraKey,
+    applySharedState,
+  }
+}

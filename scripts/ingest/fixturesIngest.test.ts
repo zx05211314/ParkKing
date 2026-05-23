@@ -7,11 +7,13 @@ import { ingestDistrictBounds } from './ingestDistrictBounds'
 import { ingestRedYellow } from './ingestRedYellow'
 import { ingestBusStops } from './ingestBusStops'
 import { ingestHydrants } from './ingestHydrants'
+import { ingestParkingSpaces } from './ingestParkingSpaces'
 import { ingestCrosswalks } from './ingestCrosswalks'
 import { ingestIntersections } from './ingestIntersections'
 import { ingestSignOverrides } from './ingestSignOverrides'
 import { ingestInferredCandidates } from './ingestInferredCandidates'
-import { buildDatasetMeta, writeJson } from './utils'
+import { writeJson } from './utils'
+import { buildDatasetMeta } from './ingestDatasetMeta'
 import { validateOutputs } from './validateOutputs'
 
 describe('fixture passthrough ingest', () => {
@@ -21,13 +23,14 @@ describe('fixture passthrough ingest', () => {
     const publicDir = path.join(base, 'public')
 
     const config = {
-      districtId: 'xinyi',
+      districtId: 'xinyi-fixture',
       districtName: 'Xinyi (CI Fixtures)',
       inputs: {
         districtBounds: path.resolve('tests/fixtures/xinyi/xinyi_boundary.geojson'),
         redYellow: path.resolve('tests/fixtures/xinyi/red_yellow.geojson'),
         busStops: path.resolve('tests/fixtures/xinyi/bus_stops.geojson'),
         hydrants: path.resolve('tests/fixtures/xinyi/hydrants.geojson'),
+        parking_spaces: path.resolve('tests/fixtures/xinyi/parking_spaces.geojson'),
         intersections: path.resolve('tests/fixtures/xinyi/intersections.geojson'),
         crosswalks: path.resolve('tests/fixtures/xinyi/crosswalks.geojson'),
         sign_overrides: path.resolve('tests/fixtures/xinyi/sign_overrides.geojson'),
@@ -46,6 +49,7 @@ describe('fixture passthrough ingest', () => {
           redYellow: 1,
           busStops: 1,
           hydrants: 1,
+          parkingSpaces: 1,
           intersections: 1,
           crosswalks: 1,
           signOverrides: 1,
@@ -63,10 +67,11 @@ describe('fixture passthrough ingest', () => {
     await ingestRedYellow(resolved)
     await ingestBusStops(resolved)
     await ingestHydrants(resolved)
+    await ingestParkingSpaces(resolved)
     await ingestCrosswalks(resolved)
     await ingestIntersections(resolved)
-    await ingestSignOverrides(resolved)
     await ingestInferredCandidates(resolved)
+    await ingestSignOverrides(resolved)
 
     const meta = await buildDatasetMeta(resolved)
     await writeJson(resolved, 'dataset_meta.json', meta)
@@ -78,12 +83,13 @@ describe('fixture passthrough ingest', () => {
       'utf-8',
     )
     const parsed = JSON.parse(outputMeta) as Record<string, unknown>
-    expect(parsed.districtId).toBe('xinyi')
+    expect(parsed.districtId).toBe('xinyi-fixture')
     expect(parsed.metricsSchemaVersion).toBe(1)
     expect(parsed.segmentsCount).toBe(4)
+    expect(parsed.parkingSpacesCount).toBe(2)
     expect(parsed.signOverridesCount).toBe(3)
     expect(parsed.overridesAppliedCount).toBe(0)
     expect(parsed.curbMarkingKnownRate).toBeCloseTo(1, 5)
     expect(parsed.restrictionTriggeredRate).toBeCloseTo(1, 5)
-  })
+  }, 15000)
 })

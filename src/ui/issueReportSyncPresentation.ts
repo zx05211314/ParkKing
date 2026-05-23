@@ -1,0 +1,9 @@
+export const ISSUE_REPORT_SYNC_CAPABILITY_LABEL = 'Write-only'
+export const ISSUE_REPORT_SYNC_UPLOAD_ONLY_LABEL = 'Upload-only'
+export const ISSUE_REPORT_SYNC_DEVICE_ONLY_LABEL = 'Device only'
+
+export const ISSUE_REPORT_SYNC_UPLOAD_ONLY_NOTE =
+  'New issue reports upload from this device when sync is available. Shared scopes do not pull them back down.'
+
+export const ISSUE_REPORT_SYNC_DEVICE_ONLY_NOTE =
+  'Issue reports stay on this device in the current session.'

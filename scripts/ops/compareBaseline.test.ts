@@ -12,6 +12,7 @@ describe('compareWithBaseline', () => {
         intersections: 50,
         inferredCandidates: 20,
         signOverrides: 10,
+        signOverrideUnmatchedNamedCount: 0,
       },
       distributions: {
         day: { 'YELLOW|TEMP_STOP': 10 },
@@ -45,6 +46,7 @@ describe('compareWithBaseline', () => {
         intersections: 55,
         inferredCandidates: 5,
         signOverrides: 10,
+        signOverrideUnmatchedNamedCount: 2,
       },
       distributions: {
         day: { 'YELLOW|TEMP_STOP': 20 },

@@ -11,18 +11,43 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '24.x'
           cache: 'npm'
       - name: Install
         run: npm ci
       - name: Validate configs
         run: npm run ops:validate-configs
+      - name: Validate reviewed answer cases
+        run: npm run ops:validate-answer-cases
+      - name: Preflight sign overrides
+        env:
+          PARKKING_OVERRIDE_REPORTS_DIR: .tmp/ci-overrides
+        run: npm run ops:preflight-sign-overrides:batch -- --configs configs/ci-fixtures.json --out-dir .tmp/sign-override-preflight
       - name: Snapshot public/ before
         run: npx tsx scripts/ops/assertNoPublicWrites.ts --baseline .tmp/public_snapshot.json
       - name: Ingest dry-run + gate
-        run: npm run ingest:all:dry -- --configs "configs/ci-fixtures.json"
+        env:
+          PARKKING_OVERRIDE_REPORTS_DIR: .tmp/ci-overrides
+        run: npm run ingest:all:dry -- --configs "configs/ci-fixtures.json" --allowWarn --override "ci dry-run fixtures"
+      - name: Smoke parking answers
+        run: npm run ops:smoke-generated-packs -- --root data/generated --report data/generated/ingest_all_report_dry.json --fixture-thresholds
+      - name: Smoke parking answer API
+        run: npm run ops:smoke-parking-answer-api -- --district xinyi --dataset-dir data/generated/xinyi --no-cases --timeout-ms 25000 --minParkAnswers 1 --minNoStopAnswers 1 --minMarkedSpaceParkAnswers 1
+      - name: Smoke API service probes
+        env:
+          PARKKING_PARKING_ANSWER_DATASET_ROOT: data/generated
+        run: npm run ops:smoke-api-services -- --timeout-ms 25000
+      - name: Summarize sign override preflight
+        if: always()
+        run: npm run ops:append-workflow-summary -- --append-glob ".tmp/sign-override-preflight/*.md"
+      - name: Summarize dry-run publish gate
+        if: always()
+        run: npm run ops:append-workflow-summary -- --append-file data/generated/_ops/publish_gate_summary.md
       - name: Assert no public writes
         run: npx tsx scripts/ops/assertNoPublicWrites.ts --check .tmp/public_snapshot.json
+      - name: Build dry-run issue triage artifacts
+        if: always()
+        run: npm run ops:issue-report-artifacts -- --out-root .tmp/ingest-dry-run-issue-artifacts --limit 5 --packet-issue-limit 5 --publish-gate-summary data/generated/_ops/publish_gate_summary.json
       - name: Upload dry-run artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -31,4 +56,75 @@ jobs:
           path: |
             data/generated/ingest_all_report_dry.json
             data/generated/_ops/publish_gate_summary.json
+            data/generated/_ops/publish_gate_summary.md
           if-no-files-found: warn
+      - name: Upload dry-run publish gate summary artifact
+        id: upload_publish_gate_summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ingest-dry-run-publish-gate-summary
+          path: |
+            data/generated/_ops/publish_gate_summary.json
+            data/generated/_ops/publish_gate_summary.md
+          if-no-files-found: warn
+      - name: Upload sign override preflight artifacts
+        id: upload_sign_override_preflight
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ingest-dry-run-sign-override-preflight
+          path: .tmp/sign-override-preflight/**
+          if-no-files-found: warn
+      - name: Upload dry-run issue packets
+        id: upload_issue_packets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ingest-dry-run-issue-packets
+          path: .tmp/ingest-dry-run-issue-artifacts/packets/**
+          if-no-files-found: warn
+      - name: Upload dry-run issue csv
+        id: upload_issue_csv
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ingest-dry-run-issue-csv
+          path: .tmp/ingest-dry-run-issue-artifacts/csv/**
+          if-no-files-found: warn
+      - name: Refresh dry-run issue artifact index
+        if: always()
+        env:
+          ISSUE_PACKET_ARTIFACT_URL: ${{ steps.upload_issue_packets.outputs['artifact-url'] }}
+          ISSUE_CSV_ARTIFACT_URL: ${{ steps.upload_issue_csv.outputs['artifact-url'] }}
+          PUBLISH_GATE_SUMMARY_ARTIFACT_URL: ${{ steps.upload_publish_gate_summary.outputs['artifact-url'] }}
+        run: npm run ops:refresh-workflow-issue-artifacts -- --manifest .tmp/ingest-dry-run-issue-artifacts/manifest.json --label "Dry-run" --packet-root-url-env ISSUE_PACKET_ARTIFACT_URL --csv-root-url-env ISSUE_CSV_ARTIFACT_URL --publish-gate-summary-url-env PUBLISH_GATE_SUMMARY_ARTIFACT_URL
+      - name: Upload dry-run issue index
+        id: upload_issue_index
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ingest-dry-run-issue-index
+          path: |
+            .tmp/ingest-dry-run-issue-artifacts/summary.md
+            .tmp/ingest-dry-run-issue-artifacts/index-summary.md
+            .tmp/ingest-dry-run-issue-artifacts/index-summary.json
+            .tmp/ingest-dry-run-issue-artifacts/index-surface.json
+            .tmp/ingest-dry-run-issue-artifacts/manifest.json
+            .tmp/ingest-dry-run-issue-artifacts/artifact-index.json
+          if-no-files-found: warn
+      - name: Validate dry-run issue manifests
+        if: always()
+        env:
+          ISSUE_INDEX_ARTIFACT_URL: ${{ steps.upload_issue_index.outputs['artifact-url'] }}
+          PUBLISH_GATE_SUMMARY_ARTIFACT_URL: ${{ steps.upload_publish_gate_summary.outputs['artifact-url'] }}
+        run: npm run ops:append-workflow-issue-summary -- --manifest .tmp/ingest-dry-run-issue-artifacts/manifest.json --label "Dry-run" --input-url-env ISSUE_INDEX_ARTIFACT_URL --publish-gate-summary-url-env PUBLISH_GATE_SUMMARY_ARTIFACT_URL
+      - name: Append dry-run issue artifact links
+        if: always()
+        env:
+          PUBLISH_GATE_SUMMARY_ARTIFACT_URL: ${{ steps.upload_publish_gate_summary.outputs['artifact-url'] }}
+          SIGN_OVERRIDE_PREFLIGHT_ARTIFACT_URL: ${{ steps.upload_sign_override_preflight.outputs['artifact-url'] }}
+          ISSUE_INDEX_ARTIFACT_URL: ${{ steps.upload_issue_index.outputs['artifact-url'] }}
+          ISSUE_PACKET_ARTIFACT_URL: ${{ steps.upload_issue_packets.outputs['artifact-url'] }}
+          ISSUE_CSV_ARTIFACT_URL: ${{ steps.upload_issue_csv.outputs['artifact-url'] }}
+        run: npm run ops:append-workflow-summary -- --heading "Publish gate summary" --env-link "Dry-run publish gate summary=PUBLISH_GATE_SUMMARY_ARTIFACT_URL" --heading "Sign override preflight" --env-link "Dry-run sign override preflight=SIGN_OVERRIDE_PREFLIGHT_ARTIFACT_URL" --heading "Issue artifact downloads" --env-link "Dry-run issue index=ISSUE_INDEX_ARTIFACT_URL" --env-link "Dry-run issue packets=ISSUE_PACKET_ARTIFACT_URL" --env-link "Dry-run issue csv=ISSUE_CSV_ARTIFACT_URL"

@@ -1,12 +1,41 @@
 import { useEffect, useMemo, useRef } from 'react'
-import maplibregl, { Map, GeoJSONSource, type StyleSpecification } from 'maplibre-gl'
+import maplibregl, { Map, GeoJSONSource } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import type { FeatureCollection, LineString, MultiPolygon, Point, Polygon } from 'geojson'
+import type {
+  FeatureCollection,
+  Geometry,
+  LineString,
+  MultiPolygon,
+  Point,
+  Polygon,
+} from 'geojson'
 import type { EvaluatedSegment } from '../ui/types'
 import type { Zone } from '../domain/zones/zoneTypes'
+import { expandBounds, type MapBounds } from './bounds'
+import type { RouteProfile } from './routing'
+import { createBasemapStyle } from './style'
+import { initializeMapViewContent } from './mapViewSetup'
+
+interface SelectedParkingSpaceMarker {
+  key: string
+  anchor: [number, number]
+  shortLabel: string
+  active: boolean
+}
+
+interface RecommendedParkingTargetMarker {
+  key: string
+  segmentId: string
+  targetKey: string
+  anchor: [number, number]
+  shortLabel: string
+  active: boolean
+}
 
 export interface MapViewProps {
   center: [number, number]
+  districtBounds?: MapBounds | null
+  districtBoundsKey?: string | null
   segments: EvaluatedSegment[]
   zones: Zone[]
   intersectionZones: Zone[]
@@ -14,43 +43,59 @@ export interface MapViewProps {
   showIntersectionZones: boolean
   crosswalkZones: Zone[]
   showCrosswalkZones: boolean
+  parkingSpaces: FeatureCollection<Geometry>
+  showParkingSpaces: boolean
   showInferredCandidates: boolean
   selectedId: string | null
+  focusBounds?: MapBounds | null
+  focusBoundsKey?: string | null
+  focusCenter?: [number, number] | null
+  focusCenterKey?: string | null
+  recommendedSegmentIds?: string[]
+  searchLocation?: [number, number] | null
+  searchLocationLabel?: string | null
+  arrivalLocation?: [number, number] | null
+  arrivalLocationKind?: 'SEGMENT' | 'PARKING_SPACE' | null
+  arrivalLocationLabel?: string | null
+  recommendedParkingTargetMarkers?: RecommendedParkingTargetMarker[]
+  selectedParkingSpaceMarkers?: SelectedParkingSpaceMarker[]
+  routeProfile?: RouteProfile
+  routeGeometry?: [number, number][] | null
   userLocation: [number, number] | null
   onSelect: (id: string | null) => void
-}
-
-const styleBase: StyleSpecification = {
-  version: 8,
-  sources: {},
-  layers: [
-    {
-      id: 'background',
-      type: 'background',
-      paint: {
-        'background-color': '#0f1116',
-      },
-    },
-  ],
+  onSelectRecommendedTarget?: (segmentId: string, key: string | null) => void
+  onSelectParkingSpace?: (key: string | null) => void
+  onPickLocation?: (location: [number, number]) => void
 }
 
 const buildFeatureCollection = (
   segments: EvaluatedSegment[],
+  recommendedRanks: Record<string, number>,
+  showInferredCandidates: boolean,
 ): FeatureCollection<LineString> => ({
   type: 'FeatureCollection',
   features: segments.map((segment) => ({
+    properties: (() => {
+      const sourceType = segment.sourceType ?? 'CURB'
+      const recommendationRank = recommendedRanks[segment.id] ?? 0
+
+      return {
+        id: segment.id,
+        tier: segment.tier,
+        allowedNow: segment.allowedNow,
+        name: segment.name,
+        curbMarking: segment.curbMarking,
+        sourceType,
+        addressRecommendationRank: recommendationRank,
+        showAddressRecommendation:
+          recommendationRank > 0 &&
+          (sourceType !== 'INFERRED' || showInferredCandidates),
+      }
+    })(),
     type: 'Feature',
     geometry: {
       type: 'LineString',
       coordinates: segment.path,
-    },
-    properties: {
-      id: segment.id,
-      tier: segment.tier,
-      allowedNow: segment.allowedNow,
-      name: segment.name,
-      curbMarking: segment.curbMarking,
-      sourceType: segment.sourceType ?? 'CURB',
     },
   })),
 })
@@ -89,8 +134,86 @@ const buildZoneCollection = (
   })),
 })
 
+const buildRouteCollection = (
+  routeGeometry: [number, number][] | null,
+  routeProfile: RouteProfile,
+): FeatureCollection<LineString> => ({
+  type: 'FeatureCollection',
+  features:
+    routeGeometry && routeGeometry.length >= 2
+      ? [
+          {
+            type: 'Feature',
+            geometry: {
+              type: 'LineString',
+              coordinates: routeGeometry,
+            },
+            properties: {
+              profile: routeProfile,
+            },
+          },
+        ]
+      : [],
+})
+
+const buildSelectedParkingSpaceCollection = (
+  markers: SelectedParkingSpaceMarker[],
+): FeatureCollection<Point> => ({
+  type: 'FeatureCollection',
+  features: markers.map((marker) => ({
+    type: 'Feature',
+    geometry: {
+      type: 'Point',
+      coordinates: marker.anchor,
+    },
+    properties: {
+      key: marker.key,
+      shortLabel: marker.shortLabel,
+      active: marker.active,
+    },
+  })),
+})
+
+const buildRecommendedParkingTargetCollection = (
+  markers: RecommendedParkingTargetMarker[],
+): FeatureCollection<Point> => ({
+  type: 'FeatureCollection',
+  features: markers.map((marker) => ({
+    type: 'Feature',
+    geometry: {
+      type: 'Point',
+      coordinates: marker.anchor,
+    },
+    properties: {
+      key: marker.key,
+      segmentId: marker.segmentId,
+      targetKey: marker.targetKey,
+      shortLabel: marker.shortLabel,
+      active: marker.active,
+    },
+  })),
+})
+
+const fitMapToBounds = (
+  map: Map,
+  bounds: MapBounds,
+  options: {
+    padding?: number
+    maxZoom?: number
+  } = {},
+) => {
+  map.fitBounds(expandBounds(bounds), {
+    padding: options.padding ?? 56,
+    maxZoom: options.maxZoom ?? 17.5,
+    duration: 700,
+    essential: true,
+  })
+}
+
 export const MapView = ({
   center,
+  districtBounds = null,
+  districtBoundsKey = null,
   segments,
   zones,
   intersectionZones,
@@ -98,22 +221,63 @@ export const MapView = ({
   showIntersectionZones,
   crosswalkZones,
   showCrosswalkZones,
+  parkingSpaces,
+  showParkingSpaces,
   showInferredCandidates,
   selectedId,
+  focusBounds = null,
+  focusBoundsKey = null,
+  focusCenter = null,
+  focusCenterKey = null,
+  recommendedSegmentIds = [],
+  searchLocation = null,
+  searchLocationLabel = null,
+  arrivalLocation = null,
+  arrivalLocationKind = null,
+  arrivalLocationLabel = null,
+  recommendedParkingTargetMarkers = [],
+  selectedParkingSpaceMarkers = [],
+  routeProfile = 'walking',
+  routeGeometry = null,
   userLocation,
   onSelect,
+  onSelectRecommendedTarget,
+  onSelectParkingSpace,
+  onPickLocation,
 }: MapViewProps) => {
   const mapRef = useRef<Map | null>(null)
   const mapContainer = useRef<HTMLDivElement | null>(null)
+  const searchMarkerRef = useRef<maplibregl.Marker | null>(null)
+  const arrivalMarkerRef = useRef<maplibregl.Marker | null>(null)
   const onSelectRef = useRef(onSelect)
+  const onSelectRecommendedTargetRef = useRef(onSelectRecommendedTarget)
+  const onSelectParkingSpaceRef = useRef(onSelectParkingSpace)
+  const onPickLocationRef = useRef(onPickLocation)
   const showZonesRef = useRef(showZones)
   const showIntersectionZonesRef = useRef(showIntersectionZones)
   const showCrosswalkZonesRef = useRef(showCrosswalkZones)
+  const showParkingSpacesRef = useRef(showParkingSpaces)
   const showInferredCandidatesRef = useRef(showInferredCandidates)
+  const lastDistrictBoundsKeyRef = useRef<string | null>(null)
+  const lastFocusBoundsKeyRef = useRef<string | null>(null)
+  const lastFocusCenterKeyRef = useRef<string | null>(null)
+  const basemapStyle = useMemo(() => createBasemapStyle(), [])
 
   useEffect(() => {
     onSelectRef.current = onSelect
   }, [onSelect])
+
+  useEffect(() => {
+    onSelectRecommendedTargetRef.current = onSelectRecommendedTarget
+  }, [onSelectRecommendedTarget])
+
+  useEffect(() => {
+    onSelectParkingSpaceRef.current = onSelectParkingSpace
+  }, [onSelectParkingSpace])
+
+  useEffect(() => {
+    onPickLocationRef.current = onPickLocation
+  }, [onPickLocation])
 
   useEffect(() => {
     showZonesRef.current = showZones
@@ -128,10 +292,24 @@ export const MapView = ({
   }, [showCrosswalkZones])
 
   useEffect(() => {
+    showParkingSpacesRef.current = showParkingSpaces
+  }, [showParkingSpaces])
+
+  useEffect(() => {
     showInferredCandidatesRef.current = showInferredCandidates
   }, [showInferredCandidates])
 
-  const segmentsData = useMemo(() => buildFeatureCollection(segments), [segments])
+  const recommendedRanks = useMemo(
+    () =>
+      Object.fromEntries(
+        recommendedSegmentIds.map((id, index) => [id, index + 1] as const),
+      ),
+    [recommendedSegmentIds],
+  )
+  const segmentsData = useMemo(
+    () => buildFeatureCollection(segments, recommendedRanks, showInferredCandidates),
+    [recommendedRanks, segments, showInferredCandidates],
+  )
   const userData = useMemo(() => buildUserPoint(userLocation), [userLocation])
   const zonesData = useMemo(() => buildZoneCollection(zones), [zones])
   const intersectionZonesData = useMemo(
@@ -142,6 +320,30 @@ export const MapView = ({
     () => buildZoneCollection(crosswalkZones),
     [crosswalkZones],
   )
+  const emptyParkingSpacesData = useMemo(
+    () =>
+      ({
+        type: 'FeatureCollection',
+        features: [],
+      }) as FeatureCollection<Geometry>,
+    [],
+  )
+  const parkingSpacesData = useMemo(
+    () => (showParkingSpaces ? parkingSpaces : emptyParkingSpacesData),
+    [emptyParkingSpacesData, parkingSpaces, showParkingSpaces],
+  )
+  const routeData = useMemo(
+    () => buildRouteCollection(routeGeometry, routeProfile),
+    [routeGeometry, routeProfile],
+  )
+  const recommendedParkingTargetData = useMemo(
+    () => buildRecommendedParkingTargetCollection(recommendedParkingTargetMarkers),
+    [recommendedParkingTargetMarkers],
+  )
+  const selectedParkingSpaceData = useMemo(
+    () => buildSelectedParkingSpaceCollection(selectedParkingSpaceMarkers),
+    [selectedParkingSpaceMarkers],
+  )
 
   useEffect(() => {
     if (mapRef.current || !mapContainer.current) {
@@ -150,269 +352,135 @@ export const MapView = ({
 
     const map = new maplibregl.Map({
       container: mapContainer.current,
-      style: styleBase,
+      style: basemapStyle,
       center,
       zoom: 15,
       pitch: 0,
+      attributionControl: false,
     })
 
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }))
+    map.addControl(new maplibregl.AttributionControl({ compact: true }))
 
     map.on('load', () => {
-      map.addSource('zones', {
-        type: 'geojson',
-        data: zonesData,
-      })
-
-      map.addLayer({
-        id: 'zones-fill',
-        type: 'fill',
-        source: 'zones',
-        layout: {
-          visibility: showZonesRef.current ? 'visible' : 'none',
-        },
-        paint: {
-          'fill-color': [
-            'match',
-            ['get', 'type'],
-            'INTERSECTION_BUFFER',
-            '#f04d4d',
-            'BUS_STOP_BUFFER',
-            '#6fb7ff',
-            'HYDRANT_BUFFER',
-            '#f7d36b',
-            '#8f98a8',
-          ],
-          'fill-opacity': 0.22,
-        },
-      })
-
-      map.addLayer({
-        id: 'zones-outline',
-        type: 'line',
-        source: 'zones',
-        layout: {
-          visibility: showZonesRef.current ? 'visible' : 'none',
-        },
-        paint: {
-          'line-width': 1.4,
-          'line-color': [
-            'match',
-            ['get', 'type'],
-            'INTERSECTION_BUFFER',
-            '#ff8a8a',
-            'BUS_STOP_BUFFER',
-            '#9fd1ff',
-            'HYDRANT_BUFFER',
-            '#fbe3a1',
-            '#b3bccb',
-          ],
-          'line-opacity': 0.8,
-        },
-      })
-
-      map.addSource('intersection-zones', {
-        type: 'geojson',
-        data: intersectionZonesData,
-      })
-
-      map.addLayer({
-        id: 'intersection-fill',
-        type: 'fill',
-        source: 'intersection-zones',
-        layout: {
-          visibility: showIntersectionZonesRef.current ? 'visible' : 'none',
-        },
-        paint: {
-          'fill-color': '#f04d4d',
-          'fill-opacity': 0.28,
-        },
-      })
-
-      map.addLayer({
-        id: 'intersection-outline',
-        type: 'line',
-        source: 'intersection-zones',
-        layout: {
-          visibility: showIntersectionZonesRef.current ? 'visible' : 'none',
-        },
-        paint: {
-          'line-width': 1.6,
-          'line-color': '#ff8a8a',
-          'line-opacity': 0.9,
-        },
-      })
-
-      map.addSource('crosswalk-zones', {
-        type: 'geojson',
-        data: crosswalkZonesData,
-      })
-
-      map.addLayer({
-        id: 'crosswalk-fill',
-        type: 'fill',
-        source: 'crosswalk-zones',
-        layout: {
-          visibility: showCrosswalkZonesRef.current ? 'visible' : 'none',
-        },
-        paint: {
-          'fill-color': '#5fe0c8',
-          'fill-opacity': 0.26,
-        },
-      })
-
-      map.addLayer({
-        id: 'crosswalk-outline',
-        type: 'line',
-        source: 'crosswalk-zones',
-        layout: {
-          visibility: showCrosswalkZonesRef.current ? 'visible' : 'none',
-        },
-        paint: {
-          'line-width': 1.6,
-          'line-color': '#8ff2de',
-          'line-opacity': 0.9,
-        },
-      })
-
-      map.addSource('segments', {
-        type: 'geojson',
-        data: segmentsData,
-      })
-
-      map.addLayer({
-        id: 'segments-line',
-        type: 'line',
-        source: 'segments',
-        filter: ['!=', ['get', 'sourceType'], 'INFERRED'],
-        layout: {
-          'line-cap': 'round',
-          'line-join': 'round',
-        },
-        paint: {
-          'line-width': 5,
-          'line-color': [
-            'match',
-            ['get', 'tier'],
-            'GREEN',
-            '#3bd16f',
-            'YELLOW',
-            '#f5b52e',
-            'RED',
-            '#f04d4d',
-            '#8f98a8',
-          ],
-          'line-opacity': 0.9,
-        },
-      })
-
-      map.addLayer({
-        id: 'segments-inferred',
-        type: 'line',
-        source: 'segments',
-        filter: ['==', ['get', 'sourceType'], 'INFERRED'],
-        layout: {
-          visibility: showInferredCandidatesRef.current ? 'visible' : 'none',
-          'line-cap': 'round',
-          'line-join': 'round',
-        },
-        paint: {
-          'line-width': 4,
-          'line-color': [
-            'match',
-            ['get', 'tier'],
-            'GREEN',
-            '#3bd16f',
-            'YELLOW',
-            '#f5b52e',
-            'RED',
-            '#f04d4d',
-            '#8f98a8',
-          ],
-          'line-opacity': 0.8,
-          'line-dasharray': [1.5, 1.2],
-        },
-      })
-
-      map.addLayer({
-        id: 'segments-highlight',
-        type: 'line',
-        source: 'segments',
-        filter: ['==', ['get', 'id'], selectedId ?? ''],
-        paint: {
-          'line-width': 9,
-          'line-color': '#e6f0ff',
-          'line-opacity': 0.9,
-        },
-      })
-
-      map.addSource('user-location', {
-        type: 'geojson',
-        data: userData,
-      })
-
-      map.addLayer({
-        id: 'user-dot',
-        type: 'circle',
-        source: 'user-location',
-        paint: {
-          'circle-radius': 6,
-          'circle-color': '#6fb7ff',
-          'circle-stroke-color': '#0b0f16',
-          'circle-stroke-width': 2,
-        },
-      })
-
-      map.on('mouseenter', 'segments-line', () => {
-        map.getCanvas().style.cursor = 'pointer'
-      })
-
-      map.on('mouseleave', 'segments-line', () => {
-        map.getCanvas().style.cursor = ''
-      })
-
-      map.on('mouseenter', 'segments-inferred', () => {
-        map.getCanvas().style.cursor = 'pointer'
-      })
-
-      map.on('mouseleave', 'segments-inferred', () => {
-        map.getCanvas().style.cursor = ''
-      })
-
-      map.on('click', 'segments-line', (event) => {
-        const feature = event.features?.[0]
-        const id = feature?.properties?.id
-        if (id) {
-          onSelectRef.current(String(id))
-        }
-      })
-
-      map.on('click', 'segments-inferred', (event) => {
-        const feature = event.features?.[0]
-        const id = feature?.properties?.id
-        if (id) {
-          onSelectRef.current(String(id))
-        }
-      })
-
-      map.on('click', (event) => {
-        const features = map.queryRenderedFeatures(event.point, {
-          layers: ['segments-line', 'segments-inferred'],
-        })
-        if (features.length === 0) {
-          onSelectRef.current(null)
-        }
+      initializeMapViewContent(map, {
+        zonesData,
+        intersectionZonesData,
+        crosswalkZonesData,
+        parkingSpacesData,
+        segmentsData,
+        routeData,
+        recommendedParkingTargetData,
+        selectedParkingSpaceData,
+        userData,
+        selectedId,
+        showZonesRef,
+        showIntersectionZonesRef,
+        showCrosswalkZonesRef,
+        showParkingSpacesRef,
+        showInferredCandidatesRef,
+        onSelectRef,
+        onSelectRecommendedTargetRef,
+        onSelectParkingSpaceRef,
+        onPickLocationRef,
       })
     })
 
     mapRef.current = map
 
     return () => {
+      searchMarkerRef.current?.remove()
+      searchMarkerRef.current = null
+      arrivalMarkerRef.current?.remove()
+      arrivalMarkerRef.current = null
       map.remove()
       mapRef.current = null
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- map instance is initialized once; follow-up effects update layer data.
+  }, [basemapStyle, center])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) {
+      return
+    }
+
+    map.easeTo({
+      center,
+      duration: 600,
+      essential: true,
+    })
   }, [center])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) {
+      return
+    }
+
+    if (!districtBounds || !districtBoundsKey) {
+      lastDistrictBoundsKeyRef.current = null
+      return
+    }
+
+    if (focusBoundsKey || focusCenterKey) {
+      return
+    }
+
+    if (lastDistrictBoundsKeyRef.current === districtBoundsKey) {
+      return
+    }
+    lastDistrictBoundsKeyRef.current = districtBoundsKey
+
+    fitMapToBounds(map, districtBounds, {
+      maxZoom: 15.5,
+      padding: 60,
+    })
+  }, [districtBounds, districtBoundsKey, focusBoundsKey, focusCenterKey])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) {
+      return
+    }
+
+    if (!focusBounds || !focusBoundsKey) {
+      lastFocusBoundsKeyRef.current = null
+      return
+    }
+
+    if (lastFocusBoundsKeyRef.current === focusBoundsKey) {
+      return
+    }
+    lastFocusBoundsKeyRef.current = focusBoundsKey
+
+    fitMapToBounds(map, focusBounds)
+  }, [focusBounds, focusBoundsKey])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) {
+      return
+    }
+
+    if (!focusCenter) {
+      lastFocusCenterKeyRef.current = null
+      return
+    }
+
+    const resolvedFocusCenterKey =
+      focusCenterKey ?? `${focusCenter[0].toFixed(6)},${focusCenter[1].toFixed(6)}`
+    if (lastFocusCenterKeyRef.current === resolvedFocusCenterKey) {
+      return
+    }
+    lastFocusCenterKeyRef.current = resolvedFocusCenterKey
+
+    map.easeTo({
+      center: focusCenter,
+      duration: 700,
+      essential: true,
+    })
+  }, [focusCenter, focusCenterKey])
 
   useEffect(() => {
     const map = mapRef.current
@@ -473,6 +541,18 @@ export const MapView = ({
       return
     }
 
+    const source = map.getSource('parking-spaces') as GeoJSONSource | undefined
+    if (source) {
+      source.setData(parkingSpacesData)
+    }
+  }, [parkingSpacesData])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) {
+      return
+    }
+
     const visibility = showZones ? 'visible' : 'none'
     if (map.getLayer('zones-fill')) {
       map.setLayoutProperty('zones-fill', 'visibility', visibility)
@@ -518,6 +598,24 @@ export const MapView = ({
       return
     }
 
+    const visibility = showParkingSpaces ? 'visible' : 'none'
+    if (map.getLayer('parking-spaces-fill')) {
+      map.setLayoutProperty('parking-spaces-fill', 'visibility', visibility)
+    }
+    if (map.getLayer('parking-spaces-line')) {
+      map.setLayoutProperty('parking-spaces-line', 'visibility', visibility)
+    }
+    if (map.getLayer('parking-spaces-point')) {
+      map.setLayoutProperty('parking-spaces-point', 'visibility', visibility)
+    }
+  }, [showParkingSpaces])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) {
+      return
+    }
+
     const visibility = showInferredCandidates ? 'visible' : 'none'
     if (map.getLayer('segments-inferred')) {
       map.setLayoutProperty('segments-inferred', 'visibility', visibility)
@@ -536,5 +634,156 @@ export const MapView = ({
     }
   }, [userData])
 
-  return <div ref={mapContainer} className="map-root" />
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) {
+      return
+    }
+
+    const source = map.getSource('selected-route') as GeoJSONSource | undefined
+    if (source) {
+      source.setData(routeData)
+    }
+  }, [routeData])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) {
+      return
+    }
+
+    const source = map.getSource('recommended-targets') as GeoJSONSource | undefined
+    if (source) {
+      source.setData(recommendedParkingTargetData)
+    }
+  }, [recommendedParkingTargetData])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) {
+      return
+    }
+
+    const source = map.getSource('selected-space-options') as GeoJSONSource | undefined
+    if (source) {
+      source.setData(selectedParkingSpaceData)
+    }
+  }, [selectedParkingSpaceData])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) {
+      return
+    }
+
+    if (!searchLocation) {
+      searchMarkerRef.current?.remove()
+      searchMarkerRef.current = null
+      return
+    }
+
+    if (!searchMarkerRef.current) {
+      const markerElement = document.createElement('div')
+      markerElement.className = 'map-search-marker'
+
+      const markerLabel = document.createElement('div')
+      markerLabel.className = 'map-search-label'
+      markerElement.appendChild(markerLabel)
+
+      const markerPin = document.createElement('div')
+      markerPin.className = 'map-search-pin'
+      markerElement.appendChild(markerPin)
+
+      searchMarkerRef.current = new maplibregl.Marker({
+        element: markerElement,
+        anchor: 'bottom',
+        offset: [0, 6],
+      })
+    }
+
+    const marker = searchMarkerRef.current
+    const markerElement = marker.getElement()
+    const markerLabel = markerElement.querySelector('.map-search-label')
+    if (markerLabel) {
+      markerLabel.textContent = searchLocationLabel ?? 'Address result'
+    }
+    markerElement.setAttribute('title', searchLocationLabel ?? 'Address result')
+    marker.setLngLat(searchLocation).addTo(map)
+  }, [searchLocation, searchLocationLabel])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) {
+      return
+    }
+
+    if (!arrivalLocation) {
+      arrivalMarkerRef.current?.remove()
+      arrivalMarkerRef.current = null
+      return
+    }
+
+    if (!arrivalMarkerRef.current) {
+      const markerElement = document.createElement('div')
+      markerElement.className = 'map-arrival-marker'
+
+      const markerLabel = document.createElement('div')
+      markerLabel.className = 'map-arrival-label'
+      markerElement.appendChild(markerLabel)
+
+      const markerPin = document.createElement('div')
+      markerPin.className = 'map-arrival-pin'
+      markerElement.appendChild(markerPin)
+
+      arrivalMarkerRef.current = new maplibregl.Marker({
+        element: markerElement,
+        anchor: 'bottom',
+        offset: [0, 6],
+      })
+    }
+
+    const marker = arrivalMarkerRef.current
+    const markerElement = marker.getElement()
+    const markerLabel = markerElement.querySelector('.map-arrival-label')
+    markerElement.classList.toggle('space-target', arrivalLocationKind === 'PARKING_SPACE')
+    if (markerLabel) {
+      markerLabel.textContent = arrivalLocationLabel ?? 'Arrival target'
+    }
+    markerElement.setAttribute('title', arrivalLocationLabel ?? 'Arrival target')
+    marker.setLngLat(arrivalLocation).addTo(map)
+  }, [arrivalLocation, arrivalLocationKind, arrivalLocationLabel])
+
+  return (
+    <div
+      className="map-root-shell"
+      data-parking-space-count={parkingSpaces.features.length}
+      data-segment-count={segments.length}
+      data-zone-count={zones.length}
+    >
+      <div ref={mapContainer} className="map-root" />
+      <div className="map-overlay-controls">
+        <div className="map-click-hint">Click map to check parking here</div>
+        <button
+          type="button"
+          className="map-action-button"
+          onClick={() => {
+            const map = mapRef.current
+            if (!map || !userLocation) {
+              return
+            }
+            map.easeTo({
+              center: userLocation,
+              zoom: Math.max(map.getZoom(), 16),
+              duration: 650,
+              essential: true,
+            })
+          }}
+          disabled={!userLocation}
+          title="Center on current location"
+        >
+          My location
+        </button>
+      </div>
+    </div>
+  )
 }

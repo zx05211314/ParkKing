@@ -22,24 +22,52 @@ export const evaluateSegment = (
   const overrideReasonCodes: ReasonCode[] = []
   if (override) {
     overrideReasonCodes.push('OVERRIDE_APPLIED')
+    if (override.status === 'LEGAL') {
+      overrideReasonCodes.push('OVERRIDE_STATUS_LEGAL')
+    } else if (override.status === 'ILLEGAL') {
+      overrideReasonCodes.push('OVERRIDE_STATUS_ILLEGAL')
+    } else if (override.status === 'UNCLEAR') {
+      overrideReasonCodes.push('OVERRIDE_STATUS_UNCLEAR')
+    }
   }
   const overrideWindows = override?.timeWindows ?? []
   const coverageConfidence = computeCoverageScore(segment)
   const overrideConfidence = computeOverrideScore(segment)
   const sourceReliability = computeSourceReliability(segment)
   const dataFreshnessDays = segment.dataFreshnessDays ?? null
-  const finalConfidence = computeFinalConfidence(
+  const parkingSpaceCount = segment.parkingSpaceCount ?? 0
+  const hasMarkedParkingSpaces =
+    parkingSpaceCount > 0 && segment.sourceType !== 'INFERRED'
+  const parkingSpaceEvidenceEligible =
+    hasMarkedParkingSpaces &&
+    segment.curbMarking === 'YELLOW' &&
+    coverageConfidence === 'HIGH' &&
+    sourceReliability === 'HIGH'
+  const strongParkingSpaceEvidenceEligible =
+    parkingSpaceEvidenceEligible && parkingSpaceCount >= 2
+  const computedFinalConfidence = computeFinalConfidence(
     coverageConfidence,
     overrideConfidence,
     sourceReliability,
     dataFreshnessDays,
   )
+  const finalConfidence =
+    // Multiple mapped parking spaces along the same curb are strong
+    // corroborating evidence when old curb-paint timestamps would otherwise
+    // suppress a clearly parkable yellow curb forever.
+    strongParkingSpaceEvidenceEligible && computedFinalConfidence === 'LOW'
+      ? 'HIGH'
+      : parkingSpaceEvidenceEligible && computedFinalConfidence === 'MED'
+      ? 'HIGH'
+      : computedFinalConfidence
   const greenEligible =
     finalConfidence === 'HIGH' &&
     (dataFreshnessDays !== null ||
       (coverageConfidence === 'HIGH' &&
         overrideConfidence === 'HIGH' &&
         sourceReliability === 'HIGH'))
+  const parkingEvidenceCodes: ReasonCode[] =
+    parkingSpaceEvidenceEligible ? ['PARKING_SPACE_EVIDENCE'] : []
 
   const applyInferredCap = (result: EvaluatedSegment): EvaluatedSegment => {
     const isInferred =
@@ -103,6 +131,53 @@ export const evaluateSegment = (
     freshnessCodes.push('DATA_FRESHNESS_STALE')
   }
 
+  if (override?.status === 'ILLEGAL') {
+    const { reasonCodes, reasons } = buildReasons([
+      'OVERRIDE_STATUS_ILLEGAL',
+      ...overrideReasonCodes,
+      ...coverageCodes,
+      ...freshnessCodes,
+    ])
+    const result: EvaluatedSegment = {
+      ...segment,
+      tier: 'RED',
+      allowedNow: 'NO_STOP',
+      reasonCodes,
+      reasons,
+      timeWindows: overrideWindows,
+      coverageConfidence,
+      overrideConfidence,
+      finalConfidence,
+      sourceReliability,
+      dataFreshnessDays,
+    }
+    return applyInferredCap(result)
+  }
+
+  if (override?.status === 'LEGAL') {
+    const { reasonCodes, reasons } = buildReasons([
+      'OVERRIDE_STATUS_LEGAL',
+      ...overrideReasonCodes,
+      ...parkingEvidenceCodes,
+      ...coverageCodes,
+      ...freshnessCodes,
+    ])
+    const result: EvaluatedSegment = {
+      ...segment,
+      tier: finalConfidence === 'LOW' ? 'YELLOW' : 'GREEN',
+      allowedNow: 'PARK',
+      reasonCodes,
+      reasons,
+      timeWindows: overrideWindows,
+      coverageConfidence,
+      overrideConfidence,
+      finalConfidence,
+      sourceReliability,
+      dataFreshnessDays,
+    }
+    return applyInferredCap(result)
+  }
+
   if (segment.curbMarking === 'RED') {
     const { reasonCodes, reasons } = buildReasons([
       'RULE_RED_NO_STOP',
@@ -133,6 +208,7 @@ export const evaluateSegment = (
       const { reasonCodes, reasons } = buildReasons([
         'RULE_YELLOW_DAY_NO_PARK',
         ...overrideReasonCodes,
+        ...parkingEvidenceCodes,
         ...coverageCodes,
         ...freshnessCodes,
       ])
@@ -155,6 +231,7 @@ export const evaluateSegment = (
     const { reasonCodes, reasons } = buildReasons([
       'RULE_YELLOW_NIGHT_PARK_POSSIBLE',
       ...overrideReasonCodes,
+      ...parkingEvidenceCodes,
       ...coverageCodes,
       ...freshnessCodes,
     ])
@@ -178,6 +255,7 @@ export const evaluateSegment = (
     const { reasonCodes, reasons } = buildReasons([
       'RULE_NEEDS_SIGNS_CHECK',
       ...overrideReasonCodes,
+      ...parkingEvidenceCodes,
       ...coverageCodes,
       ...freshnessCodes,
     ])
@@ -200,6 +278,7 @@ export const evaluateSegment = (
   const { reasonCodes, reasons } = buildReasons([
     'UNKNOWN_MARKING',
     ...overrideReasonCodes,
+    ...parkingEvidenceCodes,
     ...coverageCodes,
     ...freshnessCodes,
   ])

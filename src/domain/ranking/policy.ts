@@ -8,7 +8,9 @@ export interface RankingPolicyOptions {
   riskMode?: RiskMode
 }
 
-export const isInferredSegment = (segment: EvaluatedSegment) => {
+export const isInferredSegment = (
+  segment: Pick<EvaluatedSegment, 'source' | 'sourceType'>,
+) => {
   return (
     segment.source === 'INFERRED_CENTERLINE_OFFSET' ||
     segment.sourceType === 'INFERRED'

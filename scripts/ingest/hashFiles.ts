@@ -11,6 +11,7 @@ export const PACK_FILES = {
     'intersections_report.json',
   ],
   optional: [
+    'parking_spaces.geojson',
     'crosswalks.geojson',
     'sign_overrides.geojson',
     'candidates_inferred.geojson',

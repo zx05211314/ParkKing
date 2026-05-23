@@ -8,7 +8,8 @@ import { ingestRedYellow } from './ingestRedYellow'
 import { ingestCrosswalks } from './ingestCrosswalks'
 import { ingestSignOverrides } from './ingestSignOverrides'
 import { ingestInferredCandidates } from './ingestInferredCandidates'
-import { buildDatasetMeta, writeJson } from './utils'
+import { writeJson } from './utils'
+import { buildDatasetMeta } from './ingestDatasetMeta'
 import { validateOutputs } from './validateOutputs'
 import { publishPackAtomic } from './publishPackAtomic'
 
@@ -20,8 +21,8 @@ const run = async () => {
   await ingestHydrants(config)
   await ingestCrosswalks(config)
   await ingestIntersections(config)
-  await ingestSignOverrides(config)
   await ingestInferredCandidates(config)
+  await ingestSignOverrides(config)
 
   const meta = await buildDatasetMeta(config)
   await writeJson(config, 'dataset_meta.json', meta)
