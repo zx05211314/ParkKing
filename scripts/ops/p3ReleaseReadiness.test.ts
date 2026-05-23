@@ -4,6 +4,7 @@ import * as path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import type { DistrictReadinessMatrixResult } from './districtReadinessMatrix'
 import type { SmokeGeneratedPacksResult } from './smokeGeneratedPacks'
+import type { SmokeParkingAnswerServiceSummary } from './smokeParkingAnswerService'
 import type { PackageReleaseResult } from './packageRelease'
 import type { ValidateReleasePackageResult } from './validateReleasePackage'
 import {
@@ -32,6 +33,19 @@ const generatedPacksPass = {
   ],
 } as unknown as SmokeGeneratedPacksResult
 
+const parkingAnswerApiPass = (
+  district: string,
+): SmokeParkingAnswerServiceSummary => ({
+  endpoint: `http://127.0.0.1/${district}`,
+  district,
+  casesPath: `configs/prod/${district}.answer-cases.json`,
+  datasetHash: `hash-${district}`,
+  probes: ['health', 'ready'],
+  passed: 2,
+  failed: 0,
+  results: [],
+})
+
 const releasePackagePass: PackageReleaseResult = {
   releaseId: 'release-1',
   zipPath: 'dist/releases/park-king-data_release-1.zip',
@@ -59,6 +73,11 @@ const makeRunners = (
 ): P3ReleaseReadinessRunners => ({
   runDistrictReadinessMatrix: vi.fn().mockResolvedValue(matrixPass),
   runSmokeGeneratedPacks: vi.fn().mockResolvedValue(generatedPacksPass),
+  runSmokeParkingAnswerService: vi
+    .fn()
+    .mockImplementation(({ district }) =>
+      Promise.resolve(parkingAnswerApiPass(district ?? 'xinyi')),
+    ),
   packageRelease: vi.fn().mockResolvedValue(releasePackagePass),
   validateReleasePackage: vi.fn().mockResolvedValue(packageValidationPass),
   ...overrides,
@@ -135,6 +154,12 @@ describe('p3ReleaseReadiness', () => {
       expect.objectContaining({
         districtIds: ['xinyi', 'daan', 'zhongshan'],
       }),
+    )
+    expect(runners.runSmokeParkingAnswerService).toHaveBeenCalledTimes(3)
+    const apiCalls = vi.mocked(runners.runSmokeParkingAnswerService).mock.calls
+    expect(apiCalls[0]?.[0]).toMatchObject({ district: 'xinyi' })
+    expect(apiCalls[0]?.[0].casesPath?.replace(/\\/g, '/')).toBe(
+      'configs/prod/xinyi.answer-cases.json',
     )
     expect(runners.validateReleasePackage).toHaveBeenCalledWith(
       expect.objectContaining({

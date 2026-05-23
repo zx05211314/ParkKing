@@ -13,6 +13,11 @@ import {
   type SmokeGeneratedPacksResult,
 } from './smokeGeneratedPacks'
 import {
+  runSmokeParkingAnswerService,
+  type SmokeParkingAnswerServiceOptions,
+  type SmokeParkingAnswerServiceSummary,
+} from './smokeParkingAnswerService'
+import {
   packageRelease,
   type PackageReleaseResult,
 } from './packageRelease'
@@ -58,6 +63,7 @@ export interface P3ReleaseReadinessResult {
   inputs: P3ReleaseReadinessInputs
   districtMatrix: P3ReleaseReadinessCheck<DistrictReadinessMatrixResult>
   generatedPacks: P3ReleaseReadinessCheck<SmokeGeneratedPacksResult>
+  parkingAnswerApis: P3ReleaseReadinessCheck<SmokeParkingAnswerServiceSummary[]>
   releasePackage: P3ReleaseReadinessCheck<PackageReleaseResult>
   packageValidation: P3ReleaseReadinessCheck<ValidateReleasePackageResult>
   blockers: string[]
@@ -70,6 +76,9 @@ export interface P3ReleaseReadinessRunners {
   runSmokeGeneratedPacks: (
     options: SmokeGeneratedPacksOptions,
   ) => Promise<SmokeGeneratedPacksResult>
+  runSmokeParkingAnswerService: (
+    options: SmokeParkingAnswerServiceOptions,
+  ) => Promise<SmokeParkingAnswerServiceSummary>
   packageRelease: typeof packageRelease
   validateReleasePackage: (
     args: ValidateReleasePackageArgs,
@@ -84,6 +93,7 @@ const DEFAULT_OUT_DIR = 'dist/releases'
 const defaultRunners: P3ReleaseReadinessRunners = {
   runDistrictReadinessMatrix,
   runSmokeGeneratedPacks,
+  runSmokeParkingAnswerService,
   packageRelease,
   validateReleasePackage,
 }
@@ -238,6 +248,23 @@ export const runP3ReleaseReadiness = async (
       }),
     (summary) => !summary.hasErrors,
   )
+  const parkingAnswerApis = await runCheck(
+    'Parking answer APIs',
+    async () => {
+      const summaries: SmokeParkingAnswerServiceSummary[] = []
+      const answerCasesDir = path.dirname(inputs.answerCasesGlob)
+      for (const districtId of inputs.districtIds) {
+        summaries.push(
+          await runners.runSmokeParkingAnswerService({
+            district: districtId,
+            casesPath: path.join(answerCasesDir, `${districtId}.answer-cases.json`),
+          }),
+        )
+      }
+      return summaries
+    },
+    (summaries) => summaries.every((summary) => summary.failed === 0),
+  )
   const releasePackage = await runCheck(
     'Release package',
     () =>
@@ -266,6 +293,7 @@ export const runP3ReleaseReadiness = async (
   const checks = [
     districtMatrix,
     generatedPacks,
+    parkingAnswerApis,
     releasePackage,
     packageValidation,
   ]
@@ -276,6 +304,7 @@ export const runP3ReleaseReadiness = async (
     inputs,
     districtMatrix,
     generatedPacks,
+    parkingAnswerApis,
     releasePackage,
     packageValidation,
     blockers,
@@ -293,6 +322,13 @@ const formatDistrictMatrix = (summary: DistrictReadinessMatrixResult | null) =>
 const formatGeneratedPacks = (summary: SmokeGeneratedPacksResult | null) =>
   summary
     ? `${summary.packResults.filter((pack) => pack.errors.length === 0).length}/${summary.packResults.length} packs`
+    : '-'
+
+const formatParkingAnswerApis = (
+  summary: SmokeParkingAnswerServiceSummary[] | null,
+) =>
+  summary
+    ? `${summary.filter((district) => district.failed === 0).length}/${summary.length} districts`
     : '-'
 
 const formatPackage = (summary: PackageReleaseResult | null) =>
@@ -322,6 +358,7 @@ export const renderP3ReleaseReadiness = (result: P3ReleaseReadinessResult) =>
     '| --- | --- | --- | --- |',
     `| ${checkStatus(result.districtMatrix)} | District readiness matrix | ${formatDistrictMatrix(result.districtMatrix.summary)} | ${result.districtMatrix.error ?? ''} |`,
     `| ${checkStatus(result.generatedPacks)} | Reviewed generated packs | ${formatGeneratedPacks(result.generatedPacks.summary)} | ${result.generatedPacks.error ?? ''} |`,
+    `| ${checkStatus(result.parkingAnswerApis)} | Parking answer APIs | ${formatParkingAnswerApis(result.parkingAnswerApis.summary)} | ${result.parkingAnswerApis.error ?? ''} |`,
     `| ${checkStatus(result.releasePackage)} | Release package | ${formatPackage(result.releasePackage.summary)} | ${result.releasePackage.error ?? ''} |`,
     `| ${checkStatus(result.packageValidation)} | Release package validation | ${formatValidation(result.packageValidation.summary)} | ${result.packageValidation.error ?? ''} |`,
     '',
