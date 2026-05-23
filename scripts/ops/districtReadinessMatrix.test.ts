@@ -130,6 +130,12 @@ describe('districtReadinessMatrix', () => {
     await writeJson(path.join(dryRunRoot, '_ops', 'publish_gate_summary.json'), {
       districts: [
         {
+          districtId: 'xinyi',
+          warn: 0,
+          fail: 1,
+          topFailCodes: ['STALE_DRY_RUN_SHOULD_NOT_OVERRIDE_PUBLIC'],
+        },
+        {
           districtId: 'daan',
           warn: 1,
           fail: 2,

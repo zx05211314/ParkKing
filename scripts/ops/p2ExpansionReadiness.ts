@@ -261,12 +261,24 @@ const isExpectedExpansionMatrixBlocker = (blocker: string) =>
   blocker === 'publish gate warn: BASELINE_MISSING' ||
   isExpectedPublishFailBlocker(blocker)
 
+const isPublishedExpansionDistrict = (
+  matrixEntry: DistrictReadinessEntry | null,
+) =>
+  matrixEntry?.runtimeStatus === 'published' &&
+  matrixEntry.dataPackStatus === 'available' &&
+  matrixEntry.reviewStatus === 'pass' &&
+  Boolean(matrixEntry.counts.signOverrides && matrixEntry.counts.signOverrides > 0)
+
 const reviewBundleNextAction = (
+  matrixEntry: DistrictReadinessEntry | null,
   reviewBundle: HumanReviewBundleEntry | null,
   automationBlockers: string[],
 ): P2ExpansionNextAction => {
   if (automationBlockers.length > 0) {
     return 'fix-blockers'
+  }
+  if (isPublishedExpansionDistrict(matrixEntry)) {
+    return 'published'
   }
   if (!reviewBundle) {
     return 'fix-blockers'
@@ -313,7 +325,9 @@ const buildExpansionDistrictReadiness = (
     }
   }
   if (!reviewBundle) {
-    automationBlockers.push('human review bundle missing')
+    if (!isPublishedExpansionDistrict(matrixEntry)) {
+      automationBlockers.push('human review bundle missing')
+    }
   } else if (reviewBundle.status === 'incomplete') {
     automationBlockers.push('human review bundle incomplete')
   } else if (!reviewBundle.handoffRows || reviewBundle.handoffRows <= 0) {
@@ -335,7 +349,11 @@ const buildExpansionDistrictReadiness = (
     handoffValidReviewedRows: reviewBundle?.handoffValidReviewedRows ?? null,
     sourceValidReviewedRows: reviewBundle?.validReviewedRows ?? null,
     automationBlockers,
-    nextAction: reviewBundleNextAction(reviewBundle, automationBlockers),
+    nextAction: reviewBundleNextAction(
+      matrixEntry,
+      reviewBundle,
+      automationBlockers,
+    ),
   }
 }
 

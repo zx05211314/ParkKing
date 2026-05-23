@@ -11,15 +11,19 @@ import {
 
 const expansionDistrict = (
   districtId: string,
-  nextAction: 'fill-human-review' | 'finalize-review' | 'already-reviewed',
+  nextAction:
+    | 'fill-human-review'
+    | 'finalize-review'
+    | 'already-reviewed'
+    | 'published',
 ) => ({
   districtId,
-  runtimeStatus: 'stale-public-dir',
+  runtimeStatus: nextAction === 'published' ? 'published' : 'stale-public-dir',
   dataPackStatus: 'available',
   parkingSpaces: 100,
   inferredCandidates: 10,
-  signOverrides: 0,
-  reviewStatus: 'blocked',
+  signOverrides: nextAction === 'published' ? 10 : 0,
+  reviewStatus: nextAction === 'published' ? 'pass' : 'blocked',
   publishGateStatus: 'fail',
   matrixBlockers: [],
   reviewBundleStatus:
@@ -325,5 +329,84 @@ describe('p2Status', () => {
     expect(renderP2Status(result)).toContain('finalize daan')
     expect(renderP2Status(result)).toContain('finalize zhongshan')
     expect(renderP2Status(result)).toContain('npm run ops:p2-finalize-ready:execute')
+  })
+
+  it('marks P2 expansion ready when reviewed districts are already published', async () => {
+    const publishedDistricts = [
+      expansionDistrict('daan', 'published'),
+      expansionDistrict('zhongshan', 'published'),
+    ]
+    const result = await runP2Status(
+      {},
+      runners({
+        loose: readiness({
+          status: 'EXPANSION_READY',
+          expansionDistricts: publishedDistricts,
+        }),
+        strict: readiness({
+          status: 'EXPANSION_READY',
+          expansionDistricts: publishedDistricts,
+        }),
+        gate: reviewGate({
+          pass: true,
+          status: 'ready-to-finalize',
+          errors: [],
+          finalizeResult: {
+            pass: true,
+            mode: 'dry-run',
+            reviewRoot: '.tmp',
+            selectedDistricts: ['daan', 'zhongshan'],
+            ready: [
+              {
+                districtId: 'daan',
+                status: 'ready-to-finalize',
+                command: 'finalize daan',
+                inputs: {
+                  districtId: 'daan',
+                  sourcePath: '.tmp/daan-review.csv',
+                  reviewsPath: '.tmp/daan-human-review/daan-next-review.csv',
+                  mergedOutPath: '.tmp/daan-review.merged.csv',
+                  configPath: 'configs/prod/daan.json',
+                  allowPublishWarn: true,
+                  publishOverrideReason: 'daan bootstrap',
+                },
+                result: null,
+              },
+              {
+                districtId: 'zhongshan',
+                status: 'ready-to-finalize',
+                command: 'finalize zhongshan',
+                inputs: {
+                  districtId: 'zhongshan',
+                  sourcePath: '.tmp/zhongshan-review.csv',
+                  reviewsPath:
+                    '.tmp/zhongshan-human-review/zhongshan-next-review.csv',
+                  mergedOutPath: '.tmp/zhongshan-review.merged.csv',
+                  configPath: 'configs/prod/zhongshan.json',
+                  allowPublishWarn: true,
+                  publishOverrideReason: 'zhongshan bootstrap',
+                },
+                result: null,
+              },
+            ],
+            skipped: [],
+            errors: [],
+            warnings: [],
+          },
+        }),
+      }),
+    )
+
+    expect(result.pass).toBe(true)
+    expect(result.status).toBe('EXPANSION_READY')
+    expect(result.readyToFinalize).toBe(false)
+    expect(result.readyFinalizeDistricts).toEqual([])
+    expect(result.finalizedDistricts).toEqual(['daan', 'zhongshan'])
+    expect(renderP2Status(result)).toContain('Finalized districts: daan, zhongshan')
+    expect(renderP2Status(result)).toContain(
+      'none; expansion districts are published',
+    )
+    expect(renderP2Status(result)).not.toContain('finalize daan')
+    expect(renderP2Status(result)).not.toContain('npm run ops:p2-finalize-ready:execute')
   })
 })

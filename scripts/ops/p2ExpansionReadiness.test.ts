@@ -267,6 +267,50 @@ describe('p2ExpansionReadiness', () => {
     expect(result.expansionDistricts[0]?.nextAction).toBe('finalize-review')
   })
 
+  it('marks a published reviewed expansion district as expansion ready', async () => {
+    const result = await runP2ExpansionReadiness(
+      {
+        expansionDistrictIds: ['daan'],
+        skipP1: true,
+        requireReadyToFinalize: true,
+      },
+      buildRunners({
+        runDistrictReadinessMatrix: vi.fn().mockResolvedValue(
+          buildMatrix({
+            runtimeStatus: 'published',
+            primaryDatasetSource: 'public',
+            counts: {
+              segments: 10,
+              parkingSpaces: 39_257,
+              signOverrides: 10,
+              inferredCandidates: 1_846,
+            },
+            reviewStatus: 'pass',
+            reviewedRows: 10,
+            validReviewedRows: 10,
+            pendingReviewRows: 70,
+            blockers: [
+              'publish gate fail: SIGN_OVERRIDE_COVERAGE_ZERO, SIGN_OVERRIDE_INPUT_MISSING',
+              'publish gate warn: BASELINE_MISSING',
+            ],
+          }),
+        ),
+        runHumanReviewBundleIndex: vi
+          .fn()
+          .mockResolvedValue(buildReviewIndex('ready-to-finalize')),
+      }),
+    )
+
+    expect(result.pass).toBe(true)
+    expect(result.status).toBe('EXPANSION_READY')
+    expect(result.expansionDistricts[0]?.nextAction).toBe('published')
+    expect(renderP2ExpansionReadiness(result)).toContain('published')
+    expect(renderP2ExpansionReadiness(result)).toContain(
+      '## Recommended Next Commands',
+    )
+    expect(renderP2ExpansionReadiness(result)).toContain('- none')
+  })
+
   it('blocks strict expansion readiness until human review can finalize', async () => {
     const result = await runP2ExpansionReadiness(
       {

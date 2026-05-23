@@ -61,6 +61,7 @@ export interface P2StatusResult {
   blockers: string[]
   pendingHumanReviewDistricts: string[]
   readyFinalizeDistricts: string[]
+  finalizedDistricts: string[]
   latestReviewPackages: P2ReviewPackageArtifact[]
   warnings: string[]
 }
@@ -329,6 +330,12 @@ export const runP2Status = async (
       .filter((district) => district.nextAction === 'fill-human-review')
       .map((district) => district.districtId),
   )
+  const finalizedDistricts = unique(
+    readiness.expansionDistricts
+      .filter((district) => district.nextAction === 'published')
+      .map((district) => district.districtId),
+  )
+  const finalizedDistrictSet = new Set(finalizedDistricts)
   const latestReviewPackages = await (
     runners.findLatestReviewPackages ?? findLatestReviewPackages
   )(reviewGate.outDir, pendingHumanReviewDistricts)
@@ -338,7 +345,7 @@ export const runP2Status = async (
       .map((district) => district.districtId),
     ...reviewGate.intakeFinalizeResults.map((entry) => entry.districtId),
     ...(reviewGate.finalizeResult?.ready.map((entry) => entry.districtId) ?? []),
-  ])
+  ]).filter((districtId) => !finalizedDistrictSet.has(districtId))
   const blockers = [
     ...readiness.blockers,
     ...unexpectedReviewGateErrors.map((error) => `review gate: ${error}`),
@@ -353,7 +360,7 @@ export const runP2Status = async (
   return {
     pass: blockers.length === 0,
     status,
-    readyToFinalize: status === 'READY_TO_FINALIZE' || status === 'EXPANSION_READY',
+    readyToFinalize: status === 'READY_TO_FINALIZE',
     inputs,
     readiness,
     strictReadiness,
@@ -361,6 +368,7 @@ export const runP2Status = async (
     blockers,
     pendingHumanReviewDistricts,
     readyFinalizeDistricts,
+    finalizedDistricts,
     latestReviewPackages,
     warnings: unique([
       ...readiness.warnings,
@@ -374,13 +382,20 @@ const formatList = (values: string[]) => values.join(', ') || 'none'
 
 const finalizeCommandLines = (result: P2StatusResult) =>
   unique([
-    ...result.reviewGate.intakeFinalizeResults.map((entry) => entry.command),
-    ...(result.reviewGate.finalizeResult?.ready.map((entry) => entry.command) ?? []),
+    ...result.reviewGate.intakeFinalizeResults
+      .filter((entry) => result.readyFinalizeDistricts.includes(entry.districtId))
+      .map((entry) => entry.command),
+    ...(result.reviewGate.finalizeResult?.ready
+      .filter((entry) => result.readyFinalizeDistricts.includes(entry.districtId))
+      .map((entry) => entry.command) ?? []),
   ]).map((command) => `- ${command}`)
 
 const nextCommandLines = (result: P2StatusResult) => {
   if (result.status === 'BLOCKED') {
     return ['- Fix blockers listed above before continuing.']
+  }
+  if (result.status === 'EXPANSION_READY') {
+    return ['- none; expansion districts are published. Continue with the next roadmap priority.']
   }
   if (result.readyFinalizeDistricts.length > 0 || result.readyToFinalize) {
     const finalizeCommands = finalizeCommandLines(result)
@@ -425,6 +440,14 @@ const latestReviewPackageLines = (result: P2StatusResult) => {
   })
 }
 
+const reviewGateLines = (result: P2StatusResult) =>
+  result.status === 'EXPANSION_READY'
+    ? [
+        'Review intake/gate output is omitted because expansion districts are already published.',
+        `Finalized districts: ${formatList(result.finalizedDistricts)}`,
+      ]
+    : [renderP0AdvanceReviews(result.reviewGate)]
+
 export const renderP2Status = (result: P2StatusResult) => {
   const humanReviewLines = humanReviewRequiredLines(result)
   const reviewPackageLines = latestReviewPackageLines(result)
@@ -440,6 +463,7 @@ export const renderP2Status = (result: P2StatusResult) => {
     `- P1 release: ${result.readiness.p1Release ? (result.readiness.p1Release.pass ? 'pass' : 'blocked') : 'skipped'}`,
     `- Pending human review: ${formatList(result.pendingHumanReviewDistricts)}`,
     `- Ready finalize districts: ${formatList(result.readyFinalizeDistricts)}`,
+    `- Finalized districts: ${formatList(result.finalizedDistricts)}`,
     '',
     '## Current Readiness',
     '',
@@ -451,7 +475,7 @@ export const renderP2Status = (result: P2StatusResult) => {
     '',
     '## Review Intake And Gate',
     '',
-    renderP0AdvanceReviews(result.reviewGate),
+    ...reviewGateLines(result),
     '',
     ...(humanReviewLines.length > 0
       ? ['## Human Review Required', '', ...humanReviewLines, '']

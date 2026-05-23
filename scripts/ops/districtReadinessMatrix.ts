@@ -329,13 +329,24 @@ const buildEntry = async (params: {
   dryRunRoot: string
   reviewRoot: string
   registryIds: Set<string>
-  publishGateEntries: Map<
+  publicPublishGateEntries: Map<
+    string,
+    { status: PublishGateStatus; warnCodes: string[]; failCodes: string[] }
+  >
+  dryRunPublishGateEntries: Map<
     string,
     { status: PublishGateStatus; warnCodes: string[]; failCodes: string[] }
   >
 }) => {
-  const { config, publicRoot, dryRunRoot, reviewRoot, registryIds, publishGateEntries } =
-    params
+  const {
+    config,
+    publicRoot,
+    dryRunRoot,
+    reviewRoot,
+    registryIds,
+    publicPublishGateEntries,
+    dryRunPublishGateEntries,
+  } = params
   const publicMetaPath = path.resolve(publicRoot, config.districtId, 'dataset_meta.json')
   const dryRunMetaPath = path.resolve(dryRunRoot, config.districtId, 'dataset_meta.json')
   const publicMeta = await readJsonIfExists(publicMetaPath)
@@ -366,7 +377,17 @@ const buildEntry = async (params: {
   const reviewPath = await findReviewPath(reviewRoot, config.districtId)
   const nextReviewPath = path.resolve(reviewRoot, `${config.districtId}-next-review.csv`)
   const review = await summarizeReview(reviewPath)
-  const publishGate = publishGateEntries.get(config.districtId) ?? {
+  const primaryPublishGateEntries =
+    primaryDatasetSource === 'public'
+      ? publicPublishGateEntries
+      : dryRunPublishGateEntries
+  const fallbackPublishGateEntries =
+    primaryDatasetSource === 'public'
+      ? dryRunPublishGateEntries
+      : publicPublishGateEntries
+  const publishGate =
+    primaryPublishGateEntries.get(config.districtId) ??
+    fallbackPublishGateEntries.get(config.districtId) ?? {
     status: 'unknown' as PublishGateStatus,
     warnCodes: [],
     failCodes: [],
@@ -416,8 +437,10 @@ export const runDistrictReadinessMatrix = async (
   )
   const configs = await readConfigs(configGlob)
   const registry = await readRegistryDistrictIds(registryPath)
-  const publishGateEntries = await readPublishGateEntries([
+  const publicPublishGateEntries = await readPublishGateEntries([
     path.join(publicRoot, '_ops', 'publish_gate_summary.json'),
+  ])
+  const dryRunPublishGateEntries = await readPublishGateEntries([
     path.join(dryRunRoot, '_ops', 'publish_gate_summary.json'),
   ])
   const entries = await Promise.all(
@@ -428,7 +451,8 @@ export const runDistrictReadinessMatrix = async (
         dryRunRoot,
         reviewRoot,
         registryIds: registry.districtIds,
-        publishGateEntries,
+        publicPublishGateEntries,
+        dryRunPublishGateEntries,
       }),
     ),
   )
