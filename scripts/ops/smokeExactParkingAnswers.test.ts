@@ -5,6 +5,7 @@ import * as path from 'node:path'
 import type { EvaluatedSegment } from '../../src/ui/types'
 import {
   buildSmokeExactParkingAnswersSummary,
+  loadSmokeExactParkingAnswerCases,
   parseSmokeExactParkingAnswersArgs,
   renderSmokeExactParkingAnswersSummary,
   runSmokeExactParkingAnswers,
@@ -239,6 +240,36 @@ describe('smokeExactParkingAnswers', () => {
         casesPath,
       }),
     ).rejects.toThrow('Answer cases file must include datasetHash')
+  })
+
+  it('normalizes MEDIUM confidence in answer-case files to runtime MED confidence', async () => {
+    const base = await fs.mkdtemp(path.join(os.tmpdir(), 'smoke-exact-confidence-'))
+    const casesPath = path.join(base, 'cases.json')
+    await fs.writeFile(
+      casesPath,
+      JSON.stringify(
+        {
+          schemaVersion: 1,
+          districtId: 'xinyi',
+          datasetHash: 'hash-1',
+          cases: [
+            {
+              id: 'case-1',
+              lng: 121.5645,
+              lat: 25.0335,
+              expectedKind: 'PARK',
+              expectedFinalConfidence: 'MEDIUM',
+            },
+          ],
+        },
+        null,
+        2,
+      ),
+    )
+
+    await expect(loadSmokeExactParkingAnswerCases(casesPath)).resolves.toMatchObject({
+      cases: [{ expectedFinalConfidence: 'MED' }],
+    })
   })
 
   it('passes against the fixture district pack for exact curb answers', async () => {

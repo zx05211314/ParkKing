@@ -84,7 +84,11 @@ export const parseValidateAnswerCasesArgs = (
     '--allow-missing-final-confidence',
     '--allowMissingFinalConfidence',
   ),
-  allowInferredCases: hasFlag(argv, '--allow-inferred-cases', '--allowInferredCases'),
+  allowInferredCases: !hasFlag(
+    argv,
+    '--disallow-inferred-cases',
+    '--disallowInferredCases',
+  ),
   allowMissing: hasFlag(argv, '--allow-missing', '--allowMissing'),
 })
 
@@ -146,7 +150,7 @@ const validateCase = (params: {
   }
   if (!options.allowInferredCases && answerCase.includeInferred) {
     errors.push(
-      `${label}: includeInferred=true is not compatible with publish UI smoke share links`,
+      `${label}: includeInferred=true is not allowed by this validation mode`,
     )
   }
 
@@ -165,7 +169,7 @@ export const validateAnswerCaseFile = (
     requirePrimarySegment: options.requirePrimarySegment ?? true,
     requireEvidenceKind: options.requireEvidenceKind ?? true,
     requireFinalConfidence: options.requireFinalConfidence ?? true,
-    allowInferredCases: options.allowInferredCases ?? false,
+    allowInferredCases: options.allowInferredCases ?? true,
   }
   const errors: string[] = []
   const warnings: string[] = []

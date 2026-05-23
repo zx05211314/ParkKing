@@ -43,7 +43,7 @@ jobs:
         if: always()
         run: npm run ops:append-workflow-summary -- --append-file public/data/generated/_ops/publish_gate_summary.md
       - name: Smoke parking answers
-        run: npm run ops:smoke-generated-packs -- --root public/data/generated --registry public/data/generated/registry.json --use-reviewed-cases --require-reviewed-cases xinyi
+        run: npm run ops:smoke-generated-packs -- --root public/data/generated --registry public/data/generated/registry.json --use-reviewed-cases --require-reviewed-cases xinyi,daan,zhongshan
       - name: Smoke parking answer API
         run: npm run ops:smoke-parking-answer-api -- --district xinyi --timeout-ms 25000
       - name: Inventory generated packs
@@ -53,16 +53,13 @@ jobs:
       - name: Smoke API service probes
         run: npm run ops:smoke-api-services -- --start-preview --timeout-ms 25000
       - name: Smoke reviewed UI answers
-        run: npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --require-reviewed-cases xinyi --timeout-ms 25000
+        run: npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --require-reviewed-cases xinyi,daan,zhongshan --timeout-ms 25000
       - name: P1 release readiness
         if: ${{ inputs.configsGlob == 'configs/prod/*.json' }}
         run: npm run ops:p1-release-readiness
-      - name: Package P1 release
+      - name: P3 reviewed release readiness
         if: ${{ inputs.configsGlob == 'configs/prod/*.json' }}
-        run: npm run ops:package-release:xinyi
-      - name: Validate P1 release package
-        if: ${{ inputs.configsGlob == 'configs/prod/*.json' }}
-        run: npm run ops:validate-release-package:xinyi -- --out .tmp/p1-release-package.md --json-out .tmp/p1-release-package.json
+        run: npm run ops:p3-release-readiness
       - name: Package release
         if: ${{ inputs.configsGlob != 'configs/prod/*.json' }}
         run: npm run ops:package-release
@@ -83,8 +80,8 @@ jobs:
             public/data/generated/_ops/publish_gate_summary.md
             dist/releases/*.zip
             dist/releases/release_manifest_*.json
-            .tmp/p1-release-package.md
-            .tmp/p1-release-package.json
+            .tmp/p3-release-readiness.md
+            .tmp/p3-release-readiness.json
           if-no-files-found: warn
       - name: Upload publish gate summary artifact
         id: upload_publish_gate_summary

@@ -49,7 +49,7 @@ describe('validateAnswerCases', () => {
       requirePrimarySegment: true,
       requireEvidenceKind: true,
       requireFinalConfidence: true,
-      allowInferredCases: false,
+      allowInferredCases: true,
       allowMissing: false,
     })
 
@@ -62,7 +62,7 @@ describe('validateAnswerCases', () => {
         '--allow-missing-primary-segment',
         '--allow-missing-evidence-kind',
         '--allow-missing-final-confidence',
-        '--allow-inferred-cases',
+        '--disallow-inferred-cases',
         '--allow-missing',
       ]),
     ).toMatchObject({
@@ -71,7 +71,7 @@ describe('validateAnswerCases', () => {
       requirePrimarySegment: false,
       requireEvidenceKind: false,
       requireFinalConfidence: false,
-      allowInferredCases: true,
+      allowInferredCases: false,
       allowMissing: true,
     })
   })
@@ -122,8 +122,27 @@ describe('validateAnswerCases', () => {
       'case case-1: expectedPrimarySegmentId is required',
       'case case-1: expectedEvidenceKind is required',
       'case case-1: expectedFinalConfidence is required',
-      'case case-1: includeInferred=true is not compatible with publish UI smoke share links',
       'case case-1: duplicate id also used at index 1',
+    ])
+  })
+
+  it('can still reject inferred cases when strict official-only review is requested', () => {
+    const issue = validateAnswerCaseFile(
+      'configs/prod/xinyi.answer-cases.json',
+      {
+        ...validCaseFile,
+        cases: [
+          {
+            ...validCaseFile.cases[0],
+            includeInferred: true,
+          },
+        ],
+      },
+      { allowInferredCases: false },
+    )
+
+    expect(issue.errors).toEqual([
+      'case xinyi-reviewed-legal-seg-1: includeInferred=true is not allowed by this validation mode',
     ])
   })
 

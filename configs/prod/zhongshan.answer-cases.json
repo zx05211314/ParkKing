@@ -51,7 +51,8 @@
       "searchRadiusMeters": 25,
       "expectedKind": "PARK",
       "expectedEvidenceKind": "CURB_RULE",
-      "expectedPrimarySegmentId": "seg-8660"
+      "expectedPrimarySegmentId": "seg-8660",
+      "expectedFinalConfidence": "MEDIUM"
     },
     {
       "id": "zhongshan-reviewed-legal-seg-380",
@@ -101,7 +102,8 @@
       "searchRadiusMeters": 25,
       "expectedKind": "PARK",
       "expectedEvidenceKind": "CURB_RULE",
-      "expectedPrimarySegmentId": "seg-15043"
+      "expectedPrimarySegmentId": "seg-15043",
+      "expectedFinalConfidence": "MEDIUM"
     },
     {
       "id": "zhongshan-reviewed-legal-seg-7254",

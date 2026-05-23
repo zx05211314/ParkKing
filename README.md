@@ -384,7 +384,7 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
 - P1 release data package:
   `npm run ops:package-release:xinyi`
   `npm run ops:validate-release-package:xinyi`
-  This writes a Xinyi-scoped `dist/releases/park-king-data_<releaseId>.zip` and `dist/releases/release_manifest_<releaseId>.json`, then prints the exact zip path, manifest path, included district, file count, and total bytes for handoff. The scoped archive also rewrites the packaged `registry.json` to list only the selected district. The validator reads the latest zip/manifest pair, verifies file list, bytes, sha256, packaged registry districts, and rejects any non-Xinyi district file; pass `--out .tmp/p1-release-package.md --json-out .tmp/p1-release-package.json` when a workflow needs durable validation artifacts. CI and production publish runs use this Xinyi-scoped package plus validation flow, and CI uploads the zip, manifest, markdown, and JSON validation report as `p1-release-package`; use `npm run ops:package-release -- --district <id>` and `npm run ops:validate-release-package -- --district <id>` for another reviewed district, and avoid unscoped release packages while Daan/Zhongshan are still P2 human-review blocked.
+  This writes a Xinyi-scoped `dist/releases/park-king-data_<releaseId>.zip` and `dist/releases/release_manifest_<releaseId>.json`, then prints the exact zip path, manifest path, included district, file count, and total bytes for handoff. The scoped archive also rewrites the packaged `registry.json` to list only the selected district. The validator reads the latest zip/manifest pair, verifies file list, bytes, sha256, packaged registry districts, and rejects any non-Xinyi district file; pass `--out .tmp/p1-release-package.md --json-out .tmp/p1-release-package.json` when a workflow needs durable validation artifacts. CI keeps this Xinyi-scoped package as the current-product P1 artifact.
 - P2 expansion readiness gate for the next districts:
   `npm run ops:p2-expansion-readiness -- --expansion-district daan,zhongshan --out .tmp/p2-expansion-readiness.md --json-out .tmp/p2-expansion-readiness.json`
   This keeps Xinyi tied to P1 readiness while classifying Daan/Zhongshan as either automation-blocked, human-review-required, or ready-to-finalize. It does not treat pending human review as a code failure, and it must not be used to auto-approve review evidence. Use `npm run ops:p2-expansion-readiness:report -- --expansion-district daan,zhongshan` to refresh the markdown/JSON artifacts, and use `npm run ops:p2-expansion-readiness:strict -- --expansion-district daan,zhongshan` when a milestone must fail until expansion districts are ready to finalize.
@@ -405,8 +405,11 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   `npm run ops:p2-finalize-ready`
   `npm run ops:p2-finalize-ready:execute`
   These shortcuts scan `.tmp`, Desktop, and Downloads for returned Daan/Zhongshan reviewer CSVs, validate ready files, and only finalize when the P0 review evidence already passes. They use `--actionable-only` so source CSVs are not reported as reviewer candidates. The `:execute` script is the only shortcut here that runs finalize.
+- P3 reviewed release readiness for all reviewed/published districts:
+  `npm run ops:p3-release-readiness`
+  This discovers reviewed districts from `configs/prod/*.answer-cases.json`, runs the strict district readiness matrix, runs reviewed generated-pack smoke with reviewed cases required for each reviewed district, writes a district-scoped release package, and validates that package against the expected district set. The current reviewed release set is Xinyi, Daan, and Zhongshan. Use `npm run ops:package-release:reviewed` and `npm run ops:validate-release-package:reviewed` when you only need the reviewed release archive and validation report.
 - Registry-scoped UI smoke check for reviewed generated packs:
-  `npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --require-reviewed-cases xinyi --timeout-ms 25000`
+  `npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --require-reviewed-cases xinyi,daan,zhongshan --timeout-ms 25000`
   Add `--view MAP` when you want the same reviewed-pack discovery path to exercise map/list mode instead of list mode.
 - Static validation for committed reviewed answer-case files:
   `npm run ops:validate-answer-cases`
@@ -423,8 +426,8 @@ generated-pack smoke wrapper scans `<root>/*/dataset_meta.json`, or the district
 `--registry <root>/registry.json` / `--report <root>/ingest_all_report_dry.json` when provided,
 fails if no generated packs exist, and runs both bulk and exact answer smoke for each discovered
 district. Use
-`--use-reviewed-cases --require-reviewed-cases xinyi` for publish-mode validation so Xinyi cannot
-ship without reviewed pinned cases.
+`--use-reviewed-cases --require-reviewed-cases xinyi,daan,zhongshan` for publish-mode validation so
+reviewed/published districts cannot ship without reviewed pinned cases.
 The HTTP API smoke starts the same parking-answer service used by Vite dev/preview and probes
 `/health` plus `/ready` before answer requests. With reviewed cases it verifies exact coordinates,
 expected answer kind, evidence kind, primary segment, final confidence, parking-space count, and
@@ -514,7 +517,7 @@ single-coordinate query reports the nearest mapped segment, action (`PARK`, `TEM
 `NO_STOP`), confidence, evidence, caveats, and triggered reasons. Use `--include-inferred` when
 you want inferred candidate curbs to be eligible for the answer.
 The UI smoke starts a temporary Vite preview, drives headless Chrome through CDP, and checks that
-each reviewed Xinyi answer case renders the pinned answer card, decision copy, confidence, evidence
+each reviewed answer case renders the pinned answer card, decision copy, confidence, evidence
 type, and no-route-ranked-results fallback. It requires Chrome plus Node 22+ for the built-in
 WebSocket client; GitHub workflows run Node 24, and the publish workflow runs this gate for any
 generated district with a matching `configs/prod/<districtId>.answer-cases.json` file.
@@ -526,8 +529,8 @@ This catches lazy-loaded map bundle, dataset-loading, and WebGL regressions that
 smoke cannot see.
 `ops:smoke-reviewed-ui-packs` scopes that UI gate to generated districts from `--registry` or
 `--report`, so stale generated directories do not create false workflow inputs.
-For `xinyi`, reviewed answer cases are required in the publish workflow; publishing a generated
-Xinyi pack without `configs/prod/xinyi.answer-cases.json` fails before release packaging. Reviewed
+For `xinyi`, `daan`, and `zhongshan`, reviewed answer cases are required in the publish workflow;
+publishing one of those generated packs without `configs/prod/<districtId>.answer-cases.json` fails before release packaging. Reviewed
 answer-case files must include `datasetHash` by default, and both exact-answer and UI smoke fail
 when that hash does not match the runtime `dataset_meta.json`; use `--allow-unpinned-cases` only for
 local debugging. CI also runs `ops:validate-answer-cases`, which checks committed reviewed case
@@ -539,7 +542,7 @@ release. CI, nightly, and publish use `--start-preview` after build to verify th
 routes; ingest dry-run uses the standalone probes against the dry-run dataset root.
 
 To refresh reviewed golden cases from a merged QA review CSV:
-`npm run ops:write-answer-cases -- --input .tmp/xinyi-review.merged.csv --dataset-dir public/data/generated/xinyi --out configs/prod/xinyi.answer-cases.json`
+`npm run ops:write-answer-cases -- --input .tmp/<districtId>-review.merged.csv --dataset-dir public/data/generated/<districtId> --out configs/prod/<districtId>.answer-cases.json`
 
 ## Multi-district Ops
 

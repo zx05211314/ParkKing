@@ -248,10 +248,20 @@ const isEvidenceKind = (value: string): value is ParkingAnswerEvidenceKind =>
   value === 'INFERRED' ||
   value === 'NO_DATA'
 
-const isFinalConfidence = (
-  value: string,
-): value is EvaluatedSegment['finalConfidence'] =>
-  value === 'HIGH' || value === 'MEDIUM' || value === 'LOW'
+const parseFinalConfidence = (
+  value: string | null,
+): EvaluatedSegment['finalConfidence'] | null => {
+  if (value === null) {
+    return null
+  }
+  if (value === 'MEDIUM') {
+    return 'MED'
+  }
+  if (value === 'HIGH' || value === 'MED' || value === 'LOW') {
+    return value
+  }
+  return null
+}
 
 const parseCase = (
   rawCase: unknown,
@@ -263,7 +273,8 @@ const parseCase = (
   const lat = getNumber(record, 'lat')
   const expectedKind = getString(record, 'expectedKind')
   const expectedEvidenceKind = getString(record, 'expectedEvidenceKind')
-  const expectedFinalConfidence = getString(record, 'expectedFinalConfidence')
+  const rawExpectedFinalConfidence = getString(record, 'expectedFinalConfidence')
+  const expectedFinalConfidence = parseFinalConfidence(rawExpectedFinalConfidence)
 
   if (!id) {
     throw new Error(`answer case ${index + 1}: id is required`)
@@ -281,9 +292,9 @@ const parseCase = (
       `answer case ${id}: expectedEvidenceKind must be MARKED_SPACE, CURB_RULE, INFERRED, or NO_DATA`,
     )
   }
-  if (expectedFinalConfidence && !isFinalConfidence(expectedFinalConfidence)) {
+  if (rawExpectedFinalConfidence && !expectedFinalConfidence) {
     throw new Error(
-      `answer case ${id}: expectedFinalConfidence must be HIGH, MEDIUM, or LOW`,
+      `answer case ${id}: expectedFinalConfidence must be HIGH, MED, MEDIUM, or LOW`,
     )
   }
 
