@@ -383,11 +383,11 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   `npm run build`
   `npm run ops:p1-release-readiness`
   This fails on Xinyi P0 readiness, production bundle budget, API service probes, parking-answer API smoke, reviewed UI answer smoke, MAP-mode reviewed-answer smoke, or MAP-mode UI regressions. It also reports Daan/Zhongshan district blockers without failing the current-product gate unless `--strict-matrix` is supplied.
-  CI runs this gate after the production build and before fixture ingest; the production publish workflow also runs it automatically when `configsGlob` is `configs/prod/*.json`.
+  The production publish workflow runs this automatically when `configsGlob` is `configs/prod/*.json`.
 - P1 release data package:
   `npm run ops:package-release:xinyi`
   `npm run ops:validate-release-package:xinyi`
-  This writes a Xinyi-scoped `dist/releases/park-king-data_<releaseId>.zip` and `dist/releases/release_manifest_<releaseId>.json`, then prints the exact zip path, manifest path, included district, file count, and total bytes for handoff. The scoped archive also rewrites the packaged `registry.json` to list only the selected district. The validator reads the latest zip/manifest pair, verifies file list, bytes, sha256, packaged registry districts, and rejects any non-Xinyi district file; pass `--out .tmp/p1-release-package.md --json-out .tmp/p1-release-package.json` when a workflow needs durable validation artifacts. CI keeps this Xinyi-scoped package as the current-product P1 artifact.
+  This writes a Xinyi-scoped `dist/releases/park-king-data_<releaseId>.zip` and `dist/releases/release_manifest_<releaseId>.json`, then prints the exact zip path, manifest path, included district, file count, and total bytes for handoff. The scoped archive also rewrites the packaged `registry.json` to list only the selected district. The validator reads the latest zip/manifest pair, verifies file list, bytes, sha256, packaged registry districts, and rejects any non-Xinyi district file; pass `--out .tmp/p1-release-package.md --json-out .tmp/p1-release-package.json` when a workflow needs durable validation artifacts. CI uses `npm run ops:ci-optional-p1-release`, which runs the same P1 package gate only when generated release packs already exist in the checkout; clean CI checkouts skip it and rely on fixture ingest smoke plus the publish workflow for product release gates.
 - P2 expansion readiness gate for the next districts:
   `npm run ops:p2-expansion-readiness -- --expansion-district daan,zhongshan --out .tmp/p2-expansion-readiness.md --json-out .tmp/p2-expansion-readiness.json`
   This keeps Xinyi tied to P1 readiness while classifying Daan/Zhongshan as either automation-blocked, human-review-required, or ready-to-finalize. It does not treat pending human review as a code failure, and it must not be used to auto-approve review evidence. Use `npm run ops:p2-expansion-readiness:report -- --expansion-district daan,zhongshan` to refresh the markdown/JSON artifacts, and use `npm run ops:p2-expansion-readiness:strict -- --expansion-district daan,zhongshan` when a milestone must fail until expansion districts are ready to finalize.
@@ -410,7 +410,7 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   These shortcuts scan `.tmp`, Desktop, and Downloads for returned Daan/Zhongshan reviewer CSVs, validate ready files, and only finalize when the P0 review evidence already passes. They use `--actionable-only` so source CSVs are not reported as reviewer candidates. The `:execute` script is the only shortcut here that runs finalize.
 - P3 reviewed release readiness for all reviewed/published districts:
   `npm run ops:p3-release-readiness`
-  This discovers reviewed districts from `configs/prod/*.answer-cases.json`, runs the strict district readiness matrix, runs reviewed generated-pack smoke with reviewed cases required for each reviewed district, probes the HTTP parking-answer API for each reviewed district, writes a district-scoped release package, and validates that package against the expected district set. The current reviewed release set is Xinyi, Daan, and Zhongshan. Use `npm run ops:package-release:reviewed` and `npm run ops:validate-release-package:reviewed` when you only need the reviewed release archive and validation report.
+  This discovers reviewed districts from `configs/prod/*.answer-cases.json`, runs the strict district readiness matrix, runs reviewed generated-pack smoke with reviewed cases required for each reviewed district, probes the registry-scoped HTTP parking-answer API path for reviewed packs, writes a district-scoped release package, and validates that package against the expected district set. The current reviewed release set is Xinyi, Daan, and Zhongshan. Use `npm run ops:package-release:reviewed` and `npm run ops:validate-release-package:reviewed` when you only need the reviewed release archive and validation report.
 - Registry-scoped UI smoke check for reviewed generated packs:
   `npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --require-reviewed-cases xinyi,daan,zhongshan --timeout-ms 25000`
   Add `--view MAP --limit 1` when you want the same reviewed-pack discovery path to exercise map/list mode instead of list mode:
@@ -580,6 +580,12 @@ Each source item tracks the download URL, destination path, checksum, and option
 Run:
 - `npm run ops:fetch-sources -- --manifest ops/sources.prod.example.json`
 - `npm run ops:fetch-sources -- --manifest ops/sources.prod.example.json --dryRun` (preview only)
+- `npm run ops:fetch-sources -- --manifest configs/sources.prod.taipei.json`
+- `npm run ops:unpack-sources -- --sourceDir data/sources/shared`
+
+The publish workflow runs the Taipei source fetch/unpack steps automatically when
+`configsGlob` starts with `configs/prod/` so hosted runners do not depend on
+ignored local `data/sources` files.
 
 `ops:fetch-sources` writes per-district provenance to:
 - `data/sources/<districtId>/provenance.json`

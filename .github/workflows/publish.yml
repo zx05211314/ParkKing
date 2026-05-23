@@ -28,6 +28,12 @@ jobs:
           cache: 'npm'
       - name: Install
         run: npm ci
+      - name: Fetch production sources
+        if: ${{ startsWith(inputs.configsGlob, 'configs/prod/') }}
+        run: npm run ops:fetch-sources -- --manifest configs/sources.prod.taipei.json
+      - name: Unpack production sources
+        if: ${{ startsWith(inputs.configsGlob, 'configs/prod/') }}
+        run: npm run ops:unpack-sources -- --sourceDir data/sources/shared
       - name: Preflight sign overrides
         run: npm run ops:preflight-sign-overrides:batch -- --configs "${{ inputs.configsGlob }}" --out-dir .tmp/sign-override-preflight
       - name: Ingest and publish

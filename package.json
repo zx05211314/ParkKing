@@ -50,6 +50,7 @@
     "ops:smoke-ui-map:preview": "tsx scripts/ops/smokeUiMapView.ts --start-preview",
     "ops:smoke-reviewed-ui-packs": "tsx scripts/ops/smokeReviewedUiPacks.ts",
     "ops:bundle-budget": "tsx scripts/ops/bundleBudget.ts",
+    "ops:ci-optional-p1-release": "tsx scripts/ops/ciOptionalP1Release.ts",
     "ops:query-parking-answer": "tsx scripts/ops/queryParkingAnswer.ts",
     "ops:validate-answer-cases": "tsx scripts/ops/validateAnswerCases.ts",
     "ops:write-answer-cases": "tsx scripts/ops/writeAnswerCases.ts",

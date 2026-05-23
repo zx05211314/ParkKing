@@ -24,12 +24,8 @@ jobs:
         run: npm run lint -- --max-warnings=0
       - name: Build
         run: npm run build
-      - name: P1 release readiness
-        run: npm run ops:p1-release-readiness
-      - name: Package P1 release
-        run: npm run ops:package-release:xinyi
-      - name: Validate P1 release package
-        run: npm run ops:validate-release-package:xinyi -- --out .tmp/p1-release-package.md --json-out .tmp/p1-release-package.json
+      - name: Optional P1 release package
+        run: npm run ops:ci-optional-p1-release
       - name: Summarize P1 release package
         run: npm run ops:append-workflow-summary -- --append-file .tmp/p1-release-package.md
       - name: Upload P1 release package
