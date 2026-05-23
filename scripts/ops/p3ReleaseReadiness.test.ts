@@ -146,6 +146,7 @@ describe('p3ReleaseReadiness', () => {
     expect(result.blockers).toEqual([])
     expect(runners.runSmokeGeneratedPacks).toHaveBeenCalledWith(
       expect.objectContaining({
+        answerCasesDir: 'configs/prod',
         useReviewedCases: true,
         requiredReviewedCaseDistricts: ['xinyi', 'daan', 'zhongshan'],
       }),

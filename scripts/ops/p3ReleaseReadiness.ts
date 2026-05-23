@@ -227,6 +227,7 @@ export const runP3ReleaseReadiness = async (
   runners: P3ReleaseReadinessRunners = defaultRunners,
 ): Promise<P3ReleaseReadinessResult> => {
   const inputs = await resolveP3ReleaseReadinessInputs(options)
+  const answerCasesDir = path.dirname(inputs.answerCasesGlob)
   const districtMatrix = await runCheck(
     'District readiness matrix',
     () =>
@@ -243,6 +244,7 @@ export const runP3ReleaseReadiness = async (
       runners.runSmokeGeneratedPacks({
         root: inputs.root,
         registryPath: inputs.registryPath,
+        answerCasesDir,
         useReviewedCases: true,
         requiredReviewedCaseDistricts: inputs.districtIds,
       }),
@@ -252,7 +254,6 @@ export const runP3ReleaseReadiness = async (
     'Parking answer APIs',
     async () => {
       const summaries: SmokeParkingAnswerServiceSummary[] = []
-      const answerCasesDir = path.dirname(inputs.answerCasesGlob)
       for (const districtId of inputs.districtIds) {
         summaries.push(
           await runners.runSmokeParkingAnswerService({
