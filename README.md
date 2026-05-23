@@ -362,6 +362,9 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   `npm run ops:smoke-parking-answer-api -- --district xinyi --timeout-ms 25000`
 - HTTP parking-answer API smoke check against generated sample points, useful for CI fixture packs without reviewed cases:
   `npm run ops:smoke-parking-answer-api -- --district xinyi --no-cases --timeout-ms 25000 --minParkAnswers 1 --minNoStopAnswers 1 --minMarkedSpaceParkAnswers 1`
+- Registry/report-scoped HTTP parking-answer API smoke check for every generated district pack:
+  `npm run ops:smoke-parking-answer-apis -- --root public/data/generated --registry public/data/generated/registry.json --fixture-thresholds --timeout-ms 25000`
+  `npm run ops:smoke-parking-answer-apis -- --root data/generated --report data/generated/ingest_all_report_dry.json --fixture-thresholds --timeout-ms 25000`
 - Same-origin service health/readiness smoke check for geocode, route, sync, and parking-answer services:
   `npm run ops:smoke-api-services -- --timeout-ms 25000`
 - Vite-preview-mounted service health/readiness smoke check after `npm run build`:
@@ -436,6 +439,9 @@ dataset hash. With `--no-cases` it derives sample query points from the generate
 verifies the service returns the same answer through HTTP; CI uses this mode after fixture ingest so
 the API path is covered without depending on local review artifacts. Use `--skip-health-check` only
 when debugging a custom endpoint that intentionally does not expose the ParkKing probe routes.
+Use `ops:smoke-parking-answer-apis` for registry/report-scoped multi-district API smoke; it reuses
+the same reviewed-case and fixture-threshold semantics as generated-pack smoke, but verifies the
+HTTP service path for each discovered generated pack instead of only one district.
 When `<root>/registry.json` exists and no `--registry` / `--report` is provided, the wrapper uses
 that registry by default because it matches runtime loading and ignores stale unpublished district
 directories. Use `--all-dirs` when you intentionally want to scan every generated directory under

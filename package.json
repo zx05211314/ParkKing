@@ -41,6 +41,7 @@
     "ops:smoke-exact-parking-answers": "tsx scripts/ops/smokeExactParkingAnswers.ts",
     "ops:smoke-api-services": "tsx scripts/ops/smokeApiServices.ts",
     "ops:smoke-parking-answer-api": "tsx scripts/ops/smokeParkingAnswerService.ts",
+    "ops:smoke-parking-answer-apis": "tsx scripts/ops/smokeParkingAnswerServices.ts",
     "ops:smoke-ui-parking-answers": "tsx scripts/ops/smokeUiParkingAnswers.ts",
     "ops:smoke-ui-parking-answers:preview": "tsx scripts/ops/smokeUiParkingAnswers.ts --start-preview",
     "ops:smoke-ui-parking-answers-map": "tsx scripts/ops/smokeUiParkingAnswers.ts --view MAP",

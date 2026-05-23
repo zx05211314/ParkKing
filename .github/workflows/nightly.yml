@@ -48,7 +48,7 @@ jobs:
       - name: Smoke parking answers
         run: npm run ops:smoke-generated-packs -- --root public/data/generated --registry public/data/generated/registry.json --fixture-thresholds
       - name: Smoke parking answer API
-        run: npm run ops:smoke-parking-answer-api -- --district xinyi --no-cases --timeout-ms 25000 --minParkAnswers 1 --minNoStopAnswers 1 --minMarkedSpaceParkAnswers 1
+        run: npm run ops:smoke-parking-answer-apis -- --root public/data/generated --registry public/data/generated/registry.json --fixture-thresholds --timeout-ms 25000
       - name: Smoke API service probes
         run: npm run ops:smoke-api-services -- --start-preview --timeout-ms 25000
       - name: Inventory generated packs

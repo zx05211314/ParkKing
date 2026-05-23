@@ -32,7 +32,7 @@ jobs:
       - name: Smoke parking answers
         run: npm run ops:smoke-generated-packs -- --root data/generated --report data/generated/ingest_all_report_dry.json --fixture-thresholds
       - name: Smoke parking answer API
-        run: npm run ops:smoke-parking-answer-api -- --district xinyi --dataset-dir data/generated/xinyi --no-cases --timeout-ms 25000 --minParkAnswers 1 --minNoStopAnswers 1 --minMarkedSpaceParkAnswers 1
+        run: npm run ops:smoke-parking-answer-apis -- --root data/generated --report data/generated/ingest_all_report_dry.json --fixture-thresholds --timeout-ms 25000
       - name: Smoke API service probes
         env:
           PARKKING_PARKING_ANSWER_DATASET_ROOT: data/generated

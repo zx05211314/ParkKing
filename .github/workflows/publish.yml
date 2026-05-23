@@ -45,7 +45,7 @@ jobs:
       - name: Smoke parking answers
         run: npm run ops:smoke-generated-packs -- --root public/data/generated --registry public/data/generated/registry.json --use-reviewed-cases --require-reviewed-cases xinyi,daan,zhongshan
       - name: Smoke parking answer API
-        run: npm run ops:smoke-parking-answer-api -- --district xinyi --timeout-ms 25000
+        run: npm run ops:smoke-parking-answer-apis -- --root public/data/generated --registry public/data/generated/registry.json --use-reviewed-cases --require-reviewed-cases xinyi,daan,zhongshan --timeout-ms 25000
       - name: Inventory generated packs
         run: npm run ops:generated-pack-inventory -- --root public/data/generated
       - name: Build production UI
