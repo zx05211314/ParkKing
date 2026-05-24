@@ -56,6 +56,8 @@ jobs:
         run: npm run ops:generated-pack-inventory -- --root public/data/generated
       - name: Build production UI
         run: npm run build
+      - name: Bundle budget
+        run: npm run ops:bundle-budget
       - name: Smoke API service probes
         run: npm run ops:smoke-api-services -- --start-preview --timeout-ms 25000 --sync-issue-roundtrip
       - name: Smoke reviewed UI answers

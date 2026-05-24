@@ -32,6 +32,8 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      - name: Bundle budget
+        run: npm run ops:bundle-budget
       - name: Validate reviewed answer cases
         run: npm run ops:validate-answer-cases
       - name: Preflight sign overrides

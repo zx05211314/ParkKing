@@ -24,6 +24,8 @@ jobs:
         run: npm run lint -- --max-warnings=0
       - name: Build
         run: npm run build
+      - name: Bundle budget
+        run: npm run ops:bundle-budget
       - name: Optional P1 release package
         run: npm run ops:ci-optional-p1-release
       - name: Summarize P1 release package
