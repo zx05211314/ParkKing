@@ -8,6 +8,11 @@ import {
   type ReportSyncConfig,
   type RetryReportsSyncResult,
 } from '../feedback/reports'
+import {
+  retryIssueReportsSync,
+  type IssueReportSyncConfig,
+  type RetryIssueReportsSyncResult,
+} from '../feedback/issueReports'
 import { type SyncRuntimeResource } from '../api/syncRuntimeStatus'
 import type {
   SavedPlan,
@@ -27,13 +32,16 @@ interface RetrySyncResourcesOptions {
   savedPlans: SavedPlan[]
   savedPlansConfig: SavedPlansPersistenceConfig
   reportsConfig: ReportSyncConfig
+  issueReportsConfig: IssueReportSyncConfig
   saveSavedPlansFn?: typeof saveSavedPlans
   retryReportsSyncFn?: typeof retryReportsSync
+  retryIssueReportsSyncFn?: typeof retryIssueReportsSync
 }
 
 export interface RetrySyncResourcesResult {
   savedPlansResult: SaveSavedPlansResult | null
   reportRetryResult: RetryReportsSyncResult | null
+  issueReportRetryResult: RetryIssueReportsSyncResult | null
 }
 
 interface ApplyRetrySavedPlansResultOptions {
@@ -49,8 +57,10 @@ export const retrySyncResources = async ({
   savedPlans,
   savedPlansConfig,
   reportsConfig,
+  issueReportsConfig,
   saveSavedPlansFn = saveSavedPlans,
   retryReportsSyncFn = retryReportsSync,
+  retryIssueReportsSyncFn = retryIssueReportsSync,
 }: RetrySyncResourcesOptions): Promise<RetrySyncResourcesResult> => {
   const savedPlansResult =
     savedPlansConfig.endpoint && activeResources.includes('savedPlans')
@@ -66,9 +76,17 @@ export const retrySyncResources = async ({
         })
       : null
 
+  const issueReportRetryResult =
+    issueReportsConfig.endpoint && activeResources.includes('issueReports')
+      ? await retryIssueReportsSyncFn({
+          config: issueReportsConfig,
+        })
+      : null
+
   return {
     savedPlansResult,
     reportRetryResult,
+    issueReportRetryResult,
   }
 }
 
@@ -93,12 +111,14 @@ export const buildRetrySyncResultStatus = ({
   activeResources,
   savedPlansResult,
   reportRetryResult,
+  issueReportRetryResult,
 }: RetrySyncResourcesResult & {
   activeResources: SyncRuntimeResource[]
 }): TripBoardActionStatus => {
   if (
     (savedPlansResult === null || savedPlansResult.remoteSynced) &&
-    (reportRetryResult === null || reportRetryResult.remoteSynced)
+    (reportRetryResult === null || reportRetryResult.remoteSynced) &&
+    (issueReportRetryResult === null || issueReportRetryResult.remoteSynced)
   ) {
     return buildRetrySyncSuccessStatus(activeResources)
   }
@@ -106,5 +126,8 @@ export const buildRetrySyncResultStatus = ({
   return buildRetrySyncOutcomeStatus({
     ...(savedPlansResult ? { savedPlans: savedPlansResult.remoteSynced } : {}),
     ...(reportRetryResult ? { reports: reportRetryResult.remoteSynced } : {}),
+    ...(issueReportRetryResult
+      ? { issueReports: issueReportRetryResult.remoteSynced }
+      : {}),
   })
 }

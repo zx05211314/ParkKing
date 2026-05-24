@@ -1,8 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  getSyncRuntimeStatusSnapshot,
+  resetSyncRuntimeStatusForTests,
+} from '../api/syncRuntimeStatus'
+import {
   appendIssueReport,
   ISSUE_REPORTS_STORAGE_KEY,
   readIssueReports,
+  retryIssueReportsSync,
   resolveIssueReportSyncConfig,
 } from './issueReports'
 
@@ -45,9 +50,11 @@ describe('issueReports persistence', () => {
       localStorage: storage,
     }
     storage.clear()
+    resetSyncRuntimeStatusForTests()
   })
 
   afterEach(() => {
+    resetSyncRuntimeStatusForTests()
     vi.restoreAllMocks()
     const globalRef = globalThis as Record<string, unknown>
     if ('window' in globalRef) {
@@ -147,6 +154,113 @@ describe('issueReports persistence', () => {
     expect(result.mode).toBe('fallback-local')
     expect(result.failureReason).toBe('offline')
     expect(readIssueReports()).toEqual([result.issue])
+    expect(getSyncRuntimeStatusSnapshot().issueReports).toEqual(
+      expect.objectContaining({
+        mode: 'fallback-local',
+        pendingCount: 1,
+        lastFailureReason: 'offline',
+      }),
+    )
+  })
+
+  it('retries locally stored issue reports against the remote endpoint', async () => {
+    await appendIssueReport(
+      {
+        districtId: 'xinyi',
+        segmentId: 'seg-3',
+        summary: 'Retry issue report',
+        bundle: { debug: true },
+        createdAt: '2026-04-02T11:00:00.000Z',
+        issueId: 'issue-d',
+      },
+      {
+        config: { endpoint: null },
+      },
+    )
+    const fetchImpl = vi.fn<typeof fetch>(async (...args) => {
+      void args
+      return createJsonResponse({ ok: true }, 201)
+    })
+
+    await expect(
+      retryIssueReportsSync({
+        config: { endpoint: 'https://api.parkking.test/issues' },
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      }),
+    ).resolves.toEqual({
+      attemptedCount: 1,
+      syncedCount: 1,
+      remoteSynced: true,
+    })
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(fetchImpl.mock.calls[0]?.[0]).toContain('https://api.parkking.test/issues')
+    expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toEqual({
+      issue: expect.objectContaining({
+        issueId: 'issue-d',
+      }),
+    })
+    expect(getSyncRuntimeStatusSnapshot().issueReports).toEqual(
+      expect.objectContaining({
+        mode: 'remote',
+        pendingCount: 0,
+        lastRemoteCount: 1,
+        lastPushCount: 1,
+      }),
+    )
+  })
+
+  it('keeps unsent issue reports pending when retry fails mid-batch', async () => {
+    await appendIssueReport(
+      {
+        districtId: 'xinyi',
+        segmentId: 'seg-4',
+        summary: 'Retry issue report A',
+        bundle: { debug: true },
+        createdAt: '2026-04-02T12:00:00.000Z',
+        issueId: 'issue-e',
+      },
+      {
+        config: { endpoint: null },
+      },
+    )
+    await appendIssueReport(
+      {
+        districtId: 'xinyi',
+        segmentId: 'seg-5',
+        summary: 'Retry issue report B',
+        bundle: { debug: true },
+        createdAt: '2026-04-02T12:01:00.000Z',
+        issueId: 'issue-f',
+      },
+      {
+        config: { endpoint: null },
+      },
+    )
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(createJsonResponse({ ok: true }, 201))
+      .mockRejectedValueOnce(new Error('offline again'))
+
+    await expect(
+      retryIssueReportsSync({
+        config: { endpoint: 'https://api.parkking.test/issues' },
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      }),
+    ).resolves.toEqual({
+      attemptedCount: 2,
+      syncedCount: 1,
+      remoteSynced: false,
+    })
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    expect(getSyncRuntimeStatusSnapshot().issueReports).toEqual(
+      expect.objectContaining({
+        mode: 'fallback-local',
+        pendingCount: 1,
+        lastFailureReason: 'offline again',
+      }),
+    )
   })
 
   it('resolves scoped issue endpoints from sync base url', () => {

@@ -14,9 +14,14 @@ describe('syncActionMessages', () => {
   })
 
   it('builds retry success status for multiple resources', () => {
-    expect(buildRetrySyncSuccessStatus(['savedPlans', 'reports'])).toEqual({
+    expect(buildRetrySyncSuccessStatus([
+      'savedPlans',
+      'reports',
+      'issueReports',
+    ])).toEqual({
       kind: 'success',
-      message: 'Retried sync. saved plans and reports are confirmed remotely.',
+      message:
+        'Retried sync. saved plans, reports, and issue reports are confirmed remotely.',
     })
   })
 
@@ -25,11 +30,12 @@ describe('syncActionMessages', () => {
       buildRetrySyncOutcomeStatus({
         savedPlans: true,
         reports: false,
+        issueReports: true,
       }),
     ).toEqual({
       kind: 'error',
       message:
-        'Retried sync. saved plans synced; reports still using local fallback.',
+        'Retried sync. saved plans synced; reports still using local fallback; issue reports synced.',
     })
   })
 })

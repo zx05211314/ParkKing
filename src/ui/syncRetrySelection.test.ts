@@ -64,8 +64,12 @@ describe('syncRetrySelection', () => {
   it('lists pending retry resources', () => {
     const snapshot = createRuntimeSnapshot()
     snapshot.savedPlans.pendingCount = 2
+    snapshot.issueReports.pendingCount = 1
 
-    expect(listPendingRetryResources(snapshot)).toEqual(['savedPlans'])
+    expect(listPendingRetryResources(snapshot)).toEqual([
+      'savedPlans',
+      'issueReports',
+    ])
   })
 
   it('lists only due retry resources', () => {
@@ -82,11 +86,12 @@ describe('syncRetrySelection', () => {
     const snapshot = createRuntimeSnapshot()
     snapshot.savedPlans.pendingCount = 2
     snapshot.reports.pendingCount = 1
+    snapshot.issueReports.pendingCount = 1
 
     expect(
       resolveRetrySyncResources({
         runtimeSnapshot: snapshot,
-        requestedResources: ['savedPlans', 'reports'],
+        requestedResources: ['savedPlans', 'reports', 'issueReports'],
         retryingResources: {
           savedPlans: false,
           reports: true,
@@ -95,9 +100,9 @@ describe('syncRetrySelection', () => {
         endpointEnabled: {
           savedPlans: true,
           reports: true,
-          issueReports: false,
+          issueReports: true,
         },
       }),
-    ).toEqual(['savedPlans'])
+    ).toEqual(['savedPlans', 'issueReports'])
   })
 })

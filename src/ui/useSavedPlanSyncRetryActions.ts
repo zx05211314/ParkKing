@@ -6,6 +6,7 @@ import {
 } from '../api/syncRuntimeStatus'
 import { resolveSavedPlansPersistenceConfig } from '../api/savedPlansPersistence'
 import { resolveReportSyncConfig } from '../feedback/reports'
+import { resolveIssueReportSyncConfig } from '../feedback/issueReports'
 import type { SavedPlanConflictDetail, SavedPlan } from './savedPlanTypes'
 import {
   applyRetrySavedPlansResult,
@@ -57,6 +58,7 @@ export const useSavedPlanSyncRetryActions = ({
       const runtimeSnapshot = getSyncRuntimeStatusSnapshot()
       const savedPlansConfig = resolveSavedPlansPersistenceConfig()
       const reportsConfig = resolveReportSyncConfig()
+      const issueReportsConfig = resolveIssueReportSyncConfig()
       const activeResources = resolveRetrySyncResources({
         runtimeSnapshot,
         requestedResources: resources,
@@ -64,6 +66,7 @@ export const useSavedPlanSyncRetryActions = ({
         endpointEnabled: {
           savedPlans: Boolean(savedPlansConfig.endpoint),
           reports: Boolean(reportsConfig.endpoint),
+          issueReports: Boolean(issueReportsConfig.endpoint),
         },
       })
 
@@ -81,11 +84,16 @@ export const useSavedPlanSyncRetryActions = ({
           })
         },
         action: async () => {
-          const { savedPlansResult, reportRetryResult } = await retrySyncResources({
+          const {
+            savedPlansResult,
+            reportRetryResult,
+            issueReportRetryResult,
+          } = await retrySyncResources({
             activeResources,
             savedPlans,
             savedPlansConfig,
             reportsConfig,
+            issueReportsConfig,
           })
 
           if (savedPlansResult) {
@@ -106,6 +114,7 @@ export const useSavedPlanSyncRetryActions = ({
             activeResources,
             savedPlansResult,
             reportRetryResult,
+            issueReportRetryResult,
           })
         },
       })

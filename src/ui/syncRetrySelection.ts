@@ -45,7 +45,7 @@ export const resolveRetrySyncResources = ({
     requestedResources ?? listDueRetryResources(runtimeSnapshot, nowMs),
   )
 
-  return (['savedPlans', 'reports'] as SyncRuntimeResource[]).filter(
+  return (['savedPlans', 'reports', 'issueReports'] as SyncRuntimeResource[]).filter(
     (resource) =>
       requestedResourceSet.has(resource) &&
       !retryingResources[resource] &&

@@ -32,6 +32,11 @@ describe('syncRetryExecution', () => {
       syncedCount: 1,
       remoteSynced: true,
     })
+    const retryIssueReportsSyncFn = vi.fn().mockResolvedValue({
+      attemptedCount: 1,
+      syncedCount: 1,
+      remoteSynced: true,
+    })
 
     await expect(
       retrySyncResources({
@@ -39,8 +44,10 @@ describe('syncRetryExecution', () => {
         savedPlans: [savedPlan],
         savedPlansConfig: { endpoint: '/saved-plans' },
         reportsConfig: { endpoint: '/reports' },
+        issueReportsConfig: { endpoint: '/issues' },
         saveSavedPlansFn,
         retryReportsSyncFn,
+        retryIssueReportsSyncFn,
       }),
     ).resolves.toEqual({
       savedPlansResult: {
@@ -50,6 +57,46 @@ describe('syncRetryExecution', () => {
         remoteSynced: true,
       },
       reportRetryResult: null,
+      issueReportRetryResult: null,
+    })
+    expect(retryReportsSyncFn).not.toHaveBeenCalled()
+    expect(retryIssueReportsSyncFn).not.toHaveBeenCalled()
+  })
+
+  it('retries issue reports when they are active and the endpoint is enabled', async () => {
+    const savedPlan = createSavedPlan()
+    const saveSavedPlansFn = vi.fn()
+    const retryReportsSyncFn = vi.fn()
+    const retryIssueReportsSyncFn = vi.fn().mockResolvedValue({
+      attemptedCount: 2,
+      syncedCount: 2,
+      remoteSynced: true,
+    })
+
+    await expect(
+      retrySyncResources({
+        activeResources: ['issueReports'],
+        savedPlans: [savedPlan],
+        savedPlansConfig: { endpoint: '/saved-plans' },
+        reportsConfig: { endpoint: '/reports' },
+        issueReportsConfig: { endpoint: '/issues' },
+        saveSavedPlansFn,
+        retryReportsSyncFn,
+        retryIssueReportsSyncFn,
+      }),
+    ).resolves.toEqual({
+      savedPlansResult: null,
+      reportRetryResult: null,
+      issueReportRetryResult: {
+        attemptedCount: 2,
+        syncedCount: 2,
+        remoteSynced: true,
+      },
+    })
+    expect(saveSavedPlansFn).not.toHaveBeenCalled()
+    expect(retryReportsSyncFn).not.toHaveBeenCalled()
+    expect(retryIssueReportsSyncFn).toHaveBeenCalledWith({
+      config: { endpoint: '/issues' },
     })
   })
 
@@ -111,6 +158,7 @@ describe('syncRetryExecution', () => {
           syncedCount: 1,
           remoteSynced: true,
         },
+        issueReportRetryResult: null,
       }),
     ).toEqual({
       kind: 'success',
@@ -135,11 +183,30 @@ describe('syncRetryExecution', () => {
           syncedCount: 1,
           remoteSynced: true,
         },
+        issueReportRetryResult: null,
       }),
     ).toEqual({
       kind: 'error',
       message:
         'Retried sync. saved plans still using local fallback; reports synced.',
+    })
+  })
+
+  it('includes issue report retry outcomes in the retry status', () => {
+    expect(
+      buildRetrySyncResultStatus({
+        activeResources: ['issueReports'],
+        savedPlansResult: null,
+        reportRetryResult: null,
+        issueReportRetryResult: {
+          attemptedCount: 1,
+          syncedCount: 0,
+          remoteSynced: false,
+        },
+      }),
+    ).toEqual({
+      kind: 'error',
+      message: 'Retried sync. issue reports still using local fallback.',
     })
   })
 })
