@@ -19,6 +19,8 @@ describe('resolveSyncServiceConfig', () => {
       maxBodyBytes: 1048576,
       maxIssueReports: 1000,
       corsOrigins: ['*'],
+      writeRateLimitWindowMs: 60000,
+      writeRateLimitMax: 120,
     })
   })
 
@@ -29,6 +31,8 @@ describe('resolveSyncServiceConfig', () => {
         PARKKING_SYNC_MAX_ISSUE_REPORTS: '25',
         PARKKING_SYNC_CORS_ORIGINS:
           'https://parkking.example, https://ops.parkking.example',
+        PARKKING_SYNC_WRITE_RATE_LIMIT_WINDOW_MS: '5000',
+        PARKKING_SYNC_WRITE_RATE_LIMIT_MAX: '9',
       },
       'C:/tmp/parkking',
     )
@@ -39,6 +43,8 @@ describe('resolveSyncServiceConfig', () => {
       'https://parkking.example',
       'https://ops.parkking.example',
     ])
+    expect(config.writeRateLimitWindowMs).toBe(5000)
+    expect(config.writeRateLimitMax).toBe(9)
   })
 })
 

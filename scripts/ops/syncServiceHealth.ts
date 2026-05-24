@@ -6,6 +6,8 @@ import {
   DEFAULT_SYNC_CORS_ORIGINS,
   DEFAULT_SYNC_MAX_BODY_BYTES,
   DEFAULT_SYNC_MAX_ISSUE_REPORTS,
+  DEFAULT_SYNC_WRITE_RATE_LIMIT_MAX,
+  DEFAULT_SYNC_WRITE_RATE_LIMIT_WINDOW_MS,
 } from './syncServiceConfig'
 
 export interface SyncServiceHealthResponse {
@@ -25,6 +27,8 @@ export interface SyncServiceHealthResponse {
   maxBodyBytes: number | null
   maxIssueReports: number | null
   corsOrigins: string[] | null
+  writeRateLimitWindowMs: number | null
+  writeRateLimitMax: number | null
   issues: string[]
   snapshot?: SyncStatusSnapshot
 }
@@ -66,6 +70,19 @@ export const buildSyncServiceReadinessIssues = (
   ) {
     issues.push('cors origins must not be empty')
   }
+  if (
+    config.writeRateLimitWindowMs !== undefined &&
+    (!Number.isFinite(config.writeRateLimitWindowMs) ||
+      config.writeRateLimitWindowMs <= 0)
+  ) {
+    issues.push('write rate limit window must be positive')
+  }
+  if (
+    config.writeRateLimitMax !== undefined &&
+    (!Number.isFinite(config.writeRateLimitMax) || config.writeRateLimitMax <= 0)
+  ) {
+    issues.push('write rate limit max must be positive')
+  }
   return issues
 }
 
@@ -94,6 +111,12 @@ export const buildSyncServiceHealth = (
     ? config.maxIssueReports ?? DEFAULT_SYNC_MAX_ISSUE_REPORTS
     : null,
   corsOrigins: config ? config.corsOrigins ?? DEFAULT_SYNC_CORS_ORIGINS : null,
+  writeRateLimitWindowMs: config
+    ? config.writeRateLimitWindowMs ?? DEFAULT_SYNC_WRITE_RATE_LIMIT_WINDOW_MS
+    : null,
+  writeRateLimitMax: config
+    ? config.writeRateLimitMax ?? DEFAULT_SYNC_WRITE_RATE_LIMIT_MAX
+    : null,
   issues,
   snapshot,
 })

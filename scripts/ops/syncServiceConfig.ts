@@ -8,6 +8,8 @@ export const DEFAULT_SYNC_SCOPE = 'default'
 export const DEFAULT_SYNC_MAX_BODY_BYTES = 1_048_576
 export const DEFAULT_SYNC_MAX_ISSUE_REPORTS = 1_000
 export const DEFAULT_SYNC_CORS_ORIGINS = ['*']
+export const DEFAULT_SYNC_WRITE_RATE_LIMIT_WINDOW_MS = 60_000
+export const DEFAULT_SYNC_WRITE_RATE_LIMIT_MAX = 120
 export const STORE_SCHEMA_VERSION = 1
 
 export const normalizeSyncText = (value?: string | null) => {
@@ -74,5 +76,13 @@ export const resolveSyncServiceConfig = (
   ),
   corsOrigins: normalizeSyncCorsOrigins(
     env.PARKKING_SYNC_CORS_ORIGINS ?? env.PARKKING_SYNC_CORS_ORIGIN,
+  ),
+  writeRateLimitWindowMs: parsePositiveInteger(
+    env.PARKKING_SYNC_WRITE_RATE_LIMIT_WINDOW_MS,
+    DEFAULT_SYNC_WRITE_RATE_LIMIT_WINDOW_MS,
+  ),
+  writeRateLimitMax: parsePositiveInteger(
+    env.PARKKING_SYNC_WRITE_RATE_LIMIT_MAX,
+    DEFAULT_SYNC_WRITE_RATE_LIMIT_MAX,
   ),
 })

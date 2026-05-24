@@ -4,6 +4,8 @@ import {
   DEFAULT_SYNC_PATH,
   DEFAULT_SYNC_SCOPE,
   DEFAULT_SYNC_MAX_BODY_BYTES,
+  DEFAULT_SYNC_WRITE_RATE_LIMIT_MAX,
+  DEFAULT_SYNC_WRITE_RATE_LIMIT_WINDOW_MS,
   normalizeScope,
   normalizeSyncText,
 } from './syncServiceConfig'
@@ -24,7 +26,30 @@ import {
   buildSyncServiceHealth,
   buildSyncServiceReadinessIssues,
 } from './syncServiceHealth'
+import { createSyncServiceWriteRateLimiter } from './syncServiceRateLimit'
 import type { SyncService, SyncServiceConfig } from './syncServiceTypes'
+
+const resolveHeaderText = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? normalizeSyncText(value[0]) : normalizeSyncText(value)
+
+const resolveWriteRateLimitClientId = (req: IncomingMessage) =>
+  resolveHeaderText(req.headers?.['x-forwarded-for'])?.split(',')[0]?.trim() ||
+  resolveHeaderText(req.headers?.['x-real-ip']) ||
+  req.socket?.remoteAddress ||
+  'unknown-client'
+
+const isSyncServiceWriteRequest = (
+  pathname: string,
+  method: string | undefined,
+  paths: {
+    savedPlansPath: string
+    reportsPath: string
+    issuesPath: string
+  },
+) =>
+  (pathname === paths.savedPlansPath && method === 'PUT') ||
+  (pathname === paths.reportsPath && method === 'POST') ||
+  (pathname === paths.issuesPath && method === 'POST')
 
 export const createSyncServiceMiddleware = (
   service: SyncService,
@@ -42,6 +67,14 @@ export const createSyncServiceMiddleware = (
   const issuesPath = `${basePath}/issues`
   const maxBodyBytes = config?.maxBodyBytes ?? DEFAULT_SYNC_MAX_BODY_BYTES
   const corsOrigins = config?.corsOrigins ?? DEFAULT_SYNC_CORS_ORIGINS
+  const writeRateLimitWindowMs =
+    config?.writeRateLimitWindowMs ?? DEFAULT_SYNC_WRITE_RATE_LIMIT_WINDOW_MS
+  const writeRateLimitMax =
+    config?.writeRateLimitMax ?? DEFAULT_SYNC_WRITE_RATE_LIMIT_MAX
+  const writeRateLimiter = createSyncServiceWriteRateLimiter({
+    windowMs: writeRateLimitWindowMs,
+    maxRequests: writeRateLimitMax,
+  })
 
   return async (req: IncomingMessage, res: ServerResponse, next?: () => void) => {
     const url = new URL(req.url ?? '/', 'http://localhost')
@@ -83,6 +116,31 @@ export const createSyncServiceMiddleware = (
       res.statusCode = 204
       res.end()
       return true
+    }
+
+    if (
+      isSyncServiceWriteRequest(url.pathname, req.method, {
+        savedPlansPath,
+        reportsPath,
+        issuesPath,
+      })
+    ) {
+      const rateLimit = writeRateLimiter.check({
+        clientId: resolveWriteRateLimitClientId(req),
+        route: url.pathname,
+        scope,
+      })
+      res.setHeader('X-RateLimit-Limit', String(writeRateLimitMax))
+      res.setHeader('X-RateLimit-Remaining', String(rateLimit.remaining))
+      res.setHeader('X-RateLimit-Reset', String(Math.ceil(rateLimit.resetAtMs / 1000)))
+      if (!rateLimit.allowed) {
+        res.setHeader('Retry-After', String(rateLimit.retryAfterSeconds))
+        writeSyncServiceJson(res, 429, {
+          error: 'Sync service write rate limit exceeded.',
+          retryAfterSeconds: rateLimit.retryAfterSeconds,
+        })
+        return true
+      }
     }
 
     try {

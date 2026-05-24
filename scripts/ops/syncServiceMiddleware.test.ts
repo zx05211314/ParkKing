@@ -69,6 +69,8 @@ const createConfig = (
   maxBodyBytes: 1048576,
   maxIssueReports: 1000,
   corsOrigins: ['*'],
+  writeRateLimitWindowMs: 60000,
+  writeRateLimitMax: 120,
   ...overrides,
 })
 
@@ -246,6 +248,52 @@ describe('createSyncServiceMiddleware', () => {
     expect(res.headers.get('Vary')).toBe('Origin')
   })
 
+  it('rate-limits repeated write requests before writing issue reports', async () => {
+    const service = createMockService()
+    const middleware = createSyncServiceMiddleware(
+      service,
+      '/api/sync',
+      'default',
+      createConfig({
+        writeRateLimitMax: 2,
+        writeRateLimitWindowMs: 60000,
+      }),
+    )
+
+    const postIssue = async () => {
+      const res = createMockResponse()
+
+      async function* body() {
+        yield Buffer.from(JSON.stringify({ issue: { issueId: 'issue-limited' } }))
+      }
+
+      await middleware(
+        {
+          method: 'POST',
+          url: '/api/sync/issues?scope=alpha',
+          headers: {},
+          socket: {
+            remoteAddress: '127.0.0.1',
+          },
+          [Symbol.asyncIterator]: body,
+        } as never,
+        res.response as never,
+      )
+      return res
+    }
+
+    const first = await postIssue()
+    const second = await postIssue()
+    const third = await postIssue()
+
+    expect(first.response.statusCode).toBe(201)
+    expect(second.response.statusCode).toBe(201)
+    expect(third.response.statusCode).toBe(429)
+    expect(third.headers.get('Retry-After')).toBe('60')
+    expect(third.body()).toContain('write rate limit exceeded')
+    expect(service.appendIssueReport).toHaveBeenCalledTimes(2)
+  })
+
   it('serves health without reading a scoped sync store', async () => {
     const service = createMockService()
     const middleware = createSyncServiceMiddleware(
@@ -275,6 +323,8 @@ describe('createSyncServiceMiddleware', () => {
       statusPath: '/api/sync/status',
       maxIssueReports: 1000,
       corsOrigins: ['*'],
+      writeRateLimitWindowMs: 60000,
+      writeRateLimitMax: 120,
     })
     expect(service.getSyncStatus).not.toHaveBeenCalled()
   })

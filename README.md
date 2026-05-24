@@ -77,6 +77,8 @@ PARKKING_SYNC_DEFAULT_SCOPE=default
 PARKKING_SYNC_MAX_BODY_BYTES=1048576
 PARKKING_SYNC_MAX_ISSUE_REPORTS=1000
 PARKKING_SYNC_CORS_ORIGINS=*
+PARKKING_SYNC_WRITE_RATE_LIMIT_WINDOW_MS=60000
+PARKKING_SYNC_WRITE_RATE_LIMIT_MAX=120
 ```
 
 Basemap env vars:
@@ -156,6 +158,8 @@ Sync service env vars:
 - `PARKKING_SYNC_MAX_BODY_BYTES`: max JSON request body accepted by saved-plan, report, and issue-report write endpoints. Defaults to `1048576`; oversized requests return HTTP 413.
 - `PARKKING_SYNC_MAX_ISSUE_REPORTS`: max synced issue reports retained per scope. Defaults to `1000`; older reports are trimmed on new issue-report writes.
 - `PARKKING_SYNC_CORS_ORIGINS`: comma-separated browser origins allowed to call the sync service. Defaults to `*`; set this to your app origin in production.
+- `PARKKING_SYNC_WRITE_RATE_LIMIT_WINDOW_MS`: fixed-window rate-limit duration for saved-plan, report, and issue-report writes. Defaults to `60000`.
+- `PARKKING_SYNC_WRITE_RATE_LIMIT_MAX`: max writes per client, route, and scope within the rate-limit window. Defaults to `120`; excess writes return HTTP 429 with `Retry-After`.
 
 Proxy runtime:
 - `npm run dev` and `npm run preview` already mount the proxy route at `/api/geocode`.

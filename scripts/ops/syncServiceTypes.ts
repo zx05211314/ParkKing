@@ -6,6 +6,8 @@ export interface SyncServiceConfig {
   maxBodyBytes?: number
   maxIssueReports?: number
   corsOrigins?: string[]
+  writeRateLimitWindowMs?: number
+  writeRateLimitMax?: number
 }
 
 export interface SyncServiceBucket {
