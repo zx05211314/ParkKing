@@ -425,9 +425,9 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   `npm run ops:p3-release-readiness`
   This discovers reviewed districts from `configs/prod/*.answer-cases.json`, runs the strict district readiness matrix, runs reviewed generated-pack smoke with reviewed cases required for each reviewed district, probes the registry-scoped HTTP parking-answer API path for reviewed packs, then writes and validates a district-scoped release package only after those prerequisite checks pass. The markdown report prints the release ID, zip path, manifest path, districts, file count, and total bytes for handoff. The current reviewed release set is Xinyi, Daan, and Zhongshan. Use `npm run ops:package-release:reviewed` and `npm run ops:validate-release-package:reviewed` when you only need the reviewed release archive and validation report; those shortcuts discover the same reviewed district set from answer-case files instead of hard-coding district ids.
 - Registry-scoped UI smoke check for reviewed generated packs:
-  `npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --require-reviewed-cases xinyi,daan,zhongshan --timeout-ms 25000`
+  `npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --reviewed --timeout-ms 25000`
   Add `--view MAP --limit 1` when you want the same reviewed-pack discovery path to exercise map/list mode instead of list mode:
-  `npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --require-reviewed-cases xinyi,daan,zhongshan --view MAP --limit 1 --timeout-ms 25000`
+  `npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --reviewed --view MAP --limit 1 --timeout-ms 25000`
 - Static validation for committed reviewed answer-case files:
   `npm run ops:validate-answer-cases`
 - Query one exact coordinate for a parking answer:
@@ -443,8 +443,8 @@ generated-pack smoke wrapper scans `<root>/*/dataset_meta.json`, or the district
 `--registry <root>/registry.json` / `--report <root>/ingest_all_report_dry.json` when provided,
 fails if no generated packs exist, and runs both bulk and exact answer smoke for each discovered
 district. Use
-`--use-reviewed-cases --require-reviewed-cases xinyi,daan,zhongshan` for publish-mode validation so
-reviewed/published districts cannot ship without reviewed pinned cases.
+`--use-reviewed-cases --reviewed` for publish-mode validation so reviewed/published districts
+discovered from `configs/prod/*.answer-cases.json` cannot ship without reviewed pinned cases.
 The HTTP API smoke starts the same parking-answer service used by Vite dev/preview and probes
 `/health` plus `/ready` before answer requests. With reviewed cases it verifies exact coordinates,
 expected answer kind, evidence kind, primary segment, final confidence, parking-space count, and
@@ -549,8 +549,9 @@ This catches lazy-loaded map bundle, dataset-loading, and WebGL regressions that
 smoke cannot see.
 `ops:smoke-reviewed-ui-packs` scopes that UI gate to generated districts from `--registry` or
 `--report`, so stale generated directories do not create false workflow inputs.
-For `xinyi`, `daan`, and `zhongshan`, reviewed answer cases are required in the publish workflow;
-publishing one of those generated packs without `configs/prod/<districtId>.answer-cases.json` fails before release packaging. Reviewed
+For the districts discovered from `configs/prod/*.answer-cases.json`, reviewed answer cases are
+required in the publish workflow; publishing one of those generated packs without
+`configs/prod/<districtId>.answer-cases.json` fails before release packaging. Reviewed
 answer-case files must include `datasetHash` by default, and both exact-answer and UI smoke fail
 when that hash does not match the runtime `dataset_meta.json`; use `--allow-unpinned-cases` only for
 local debugging. CI also runs `ops:validate-answer-cases`, which checks committed reviewed case

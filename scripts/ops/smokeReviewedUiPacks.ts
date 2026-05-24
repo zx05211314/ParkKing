@@ -12,6 +12,7 @@ import {
   type SmokeUiParkingAnswersOptions,
   type SmokeUiParkingAnswersSummary,
 } from './smokeUiParkingAnswers'
+import { discoverReviewedDistrictIds } from './reviewedDistrictDiscovery'
 
 export interface SmokeReviewedUiPacksOptions extends SmokeGeneratedPacksOptions {
   appUrl?: string
@@ -129,6 +130,7 @@ export const parseSmokeReviewedUiPacksArgs = (
       '--requireReviewedCases',
     ),
   ),
+  reviewed: hasFlag(argv, '--reviewed'),
   requireGenerated: !hasFlag(
     argv,
     '--allow-missing-generated',
@@ -168,6 +170,24 @@ const fileExists = async (target: string) => {
 const reviewedCasesPathForDistrict = (answerCasesDir: string, districtId: string) =>
   path.join(answerCasesDir, `${districtId}.answer-cases.json`)
 
+const answerCasesGlobForDir = (answerCasesDir: string) =>
+  path.join(answerCasesDir, '*.answer-cases.json').replace(/\\/g, '/')
+
+export const resolveSmokeReviewedUiPacksRequiredReviewedDistricts = async (
+  options: Pick<
+    SmokeReviewedUiPacksOptions,
+    'answerCasesDir' | 'reviewed' | 'requiredReviewedCaseDistricts'
+  >,
+) => {
+  const explicitDistricts = options.requiredReviewedCaseDistricts ?? []
+  if (explicitDistricts.length > 0 || !options.reviewed) {
+    return explicitDistricts
+  }
+  return await discoverReviewedDistrictIds(
+    answerCasesGlobForDir(options.answerCasesDir ?? DEFAULT_ANSWER_CASES_DIR),
+  )
+}
+
 const defaultRunners: SmokeReviewedUiPacksRunners = {
   runSmokeUiParkingAnswers: runUiParkingAnswers,
 }
@@ -193,7 +213,9 @@ export const runSmokeReviewedUiPacks = async (
   const sourcePath = registryPath ?? reportPath
   const sourceLabel = registryPath ? 'Registry' : 'Report'
   const answerCasesDir = options.answerCasesDir ?? DEFAULT_ANSWER_CASES_DIR
-  const requiredDistricts = new Set(options.requiredReviewedCaseDistricts ?? [])
+  const requiredDistricts = new Set(
+    await resolveSmokeReviewedUiPacksRequiredReviewedDistricts(options),
+  )
   const requireGenerated = options.requireGenerated ?? true
   const errors: string[] = []
   let datasetDirs: string[] = []

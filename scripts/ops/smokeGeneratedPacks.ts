@@ -12,6 +12,7 @@ import {
   type SmokeParkingAnswersOptions,
   type SmokeParkingAnswersSummary,
 } from './smokeParkingAnswers'
+import { discoverReviewedDistrictIds } from './reviewedDistrictDiscovery'
 
 export interface SmokeGeneratedPacksOptions {
   root?: string
@@ -21,6 +22,7 @@ export interface SmokeGeneratedPacksOptions {
   summaryPath?: string
   fixtureThresholds?: boolean
   useReviewedCases?: boolean
+  reviewed?: boolean
   requiredReviewedCaseDistricts?: string[]
   requireGenerated?: boolean
   scanDirectories?: boolean
@@ -120,6 +122,7 @@ export const parseSmokeGeneratedPacksArgs = (
     '--use-reviewed-cases',
     '--useReviewedCases',
   ),
+  reviewed: hasFlag(argv, '--reviewed'),
   requiredReviewedCaseDistricts: parseDistrictList(
     getArgValues(
       argv,
@@ -224,6 +227,24 @@ export const resolveGeneratedPackSource = async (options: {
 const reviewedCasesPathForDistrict = (answerCasesDir: string, districtId: string) =>
   path.join(answerCasesDir, `${districtId}.answer-cases.json`)
 
+const answerCasesGlobForDir = (answerCasesDir: string) =>
+  path.join(answerCasesDir, '*.answer-cases.json').replace(/\\/g, '/')
+
+export const resolveSmokeGeneratedPacksRequiredReviewedDistricts = async (
+  options: Pick<
+    SmokeGeneratedPacksOptions,
+    'answerCasesDir' | 'reviewed' | 'requiredReviewedCaseDistricts'
+  >,
+) => {
+  const explicitDistricts = options.requiredReviewedCaseDistricts ?? []
+  if (explicitDistricts.length > 0 || !options.reviewed) {
+    return explicitDistricts
+  }
+  return await discoverReviewedDistrictIds(
+    answerCasesGlobForDir(options.answerCasesDir ?? DEFAULT_ANSWER_CASES_DIR),
+  )
+}
+
 export const buildSmokeGeneratedPackPlan = async (
   datasetDir: string,
   options: SmokeGeneratedPacksOptions = {},
@@ -287,6 +308,12 @@ export const runSmokeGeneratedPacks = async (
   runners: SmokeGeneratedPacksRunners = defaultRunners,
 ): Promise<SmokeGeneratedPacksResult> => {
   const root = options.root ?? DEFAULT_ROOT
+  const requiredReviewedCaseDistricts =
+    await resolveSmokeGeneratedPacksRequiredReviewedDistricts(options)
+  const planOptions = {
+    ...options,
+    requiredReviewedCaseDistricts,
+  }
   const resolvedSource = await resolveGeneratedPackSource({
     root,
     registryPath: options.registryPath,
@@ -313,7 +340,7 @@ export const runSmokeGeneratedPacks = async (
 
   const packResults: SmokeGeneratedPackResult[] = []
   for (const datasetDir of datasetDirs) {
-    const plan = await buildSmokeGeneratedPackPlan(datasetDir, options)
+    const plan = await buildSmokeGeneratedPackPlan(datasetDir, planOptions)
     let parkingSummary: SmokeParkingAnswersSummary | null = null
     let exactSummary: SmokeExactParkingAnswersSummary | null = null
     const packErrors = [...plan.errors]

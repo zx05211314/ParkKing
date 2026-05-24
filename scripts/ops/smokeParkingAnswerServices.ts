@@ -11,6 +11,7 @@ import {
   type SmokeParkingAnswerServiceOptions,
   type SmokeParkingAnswerServiceSummary,
 } from './smokeParkingAnswerService'
+import { discoverReviewedDistrictIds } from './reviewedDistrictDiscovery'
 
 export interface SmokeParkingAnswerServicesOptions
   extends SmokeGeneratedPacksOptions {
@@ -131,6 +132,7 @@ export const parseSmokeParkingAnswerServicesArgs = (
     '--use-reviewed-cases',
     '--useReviewedCases',
   ),
+  reviewed: hasFlag(argv, '--reviewed'),
   requiredReviewedCaseDistricts: parseDistrictList(
     getArgValues(
       argv,
@@ -180,6 +182,24 @@ const fileExists = async (target: string) => {
 const reviewedCasesPathForDistrict = (answerCasesDir: string, districtId: string) =>
   path.join(answerCasesDir, `${districtId}.answer-cases.json`)
 
+const answerCasesGlobForDir = (answerCasesDir: string) =>
+  path.join(answerCasesDir, '*.answer-cases.json').replace(/\\/g, '/')
+
+export const resolveSmokeParkingAnswerServicesRequiredReviewedDistricts = async (
+  options: Pick<
+    SmokeParkingAnswerServicesOptions,
+    'answerCasesDir' | 'reviewed' | 'requiredReviewedCaseDistricts'
+  >,
+) => {
+  const explicitDistricts = options.requiredReviewedCaseDistricts ?? []
+  if (explicitDistricts.length > 0 || !options.reviewed) {
+    return explicitDistricts
+  }
+  return await discoverReviewedDistrictIds(
+    answerCasesGlobForDir(options.answerCasesDir ?? DEFAULT_ANSWER_CASES_DIR),
+  )
+}
+
 const applyFixtureThresholds = (
   options: SmokeParkingAnswerServiceOptions,
   districtId: string,
@@ -225,7 +245,9 @@ export const runSmokeParkingAnswerServices = async (
   const sourcePath = registryPath ?? reportPath
   const sourceLabel = registryPath ? 'Registry' : 'Report'
   const answerCasesDir = options.answerCasesDir ?? DEFAULT_ANSWER_CASES_DIR
-  const requiredDistricts = new Set(options.requiredReviewedCaseDistricts ?? [])
+  const requiredDistricts = new Set(
+    await resolveSmokeParkingAnswerServicesRequiredReviewedDistricts(options),
+  )
   const requireGenerated = options.requireGenerated ?? true
   const errors: string[] = []
   let datasetDirs: string[] = []

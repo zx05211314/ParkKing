@@ -49,9 +49,9 @@ jobs:
         if: always()
         run: npm run ops:append-workflow-summary -- --append-file public/data/generated/_ops/publish_gate_summary.md
       - name: Smoke parking answers
-        run: npm run ops:smoke-generated-packs -- --root public/data/generated --registry public/data/generated/registry.json --use-reviewed-cases --require-reviewed-cases xinyi,daan,zhongshan
+        run: npm run ops:smoke-generated-packs -- --root public/data/generated --registry public/data/generated/registry.json --use-reviewed-cases --reviewed
       - name: Smoke parking answer API
-        run: npm run ops:smoke-parking-answer-apis -- --root public/data/generated --registry public/data/generated/registry.json --use-reviewed-cases --require-reviewed-cases xinyi,daan,zhongshan --timeout-ms 25000
+        run: npm run ops:smoke-parking-answer-apis -- --root public/data/generated --registry public/data/generated/registry.json --use-reviewed-cases --reviewed --timeout-ms 25000
       - name: Inventory generated packs
         run: npm run ops:generated-pack-inventory -- --root public/data/generated
       - name: Build production UI
@@ -61,9 +61,9 @@ jobs:
       - name: Smoke API service probes
         run: npm run ops:smoke-api-services -- --start-preview --timeout-ms 25000 --sync-issue-roundtrip
       - name: Smoke reviewed UI answers
-        run: npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --require-reviewed-cases xinyi,daan,zhongshan --timeout-ms 25000
+        run: npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --reviewed --timeout-ms 25000
       - name: Smoke reviewed MAP UI answers
-        run: npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --require-reviewed-cases xinyi,daan,zhongshan --view MAP --limit 1 --timeout-ms 25000
+        run: npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --reviewed --view MAP --limit 1 --timeout-ms 25000
       - name: P1 release readiness
         if: ${{ inputs.configsGlob == 'configs/prod/*.json' }}
         run: npm run ops:p1-release-readiness

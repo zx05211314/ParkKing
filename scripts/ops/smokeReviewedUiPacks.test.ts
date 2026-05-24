@@ -85,6 +85,7 @@ describe('smokeReviewedUiPacks', () => {
         'configs/prod',
         '--summary',
         '.tmp/summary.md',
+        '--reviewed',
         '--require-reviewed-cases',
         'xinyi,daan',
         '--app-url',
@@ -106,6 +107,7 @@ describe('smokeReviewedUiPacks', () => {
       answerCasesDir: 'configs/prod',
       summaryPath: '.tmp/summary.md',
       requiredReviewedCaseDistricts: ['xinyi', 'daan'],
+      reviewed: true,
       requireGenerated: true,
       scanDirectories: false,
       appUrl: 'http://127.0.0.1:4173',
@@ -167,6 +169,38 @@ describe('smokeReviewedUiPacks', () => {
     expect(renderSmokeReviewedUiPacksResult(result)).toContain(
       'UI cases: 1/1; view MAP',
     )
+  })
+
+  it('discovers required reviewed UI case districts when reviewed mode is requested', async () => {
+    const root = await makeTempRoot()
+    const casesDir = path.join(root, 'cases')
+    await writePackMeta(root, 'xinyi')
+    await writePackMeta(root, 'daan')
+    const registryPath = await writeRegistry(root, ['xinyi', 'daan'])
+    await fs.mkdir(casesDir, { recursive: true })
+    await fs.writeFile(path.join(casesDir, 'xinyi.answer-cases.json'), '{}')
+    const calls: SmokeUiParkingAnswersOptions[] = []
+
+    const result = await runSmokeReviewedUiPacks(
+      {
+        root,
+        registryPath,
+        answerCasesDir: casesDir,
+        reviewed: true,
+      },
+      makeRunners(calls),
+    )
+
+    expect(result.hasErrors).toBe(false)
+    expect(result.packResults.map((pack) => ({
+      districtId: pack.districtId,
+      required: pack.reviewedCasesRequired,
+      found: pack.reviewedCasesFound,
+    }))).toEqual([
+      { districtId: 'daan', required: false, found: false },
+      { districtId: 'xinyi', required: true, found: true },
+    ])
+    expect(calls).toHaveLength(1)
   })
 
   it('uses the root registry by default and ignores stale generated directories', async () => {

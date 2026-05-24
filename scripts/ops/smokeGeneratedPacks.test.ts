@@ -124,6 +124,7 @@ describe('smokeGeneratedPacks', () => {
         '.tmp/summary.md',
         '--fixture-thresholds',
         '--use-reviewed-cases',
+        '--reviewed',
         '--require-reviewed-cases',
         'xinyi,daan',
         '--require-reviewed-cases',
@@ -137,6 +138,7 @@ describe('smokeGeneratedPacks', () => {
       summaryPath: '.tmp/summary.md',
       fixtureThresholds: true,
       useReviewedCases: true,
+      reviewed: true,
       requiredReviewedCaseDistricts: ['xinyi', 'daan', 'zhongshan'],
       requireGenerated: true,
       scanDirectories: false,
@@ -303,6 +305,36 @@ describe('smokeGeneratedPacks', () => {
     expect(renderSmokeGeneratedPacksResult(result)).toContain(
       `Reviewed cases: used ${path.join(casesDir, 'xinyi.answer-cases.json')}`,
     )
+  })
+
+  it('discovers required reviewed districts when reviewed mode is requested', async () => {
+    const root = await makeTempRoot()
+    const casesDir = path.join(root, 'cases')
+    await writePackMeta(root, 'xinyi')
+    await writePackMeta(root, 'zhongshan')
+    await fs.mkdir(casesDir, { recursive: true })
+    await fs.writeFile(path.join(casesDir, 'xinyi.answer-cases.json'), '{}')
+    await fs.writeFile(path.join(casesDir, 'zhongshan.answer-cases.json'), '{}')
+    const calls = { parking: [] as SmokeParkingAnswersOptions[], exact: [] as SmokeExactParkingAnswersOptions[] }
+
+    const result = await runSmokeGeneratedPacks(
+      {
+        root,
+        answerCasesDir: casesDir,
+        reviewed: true,
+      },
+      makeRunners(calls),
+    )
+
+    expect(result.hasErrors).toBe(false)
+    expect(result.packResults.map((pack) => ({
+      districtId: pack.districtId,
+      required: pack.reviewedCasesRequired,
+      used: pack.reviewedCasesUsed,
+    }))).toEqual([
+      { districtId: 'xinyi', required: true, used: true },
+      { districtId: 'zhongshan', required: true, used: true },
+    ])
   })
 
   it('fails closed when a required reviewed case file is missing', async () => {
