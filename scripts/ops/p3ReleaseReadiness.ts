@@ -54,6 +54,7 @@ export interface P3ReleaseReadinessInputs {
 export interface P3ReleaseReadinessCheck<T> {
   name: string
   pass: boolean
+  skipped?: boolean
   summary: T | null
   error: string | null
 }
@@ -199,6 +200,7 @@ const runCheck = async <T>(
     return {
       name,
       pass: isPass(summary),
+      skipped: false,
       summary,
       error: null,
     }
@@ -206,14 +208,26 @@ const runCheck = async <T>(
     return {
       name,
       pass: false,
+      skipped: false,
       summary: null,
       error: errorMessage(error),
     }
   }
 }
 
+const skippedCheck = <T>(
+  name: string,
+  reason: string,
+): P3ReleaseReadinessCheck<T> => ({
+  name,
+  pass: false,
+  skipped: true,
+  summary: null,
+  error: reason,
+})
+
 const checkBlocker = <T>(check: P3ReleaseReadinessCheck<T>) => {
-  if (check.pass) {
+  if (check.pass || check.skipped) {
     return null
   }
   if (check.error) {
@@ -262,31 +276,42 @@ export const runP3ReleaseReadiness = async (
       }),
     (summary) => !summary.hasErrors,
   )
-  const releasePackage = await runCheck(
-    'Release package',
-    () =>
-      runners.packageRelease({
-        outDir: inputs.outDir,
-        includeGlob: inputs.includeGlob,
-        registryPath: inputs.registryPath,
-        districtIds: inputs.districtIds,
-      }),
-    () => true,
-  )
-  const packageValidation = await runCheck(
-    'Release package validation',
-    async () => {
-      if (!releasePackage.summary) {
-        throw new Error('release package did not complete')
-      }
-      return await runners.validateReleasePackage({
-        zipPath: releasePackage.summary.zipPath,
-        manifestPath: releasePackage.summary.manifestPath,
-        districtIds: inputs.districtIds,
-      })
-    },
-    (summary) => summary.pass,
-  )
+
+  const prePackageChecks = [districtMatrix, generatedPacks, parkingAnswerApis]
+  const canPackage = prePackageChecks.every((check) => check.pass)
+  const releasePackage = canPackage
+    ? await runCheck(
+        'Release package',
+        () =>
+          runners.packageRelease({
+            outDir: inputs.outDir,
+            includeGlob: inputs.includeGlob,
+            registryPath: inputs.registryPath,
+            districtIds: inputs.districtIds,
+          }),
+        () => true,
+      )
+    : skippedCheck<PackageReleaseResult>(
+        'Release package',
+        'skipped because prior readiness checks failed',
+      )
+  const packageValidation = releasePackage.summary
+    ? await runCheck(
+        'Release package validation',
+        async () =>
+          await runners.validateReleasePackage({
+            zipPath: releasePackage.summary.zipPath,
+            manifestPath: releasePackage.summary.manifestPath,
+            districtIds: inputs.districtIds,
+          }),
+        (summary) => summary.pass,
+      )
+    : skippedCheck<ValidateReleasePackageResult>(
+        'Release package validation',
+        releasePackage.skipped
+          ? 'skipped because release package was not created'
+          : 'skipped because release package failed',
+      )
   const checks = [
     districtMatrix,
     generatedPacks,
@@ -309,7 +334,7 @@ export const runP3ReleaseReadiness = async (
 }
 
 const checkStatus = <T>(check: P3ReleaseReadinessCheck<T>) =>
-  check.pass ? 'PASS' : 'FAIL'
+  check.skipped ? 'SKIP' : check.pass ? 'PASS' : 'FAIL'
 
 const formatDistrictMatrix = (summary: DistrictReadinessMatrixResult | null) =>
   summary

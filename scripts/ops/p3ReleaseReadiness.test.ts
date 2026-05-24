@@ -33,6 +33,15 @@ const generatedPacksPass = {
   ],
 } as unknown as SmokeGeneratedPacksResult
 
+const generatedPacksBlocked = {
+  hasErrors: true,
+  packResults: [
+    { districtId: 'xinyi', errors: ['reviewed answer drift'] },
+    { districtId: 'daan', errors: [] },
+    { districtId: 'zhongshan', errors: [] },
+  ],
+} as unknown as SmokeGeneratedPacksResult
+
 const parkingAnswerApisPass: SmokeParkingAnswerServicesResult = {
   root: 'public/data/generated',
   registryPath: 'public/data/generated/registry.json',
@@ -192,6 +201,29 @@ describe('p3ReleaseReadiness', () => {
     expect(result.blockers).toEqual(['Release package validation: failed'])
     expect(renderP3ReleaseReadiness(result)).toContain(
       '# P3 Reviewed Release Readiness: BLOCKED',
+    )
+  })
+
+  it('does not create a release package when prerequisite checks fail', async () => {
+    const runners = makeRunners({
+      runSmokeGeneratedPacks: vi.fn().mockResolvedValue(generatedPacksBlocked),
+    })
+
+    const result = await runP3ReleaseReadiness(
+      {
+        districtIds: ['xinyi', 'daan', 'zhongshan'],
+      },
+      runners,
+    )
+
+    expect(result.pass).toBe(false)
+    expect(result.blockers).toEqual(['Reviewed generated packs: failed'])
+    expect(result.releasePackage.skipped).toBe(true)
+    expect(result.packageValidation.skipped).toBe(true)
+    expect(runners.packageRelease).not.toHaveBeenCalled()
+    expect(runners.validateReleasePackage).not.toHaveBeenCalled()
+    expect(renderP3ReleaseReadiness(result)).toContain(
+      '| SKIP | Release package | - | skipped because prior readiness checks failed |',
     )
   })
 })
