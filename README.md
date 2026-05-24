@@ -380,7 +380,7 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
 - Add `--sync-issue-roundtrip` when the gate must also prove `POST /api/sync/issues` followed by `GET /api/sync/issues` works for production feedback capture.
 - Vite-preview-mounted service health/readiness plus sync issue-report roundtrip smoke check after `npm run build`:
   `npm run ops:smoke-api-services -- --start-preview --timeout-ms 25000 --sync-issue-roundtrip`
-- Production bundle budget check after `npm run build`; this keeps MapLibre/Turf and geospatial fallback chunks out of the initial modulepreload path:
+- Production bundle budget check after `npm run build`; this keeps MapLibre/Turf, `rbush`/zone-index, and geospatial fallback chunks out of the initial modulepreload path:
   `npm run ops:bundle-budget`
 - Production UI smoke check for reviewed Xinyi pinned answers:
   `npm run build`
@@ -560,7 +560,9 @@ workflows now also run parking-answer API smoke plus same-origin API service pro
 routing, sync, and parking-answer `/health` and `/ready` routes are exercised before merge or
 release. Those gates also run the sync issue-report write/read roundtrip, so the production
 feedback capture endpoint is exercised before merge or release. CI, nightly, and publish use
-`--start-preview` after build to verify the actual Vite-mounted routes; ingest dry-run uses the
+`--start-preview` after build to verify the actual Vite-mounted routes, and they run
+`ops:bundle-budget` after production build so heavy map/geospatial chunks stay off the initial
+preload path; ingest dry-run uses the
 standalone probes against the dry-run dataset root.
 
 To refresh reviewed golden cases from a merged QA review CSV:
