@@ -228,7 +228,7 @@ Current report sync strategy:
 10. First-party report sync also tracks remote revisions so the UI can tell when newer shared reports exist.
 
 Current issue report strategy:
-1. `Report issue` writes an issue report locally first, including the current debug bundle snapshot.
+1. `Report issue` writes an issue report locally first, including the current debug bundle snapshot: dataset metadata, current mode/time, selected segment geometry, parking-rule reasons, ranking details, and nearby-zone counts.
 2. When the first-party sync service is available, the app also sends that issue report to `/api/sync/issues`.
 3. Synced issue reports are stored alongside saved plans and legality reports in the file-backed sync store.
 4. Nightly ops, manual triage CLI runs, and workflow artifacts all read from that same synced issue report store.

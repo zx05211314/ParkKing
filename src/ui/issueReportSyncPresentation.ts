@@ -7,3 +7,6 @@ export const ISSUE_REPORT_SYNC_UPLOAD_ONLY_NOTE =
 
 export const ISSUE_REPORT_SYNC_DEVICE_ONLY_NOTE =
   'Issue reports stay on this device in the current session.'
+
+export const ISSUE_REPORT_DEBUG_BUNDLE_NOTE =
+  'Issue reports include dataset metadata, current mode/time, selected segment geometry, parking-rule reasons, ranking details, and nearby-zone counts.'

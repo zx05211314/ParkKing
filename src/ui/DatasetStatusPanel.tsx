@@ -18,6 +18,7 @@ interface DatasetStatusPanelProps {
   datasetStatus: 'loading' | 'ready' | 'error'
   issueReportSyncLabel: string
   issueReportSyncNote: string
+  issueReportDebugBundleNote: string
   issueReportStatus: {
     kind: 'success' | 'warning' | 'error'
     message: string
@@ -48,6 +49,7 @@ export function DatasetStatusPanel({
   datasetStatus,
   issueReportSyncLabel,
   issueReportSyncNote,
+  issueReportDebugBundleNote,
   issueReportStatus,
   reportingIssue,
   onReportIssue,
@@ -102,6 +104,7 @@ export function DatasetStatusPanel({
       <div className="control-meta">Cache: {clipCacheSummary}</div>
       <div className="control-meta">Issue report sync: {issueReportSyncLabel}</div>
       <div className="control-meta">{issueReportSyncNote}</div>
+      <div className="control-meta">{issueReportDebugBundleNote}</div>
       <div
         className={
           datasetStatus === 'error' ? 'control-meta status-error' : 'control-meta'

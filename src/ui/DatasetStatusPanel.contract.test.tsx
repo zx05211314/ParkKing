@@ -25,6 +25,7 @@ describe('DatasetStatusPanel contract', () => {
         datasetStatus="ready"
         issueReportSyncLabel="Upload-only"
         issueReportSyncNote="New issue reports upload from this device when sync is available. Shared scopes do not pull them back down."
+        issueReportDebugBundleNote="Issue reports include dataset metadata, current mode/time, selected segment geometry, parking-rule reasons, ranking details, and nearby-zone counts."
         issueReportStatus={{
           kind: 'success',
           message: 'Issue submitted to ParkKing Sync. Debug bundle downloaded.',
@@ -43,6 +44,9 @@ describe('DatasetStatusPanel contract', () => {
     expect(html).toContain('Named overrides unmatched: 2')
     expect(html).toContain(
       'New issue reports upload from this device when sync is available. Shared scopes do not pull them back down.',
+    )
+    expect(html).toContain(
+      'Issue reports include dataset metadata, current mode/time, selected segment geometry, parking-rule reasons, ranking details, and nearby-zone counts.',
     )
     expect(html).toContain('Issue submitted to ParkKing Sync. Debug bundle downloaded.')
     expect(html).toContain('control-meta status-success')

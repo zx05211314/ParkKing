@@ -1,6 +1,7 @@
 import { formatMetaDate } from './displayFormatting'
 import { resolveIssueReportSyncConfig } from '../feedback/issueReports'
 import {
+  ISSUE_REPORT_DEBUG_BUNDLE_NOTE,
   ISSUE_REPORT_SYNC_DEVICE_ONLY_LABEL,
   ISSUE_REPORT_SYNC_DEVICE_ONLY_NOTE,
   ISSUE_REPORT_SYNC_UPLOAD_ONLY_LABEL,
@@ -63,6 +64,7 @@ export const buildDatasetStatusPanelProps = ({
     issueReportSyncNote: issueReportsEndpoint
       ? ISSUE_REPORT_SYNC_UPLOAD_ONLY_NOTE
       : ISSUE_REPORT_SYNC_DEVICE_ONLY_NOTE,
+    issueReportDebugBundleNote: ISSUE_REPORT_DEBUG_BUNDLE_NOTE,
     issueReportStatus,
     reportingIssue,
     onReportIssue,
