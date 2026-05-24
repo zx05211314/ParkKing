@@ -1,11 +1,27 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { DEFAULT_SYNC_MAX_BODY_BYTES } from './syncServiceConfig'
+
+export class SyncServicePayloadTooLargeError extends Error {
+  constructor(maxBytes: number) {
+    super(`Sync service JSON body exceeds ${maxBytes} bytes.`)
+    this.name = 'SyncServicePayloadTooLargeError'
+  }
+}
 
 export const readSyncServiceJsonBody = async (
   req: IncomingMessage,
+  options: { maxBytes?: number } = {},
 ): Promise<unknown> => {
   const chunks: Uint8Array[] = []
+  const maxBytes = options.maxBytes ?? DEFAULT_SYNC_MAX_BODY_BYTES
+  let totalBytes = 0
   for await (const chunk of req) {
-    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk)
+    const buffer = typeof chunk === 'string' ? Buffer.from(chunk) : Buffer.from(chunk)
+    totalBytes += buffer.byteLength
+    if (totalBytes > maxBytes) {
+      throw new SyncServicePayloadTooLargeError(maxBytes)
+    }
+    chunks.push(buffer)
   }
 
   if (chunks.length === 0) {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   readSyncServiceJsonBody,
   setSyncServiceCorsHeaders,
+  SyncServicePayloadTooLargeError,
   writeSyncServiceJson,
   writeSyncServiceMethodNotAllowed,
 } from './syncServiceHttp'
@@ -61,5 +62,20 @@ describe('syncServiceHttp', () => {
     writeSyncServiceMethodNotAllowed(res.response as never)
     expect(res.response.statusCode).toBe(405)
     expect(res.body()).toBe(JSON.stringify({ error: 'Method not allowed.' }))
+  })
+
+  it('rejects json bodies that exceed the configured byte limit', async () => {
+    async function* body() {
+      yield Buffer.from('{"value":"too large"}')
+    }
+
+    await expect(
+      readSyncServiceJsonBody(
+        {
+          [Symbol.asyncIterator]: body,
+        } as never,
+        { maxBytes: 10 },
+      ),
+    ).rejects.toBeInstanceOf(SyncServicePayloadTooLargeError)
   })
 })

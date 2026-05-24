@@ -74,6 +74,7 @@ PARKKING_SYNC_PORT=8789
 PARKKING_SYNC_PATH=/api/sync
 PARKKING_SYNC_FILE=.tmp/sync-service.json
 PARKKING_SYNC_DEFAULT_SCOPE=default
+PARKKING_SYNC_MAX_BODY_BYTES=1048576
 ```
 
 Basemap env vars:
@@ -150,6 +151,7 @@ Sync service env vars:
 - `PARKKING_SYNC_PATH`: sync route path. Defaults to `/api/sync`.
 - `PARKKING_SYNC_FILE`: file-backed sync store path.
 - `PARKKING_SYNC_DEFAULT_SCOPE`: fallback scope used when the request does not include a `scope` query param.
+- `PARKKING_SYNC_MAX_BODY_BYTES`: max JSON request body accepted by saved-plan, report, and issue-report write endpoints. Defaults to `1048576`; oversized requests return HTTP 413.
 
 Proxy runtime:
 - `npm run dev` and `npm run preview` already mount the proxy route at `/api/geocode`.
@@ -166,7 +168,7 @@ Proxy runtime:
 - Exact pinned-location answers default to `/api/parking-answer` in local dev/preview. Static deployments without that endpoint fall back to the loaded client dataset.
 - `npm run dev` and `npm run preview` now also mount the first-party sync service at `/api/sync`.
 - For a standalone process, run `npm run ops:sync-service`.
-- The sync service exposes liveness at `/api/sync/health` and store readiness at `/api/sync/ready`.
+- The sync service exposes liveness at `/api/sync/health` and store readiness at `/api/sync/ready`; readiness includes the configured max request body size.
 
 Current geocoder strategy:
 1. Browser sends address requests to `/api/geocode` or the configured client endpoint.

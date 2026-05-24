@@ -7,4 +7,5 @@ export interface SyncServiceRequestContext {
   service: SyncService
   scope: string
   url: URL
+  maxBodyBytes?: number
 }

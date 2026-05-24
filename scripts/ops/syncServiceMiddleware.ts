@@ -2,10 +2,12 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import {
   DEFAULT_SYNC_PATH,
   DEFAULT_SYNC_SCOPE,
+  DEFAULT_SYNC_MAX_BODY_BYTES,
   normalizeScope,
 } from './syncServiceConfig'
 import {
   setSyncServiceCorsHeaders,
+  SyncServicePayloadTooLargeError,
   writeSyncServiceJson,
 } from './syncServiceHttp'
 import {
@@ -35,6 +37,7 @@ export const createSyncServiceMiddleware = (
   const savedPlansPath = `${basePath}/saved-plans`
   const reportsPath = `${basePath}/reports`
   const issuesPath = `${basePath}/issues`
+  const maxBodyBytes = config?.maxBodyBytes ?? DEFAULT_SYNC_MAX_BODY_BYTES
 
   return async (req: IncomingMessage, res: ServerResponse, next?: () => void) => {
     const url = new URL(req.url ?? '/', 'http://localhost')
@@ -92,30 +95,76 @@ export const createSyncServiceMiddleware = (
       }
 
       if (url.pathname === bootstrapPath) {
-        return handleSyncBootstrapRequest({ req, res, service, scope, url })
+        return await handleSyncBootstrapRequest({
+          req,
+          res,
+          service,
+          scope,
+          url,
+          maxBodyBytes,
+        })
       }
 
       if (url.pathname === statusPath) {
-        return handleSyncStatusRequest({ req, res, service, scope, url })
+        return await handleSyncStatusRequest({
+          req,
+          res,
+          service,
+          scope,
+          url,
+          maxBodyBytes,
+        })
       }
 
       if (url.pathname === savedPlansPath) {
-        return handleSyncSavedPlansRequest({ req, res, service, scope, url })
+        return await handleSyncSavedPlansRequest({
+          req,
+          res,
+          service,
+          scope,
+          url,
+          maxBodyBytes,
+        })
       }
 
       if (url.pathname === reportsPath) {
-        return handleSyncReportsRequest({ req, res, service, scope, url })
+        return await handleSyncReportsRequest({
+          req,
+          res,
+          service,
+          scope,
+          url,
+          maxBodyBytes,
+        })
       }
 
       if (url.pathname === issuesPath) {
-        return handleSyncIssueReportsRequest({ req, res, service, scope, url })
+        return await handleSyncIssueReportsRequest({
+          req,
+          res,
+          service,
+          scope,
+          url,
+          maxBodyBytes,
+        })
       }
 
-      return handleSyncReportsRequest({ req, res, service, scope, url })
+      return await handleSyncReportsRequest({
+        req,
+        res,
+        service,
+        scope,
+        url,
+        maxBodyBytes,
+      })
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Sync service request failed.'
-      writeSyncServiceJson(res, 400, { error: message })
+      writeSyncServiceJson(
+        res,
+        error instanceof SyncServicePayloadTooLargeError ? 413 : 400,
+        { error: message },
+      )
       return true
     }
   }

@@ -15,6 +15,7 @@ export const handleSyncSavedPlansRequest = async ({
   res,
   service,
   scope,
+  maxBodyBytes,
 }: SyncServiceRequestContext) => {
   if (req.method === 'GET') {
     const savedPlansState = await service.getSavedPlansState(scope)
@@ -26,7 +27,9 @@ export const handleSyncSavedPlansRequest = async ({
   }
 
   if (req.method === 'PUT') {
-    const body = (await readSyncServiceJsonBody(req)) as SavedPlansEnvelope | null
+    const body = (await readSyncServiceJsonBody(req, {
+      maxBytes: maxBodyBytes,
+    })) as SavedPlansEnvelope | null
     const result = await service.replaceSavedPlans(
       body?.plans,
       scope,
@@ -56,6 +59,7 @@ export const handleSyncReportsRequest = async ({
   res,
   service,
   scope,
+  maxBodyBytes,
 }: SyncServiceRequestContext) => {
   if (req.method === 'GET') {
     const reportsState = await service.getReportsState(scope)
@@ -67,7 +71,9 @@ export const handleSyncReportsRequest = async ({
   }
 
   if (req.method === 'POST') {
-    const body = (await readSyncServiceJsonBody(req)) as ReportsEnvelope | null
+    const body = (await readSyncServiceJsonBody(req, {
+      maxBytes: maxBodyBytes,
+    })) as ReportsEnvelope | null
     const result = await service.appendReport(body?.report, scope)
     writeSyncServiceJson(res, 201, result)
     return true
@@ -82,6 +88,7 @@ export const handleSyncIssueReportsRequest = async ({
   res,
   service,
   scope,
+  maxBodyBytes,
 }: SyncServiceRequestContext) => {
   if (req.method === 'GET') {
     const issueReportsState = await service.getIssueReportsState(scope)
@@ -93,7 +100,9 @@ export const handleSyncIssueReportsRequest = async ({
   }
 
   if (req.method === 'POST') {
-    const body = (await readSyncServiceJsonBody(req)) as IssueReportsEnvelope | null
+    const body = (await readSyncServiceJsonBody(req, {
+      maxBytes: maxBodyBytes,
+    })) as IssueReportsEnvelope | null
     const result = await service.appendIssueReport(body?.issue, scope)
     writeSyncServiceJson(res, 201, result)
     return true

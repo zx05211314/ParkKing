@@ -66,6 +66,7 @@ const createConfig = (
   port: 8789,
   storageFile: '.tmp/sync-service.json',
   defaultScope: 'default',
+  maxBodyBytes: 1048576,
   ...overrides,
 })
 
@@ -147,6 +148,36 @@ describe('createSyncServiceMiddleware', () => {
     )
     expect(res.response.statusCode).toBe(201)
     expect(res.body()).toContain('"issueId":"issue-a"')
+  })
+
+  it('returns 413 before writing oversized issue reports', async () => {
+    const service = createMockService()
+    const middleware = createSyncServiceMiddleware(
+      service,
+      '/api/sync',
+      'default',
+      createConfig({ maxBodyBytes: 8 }),
+    )
+    const res = createMockResponse()
+
+    async function* body() {
+      yield Buffer.from(JSON.stringify({ issue: { issueId: 'issue-large' } }))
+    }
+
+    await expect(
+      middleware(
+        {
+          method: 'POST',
+          url: '/api/sync/issues?scope=alpha',
+          [Symbol.asyncIterator]: body,
+        } as never,
+        res.response as never,
+      ),
+    ).resolves.toBe(true)
+
+    expect(service.appendIssueReport).not.toHaveBeenCalled()
+    expect(res.response.statusCode).toBe(413)
+    expect(res.body()).toContain('exceeds 8 bytes')
   })
 
   it('serves health without reading a scoped sync store', async () => {

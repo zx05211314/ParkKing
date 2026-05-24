@@ -3,6 +3,7 @@ export interface SyncServiceConfig {
   port: number
   storageFile: string
   defaultScope: string
+  maxBodyBytes?: number
 }
 
 export interface SyncServiceBucket {

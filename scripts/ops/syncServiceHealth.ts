@@ -2,6 +2,7 @@ import type {
   SyncServiceConfig,
   SyncStatusSnapshot,
 } from './syncServiceTypes'
+import { DEFAULT_SYNC_MAX_BODY_BYTES } from './syncServiceConfig'
 
 export interface SyncServiceHealthResponse {
   schemaVersion: 1
@@ -17,6 +18,7 @@ export interface SyncServiceHealthResponse {
   issuesPath: string
   defaultScope: string
   storageFile: string | null
+  maxBodyBytes: number | null
   issues: string[]
   snapshot?: SyncStatusSnapshot
 }
@@ -39,6 +41,12 @@ export const buildSyncServiceReadinessIssues = (
   }
   if (!config.defaultScope.trim()) {
     issues.push('default scope is empty')
+  }
+  if (
+    config.maxBodyBytes !== undefined &&
+    (!Number.isFinite(config.maxBodyBytes) || config.maxBodyBytes <= 0)
+  ) {
+    issues.push('max body bytes must be positive')
   }
   return issues
 }
@@ -63,6 +71,7 @@ export const buildSyncServiceHealth = (
   issuesPath: joinSyncServicePath(pathname, 'issues'),
   defaultScope,
   storageFile: config?.storageFile ?? null,
+  maxBodyBytes: config ? config.maxBodyBytes ?? DEFAULT_SYNC_MAX_BODY_BYTES : null,
   issues,
   snapshot,
 })

@@ -16,7 +16,19 @@ describe('resolveSyncServiceConfig', () => {
       port: 8789,
       storageFile: 'C:\\tmp\\parkking\\.tmp\\sync-service.json',
       defaultScope: 'default',
+      maxBodyBytes: 1048576,
     })
+  })
+
+  it('allows overriding the max request body size', () => {
+    const config = resolveSyncServiceConfig(
+      {
+        PARKKING_SYNC_MAX_BODY_BYTES: '2048',
+      },
+      'C:/tmp/parkking',
+    )
+
+    expect(config.maxBodyBytes).toBe(2048)
   })
 })
 

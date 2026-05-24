@@ -5,6 +5,7 @@ export const DEFAULT_SYNC_PATH = '/api/sync'
 export const DEFAULT_SYNC_PORT = 8789
 export const DEFAULT_SYNC_FILE = '.tmp/sync-service.json'
 export const DEFAULT_SYNC_SCOPE = 'default'
+export const DEFAULT_SYNC_MAX_BODY_BYTES = 1_048_576
 export const STORE_SCHEMA_VERSION = 1
 
 export const normalizeSyncText = (value?: string | null) => {
@@ -53,4 +54,8 @@ export const resolveSyncServiceConfig = (
   port: parsePositiveInteger(env.PARKKING_SYNC_PORT, DEFAULT_SYNC_PORT),
   storageFile: resolve(cwd, env.PARKKING_SYNC_FILE ?? DEFAULT_SYNC_FILE),
   defaultScope: normalizeScope(env.PARKKING_SYNC_DEFAULT_SCOPE),
+  maxBodyBytes: parsePositiveInteger(
+    env.PARKKING_SYNC_MAX_BODY_BYTES,
+    DEFAULT_SYNC_MAX_BODY_BYTES,
+  ),
 })
