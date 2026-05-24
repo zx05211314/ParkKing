@@ -51,6 +51,7 @@ export const createSyncServiceWriteApi = (
       defaultScope: config.defaultScope,
       issue,
       updatedAt: new Date().toISOString(),
+      maxIssueReports: config.maxIssueReports,
     })
     await persistSyncServiceStoreIfChanged(runtime, store, result.changed)
     return result.result

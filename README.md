@@ -75,6 +75,7 @@ PARKKING_SYNC_PATH=/api/sync
 PARKKING_SYNC_FILE=.tmp/sync-service.json
 PARKKING_SYNC_DEFAULT_SCOPE=default
 PARKKING_SYNC_MAX_BODY_BYTES=1048576
+PARKKING_SYNC_MAX_ISSUE_REPORTS=1000
 ```
 
 Basemap env vars:
@@ -152,6 +153,7 @@ Sync service env vars:
 - `PARKKING_SYNC_FILE`: file-backed sync store path.
 - `PARKKING_SYNC_DEFAULT_SCOPE`: fallback scope used when the request does not include a `scope` query param.
 - `PARKKING_SYNC_MAX_BODY_BYTES`: max JSON request body accepted by saved-plan, report, and issue-report write endpoints. Defaults to `1048576`; oversized requests return HTTP 413.
+- `PARKKING_SYNC_MAX_ISSUE_REPORTS`: max synced issue reports retained per scope. Defaults to `1000`; older reports are trimmed on new issue-report writes.
 
 Proxy runtime:
 - `npm run dev` and `npm run preview` already mount the proxy route at `/api/geocode`.

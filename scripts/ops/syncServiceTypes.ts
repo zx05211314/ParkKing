@@ -4,6 +4,7 @@ export interface SyncServiceConfig {
   storageFile: string
   defaultScope: string
   maxBodyBytes?: number
+  maxIssueReports?: number
 }
 
 export interface SyncServiceBucket {

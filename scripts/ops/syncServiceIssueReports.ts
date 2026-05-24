@@ -1,3 +1,4 @@
+import { DEFAULT_SYNC_MAX_ISSUE_REPORTS } from './syncServiceConfig'
 import { ensureSyncServiceBucket } from './syncServiceState'
 import type { SyncServiceStore } from './syncServiceTypes'
 
@@ -17,6 +18,14 @@ const dedupeSyncIssueReports = (issues: unknown[]) => {
   return Array.from(unique.values())
 }
 
+const retainNewestSyncIssueReports = (
+  issues: unknown[],
+  maxIssueReports: number,
+) =>
+  issues.length > maxIssueReports
+    ? issues.slice(issues.length - maxIssueReports)
+    : issues
+
 export const readSyncIssueReportsState = (
   store: SyncServiceStore,
   scope: string | null | undefined,
@@ -35,14 +44,25 @@ export const appendSyncIssueReport = (params: {
   defaultScope: string
   issue: unknown
   updatedAt: string
+  maxIssueReports?: number
 }) => {
-  const { store, scope, defaultScope, issue, updatedAt } = params
+  const {
+    store,
+    scope,
+    defaultScope,
+    issue,
+    updatedAt,
+    maxIssueReports = DEFAULT_SYNC_MAX_ISSUE_REPORTS,
+  } = params
   if (!issue || typeof issue !== 'object') {
     throw new Error('Issue payload must include an issue object.')
   }
 
   const bucket = ensureSyncServiceBucket(store, scope, defaultScope).bucket
-  const nextIssues = dedupeSyncIssueReports([...bucket.issueReports, issue])
+  const nextIssues = retainNewestSyncIssueReports(
+    dedupeSyncIssueReports([...bucket.issueReports, issue]),
+    maxIssueReports,
+  )
   if (JSON.stringify(nextIssues) === JSON.stringify(bucket.issueReports)) {
     return {
       changed: false,

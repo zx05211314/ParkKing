@@ -6,6 +6,7 @@ export const DEFAULT_SYNC_PORT = 8789
 export const DEFAULT_SYNC_FILE = '.tmp/sync-service.json'
 export const DEFAULT_SYNC_SCOPE = 'default'
 export const DEFAULT_SYNC_MAX_BODY_BYTES = 1_048_576
+export const DEFAULT_SYNC_MAX_ISSUE_REPORTS = 1_000
 export const STORE_SCHEMA_VERSION = 1
 
 export const normalizeSyncText = (value?: string | null) => {
@@ -57,5 +58,9 @@ export const resolveSyncServiceConfig = (
   maxBodyBytes: parsePositiveInteger(
     env.PARKKING_SYNC_MAX_BODY_BYTES,
     DEFAULT_SYNC_MAX_BODY_BYTES,
+  ),
+  maxIssueReports: parsePositiveInteger(
+    env.PARKKING_SYNC_MAX_ISSUE_REPORTS,
+    DEFAULT_SYNC_MAX_ISSUE_REPORTS,
   ),
 })

@@ -50,4 +50,37 @@ describe('syncServiceIssueReports', () => {
       { issueId: 'issue-a', summary: 'first' },
     ])
   })
+
+  it('retains the newest issue reports when the scoped bucket exceeds the cap', () => {
+    const store = createLegacySyncServiceStore([], [], 'workspace')
+    store.buckets.workspace.issueReports = [
+      { issueId: 'issue-a', summary: 'oldest' },
+      { issueId: 'issue-b', summary: 'middle' },
+    ]
+    store.buckets.workspace.issueReportsRevision = 4
+
+    const result = appendSyncIssueReport({
+      store,
+      scope: 'workspace',
+      defaultScope: 'default',
+      issue: { issueId: 'issue-c', summary: 'newest' },
+      updatedAt: '2026-04-02T02:00:00.000Z',
+      maxIssueReports: 2,
+    })
+
+    expect(result).toEqual({
+      changed: true,
+      result: {
+        issue: { issueId: 'issue-c', summary: 'newest' },
+        revision: 5,
+      },
+    })
+    expect(store.buckets.workspace.issueReports).toEqual([
+      { issueId: 'issue-b', summary: 'middle' },
+      { issueId: 'issue-c', summary: 'newest' },
+    ])
+    expect(store.buckets.workspace.issueReportsUpdatedAt).toBe(
+      '2026-04-02T02:00:00.000Z',
+    )
+  })
 })

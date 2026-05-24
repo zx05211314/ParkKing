@@ -67,6 +67,7 @@ const createConfig = (
   storageFile: '.tmp/sync-service.json',
   defaultScope: 'default',
   maxBodyBytes: 1048576,
+  maxIssueReports: 1000,
   ...overrides,
 })
 
@@ -207,6 +208,7 @@ describe('createSyncServiceMiddleware', () => {
       basePath: '/api/sync',
       readinessPath: '/api/sync/ready',
       statusPath: '/api/sync/status',
+      maxIssueReports: 1000,
     })
     expect(service.getSyncStatus).not.toHaveBeenCalled()
   })
