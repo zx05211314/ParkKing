@@ -178,9 +178,11 @@ describe('p3ReleaseReadiness', () => {
         districtIds: ['xinyi', 'daan', 'zhongshan'],
       }),
     )
-    expect(renderP3ReleaseReadiness(result)).toContain(
-      '# P3 Reviewed Release Readiness: PASS',
-    )
+    const output = renderP3ReleaseReadiness(result)
+    expect(output).toContain('# P3 Reviewed Release Readiness: PASS')
+    expect(output).toContain('## Release Artifacts')
+    expect(output).toContain('- Release ID: release-1')
+    expect(output).toContain('- Zip: dist/releases/park-king-data_release-1.zip')
   })
 
   it('blocks when package validation fails', async () => {
@@ -222,8 +224,10 @@ describe('p3ReleaseReadiness', () => {
     expect(result.packageValidation.skipped).toBe(true)
     expect(runners.packageRelease).not.toHaveBeenCalled()
     expect(runners.validateReleasePackage).not.toHaveBeenCalled()
-    expect(renderP3ReleaseReadiness(result)).toContain(
+    const output = renderP3ReleaseReadiness(result)
+    expect(output).toContain(
       '| SKIP | Release package | - | skipped because prior readiness checks failed |',
     )
+    expect(output).not.toContain('## Release Artifacts')
   })
 })

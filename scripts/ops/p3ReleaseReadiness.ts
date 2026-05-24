@@ -361,6 +361,29 @@ const formatValidation = (summary: ValidateReleasePackageResult | null) =>
     ? `${summary.fileCount} files, ${summary.errors.length} errors`
     : '-'
 
+const renderReleaseArtifacts = (result: P3ReleaseReadinessResult) => {
+  const releasePackage = result.releasePackage.summary
+  if (!releasePackage) {
+    return []
+  }
+
+  return [
+    '',
+    '## Release Artifacts',
+    '',
+    `- Release ID: ${releasePackage.releaseId}`,
+    `- Zip: ${releasePackage.zipPath}`,
+    `- Manifest: ${releasePackage.manifestPath}`,
+    `- Districts: ${
+      releasePackage.districtIds.length > 0
+        ? releasePackage.districtIds.join(', ')
+        : 'all'
+    }`,
+    `- Files: ${releasePackage.fileCount}`,
+    `- Total bytes: ${releasePackage.totalBytes}`,
+  ]
+}
+
 export const renderP3ReleaseReadiness = (result: P3ReleaseReadinessResult) =>
   [
     `# P3 Reviewed Release Readiness: ${result.pass ? 'PASS' : 'BLOCKED'}`,
@@ -389,6 +412,7 @@ export const renderP3ReleaseReadiness = (result: P3ReleaseReadinessResult) =>
     ...(result.blockers.length > 0
       ? result.blockers.map((blocker) => `- ${blocker}`)
       : ['- none']),
+    ...renderReleaseArtifacts(result),
   ].join('\n')
 
 export const writeP3ReleaseReadinessOutputs = async (
