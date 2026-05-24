@@ -9,6 +9,10 @@ import {
   readReleaseJson,
 } from './packageReleaseUtils'
 import type { RegistryEntry } from './packageReleaseTypes'
+import {
+  DEFAULT_REVIEWED_ANSWER_CASES_GLOB,
+  discoverReviewedDistrictIds,
+} from './reviewedDistrictDiscovery'
 
 export { collectReleaseFiles } from './packageReleaseCollection'
 
@@ -98,13 +102,30 @@ export const renderPackageReleaseResult = (result: PackageReleaseResult) =>
     `- Total bytes: ${result.totalBytes}`,
   ].join('\n')
 
+export const resolvePackageReleaseDistrictIds = async (args: {
+  districtIds: string[]
+  reviewed?: boolean
+  answerCasesGlob?: string | null
+}) => {
+  if (args.districtIds.length > 0) {
+    return args.districtIds
+  }
+  if (!args.reviewed) {
+    return []
+  }
+  return await discoverReviewedDistrictIds(
+    args.answerCasesGlob?.trim() || DEFAULT_REVIEWED_ANSWER_CASES_GLOB,
+  )
+}
+
 const run = async () => {
   const args = parsePackageReleaseArgs(process.argv)
+  const districtIds = await resolvePackageReleaseDistrictIds(args)
   const outDir = args.outDir ?? 'dist/releases'
   const includeGlob =
     args.include ??
-    (args.districtIds.length === 1
-      ? `public/data/generated/${args.districtIds[0]}/**`
+    (districtIds.length === 1
+      ? `public/data/generated/${districtIds[0]}/**`
       : 'public/data/generated/**')
   const registryPath =
     args.registry ?? 'public/data/generated/registry.json'
@@ -113,7 +134,7 @@ const run = async () => {
     outDir,
     includeGlob,
     registryPath,
-    districtIds: args.districtIds,
+    districtIds,
   })
   console.log(renderPackageReleaseResult(result))
 }

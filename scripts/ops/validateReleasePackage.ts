@@ -4,6 +4,10 @@ import { fileURLToPath } from 'node:url'
 import AdmZip from 'adm-zip'
 import type { ReleaseManifestEntry, RegistryEntry } from './packageReleaseTypes'
 import { sha256Buffer } from './packageReleaseUtils'
+import {
+  DEFAULT_REVIEWED_ANSWER_CASES_GLOB,
+  discoverReviewedDistrictIds,
+} from './reviewedDistrictDiscovery'
 
 export interface ReleaseManifest {
   releaseId: string
@@ -16,6 +20,8 @@ export interface ValidateReleasePackageArgs {
   zipPath?: string
   manifestPath?: string
   districtIds: string[]
+  reviewed?: boolean | null
+  answerCasesGlob?: string | null
   outPath?: string
   jsonOutPath?: string
 }
@@ -63,6 +69,9 @@ const parseDistrictIds = (value: string | null) =>
         .map((districtId) => districtId.trim())
         .filter(Boolean)
 
+const hasFlag = (argv: string[], ...flags: string[]) =>
+  flags.some((flag) => argv.includes(flag))
+
 export const parseValidateReleasePackageArgs = (
   argv: string[],
 ): ValidateReleasePackageArgs => ({
@@ -73,6 +82,13 @@ export const parseValidateReleasePackageArgs = (
     getArgValue(argv, '--manifest', '--manifest-path', '--manifestPath') ??
     undefined,
   districtIds: parseDistrictIds(getArgValue(argv, '--district', '--districts')),
+  reviewed: hasFlag(argv, '--reviewed'),
+  answerCasesGlob: getArgValue(
+    argv,
+    '--answer-cases',
+    '--answer-cases-glob',
+    '--answerCasesGlob',
+  ),
   outPath: getArgValue(argv, '--out') ?? undefined,
   jsonOutPath: getArgValue(argv, '--json-out', '--jsonOut') ?? undefined,
 })
@@ -184,9 +200,27 @@ const parseRegistryDistrictIds = (registryContents: string) => {
     .filter((districtId): districtId is string => typeof districtId === 'string')
 }
 
+export const resolveValidateReleasePackageDistrictIds = async (
+  args: Pick<
+    ValidateReleasePackageArgs,
+    'districtIds' | 'reviewed' | 'answerCasesGlob'
+  >,
+) => {
+  if (args.districtIds.length > 0) {
+    return args.districtIds
+  }
+  if (!args.reviewed) {
+    return []
+  }
+  return await discoverReviewedDistrictIds(
+    args.answerCasesGlob?.trim() || DEFAULT_REVIEWED_ANSWER_CASES_GLOB,
+  )
+}
+
 export const validateReleasePackage = async (
   args: ValidateReleasePackageArgs,
 ): Promise<ValidateReleasePackageResult> => {
+  const expectedDistrictIds = await resolveValidateReleasePackageDistrictIds(args)
   const paths = await resolveReleasePackagePaths(args)
   const manifest = await readJsonFile<ReleaseManifest>(paths.manifestPath)
   const zip = new AdmZip(paths.zipPath)
@@ -245,14 +279,14 @@ export const validateReleasePackage = async (
     errors.push('zip is missing registry.json')
   }
 
-  if (args.districtIds.length > 0) {
-    if (!sameStringSet(registryDistrictIds, args.districtIds)) {
+  if (expectedDistrictIds.length > 0) {
+    if (!sameStringSet(registryDistrictIds, expectedDistrictIds)) {
       errors.push(
-        `registry districts ${registryDistrictIds.join(', ') || 'none'} do not match expected ${args.districtIds.join(', ')}`,
+        `registry districts ${registryDistrictIds.join(', ') || 'none'} do not match expected ${expectedDistrictIds.join(', ')}`,
       )
     }
     for (const entryName of zipEntries) {
-      if (!isAllowedDistrictScopedEntry(entryName, args.districtIds)) {
+      if (!isAllowedDistrictScopedEntry(entryName, expectedDistrictIds)) {
         errors.push(
           `district-scoped release contains unexpected file: ${entryName}`,
         )
@@ -263,7 +297,7 @@ export const validateReleasePackage = async (
   return {
     ...paths,
     pass: errors.length === 0,
-    expectedDistrictIds: args.districtIds,
+    expectedDistrictIds,
     registryDistrictIds,
     fileCount: manifestEntries.length,
     totalBytes: manifestEntries.reduce((sum, entry) => sum + entry.bytes, 0),

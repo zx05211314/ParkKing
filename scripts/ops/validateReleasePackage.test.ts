@@ -7,6 +7,7 @@ import {
   findLatestReleasePackage,
   parseValidateReleasePackageArgs,
   renderValidateReleasePackageResult,
+  resolveValidateReleasePackageDistrictIds,
   validateReleasePackage,
   writeValidateReleasePackageOutputs,
 } from './validateReleasePackage'
@@ -73,6 +74,9 @@ describe('validateReleasePackage', () => {
         'dist/releases/release_manifest_1.json',
         '--district',
         'xinyi,daan',
+        '--reviewed',
+        '--answer-cases',
+        'configs/prod/*.answer-cases.json',
         '--out',
         '.tmp/release.md',
         '--json-out',
@@ -83,6 +87,8 @@ describe('validateReleasePackage', () => {
       zipPath: 'dist/releases/park-king-data_1.zip',
       manifestPath: 'dist/releases/release_manifest_1.json',
       districtIds: ['xinyi', 'daan'],
+      reviewed: true,
+      answerCasesGlob: 'configs/prod/*.answer-cases.json',
       outPath: '.tmp/release.md',
       jsonOutPath: '.tmp/release.json',
     })
@@ -151,6 +157,46 @@ describe('validateReleasePackage', () => {
     expect(latest.zipPath).toBe(release.zipPath)
     expect(latest.manifestPath).toBe(release.manifestPath)
     expect(latest.releaseId).toBe(release.releaseId)
+  })
+
+  it('discovers reviewed districts when reviewed validation is requested', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'validate-reviewed-'))
+    await fs.writeFile(path.join(base, 'zhongshan.answer-cases.json'), '{}')
+    await fs.writeFile(path.join(base, 'daan.answer-cases.json'), '{}')
+
+    await expect(
+      resolveValidateReleasePackageDistrictIds({
+        districtIds: [],
+        reviewed: true,
+        answerCasesGlob: path.join(base, '*.answer-cases.json').replace(/\\/g, '/'),
+      }),
+    ).resolves.toEqual(['daan', 'zhongshan'])
+  })
+
+  it('uses discovered reviewed districts for package validation', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'validate-release-reviewed-'))
+    const baseDir = path.join(base, 'public', 'data', 'generated')
+    const casesDir = path.join(base, 'cases')
+    await fs.mkdir(casesDir, { recursive: true })
+    await fs.writeFile(path.join(casesDir, 'xinyi.answer-cases.json'), '{}')
+    const registryPath = await writeFixtureRegistry(baseDir)
+    const release = await packageRelease({
+      outDir: path.join(base, 'releases'),
+      registryPath,
+      includeGlob: `${baseDir.replace(/\\/g, '/')}/**/*.geojson`,
+      districtIds: ['xinyi'],
+    })
+
+    const result = await validateReleasePackage({
+      zipPath: release.zipPath,
+      manifestPath: release.manifestPath,
+      districtIds: [],
+      reviewed: true,
+      answerCasesGlob: path.join(casesDir, '*.answer-cases.json').replace(/\\/g, '/'),
+    })
+
+    expect(result.pass).toBe(true)
+    expect(result.expectedDistrictIds).toEqual(['xinyi'])
   })
 
   it('renders a concise validation result', () => {

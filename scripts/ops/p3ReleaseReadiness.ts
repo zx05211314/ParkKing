@@ -1,7 +1,6 @@
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import fg from 'fast-glob'
 import {
   runDistrictReadinessMatrix,
   type DistrictReadinessMatrixOptions,
@@ -26,6 +25,12 @@ import {
   type ValidateReleasePackageArgs,
   type ValidateReleasePackageResult,
 } from './validateReleasePackage'
+import {
+  DEFAULT_REVIEWED_ANSWER_CASES_GLOB,
+  discoverReviewedDistrictIds,
+} from './reviewedDistrictDiscovery'
+
+export { discoverReviewedDistrictIds } from './reviewedDistrictDiscovery'
 
 export interface P3ReleaseReadinessOptions {
   root?: string | null
@@ -88,7 +93,6 @@ export interface P3ReleaseReadinessRunners {
 
 const DEFAULT_ROOT = 'public/data/generated'
 const DEFAULT_CONFIG_GLOB = 'configs/prod/*.json'
-const DEFAULT_ANSWER_CASES_GLOB = 'configs/prod/*.answer-cases.json'
 const DEFAULT_OUT_DIR = 'dist/releases'
 
 const defaultRunners: P3ReleaseReadinessRunners = {
@@ -143,20 +147,6 @@ export const parseP3ReleaseReadinessArgs = (
   json: hasFlag(argv, '--json'),
 })
 
-export const discoverReviewedDistrictIds = async (
-  answerCasesGlob = DEFAULT_ANSWER_CASES_GLOB,
-) => {
-  const files = await fg(answerCasesGlob, {
-    onlyFiles: true,
-    dot: false,
-    absolute: false,
-  })
-  return files
-    .map((file) => path.basename(file, '.answer-cases.json'))
-    .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b))
-}
-
 export const resolveP3ReleaseReadinessInputs = async (
   options: P3ReleaseReadinessOptions = {},
 ): Promise<P3ReleaseReadinessInputs> => {
@@ -164,7 +154,7 @@ export const resolveP3ReleaseReadinessInputs = async (
   const registryPath =
     options.registryPath?.trim() || path.join(root, 'registry.json')
   const answerCasesGlob =
-    options.answerCasesGlob?.trim() || DEFAULT_ANSWER_CASES_GLOB
+    options.answerCasesGlob?.trim() || DEFAULT_REVIEWED_ANSWER_CASES_GLOB
   const districtIds =
     options.districtIds && options.districtIds.length > 0
       ? options.districtIds

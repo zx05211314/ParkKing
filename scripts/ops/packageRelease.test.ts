@@ -3,7 +3,12 @@ import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { tmpdir } from 'node:os'
 import AdmZip from 'adm-zip'
-import { collectReleaseFiles, packageRelease, renderPackageReleaseResult } from './packageRelease'
+import {
+  collectReleaseFiles,
+  packageRelease,
+  renderPackageReleaseResult,
+  resolvePackageReleaseDistrictIds,
+} from './packageRelease'
 
 describe('packageRelease', () => {
   it('collects registry, latest, and manifest files', async () => {
@@ -178,5 +183,19 @@ describe('packageRelease', () => {
     expect(output).toContain('- Districts: xinyi')
     expect(output).toContain('- Files: 3')
     expect(output).toContain('- Total bytes: 1234')
+  })
+
+  it('discovers reviewed districts when reviewed release packaging is requested', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'release-reviewed-'))
+    await fs.writeFile(path.join(base, 'zhongshan.answer-cases.json'), '{}')
+    await fs.writeFile(path.join(base, 'daan.answer-cases.json'), '{}')
+
+    await expect(
+      resolvePackageReleaseDistrictIds({
+        districtIds: [],
+        reviewed: true,
+        answerCasesGlob: path.join(base, '*.answer-cases.json').replace(/\\/g, '/'),
+      }),
+    ).resolves.toEqual(['daan', 'zhongshan'])
   })
 })

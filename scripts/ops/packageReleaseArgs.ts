@@ -1,9 +1,16 @@
 export const parsePackageReleaseArgs = (argv: string[]) => {
   const args = [...argv]
-  const outIndex = args.findIndex((arg) => arg === '--outDir')
+  const outIndex = args.findIndex(
+    (arg) => arg === '--outDir' || arg === '--out-dir',
+  )
   const includeIndex = args.findIndex((arg) => arg === '--include')
   const registryIndex = args.findIndex((arg) => arg === '--registry')
-  const districtIndex = args.findIndex((arg) => arg === '--district')
+  const districtIndex = args.findIndex(
+    (arg) => arg === '--district' || arg === '--districts',
+  )
+  const answerCasesIndex = args.findIndex(
+    (arg) => arg === '--answer-cases' || arg === '--answerCases',
+  )
   const districtIds =
     districtIndex >= 0
       ? args[districtIndex + 1]
@@ -17,5 +24,7 @@ export const parsePackageReleaseArgs = (argv: string[]) => {
     include: includeIndex >= 0 ? args[includeIndex + 1] : null,
     registry: registryIndex >= 0 ? args[registryIndex + 1] : null,
     districtIds,
+    reviewed: args.includes('--reviewed'),
+    answerCasesGlob: answerCasesIndex >= 0 ? args[answerCasesIndex + 1] : null,
   }
 }
