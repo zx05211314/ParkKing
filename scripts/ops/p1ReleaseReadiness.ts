@@ -291,6 +291,7 @@ export const runP1ReleaseReadiness = async (
       runners.runSmokeApiServices({
         startPreview: true,
         timeoutMs: inputs.timeoutMs,
+        syncIssueRoundtrip: true,
       }),
     (summary) => summary.failed === 0,
   )
@@ -384,7 +385,9 @@ const checkStatus = <T>(check: P1ReleaseReadinessCheck<T>) => {
 }
 
 const formatApiServices = (summary: SmokeApiServicesSummary | null) =>
-  summary ? `${summary.passed}/${summary.results.length} probes` : '-'
+  summary
+    ? `${summary.passed}/${summary.results.length + (summary.actions?.length ?? 0)} checks`
+    : '-'
 
 const formatBundleBudget = (summary: BundleBudgetResult | null) =>
   summary

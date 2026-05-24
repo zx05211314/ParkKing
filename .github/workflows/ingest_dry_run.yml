@@ -36,7 +36,7 @@ jobs:
       - name: Smoke API service probes
         env:
           PARKKING_PARKING_ANSWER_DATASET_ROOT: data/generated
-        run: npm run ops:smoke-api-services -- --timeout-ms 25000
+        run: npm run ops:smoke-api-services -- --timeout-ms 25000 --sync-issue-roundtrip
       - name: Summarize sign override preflight
         if: always()
         run: npm run ops:append-workflow-summary -- --append-glob ".tmp/sign-override-preflight/*.md"

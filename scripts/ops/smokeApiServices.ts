@@ -5,6 +5,10 @@ import { createServer, type AddressInfo } from 'node:net'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  ISSUE_REPORTS_SCHEMA_VERSION,
+  type IssueReport,
+} from '../../src/feedback/issueReportTypes'
+import {
   resolveGeocodeProxyConfig,
   startGeocodeProxyServer,
 } from './geocodeProxy'
@@ -33,6 +37,7 @@ export interface SmokeApiServicesOptions {
   baseUrl?: string
   startPreview?: boolean
   previewPort?: number
+  syncIssueRoundtrip?: boolean
 }
 
 export interface SmokeApiServicesProbeResult {
@@ -48,6 +53,16 @@ export interface SmokeApiServicesSummary {
   passed: number
   failed: number
   results: SmokeApiServicesProbeResult[]
+  actions: SmokeApiServicesActionResult[]
+}
+
+export interface SmokeApiServicesActionResult {
+  service: SmokeApiServiceId
+  action: 'issue-report-roundtrip'
+  url: string
+  status: number
+  ok: boolean
+  detail: string
 }
 
 interface StartedService {
@@ -136,8 +151,15 @@ export const parseSmokeApiServicesArgs = (
   if (baseUrl && startPreview) {
     throw new Error('--base-url and --start-preview cannot be combined')
   }
+  const services = parseServices(getArgValue(argv, '--services'))
+  const syncIssueRoundtrip = hasFlag(
+    argv,
+    '--sync-issue-roundtrip',
+    '--syncIssueRoundtrip',
+  )
+  assertSyncIssueRoundtripServices(services, syncIssueRoundtrip)
   return {
-    services: parseServices(getArgValue(argv, '--services')),
+    services,
     timeoutMs: parsePositiveNumber(
       getArgValue(argv, '--timeout-ms', '--timeoutMs'),
       DEFAULT_TIMEOUT_MS,
@@ -147,6 +169,16 @@ export const parseSmokeApiServicesArgs = (
     previewPort: parsePositiveInteger(
       getArgValue(argv, '--preview-port', '--previewPort'),
     ),
+    syncIssueRoundtrip,
+  }
+}
+
+const assertSyncIssueRoundtripServices = (
+  services: SmokeApiServiceId[],
+  syncIssueRoundtrip: boolean,
+) => {
+  if (syncIssueRoundtrip && !services.includes('sync')) {
+    throw new Error('--sync-issue-roundtrip requires the sync service')
   }
 }
 
@@ -373,24 +405,47 @@ const buildProbeUrl = (
   options: SmokeApiServicesOptions,
   started: StartedService[],
 ) => {
+  const url = buildServiceBaseUrl(service, options, started)
+  url.pathname = `${url.pathname.replace(/\/+$/g, '')}/${suffix}`
+  return url
+}
+
+const buildServiceBaseUrl = (
+  service: SmokeApiServiceId,
+  options: SmokeApiServicesOptions,
+  started: StartedService[],
+) => {
   if (options.baseUrl) {
-    const url = new URL(SERVICE_PATHS[service], options.baseUrl)
-    url.pathname = `${url.pathname.replace(/\/+$/g, '')}/${suffix}`
-    return url
+    return new URL(SERVICE_PATHS[service], options.baseUrl)
   }
 
   const serviceServer = started.find((entry) => entry.id === service)
   if (!serviceServer) {
     throw new Error(`Service ${service} was not started`)
   }
-  return new URL(`${serviceServer.baseUrl.replace(/\/+$/g, '')}/${suffix}`)
+  return new URL(serviceServer.baseUrl)
 }
 
-const fetchJsonWithTimeout = async (url: URL, timeoutMs: number) => {
+const buildSyncIssueReportsUrl = (
+  options: SmokeApiServicesOptions,
+  started: StartedService[],
+  scope: string,
+) => {
+  const url = buildServiceBaseUrl('sync', options, started)
+  url.pathname = `${url.pathname.replace(/\/+$/g, '')}/issues`
+  url.searchParams.set('scope', scope)
+  return url
+}
+
+const fetchJsonWithTimeout = async (
+  url: URL,
+  timeoutMs: number,
+  init?: Parameters<typeof fetch>[1],
+) => {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const response = await fetch(url, { signal: controller.signal })
+    const response = await fetch(url, { ...init, signal: controller.signal })
     const payload = await response.json().catch(() => null)
     return { response, payload }
   } finally {
@@ -406,11 +461,104 @@ const readServiceStatus = (payload: unknown) =>
     ? (payload as { status: string }).status
     : null
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+
+const readIssueId = (value: unknown) =>
+  isRecord(value) && typeof value.issueId === 'string' ? value.issueId : null
+
+const readIssueArray = (value: unknown) =>
+  isRecord(value) && Array.isArray(value.issues) ? value.issues : []
+
+const makeSmokeIssueReport = (
+  issueId: string,
+  createdAt: string,
+): IssueReport => ({
+  schemaVersion: ISSUE_REPORTS_SCHEMA_VERSION,
+  issueId,
+  districtId: 'xinyi',
+  segmentId: null,
+  summary: 'Smoke sync issue report roundtrip',
+  createdAt,
+  bundle: {
+    source: 'smoke-api-services',
+  },
+})
+
+const makeSmokeIssueId = () =>
+  `smoke-sync-issue-${Date.now()}-${Math.random().toString(16).slice(2)}`
+
+const makeSmokeScope = () =>
+  `smoke-api-services-${Date.now()}-${Math.random().toString(16).slice(2)}`
+
+export const runSyncIssueReportRoundtrip = async (params: {
+  url: URL
+  timeoutMs: number
+  issueId?: string
+  createdAt?: string
+}): Promise<SmokeApiServicesActionResult> => {
+  const issueId = params.issueId ?? makeSmokeIssueId()
+  const issue = makeSmokeIssueReport(
+    issueId,
+    params.createdAt ?? new Date().toISOString(),
+  )
+  const actionBase = {
+    service: 'sync' as const,
+    action: 'issue-report-roundtrip' as const,
+    url: params.url.toString(),
+  }
+
+  try {
+    const post = await fetchJsonWithTimeout(params.url, params.timeoutMs, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ issue }),
+    })
+    const postedIssueId = isRecord(post.payload)
+      ? readIssueId(post.payload.issue)
+      : null
+    if (post.response.status !== 201 || postedIssueId !== issueId) {
+      return {
+        ...actionBase,
+        status: post.response.status,
+        ok: false,
+        detail: `POST expected 201 with issue ${issueId}, got ${post.response.status} with issue ${postedIssueId ?? 'none'}`,
+      }
+    }
+
+    const get = await fetchJsonWithTimeout(params.url, params.timeoutMs)
+    const found = readIssueArray(get.payload).some(
+      (candidate) => readIssueId(candidate) === issueId,
+    )
+    return {
+      ...actionBase,
+      status: get.response.status,
+      ok: get.response.ok && found,
+      detail:
+        get.response.ok && found
+          ? `POST 201 and GET ${get.response.status} returned issue ${issueId}`
+          : `GET expected issue ${issueId}, got ${get.response.status} found=${found}`,
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return {
+      ...actionBase,
+      status: 0,
+      ok: false,
+      detail: message,
+    }
+  }
+}
+
 export const runSmokeApiServices = async (
   options: SmokeApiServicesOptions = {},
 ): Promise<SmokeApiServicesSummary> => {
   const services = options.services ?? DEFAULT_SERVICES
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const syncIssueRoundtrip = Boolean(options.syncIssueRoundtrip)
+  assertSyncIssueRoundtripServices(services, syncIssueRoundtrip)
   const launchedPreview = options.startPreview
     ? await launchPreview(
         await chooseAvailablePort(options.previewPort),
@@ -422,6 +570,7 @@ export const runSmokeApiServices = async (
 
   try {
     const results: SmokeApiServicesProbeResult[] = []
+    const actions: SmokeApiServicesActionResult[] = []
     for (const service of services) {
       for (const suffix of ['health', 'ready'] as const) {
         const url = buildProbeUrl(
@@ -442,11 +591,26 @@ export const runSmokeApiServices = async (
         })
       }
     }
+    if (syncIssueRoundtrip) {
+      actions.push(
+        await runSyncIssueReportRoundtrip({
+          url: buildSyncIssueReportsUrl(
+            { ...options, baseUrl },
+            started,
+            makeSmokeScope(),
+          ),
+          timeoutMs,
+        }),
+      )
+    }
+
+    const checks = [...results, ...actions]
 
     return {
-      passed: results.filter((result) => result.ok).length,
-      failed: results.filter((result) => !result.ok).length,
+      passed: checks.filter((result) => result.ok).length,
+      failed: checks.filter((result) => !result.ok).length,
       results,
+      actions,
     }
   } finally {
     try {
@@ -459,16 +623,27 @@ export const runSmokeApiServices = async (
 
 export const renderSmokeApiServicesSummary = (
   summary: SmokeApiServicesSummary,
-) =>
-  [
-    `API service probes: ${summary.passed}/${summary.results.length} passed`,
+) => {
+  const actions = summary.actions ?? []
+  const total = summary.results.length + actions.length
+  return [
+    actions.length > 0
+      ? `API service checks: ${summary.passed}/${total} passed (${summary.results.length} probes, ${actions.length} actions)`
+      : `API service probes: ${summary.passed}/${summary.results.length} passed`,
     ...summary.results.map((result) => {
       const status = result.ok
         ? 'PASS'
         : `FAIL http=${result.status} status=${result.serviceStatus ?? 'none'}`
       return `${result.service}/${result.suffix}: ${status} ${result.url}`
     }),
+    ...actions.map((action) => {
+      const status = action.ok
+        ? 'PASS'
+        : `FAIL http=${action.status} detail=${action.detail}`
+      return `${action.service}/${action.action}: ${status} ${action.url}`
+    }),
   ].join('\n')
+}
 
 const run = async () => {
   const summary = await runSmokeApiServices(

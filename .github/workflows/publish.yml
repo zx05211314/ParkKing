@@ -57,7 +57,7 @@ jobs:
       - name: Build production UI
         run: npm run build
       - name: Smoke API service probes
-        run: npm run ops:smoke-api-services -- --start-preview --timeout-ms 25000
+        run: npm run ops:smoke-api-services -- --start-preview --timeout-ms 25000 --sync-issue-roundtrip
       - name: Smoke reviewed UI answers
         run: npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --require-reviewed-cases xinyi,daan,zhongshan --timeout-ms 25000
       - name: Smoke reviewed MAP UI answers

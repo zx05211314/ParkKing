@@ -367,8 +367,9 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   `npm run ops:smoke-parking-answer-apis -- --root data/generated --report data/generated/ingest_all_report_dry.json --fixture-thresholds --timeout-ms 25000`
 - Same-origin service health/readiness smoke check for geocode, route, sync, and parking-answer services:
   `npm run ops:smoke-api-services -- --timeout-ms 25000`
-- Vite-preview-mounted service health/readiness smoke check after `npm run build`:
-  `npm run ops:smoke-api-services -- --start-preview --timeout-ms 25000`
+- Add `--sync-issue-roundtrip` when the gate must also prove `POST /api/sync/issues` followed by `GET /api/sync/issues` works for production feedback capture.
+- Vite-preview-mounted service health/readiness plus sync issue-report roundtrip smoke check after `npm run build`:
+  `npm run ops:smoke-api-services -- --start-preview --timeout-ms 25000 --sync-issue-roundtrip`
 - Production bundle budget check after `npm run build`; this keeps MapLibre/Turf and geospatial fallback chunks out of the initial modulepreload path:
   `npm run ops:bundle-budget`
 - Production UI smoke check for reviewed Xinyi pinned answers:
@@ -382,7 +383,7 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
 - Current-product P1 release readiness gate for the Xinyi flow:
   `npm run build`
   `npm run ops:p1-release-readiness`
-  This fails on Xinyi P0 readiness, production bundle budget, API service probes, parking-answer API smoke, reviewed UI answer smoke, MAP-mode reviewed-answer smoke, or MAP-mode UI regressions. It also reports Daan/Zhongshan district blockers without failing the current-product gate unless `--strict-matrix` is supplied.
+  This fails on Xinyi P0 readiness, production bundle budget, API service probes including the sync issue-report write/read roundtrip, parking-answer API smoke, reviewed UI answer smoke, MAP-mode reviewed-answer smoke, or MAP-mode UI regressions. It also reports Daan/Zhongshan district blockers without failing the current-product gate unless `--strict-matrix` is supplied.
   The production publish workflow runs this automatically when `configsGlob` is `configs/prod/*.json`.
 - P1 release data package:
   `npm run ops:package-release:xinyi`
@@ -545,8 +546,10 @@ files for `datasetHash`, district/file-name consistency, duplicate ids, UI-compa
 primary segment pins, evidence kind, and final confidence. CI, nightly, publish, and ingest-dry-run
 workflows now also run parking-answer API smoke plus same-origin API service probes so geocode,
 routing, sync, and parking-answer `/health` and `/ready` routes are exercised before merge or
-release. CI, nightly, and publish use `--start-preview` after build to verify the actual Vite-mounted
-routes; ingest dry-run uses the standalone probes against the dry-run dataset root.
+release. Those gates also run the sync issue-report write/read roundtrip, so the production
+feedback capture endpoint is exercised before merge or release. CI, nightly, and publish use
+`--start-preview` after build to verify the actual Vite-mounted routes; ingest dry-run uses the
+standalone probes against the dry-run dataset root.
 
 To refresh reviewed golden cases from a merged QA review CSV:
 `npm run ops:write-answer-cases -- --input .tmp/<districtId>-review.merged.csv --dataset-dir public/data/generated/<districtId> --out configs/prod/<districtId>.answer-cases.json`

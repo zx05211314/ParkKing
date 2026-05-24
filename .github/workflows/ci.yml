@@ -52,7 +52,7 @@ jobs:
       - name: Smoke parking answer API
         run: npm run ops:smoke-parking-answer-apis -- --root public/data/generated --registry public/data/generated/registry.json --fixture-thresholds --timeout-ms 25000
       - name: Smoke API service probes
-        run: npm run ops:smoke-api-services -- --start-preview --timeout-ms 25000
+        run: npm run ops:smoke-api-services -- --start-preview --timeout-ms 25000 --sync-issue-roundtrip
       - name: Inventory generated packs
         run: npm run ops:generated-pack-inventory -- --root public/data/generated
       - name: P0 review gate report

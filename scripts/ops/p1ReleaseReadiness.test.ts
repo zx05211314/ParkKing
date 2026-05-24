@@ -50,6 +50,7 @@ const apiPass = {
     ok: true,
     serviceStatus: 'ok',
   })),
+  actions: [],
 } as unknown as SmokeApiServicesSummary
 
 const bundleBudgetPass = {
@@ -165,6 +166,7 @@ describe('p1ReleaseReadiness', () => {
     expect(runners.runSmokeApiServices).toHaveBeenCalledWith({
       startPreview: true,
       timeoutMs: 25000,
+      syncIssueRoundtrip: true,
     })
     expect(runners.runBundleBudget).toHaveBeenCalledWith({
       distDir: 'dist',
