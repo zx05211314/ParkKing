@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run ops:assert-no-node-imports && tsc -b && vite build",
+    "start": "tsx scripts/ops/appServer.ts",
     "ingest": "tsx scripts/ingest/runAll.ts",
     "ingest:all": "tsx scripts/ingest/ingestAll.ts",
     "ingest:all:dry": "tsx scripts/ingest/ingestAll.ts --dryRun",
@@ -27,6 +28,7 @@
     "ops:routing-proxy": "tsx scripts/ops/routingProxy.ts",
     "ops:parking-answer-api": "tsx scripts/ops/parkingAnswerService.ts",
     "ops:sync-service": "tsx scripts/ops/syncService.ts",
+    "ops:app-server": "tsx scripts/ops/appServer.ts",
     "ops:fetch-sources": "tsx scripts/ops/fetchSources.ts",
     "ops:unpack-sources": "tsx scripts/ops/unpackSources.ts",
     "ops:sync-public-data": "tsx scripts/ops/syncPublicData.ts",

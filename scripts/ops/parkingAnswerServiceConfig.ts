@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import {
   DEFAULT_PARKING_ANSWER_ALLOWED_DISTRICTS,
@@ -35,6 +36,38 @@ const parseEnabled = (value?: string | null) => {
   return normalized === '1' || normalized === 'true' || normalized === 'yes'
 }
 
+const parseRegistryDistrictIds = (payload: unknown) => {
+  if (!payload || typeof payload !== 'object') {
+    return []
+  }
+
+  const districts = (payload as { districts?: unknown }).districts
+  if (!Array.isArray(districts)) {
+    return []
+  }
+
+  const districtIds = districts
+    .map((district) => {
+      const districtId =
+        district && typeof district === 'object'
+          ? (district as { districtId?: unknown }).districtId
+          : null
+      return typeof districtId === 'string' ? normalizeDistrictId(districtId) : null
+    })
+    .filter((districtId): districtId is string => Boolean(districtId))
+  return Array.from(new Set(districtIds)).sort((a, b) => a.localeCompare(b))
+}
+
+export const discoverParkingAnswerServiceDistricts = (datasetRoot: string) => {
+  try {
+    return parseRegistryDistrictIds(
+      JSON.parse(readFileSync(resolve(datasetRoot, 'registry.json'), 'utf-8')),
+    )
+  } catch {
+    return []
+  }
+}
+
 export const resolveParkingAnswerServiceConfig = (
   env: NodeJS.ProcessEnv = process.env,
   cwd = process.cwd(),
@@ -45,6 +78,21 @@ export const resolveParkingAnswerServiceConfig = (
   const defaultDistrict =
     normalizeDistrictId(env.PARKKING_PARKING_ANSWER_DEFAULT_DISTRICT) ??
     DEFAULT_PARKING_ANSWER_DISTRICT
+  const districtDatasetRoot = resolve(
+    cwd,
+    env.PARKKING_PARKING_ANSWER_DATASET_ROOT ??
+      DEFAULT_PARKING_ANSWER_DATASET_ROOT,
+  )
+  const discoveredDistricts =
+    allowedDistricts.length > 0
+      ? []
+      : discoverParkingAnswerServiceDistricts(districtDatasetRoot)
+  let resolvedAllowedDistricts = DEFAULT_PARKING_ANSWER_ALLOWED_DISTRICTS
+  if (allowedDistricts.length > 0) {
+    resolvedAllowedDistricts = allowedDistricts
+  } else if (discoveredDistricts.length > 0) {
+    resolvedAllowedDistricts = discoveredDistricts
+  }
 
   return {
     path:
@@ -54,16 +102,9 @@ export const resolveParkingAnswerServiceConfig = (
       env.PARKKING_PARKING_ANSWER_PORT,
       DEFAULT_PARKING_ANSWER_PORT,
     ),
-    districtDatasetRoot: resolve(
-      cwd,
-      env.PARKKING_PARKING_ANSWER_DATASET_ROOT ??
-        DEFAULT_PARKING_ANSWER_DATASET_ROOT,
-    ),
+    districtDatasetRoot,
     defaultDistrict,
-    allowedDistricts:
-      allowedDistricts.length > 0
-        ? allowedDistricts
-        : DEFAULT_PARKING_ANSWER_ALLOWED_DISTRICTS,
+    allowedDistricts: resolvedAllowedDistricts,
     defaultHhmm:
       normalizeParkingAnswerText(env.PARKKING_PARKING_ANSWER_DEFAULT_HHMM) ??
       DEFAULT_PARKING_ANSWER_HHMM,

@@ -9,6 +9,7 @@ Curb intelligence prototype. The ingest pipeline builds district datasets and pu
 - Dev: `npm run dev`
 - Tests: `npm test`
 - Build: `npm run build`
+- Production-style local server: `npm run build && npm start`
 
 ## Map, Geocoder, And Routing Providers
 
@@ -62,10 +63,22 @@ PARKKING_ROUTING_USER_AGENT=ParkKing/1.0 (+local-dev)
 PARKKING_ROUTING_PORT=8788
 PARKKING_ROUTING_PATH=/api/route
 
+PORT=4173
+PARKKING_APP_PORT=
+PARKKING_APP_HOST=
+PARKKING_APP_STATIC_DIR=dist
+PARKKING_APP_SPA_FALLBACK=true
+PARKKING_APP_HEALTH_PATH=/api/app/health
+PARKKING_APP_READY_PATH=/api/app/ready
+PARKKING_APP_ENABLE_GEOCODER=true
+PARKKING_APP_ENABLE_ROUTING=true
+PARKKING_APP_ENABLE_PARKING_ANSWER=true
+PARKKING_APP_ENABLE_SYNC=true
+
 PARKKING_PARKING_ANSWER_PORT=8790
 PARKKING_PARKING_ANSWER_PATH=/api/parking-answer
 PARKKING_PARKING_ANSWER_DATASET_ROOT=public/data/generated
-PARKKING_PARKING_ANSWER_DISTRICTS=xinyi
+PARKKING_PARKING_ANSWER_DISTRICTS=xinyi,daan,zhongshan
 PARKKING_PARKING_ANSWER_DEFAULT_DISTRICT=xinyi
 PARKKING_PARKING_ANSWER_DEFAULT_HHMM=21:00
 PARKKING_PARKING_ANSWER_ALLOW_DATASET_DIR=false
@@ -141,6 +154,15 @@ Routing proxy env vars:
 - `PARKKING_ROUTING_PORT`: standalone proxy port.
 - `PARKKING_ROUTING_PATH`: proxy route path. Defaults to `/api/route`.
 
+Unified app server env vars:
+- `PORT` / `PARKKING_APP_PORT`: production-style app server port. `PARKKING_APP_PORT` wins when both are set.
+- `PARKKING_APP_HOST`: optional bind host. Leave empty to use Node's default bind address.
+- `PARKKING_APP_STATIC_DIR`: built static directory served by `npm start`. Defaults to `dist`.
+- `PARKKING_APP_SPA_FALLBACK`: serves `index.html` for non-API routes when enabled.
+- `PARKKING_APP_HEALTH_PATH`: app-server liveness path. Defaults to `/api/app/health`.
+- `PARKKING_APP_READY_PATH`: app-server readiness path. Defaults to `/api/app/ready` and fails when the built `index.html` is missing.
+- `PARKKING_APP_ENABLE_GEOCODER`, `PARKKING_APP_ENABLE_ROUTING`, `PARKKING_APP_ENABLE_PARKING_ANSWER`, `PARKKING_APP_ENABLE_SYNC`: opt out of individual same-origin APIs when a deployment routes them elsewhere.
+
 Parking answer service env vars:
 - `PARKKING_PARKING_ANSWER_PORT`: standalone parking-answer service port.
 - `PARKKING_PARKING_ANSWER_PATH`: service route path. Defaults to `/api/parking-answer`.
@@ -163,6 +185,8 @@ Sync service env vars:
 
 Proxy runtime:
 - `npm run dev` and `npm run preview` already mount the proxy route at `/api/geocode`.
+- `npm start` serves the built `dist` directory and mounts geocoder, routing, parking-answer, and sync APIs in one Node process for production-style deployments.
+- The unified app server exposes liveness at `/api/app/health` and static-readiness at `/api/app/ready`; unknown `/api/*` routes return JSON 404 instead of falling through to the SPA shell.
 - For a standalone process, run `npm run ops:geocode-proxy`.
 - The geocoder proxy exposes liveness at `/api/geocode/health` and config readiness at `/api/geocode/ready`.
 - In local browser sessions on `localhost`, address search defaults to `/api/geocode` when `VITE_GEOCODER_URL` is unset.

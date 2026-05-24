@@ -20,6 +20,7 @@ data/sources/
 reports/
 .env
 .env.*
+!.env.example
 
 # Generated datasets (keep directories via .gitkeep)
 data/generated/**
