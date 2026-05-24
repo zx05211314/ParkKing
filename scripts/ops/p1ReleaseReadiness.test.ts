@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { P0ReadinessResult } from './p0ReadinessTypes'
 import type { DistrictReadinessMatrixResult } from './districtReadinessMatrix'
 import type { SmokeApiServicesSummary } from './smokeApiServices'
+import type { SmokeAppServerResult } from './smokeAppServer'
 import type { SmokeParkingAnswerServiceSummary } from './smokeParkingAnswerService'
 import type { SmokeReviewedUiPacksResult } from './smokeReviewedUiPacks'
 import type { SmokeUiParkingAnswersSummary } from './smokeUiParkingAnswers'
@@ -53,6 +54,16 @@ const apiPass = {
   })),
   actions: [],
 } as unknown as SmokeApiServicesSummary
+
+const appServerPass = {
+  pass: true,
+  probes: [
+    { path: '/api/app/ready', pass: true, status: 200 },
+    { path: '/api/parking-answer/ready', pass: true, status: 200 },
+    { path: '/api/not-found', pass: true, status: 404 },
+    { path: '/', pass: true, status: 200 },
+  ],
+} as unknown as SmokeAppServerResult
 
 const bundleBudgetPass = {
   pass: true,
@@ -115,6 +126,7 @@ const buildRunners = (
   buildP0Readiness: vi.fn().mockResolvedValue(p0Pass),
   runDistrictReadinessMatrix: vi.fn().mockResolvedValue(matrixWithKnownBlockers),
   runSmokeApiServices: vi.fn().mockResolvedValue(apiPass),
+  runSmokeAppServer: vi.fn().mockResolvedValue(appServerPass),
   runBundleBudget: vi.fn().mockResolvedValue(bundleBudgetPass),
   runSmokeParkingAnswerService: vi.fn().mockResolvedValue(parkingAnswerPass),
   runSmokeReviewedUiPacks: vi.fn().mockResolvedValue(reviewedUiPass),
@@ -180,6 +192,9 @@ describe('p1ReleaseReadiness', () => {
     })
     expect(runners.runBundleBudget).toHaveBeenCalledWith({
       distDir: 'dist',
+    })
+    expect(runners.runSmokeAppServer).toHaveBeenCalledWith({
+      timeoutMs: 25000,
     })
     expect(runners.runSmokeReviewedUiPacks).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -15,6 +15,11 @@ import {
   type SmokeApiServicesSummary,
 } from './smokeApiServices'
 import {
+  runSmokeAppServer,
+  type SmokeAppServerOptions,
+  type SmokeAppServerResult,
+} from './smokeAppServer'
+import {
   runSmokeParkingAnswerService,
   type SmokeParkingAnswerServiceOptions,
   type SmokeParkingAnswerServiceSummary,
@@ -86,6 +91,7 @@ export interface P1ReleaseReadinessResult {
   districtMatrix: P1ReleaseReadinessCheck<DistrictReadinessMatrixResult>
   bundleBudget: P1ReleaseReadinessCheck<BundleBudgetResult>
   apiServices: P1ReleaseReadinessCheck<SmokeApiServicesSummary>
+  appServer: P1ReleaseReadinessCheck<SmokeAppServerResult>
   parkingAnswerApi: P1ReleaseReadinessCheck<SmokeParkingAnswerServiceSummary>
   reviewedUi: P1ReleaseReadinessCheck<SmokeReviewedUiPacksResult> | null
   mapReviewedUi: P1ReleaseReadinessCheck<SmokeUiParkingAnswersSummary> | null
@@ -103,6 +109,9 @@ export interface P1ReleaseReadinessRunners {
   runSmokeApiServices: (
     options: SmokeApiServicesOptions,
   ) => Promise<SmokeApiServicesSummary>
+  runSmokeAppServer: (
+    options: SmokeAppServerOptions,
+  ) => Promise<SmokeAppServerResult>
   runBundleBudget: (options: BundleBudgetOptions) => Promise<BundleBudgetResult>
   runSmokeParkingAnswerService: (
     options: SmokeParkingAnswerServiceOptions,
@@ -131,6 +140,7 @@ const defaultRunners: P1ReleaseReadinessRunners = {
   buildP0Readiness,
   runDistrictReadinessMatrix,
   runSmokeApiServices,
+  runSmokeAppServer,
   runBundleBudget,
   runSmokeParkingAnswerService,
   runSmokeReviewedUiPacks,
@@ -305,6 +315,15 @@ export const runP1ReleaseReadiness = async (
       }),
     (summary) => summary.failed === 0,
   )
+  const appServer = await runCheck(
+    'App server smoke',
+    true,
+    () =>
+      runners.runSmokeAppServer({
+        timeoutMs: inputs.timeoutMs,
+      }),
+    (summary) => summary.pass,
+  )
   const parkingAnswerApi = await runCheck(
     'Parking answer API',
     true,
@@ -378,6 +397,7 @@ export const runP1ReleaseReadiness = async (
     districtMatrix,
     bundleBudget,
     apiServices,
+    appServer,
     parkingAnswerApi,
     ...(reviewedUi ? [reviewedUi] : []),
     ...(mapReviewedUi ? [mapReviewedUi] : []),
@@ -392,6 +412,7 @@ export const runP1ReleaseReadiness = async (
     districtMatrix,
     bundleBudget,
     apiServices,
+    appServer,
     parkingAnswerApi,
     reviewedUi,
     mapReviewedUi,
@@ -412,6 +433,11 @@ const checkStatus = <T>(check: P1ReleaseReadinessCheck<T>) => {
 const formatApiServices = (summary: SmokeApiServicesSummary | null) =>
   summary
     ? `${summary.passed}/${summary.results.length + (summary.actions?.length ?? 0)} checks`
+    : '-'
+
+const formatAppServer = (summary: SmokeAppServerResult | null) =>
+  summary
+    ? `${summary.probes.filter((probe) => probe.pass).length}/${summary.probes.length} probes`
     : '-'
 
 const formatBundleBudget = (summary: BundleBudgetResult | null) =>
@@ -502,6 +528,7 @@ export const renderP1ReleaseReadiness = (result: P1ReleaseReadinessResult) => {
     } | ${result.districtMatrix.error ?? ''} |`,
     `| ${checkStatus(result.bundleBudget)} | Bundle budget | ${formatBundleBudget(result.bundleBudget.summary)} | ${result.bundleBudget.error ?? ''} |`,
     `| ${checkStatus(result.apiServices)} | API service probes | ${formatApiServices(result.apiServices.summary)} | ${result.apiServices.error ?? ''} |`,
+    `| ${checkStatus(result.appServer)} | App server smoke | ${formatAppServer(result.appServer.summary)} | ${result.appServer.error ?? ''} |`,
     `| ${checkStatus(result.parkingAnswerApi)} | Parking answer API | ${formatParkingAnswerApi(result.parkingAnswerApi.summary)} | ${result.parkingAnswerApi.error ?? ''} |`,
     reviewedUiLine,
     mapReviewedUiLine,

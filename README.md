@@ -187,6 +187,7 @@ Proxy runtime:
 - `npm run dev` and `npm run preview` already mount the proxy route at `/api/geocode`.
 - `npm start` serves the built `dist` directory and mounts geocoder, routing, parking-answer, and sync APIs in one Node process for production-style deployments.
 - The unified app server exposes liveness at `/api/app/health` and static-readiness at `/api/app/ready`; unknown `/api/*` routes return JSON 404 instead of falling through to the SPA shell.
+- After `npm run build`, run `npm run ops:smoke-app-server` to start that same server on a random local port and verify app readiness, parking-answer readiness, static root serving, and API 404 behavior.
 - For a standalone process, run `npm run ops:geocode-proxy`.
 - The geocoder proxy exposes liveness at `/api/geocode/health` and config readiness at `/api/geocode/ready`.
 - In local browser sessions on `localhost`, address search defaults to `/api/geocode` when `VITE_GEOCODER_URL` is unset.

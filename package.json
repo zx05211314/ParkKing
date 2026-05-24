@@ -42,6 +42,7 @@
     "ops:smoke-parking-answers": "tsx scripts/ops/smokeParkingAnswers.ts",
     "ops:smoke-exact-parking-answers": "tsx scripts/ops/smokeExactParkingAnswers.ts",
     "ops:smoke-api-services": "tsx scripts/ops/smokeApiServices.ts",
+    "ops:smoke-app-server": "tsx scripts/ops/smokeAppServer.ts",
     "ops:smoke-parking-answer-api": "tsx scripts/ops/smokeParkingAnswerService.ts",
     "ops:smoke-parking-answer-apis": "tsx scripts/ops/smokeParkingAnswerServices.ts",
     "ops:smoke-ui-parking-answers": "tsx scripts/ops/smokeUiParkingAnswers.ts",
