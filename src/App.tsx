@@ -1,10 +1,10 @@
-﻿import { lazy, Suspense, useCallback, useEffect, useMemo, useRef } from 'react'
+﻿import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDeferredValue } from 'react'
 import './App.css'
 import { type RouteProfile } from './map/routing'
 import { ZONE_PARAMS_VERSION } from './domain/zones/constants'
 import { ZoneType } from './domain/zones/zoneTypes'
-import { getZoneIndex, type ZoneIndex } from './domain/zones/zoneIndex'
+import type { ZoneIndex } from './domain/zones/zoneIndex'
 import { AppMainWorkspace } from './ui/AppMainWorkspace'
 import { AppHeaderPanels } from './ui/AppHeaderPanels'
 import { AppOverlayHost } from './ui/AppOverlayHost'
@@ -407,11 +407,30 @@ function App() {
     },
     [mapRetryKey],
   )
-  const zoneIndex = useMemo<ZoneIndex | null>(() => {
+  const [zoneIndex, setZoneIndex] = useState<ZoneIndex | null>(null)
+  useEffect(() => {
     if (zones.length === 0) {
-      return null
+      setZoneIndex(null)
+      return
     }
-    return getZoneIndex(zones, datasetHash, ZONE_PARAMS_VERSION)
+
+    let cancelled = false
+    setZoneIndex(null)
+    void import('./domain/zones/zoneIndex')
+      .then(({ getZoneIndex }) => {
+        if (!cancelled) {
+          setZoneIndex(getZoneIndex(zones, datasetHash, ZONE_PARAMS_VERSION))
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setZoneIndex(null)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [zones, datasetHash])
   const {
     workerClientRef,

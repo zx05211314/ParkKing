@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { ZONE_PARAMS_VERSION } from '../domain/zones/constants'
-import { clearZoneIndexCache } from '../domain/zones/zoneIndex'
 import type { UseAppLifecycleEffectsOptions } from './appLifecycleEffectTypes'
 
 type DatasetRuntimeResetOptions = Pick<
@@ -41,7 +40,11 @@ export const useDatasetRuntimeResetEffect = ({
     if (datasetChanged || datasetIdChanged || paramsChanged) {
       workerClientRef.current?.terminate()
       workerClientRef.current = null
-      clearZoneIndexCache()
+      void import('../domain/zones/zoneIndex').then(({ clearZoneIndexCache }) => {
+        if (!cancelled) {
+          clearZoneIndexCache()
+        }
+      })
       void import('../domain/geometry/clipCache').then(
         ({ clearClipCache, getClipCacheStats, resetClipCacheStats }) => {
           if (cancelled) {

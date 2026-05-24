@@ -37,6 +37,7 @@ const DEFAULT_FORBIDDEN_INITIAL_PATTERNS = [
   'parkingAnswer',
   'evaluateSegment',
   'clipCache',
+  'rbush',
 ]
 
 const getArgValue = (argv: string[], ...flags: string[]) => {

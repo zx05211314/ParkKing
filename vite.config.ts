@@ -87,6 +87,11 @@ const geocodeProxyPlugin = {
 export default defineConfig({
   plugins: [react(), geocodeProxyPlugin],
   build: {
+    modulePreload: {
+      resolveDependencies(_filename, deps) {
+        return deps.filter((dep) => !dep.toLowerCase().includes('rbush'))
+      },
+    },
     rollupOptions: {
       output: {
         manualChunks(id) {

@@ -79,10 +79,11 @@ describe('bundleBudget', () => {
 
   it('blocks forbidden heavy chunks from initial modulepreload', async () => {
     const distDir = await writeDist(
-      '<script type="module" crossorigin src="/assets/index.js"></script><link rel="modulepreload" crossorigin href="/assets/turf.js">',
+      '<script type="module" crossorigin src="/assets/index.js"></script><link rel="modulepreload" crossorigin href="/assets/turf.js"><link rel="modulepreload" crossorigin href="/assets/rbush.js">',
       {
         'index.js': 100,
         'turf.js': 50,
+        'rbush.js': 20,
       },
     )
 
@@ -91,6 +92,7 @@ describe('bundleBudget', () => {
     expect(result.pass).toBe(false)
     expect(result.violations).toEqual([
       'forbidden initial chunk turf: /assets/turf.js',
+      'forbidden initial chunk rbush: /assets/rbush.js',
     ])
   })
 
