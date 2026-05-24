@@ -68,6 +68,7 @@ const createConfig = (
   defaultScope: 'default',
   maxBodyBytes: 1048576,
   maxIssueReports: 1000,
+  corsOrigins: ['*'],
   ...overrides,
 })
 
@@ -181,6 +182,70 @@ describe('createSyncServiceMiddleware', () => {
     expect(res.body()).toContain('exceeds 8 bytes')
   })
 
+  it('rejects disallowed CORS origins before writing issue reports', async () => {
+    const service = createMockService()
+    const middleware = createSyncServiceMiddleware(
+      service,
+      '/api/sync',
+      'default',
+      createConfig({ corsOrigins: ['https://parkking.example'] }),
+    )
+    const res = createMockResponse()
+
+    async function* body() {
+      yield Buffer.from(JSON.stringify({ issue: { issueId: 'issue-cross-origin' } }))
+    }
+
+    await expect(
+      middleware(
+        {
+          method: 'POST',
+          url: '/api/sync/issues?scope=alpha',
+          headers: {
+            origin: 'https://evil.example',
+          },
+          [Symbol.asyncIterator]: body,
+        } as never,
+        res.response as never,
+      ),
+    ).resolves.toBe(true)
+
+    expect(service.appendIssueReport).not.toHaveBeenCalled()
+    expect(res.response.statusCode).toBe(403)
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBeUndefined()
+    expect(res.body()).toContain('Origin is not allowed')
+  })
+
+  it('mirrors configured CORS origins for allowed preflight requests', async () => {
+    const service = createMockService()
+    const middleware = createSyncServiceMiddleware(
+      service,
+      '/api/sync',
+      'default',
+      createConfig({ corsOrigins: ['https://parkking.example'] }),
+    )
+    const res = createMockResponse()
+
+    await expect(
+      middleware(
+        {
+          method: 'OPTIONS',
+          url: '/api/sync/issues',
+          headers: {
+            origin: 'https://parkking.example',
+          },
+        } as never,
+        res.response as never,
+      ),
+    ).resolves.toBe(true)
+
+    expect(res.response.statusCode).toBe(204)
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe(
+      'https://parkking.example',
+    )
+    expect(res.headers.get('Vary')).toBe('Origin')
+  })
+
   it('serves health without reading a scoped sync store', async () => {
     const service = createMockService()
     const middleware = createSyncServiceMiddleware(
@@ -209,6 +274,7 @@ describe('createSyncServiceMiddleware', () => {
       readinessPath: '/api/sync/ready',
       statusPath: '/api/sync/status',
       maxIssueReports: 1000,
+      corsOrigins: ['*'],
     })
     expect(service.getSyncStatus).not.toHaveBeenCalled()
   })

@@ -7,6 +7,7 @@ export const DEFAULT_SYNC_FILE = '.tmp/sync-service.json'
 export const DEFAULT_SYNC_SCOPE = 'default'
 export const DEFAULT_SYNC_MAX_BODY_BYTES = 1_048_576
 export const DEFAULT_SYNC_MAX_ISSUE_REPORTS = 1_000
+export const DEFAULT_SYNC_CORS_ORIGINS = ['*']
 export const STORE_SCHEMA_VERSION = 1
 
 export const normalizeSyncText = (value?: string | null) => {
@@ -26,6 +27,14 @@ export const normalizeScope = (
   scope?: string | null,
   fallback = DEFAULT_SYNC_SCOPE,
 ) => normalizeSyncText(scope) ?? fallback
+
+export const normalizeSyncCorsOrigins = (value?: string | null): string[] => {
+  const origins = (value ?? DEFAULT_SYNC_CORS_ORIGINS.join(','))
+    .split(',')
+    .map((part) => normalizeSyncText(part))
+    .filter((part): part is string => Boolean(part))
+  return origins.length > 0 ? origins : [...DEFAULT_SYNC_CORS_ORIGINS]
+}
 
 export const normalizeBootstrapResources = (
   values: string[],
@@ -62,5 +71,8 @@ export const resolveSyncServiceConfig = (
   maxIssueReports: parsePositiveInteger(
     env.PARKKING_SYNC_MAX_ISSUE_REPORTS,
     DEFAULT_SYNC_MAX_ISSUE_REPORTS,
+  ),
+  corsOrigins: normalizeSyncCorsOrigins(
+    env.PARKKING_SYNC_CORS_ORIGINS ?? env.PARKKING_SYNC_CORS_ORIGIN,
   ),
 })

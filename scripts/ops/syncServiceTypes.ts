@@ -5,6 +5,7 @@ export interface SyncServiceConfig {
   defaultScope: string
   maxBodyBytes?: number
   maxIssueReports?: number
+  corsOrigins?: string[]
 }
 
 export interface SyncServiceBucket {

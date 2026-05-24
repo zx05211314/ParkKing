@@ -3,6 +3,7 @@ import type {
   SyncStatusSnapshot,
 } from './syncServiceTypes'
 import {
+  DEFAULT_SYNC_CORS_ORIGINS,
   DEFAULT_SYNC_MAX_BODY_BYTES,
   DEFAULT_SYNC_MAX_ISSUE_REPORTS,
 } from './syncServiceConfig'
@@ -23,6 +24,7 @@ export interface SyncServiceHealthResponse {
   storageFile: string | null
   maxBodyBytes: number | null
   maxIssueReports: number | null
+  corsOrigins: string[] | null
   issues: string[]
   snapshot?: SyncStatusSnapshot
 }
@@ -58,6 +60,12 @@ export const buildSyncServiceReadinessIssues = (
   ) {
     issues.push('max issue reports must be positive')
   }
+  if (
+    config.corsOrigins !== undefined &&
+    (!Array.isArray(config.corsOrigins) || config.corsOrigins.length === 0)
+  ) {
+    issues.push('cors origins must not be empty')
+  }
   return issues
 }
 
@@ -85,6 +93,7 @@ export const buildSyncServiceHealth = (
   maxIssueReports: config
     ? config.maxIssueReports ?? DEFAULT_SYNC_MAX_ISSUE_REPORTS
     : null,
+  corsOrigins: config ? config.corsOrigins ?? DEFAULT_SYNC_CORS_ORIGINS : null,
   issues,
   snapshot,
 })

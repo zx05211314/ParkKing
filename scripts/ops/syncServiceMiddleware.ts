@@ -1,11 +1,14 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import {
+  DEFAULT_SYNC_CORS_ORIGINS,
   DEFAULT_SYNC_PATH,
   DEFAULT_SYNC_SCOPE,
   DEFAULT_SYNC_MAX_BODY_BYTES,
   normalizeScope,
+  normalizeSyncText,
 } from './syncServiceConfig'
 import {
+  isSyncServiceCorsOriginAllowed,
   setSyncServiceCorsHeaders,
   SyncServicePayloadTooLargeError,
   writeSyncServiceJson,
@@ -38,10 +41,15 @@ export const createSyncServiceMiddleware = (
   const reportsPath = `${basePath}/reports`
   const issuesPath = `${basePath}/issues`
   const maxBodyBytes = config?.maxBodyBytes ?? DEFAULT_SYNC_MAX_BODY_BYTES
+  const corsOrigins = config?.corsOrigins ?? DEFAULT_SYNC_CORS_ORIGINS
 
   return async (req: IncomingMessage, res: ServerResponse, next?: () => void) => {
     const url = new URL(req.url ?? '/', 'http://localhost')
     const scope = normalizeScope(url.searchParams.get('scope'), defaultScope)
+    const originHeader = req.headers?.origin
+    const requestOrigin = Array.isArray(originHeader)
+      ? normalizeSyncText(originHeader[0])
+      : normalizeSyncText(originHeader)
     if (
       url.pathname !== healthPath &&
       url.pathname !== readinessPath &&
@@ -55,7 +63,22 @@ export const createSyncServiceMiddleware = (
       return false
     }
 
-    setSyncServiceCorsHeaders(res)
+    setSyncServiceCorsHeaders(res, {
+      requestOrigin,
+      allowedOrigins: corsOrigins,
+    })
+    if (
+      !isSyncServiceCorsOriginAllowed({
+        requestOrigin,
+        allowedOrigins: corsOrigins,
+      })
+    ) {
+      writeSyncServiceJson(res, 403, {
+        error: 'Origin is not allowed by sync service CORS policy.',
+      })
+      return true
+    }
+
     if (req.method === 'OPTIONS') {
       res.statusCode = 204
       res.end()

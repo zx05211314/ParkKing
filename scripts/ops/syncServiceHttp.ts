@@ -1,5 +1,9 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { DEFAULT_SYNC_MAX_BODY_BYTES } from './syncServiceConfig'
+import {
+  DEFAULT_SYNC_CORS_ORIGINS,
+  DEFAULT_SYNC_MAX_BODY_BYTES,
+  normalizeSyncText,
+} from './syncServiceConfig'
 
 export class SyncServicePayloadTooLargeError extends Error {
   constructor(maxBytes: number) {
@@ -49,8 +53,52 @@ export const writeSyncServiceMethodNotAllowed = (res: ServerResponse) => {
   writeSyncServiceJson(res, 405, { error: 'Method not allowed.' })
 }
 
-export const setSyncServiceCorsHeaders = (res: ServerResponse) => {
-  res.setHeader('Access-Control-Allow-Origin', '*')
+interface SyncServiceCorsOptions {
+  requestOrigin?: string | null
+  allowedOrigins?: string[] | null
+}
+
+const resolveAllowedOrigins = (allowedOrigins?: string[] | null) =>
+  allowedOrigins && allowedOrigins.length > 0
+    ? allowedOrigins
+    : DEFAULT_SYNC_CORS_ORIGINS
+
+export const resolveSyncServiceCorsOrigin = ({
+  requestOrigin,
+  allowedOrigins,
+}: SyncServiceCorsOptions = {}) => {
+  const origins = resolveAllowedOrigins(allowedOrigins)
+  if (origins.includes('*')) {
+    return '*'
+  }
+  const origin = normalizeSyncText(requestOrigin)
+  if (!origin) {
+    return null
+  }
+  return origins.includes(origin) ? origin : null
+}
+
+export const isSyncServiceCorsOriginAllowed = ({
+  requestOrigin,
+  allowedOrigins,
+}: SyncServiceCorsOptions = {}) => {
+  if (!normalizeSyncText(requestOrigin)) {
+    return true
+  }
+  return resolveSyncServiceCorsOrigin({ requestOrigin, allowedOrigins }) !== null
+}
+
+export const setSyncServiceCorsHeaders = (
+  res: ServerResponse,
+  options: SyncServiceCorsOptions = {},
+) => {
+  const allowOrigin = resolveSyncServiceCorsOrigin(options)
+  if (allowOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', allowOrigin)
+    if (allowOrigin !== '*') {
+      res.setHeader('Vary', 'Origin')
+    }
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   res.setHeader('Cache-Control', 'no-store')

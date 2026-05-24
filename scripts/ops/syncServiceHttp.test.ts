@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  isSyncServiceCorsOriginAllowed,
   readSyncServiceJsonBody,
+  resolveSyncServiceCorsOrigin,
   setSyncServiceCorsHeaders,
   SyncServicePayloadTooLargeError,
   writeSyncServiceJson,
@@ -62,6 +64,27 @@ describe('syncServiceHttp', () => {
     writeSyncServiceMethodNotAllowed(res.response as never)
     expect(res.response.statusCode).toBe(405)
     expect(res.body()).toBe(JSON.stringify({ error: 'Method not allowed.' }))
+  })
+
+  it('mirrors allowed sync CORS origins and rejects disallowed origins', () => {
+    expect(
+      resolveSyncServiceCorsOrigin({
+        requestOrigin: 'https://parkking.example',
+        allowedOrigins: ['https://parkking.example'],
+      }),
+    ).toBe('https://parkking.example')
+    expect(
+      resolveSyncServiceCorsOrigin({
+        requestOrigin: 'https://evil.example',
+        allowedOrigins: ['https://parkking.example'],
+      }),
+    ).toBeNull()
+    expect(
+      isSyncServiceCorsOriginAllowed({
+        requestOrigin: 'https://evil.example',
+        allowedOrigins: ['https://parkking.example'],
+      }),
+    ).toBe(false)
   })
 
   it('rejects json bodies that exceed the configured byte limit', async () => {

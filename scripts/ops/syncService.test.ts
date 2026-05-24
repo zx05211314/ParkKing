@@ -18,6 +18,7 @@ describe('resolveSyncServiceConfig', () => {
       defaultScope: 'default',
       maxBodyBytes: 1048576,
       maxIssueReports: 1000,
+      corsOrigins: ['*'],
     })
   })
 
@@ -26,12 +27,18 @@ describe('resolveSyncServiceConfig', () => {
       {
         PARKKING_SYNC_MAX_BODY_BYTES: '2048',
         PARKKING_SYNC_MAX_ISSUE_REPORTS: '25',
+        PARKKING_SYNC_CORS_ORIGINS:
+          'https://parkking.example, https://ops.parkking.example',
       },
       'C:/tmp/parkking',
     )
 
     expect(config.maxBodyBytes).toBe(2048)
     expect(config.maxIssueReports).toBe(25)
+    expect(config.corsOrigins).toEqual([
+      'https://parkking.example',
+      'https://ops.parkking.example',
+    ])
   })
 })
 
