@@ -6,6 +6,7 @@ import type { SmokeParkingAnswerServiceSummary } from './smokeParkingAnswerServi
 import type { SmokeReviewedUiPacksResult } from './smokeReviewedUiPacks'
 import type { SmokeUiParkingAnswersSummary } from './smokeUiParkingAnswers'
 import type { SmokeUiMapViewSummary } from './smokeUiMapView'
+import type { SmokeUiIssueReportSummary } from './smokeUiIssueReport'
 import type { BundleBudgetResult } from './bundleBudget'
 import {
   parseP1ReleaseReadinessArgs,
@@ -100,6 +101,14 @@ const mapUiPass = {
   mapParkingSpaceCount: 23091,
 } as unknown as SmokeUiMapViewSummary
 
+const issueReportUiPass = {
+  pass: true,
+  issueId: 'issue-a',
+  localIssueCount: 1,
+  remoteIssueCount: 1,
+  downloadedFileName: 'parkking-debug-2026-04-02T000000.000Z.json',
+} as unknown as SmokeUiIssueReportSummary
+
 const buildRunners = (
   overrides: Partial<P1ReleaseReadinessRunners> = {},
 ): P1ReleaseReadinessRunners => ({
@@ -111,6 +120,7 @@ const buildRunners = (
   runSmokeReviewedUiPacks: vi.fn().mockResolvedValue(reviewedUiPass),
   runSmokeUiParkingAnswers: vi.fn().mockResolvedValue(mapReviewedUiPass),
   runSmokeUiMapView: vi.fn().mockResolvedValue(mapUiPass),
+  runSmokeUiIssueReport: vi.fn().mockResolvedValue(issueReportUiPass),
   ...overrides,
 })
 
@@ -190,6 +200,11 @@ describe('p1ReleaseReadiness', () => {
       timeoutMs: 25000,
       startPreview: true,
     })
+    expect(runners.runSmokeUiIssueReport).toHaveBeenCalledWith({
+      district: 'xinyi',
+      timeoutMs: 25000,
+      startPreview: true,
+    })
   })
 
   it('can promote district matrix blockers to release blockers in strict mode', async () => {
@@ -213,9 +228,11 @@ describe('p1ReleaseReadiness', () => {
     expect(result.reviewedUi).toBeNull()
     expect(result.mapReviewedUi).toBeNull()
     expect(result.mapUi).toBeNull()
+    expect(result.issueReportUi).toBeNull()
     expect(runners.runSmokeReviewedUiPacks).not.toHaveBeenCalled()
     expect(runners.runSmokeUiParkingAnswers).not.toHaveBeenCalled()
     expect(runners.runSmokeUiMapView).not.toHaveBeenCalled()
+    expect(runners.runSmokeUiIssueReport).not.toHaveBeenCalled()
     expect(renderP1ReleaseReadiness(result)).toContain(
       '| SKIP | Reviewed UI answers | skipped by --skip-ui | |',
     )
@@ -224,6 +241,9 @@ describe('p1ReleaseReadiness', () => {
     )
     expect(renderP1ReleaseReadiness(result)).toContain(
       '| SKIP | MAP UI smoke | skipped by --skip-ui | |',
+    )
+    expect(renderP1ReleaseReadiness(result)).toContain(
+      '| SKIP | Issue report UI smoke | skipped by --skip-ui | |',
     )
   })
 })

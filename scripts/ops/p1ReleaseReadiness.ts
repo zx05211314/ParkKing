@@ -35,6 +35,11 @@ import {
   type SmokeUiMapViewSummary,
 } from './smokeUiMapView'
 import {
+  runSmokeUiIssueReport,
+  type SmokeUiIssueReportOptions,
+  type SmokeUiIssueReportSummary,
+} from './smokeUiIssueReport'
+import {
   runBundleBudget,
   type BundleBudgetOptions,
   type BundleBudgetResult,
@@ -85,6 +90,7 @@ export interface P1ReleaseReadinessResult {
   reviewedUi: P1ReleaseReadinessCheck<SmokeReviewedUiPacksResult> | null
   mapReviewedUi: P1ReleaseReadinessCheck<SmokeUiParkingAnswersSummary> | null
   mapUi: P1ReleaseReadinessCheck<SmokeUiMapViewSummary> | null
+  issueReportUi: P1ReleaseReadinessCheck<SmokeUiIssueReportSummary> | null
   blockers: string[]
   knownDistrictBlockers: Array<Pick<DistrictReadinessEntry, 'districtId' | 'blockers'>>
 }
@@ -110,6 +116,9 @@ export interface P1ReleaseReadinessRunners {
   runSmokeUiMapView: (
     options: SmokeUiMapViewOptions,
   ) => Promise<SmokeUiMapViewSummary>
+  runSmokeUiIssueReport: (
+    options: SmokeUiIssueReportOptions,
+  ) => Promise<SmokeUiIssueReportSummary>
 }
 
 const DEFAULT_DISTRICT = 'xinyi'
@@ -127,6 +136,7 @@ const defaultRunners: P1ReleaseReadinessRunners = {
   runSmokeReviewedUiPacks,
   runSmokeUiParkingAnswers,
   runSmokeUiMapView,
+  runSmokeUiIssueReport,
 }
 
 const getArgValue = (argv: string[], ...flags: string[]) => {
@@ -350,6 +360,19 @@ export const runP1ReleaseReadiness = async (
           }),
         (summary) => summary.pass,
       )
+  const issueReportUi = inputs.skipUi
+    ? null
+    : await runCheck(
+        'Issue report UI smoke',
+        true,
+        () =>
+          runners.runSmokeUiIssueReport({
+            district: inputs.districtId,
+            timeoutMs: inputs.timeoutMs,
+            startPreview: true,
+          }),
+        (summary) => summary.pass,
+      )
   const checks = [
     p0Readiness,
     districtMatrix,
@@ -359,6 +382,7 @@ export const runP1ReleaseReadiness = async (
     ...(reviewedUi ? [reviewedUi] : []),
     ...(mapReviewedUi ? [mapReviewedUi] : []),
     ...(mapUi ? [mapUi] : []),
+    ...(issueReportUi ? [issueReportUi] : []),
   ]
   const blockers = checks.map(checkBlocker).filter((item): item is string => Boolean(item))
   return {
@@ -372,6 +396,7 @@ export const runP1ReleaseReadiness = async (
     reviewedUi,
     mapReviewedUi,
     mapUi,
+    issueReportUi,
     blockers,
     knownDistrictBlockers: knownDistrictBlockers(districtMatrix.summary),
   }
@@ -413,6 +438,11 @@ const formatMapUi = (summary: SmokeUiMapViewSummary | null) =>
     ? `segments ${summary.mapSegmentCount}/${summary.expectedSegmentsCount ?? '>0'}, parking spaces ${summary.mapParkingSpaceCount}/${summary.expectedParkingSpacesCount ?? '>0'}, canvas ${summary.canvasWidth}x${summary.canvasHeight}`
     : '-'
 
+const formatIssueReportUi = (summary: SmokeUiIssueReportSummary | null) =>
+  summary
+    ? `issue ${summary.issueId}, local ${summary.localIssueCount}, remote ${summary.remoteIssueCount}, debug ${summary.downloadedFileName}`
+    : '-'
+
 const formatP0 = (summary: P0ReadinessResult | null) => {
   if (!summary) {
     return '-'
@@ -442,6 +472,9 @@ export const renderP1ReleaseReadiness = (result: P1ReleaseReadinessResult) => {
   const mapUiLine = result.mapUi
     ? `| ${checkStatus(result.mapUi)} | MAP UI smoke | ${formatMapUi(result.mapUi.summary)} | ${result.mapUi.error ?? ''} |`
     : '| SKIP | MAP UI smoke | skipped by --skip-ui | |'
+  const issueReportUiLine = result.issueReportUi
+    ? `| ${checkStatus(result.issueReportUi)} | Issue report UI smoke | ${formatIssueReportUi(result.issueReportUi.summary)} | ${result.issueReportUi.error ?? ''} |`
+    : '| SKIP | Issue report UI smoke | skipped by --skip-ui | |'
   const lines = [
     `# P1 Release Readiness: ${result.pass ? 'PASS' : 'BLOCKED'}`,
     '',
@@ -473,6 +506,7 @@ export const renderP1ReleaseReadiness = (result: P1ReleaseReadinessResult) => {
     reviewedUiLine,
     mapReviewedUiLine,
     mapUiLine,
+    issueReportUiLine,
     '',
     '## Blockers',
     '',
