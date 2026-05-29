@@ -96,6 +96,17 @@ URLs and exact `PARKKING_RELEASE_PACKAGE_URL` /
 `PARKKING_RELEASE_MANIFEST_URL` values. Those URLs become live after the
 `Release Data Package` workflow publishes the release assets.
 
+After publishing GitHub Release assets, verify the URLs before assigning them to
+Render:
+
+```powershell
+npm run ops:release-data-url-smoke
+```
+
+The release workflow runs this automatically after `ops:release-data-publish`.
+It checks the package URL with `HEAD`, fetches the manifest URL, and verifies the
+manifest `releaseId` matches the released package.
+
 Validate the checked-in Blueprint contract before relying on a deploy:
 
 ```powershell

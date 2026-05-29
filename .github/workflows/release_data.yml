@@ -79,6 +79,12 @@ jobs:
           PARKKING_RELEASE_TAG: ${{ steps.release_meta.outputs.tag }}
           PARKKING_RELEASE_LATEST: ${{ inputs.latest }}
         run: npm run ops:release-data-publish
+      - name: Smoke release asset URLs
+        env:
+          PARKKING_RELEASE_ID: ${{ steps.release_meta.outputs.release_id }}
+          PARKKING_RELEASE_TAG: ${{ steps.release_meta.outputs.tag }}
+          PARKKING_RELEASE_DOWNLOAD_TOKEN: ${{ github.token }}
+        run: npm run ops:release-data-url-smoke
       - name: Summarize release URLs
         env:
           PARKKING_RELEASE_ID: ${{ steps.release_meta.outputs.release_id }}

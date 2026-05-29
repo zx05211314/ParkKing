@@ -457,6 +457,9 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
 - Render deployment handoff from the current release artifacts:
   `npm run ops:render-deployment-handoff`
   This reads `.tmp/p3-release-readiness.json` and `.tmp/deploy-readiness.json`, verifies both gates point at the same passing release, then writes `.tmp/render-deployment-handoff.md` and `.tmp/render-deployment-handoff.json` with the exact GitHub Release asset URLs and Render env vars. The URLs become live after the `Release Data Package` workflow publishes the release assets.
+- Published release URL smoke:
+  `npm run ops:release-data-url-smoke`
+  This checks the package URL with `HEAD`, fetches the manifest URL, and verifies the manifest `releaseId` matches the release being handed to Render. The `Release Data Package` workflow runs it immediately after publishing GitHub Release assets.
 - Render Blueprint contract check:
   `npm run ops:render-blueprint-check`
   This fails if `render.yaml` loses the release package install build step, same-origin parking-answer health check, or required Render environment variables. CI, publish, and release-data workflows run the same check before release/deploy gates.

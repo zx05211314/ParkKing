@@ -20,6 +20,35 @@ export interface ReleaseDataMetadata {
   tag: string
 }
 
+export interface ReleaseDataAssetUrlSmokeOptions {
+  releaseId: string
+  packageUrl: string
+  manifestUrl: string
+  downloadToken?: string | null
+  downloadAuthHeader?: string | null
+  timeoutMs?: number
+}
+
+export interface ReleaseDataAssetUrlSmokeCheck {
+  label: string
+  url: string
+  method: string
+  ok: boolean
+  status: number | null
+  contentLength: string | null
+  contentType: string | null
+  error: string | null
+}
+
+export interface ReleaseDataAssetUrlSmokeResult {
+  pass: boolean
+  releaseId: string
+  packageUrl: string
+  manifestUrl: string
+  checks: ReleaseDataAssetUrlSmokeCheck[]
+  errors: string[]
+}
+
 const getArgValue = (argv: string[], ...flags: string[]) => {
   for (const flag of flags) {
     const index = argv.indexOf(flag)
@@ -141,6 +170,182 @@ export const buildReleaseDataUrls = (params: {
   }
 }
 
+export const buildReleaseAssetSmokeHeaders = (params: {
+  downloadToken?: string | null
+  downloadAuthHeader?: string | null
+}) => {
+  const headers: Record<string, string> = {
+    'user-agent': 'ParkKing release asset smoke',
+  }
+  if (params.downloadAuthHeader) {
+    headers.authorization = params.downloadAuthHeader
+  } else if (params.downloadToken) {
+    headers.authorization = `Bearer ${params.downloadToken}`
+  }
+  return headers
+}
+
+const fetchReleaseAsset = async (params: {
+  label: string
+  url: string
+  method: string
+  headers: Record<string, string>
+  timeoutMs: number
+}) => {
+  const response = await fetch(params.url, {
+    method: params.method,
+    headers: params.headers,
+    signal: AbortSignal.timeout(params.timeoutMs),
+  })
+  return {
+    label: params.label,
+    url: params.url,
+    method: params.method,
+    ok: response.ok,
+    status: response.status,
+    contentLength: response.headers.get('content-length'),
+    contentType: response.headers.get('content-type'),
+    error: response.ok ? null : `HTTP ${response.status}`,
+    response,
+  }
+}
+
+const toSmokeCheck = (
+  check: Omit<ReleaseDataAssetUrlSmokeCheck, 'error'> & {
+    error?: string | null
+  },
+): ReleaseDataAssetUrlSmokeCheck => ({
+  ...check,
+  error: check.error ?? null,
+})
+
+const fetchSmokeCheck = async (params: {
+  label: string
+  url: string
+  method: string
+  headers: Record<string, string>
+  timeoutMs: number
+}): Promise<{
+  check: ReleaseDataAssetUrlSmokeCheck
+  response: Response | null
+}> => {
+  try {
+    const result = await fetchReleaseAsset(params)
+    return {
+      check: toSmokeCheck(result),
+      response: result.response,
+    }
+  } catch (error) {
+    return {
+      check: {
+        label: params.label,
+        url: params.url,
+        method: params.method,
+        ok: false,
+        status: null,
+        contentLength: null,
+        contentType: null,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      response: null,
+    }
+  }
+}
+
+const readManifestReleaseId = async (response: Response) => {
+  const parsed = (await response.json()) as { releaseId?: unknown }
+  return typeof parsed.releaseId === 'string' ? parsed.releaseId : null
+}
+
+export const smokeReleaseDataAssetUrls = async (
+  options: ReleaseDataAssetUrlSmokeOptions,
+): Promise<ReleaseDataAssetUrlSmokeResult> => {
+  const timeoutMs = options.timeoutMs ?? 30000
+  const headers = buildReleaseAssetSmokeHeaders(options)
+  const errors: string[] = []
+  const checks: ReleaseDataAssetUrlSmokeCheck[] = []
+
+  const packageCheck = await fetchSmokeCheck({
+    label: 'package',
+    url: options.packageUrl,
+    method: 'HEAD',
+    headers,
+    timeoutMs,
+  })
+  checks.push(packageCheck.check)
+  if (!packageCheck.check.ok) {
+    errors.push(
+      `Package URL is not reachable: ${packageCheck.check.error ?? 'unknown error'}`,
+    )
+  }
+
+  const manifestCheck = await fetchSmokeCheck({
+    label: 'manifest',
+    url: options.manifestUrl,
+    method: 'GET',
+    headers,
+    timeoutMs,
+  })
+  checks.push(manifestCheck.check)
+  if (!manifestCheck.check.ok || !manifestCheck.response) {
+    errors.push(
+      `Manifest URL is not reachable: ${manifestCheck.check.error ?? 'unknown error'}`,
+    )
+  } else {
+    try {
+      const manifestReleaseId = await readManifestReleaseId(manifestCheck.response)
+      if (manifestReleaseId !== options.releaseId) {
+        errors.push(
+          `Manifest releaseId ${manifestReleaseId ?? 'missing'} does not match ${options.releaseId}`,
+        )
+      }
+    } catch (error) {
+      errors.push(
+        `Manifest URL did not return valid JSON: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      )
+    }
+  }
+
+  return {
+    pass: errors.length === 0,
+    releaseId: options.releaseId,
+    packageUrl: options.packageUrl,
+    manifestUrl: options.manifestUrl,
+    checks,
+    errors,
+  }
+}
+
+export const renderReleaseDataAssetUrlSmokeResult = (
+  result: ReleaseDataAssetUrlSmokeResult,
+) => {
+  const lines = [
+    `# Release Data Asset URL Smoke: ${result.pass ? 'PASS' : 'FAIL'}`,
+    '',
+    `- Release ID: ${result.releaseId}`,
+    `- Package URL: ${result.packageUrl}`,
+    `- Manifest URL: ${result.manifestUrl}`,
+    '',
+    '## Checks',
+    '',
+    ...result.checks.map(
+      (check) =>
+        `- ${check.label}: ${check.method} ${check.status ?? 'no-status'} ${
+          check.ok ? 'ok' : `failed (${check.error ?? 'unknown error'})`
+        }`,
+    ),
+    '',
+    '## Errors',
+    '',
+    ...(result.errors.length > 0
+      ? result.errors.map((error) => `- ${error}`)
+      : ['- none']),
+  ]
+  return `${lines.join('\n')}\n`
+}
+
 const runResolveMetadata = async () => {
   const metadata = await resolveReleaseDataMetadata({
     tagInput: process.env.PARKKING_RELEASE_TAG_INPUT,
@@ -186,6 +391,27 @@ const runSummarize = async () => {
   console.log(`PARKKING_RELEASE_MANIFEST_URL=${urls.manifestUrl}`)
 }
 
+const runSmokeUrls = async () => {
+  const releaseId = process.env.PARKKING_RELEASE_ID
+  const tag = process.env.PARKKING_RELEASE_TAG
+  const repository = process.env.GITHUB_REPOSITORY
+  if (!releaseId || !tag || !repository) {
+    throw new Error('PARKKING_RELEASE_ID, PARKKING_RELEASE_TAG, and GITHUB_REPOSITORY are required')
+  }
+  const urls = buildReleaseDataUrls({ repository, tag, releaseId })
+  const result = await smokeReleaseDataAssetUrls({
+    releaseId,
+    packageUrl: urls.packageUrl,
+    manifestUrl: urls.manifestUrl,
+    downloadToken: process.env.PARKKING_RELEASE_DOWNLOAD_TOKEN,
+    downloadAuthHeader: process.env.PARKKING_RELEASE_DOWNLOAD_AUTH_HEADER,
+  })
+  console.log(renderReleaseDataAssetUrlSmokeResult(result))
+  if (!result.pass) {
+    process.exit(1)
+  }
+}
+
 const run = async () => {
   const mode = getMode(process.argv.slice(2))
   if (mode === 'resolve-meta') {
@@ -200,7 +426,11 @@ const run = async () => {
     await runSummarize()
     return
   }
-  throw new Error('Usage: tsx releaseDataWorkflow.ts --mode <resolve-meta|publish|summarize>')
+  if (mode === 'smoke-urls') {
+    await runSmokeUrls()
+    return
+  }
+  throw new Error('Usage: tsx releaseDataWorkflow.ts --mode <resolve-meta|publish|summarize|smoke-urls>')
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

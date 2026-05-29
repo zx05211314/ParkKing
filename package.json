@@ -123,6 +123,7 @@
     "ops:release-data-meta": "tsx scripts/ops/releaseDataWorkflow.ts --mode resolve-meta",
     "ops:release-data-publish": "tsx scripts/ops/releaseDataWorkflow.ts --mode publish",
     "ops:release-data-summary": "tsx scripts/ops/releaseDataWorkflow.ts --mode summarize",
+    "ops:release-data-url-smoke": "tsx scripts/ops/releaseDataWorkflow.ts --mode smoke-urls",
     "ops:render-deployment-handoff": "tsx scripts/ops/renderDeploymentHandoff.ts --out .tmp/render-deployment-handoff.md --json-out .tmp/render-deployment-handoff.json",
     "ops:render-blueprint-check": "tsx scripts/ops/renderBlueprintContract.ts",
     "ops:validate-release-package:xinyi": "tsx scripts/ops/validateReleasePackage.ts --district xinyi",
