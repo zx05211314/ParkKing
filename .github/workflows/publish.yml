@@ -73,6 +73,9 @@ jobs:
       - name: Deploy readiness
         if: ${{ inputs.configsGlob == 'configs/prod/*.json' }}
         run: npm run ops:deploy-readiness
+      - name: Render deployment handoff
+        if: ${{ inputs.configsGlob == 'configs/prod/*.json' }}
+        run: npm run ops:render-deployment-handoff
       - name: Package release
         if: ${{ inputs.configsGlob != 'configs/prod/*.json' }}
         run: npm run ops:package-release
@@ -97,6 +100,8 @@ jobs:
             .tmp/p3-release-readiness.json
             .tmp/deploy-readiness.md
             .tmp/deploy-readiness.json
+            .tmp/render-deployment-handoff.md
+            .tmp/render-deployment-handoff.json
           if-no-files-found: warn
       - name: Upload publish gate summary artifact
         id: upload_publish_gate_summary

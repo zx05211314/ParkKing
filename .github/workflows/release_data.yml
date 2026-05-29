@@ -61,6 +61,10 @@ jobs:
         run: npm run ops:p3-release-readiness
       - name: Deploy readiness
         run: npm run ops:deploy-readiness
+      - name: Render deployment handoff
+        env:
+          PARKKING_RELEASE_TAG_INPUT: ${{ inputs.tag }}
+        run: npm run ops:render-deployment-handoff
       - name: Resolve release metadata
         id: release_meta
         env:
@@ -90,4 +94,6 @@ jobs:
             .tmp/p3-release-readiness.json
             .tmp/deploy-readiness.md
             .tmp/deploy-readiness.json
+            .tmp/render-deployment-handoff.md
+            .tmp/render-deployment-handoff.json
           if-no-files-found: warn

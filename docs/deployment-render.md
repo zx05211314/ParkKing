@@ -84,6 +84,18 @@ release. The same command writes `.tmp/deploy-readiness.md` and
 `.tmp/deploy-readiness.json`, and the release workflows upload those files with
 the release package artifacts.
 
+Generate the Render handoff after deploy readiness passes:
+
+```powershell
+npm run ops:render-deployment-handoff
+```
+
+This writes `.tmp/render-deployment-handoff.md` and
+`.tmp/render-deployment-handoff.json` with the expected GitHub Release asset
+URLs and exact `PARKKING_RELEASE_PACKAGE_URL` /
+`PARKKING_RELEASE_MANIFEST_URL` values. Those URLs become live after the
+`Release Data Package` workflow publishes the release assets.
+
 Run `ops:p3-release-readiness` after `npm run build` because Vite cleans `dist`
 before building and would otherwise remove `dist/releases`.
 
