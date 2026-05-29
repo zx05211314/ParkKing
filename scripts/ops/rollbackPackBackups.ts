@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import type { RollbackBackupEntry } from './rollbackPackTypes'
+import { resolveCompat } from './pathCompat'
 
 export const listRollbackBackups = async (
   backupRoot: string,
@@ -60,7 +61,7 @@ export const buildRollbackSwapBackupPath = (
   currentHash: string,
   timestamp = new Date(),
 ) =>
-  path.resolve(
+  resolveCompat(
     backupRoot,
     `${districtId}-rollback-${timestamp.toISOString().replace(/[:.]/g, '')}-${currentHash}`,
   )

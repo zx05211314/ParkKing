@@ -1,4 +1,3 @@
-import { resolve } from 'node:path'
 import {
   DEFAULT_CACHE_FILE,
   DEFAULT_CACHE_TTL_MS,
@@ -12,6 +11,7 @@ import {
   parsePositiveInteger,
 } from './routingProxyParsing'
 import type { RoutingProxyConfig } from './routingProxyTypes'
+import { resolveCompat } from './pathCompat'
 
 export const resolveRoutingProxyConfig = (
   env: NodeJS.ProcessEnv = process.env,
@@ -35,7 +35,7 @@ export const resolveRoutingProxyConfig = (
       env.PARKKING_ROUTING_CACHE_TTL_MS,
       DEFAULT_CACHE_TTL_MS,
     ),
-    cacheFile: resolve(cwd, env.PARKKING_ROUTING_CACHE_FILE ?? DEFAULT_CACHE_FILE),
+    cacheFile: resolveCompat(cwd, env.PARKKING_ROUTING_CACHE_FILE ?? DEFAULT_CACHE_FILE),
     userAgent: normalizeRoutingText(env.PARKKING_ROUTING_USER_AGENT) ?? DEFAULT_USER_AGENT,
     path: normalizeRoutingText(env.PARKKING_ROUTING_PATH) ?? DEFAULT_PROXY_PATH,
     port: parsePositiveInteger(env.PARKKING_ROUTING_PORT, DEFAULT_PROXY_PORT),

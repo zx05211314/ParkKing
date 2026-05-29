@@ -3,6 +3,7 @@ import * as path from 'node:path'
 import AdmZip from 'adm-zip'
 import type { ReleaseManifestEntry } from './packageReleaseTypes'
 import { sha256Buffer } from './packageReleaseUtils'
+import { relativeCompat } from './pathCompat'
 
 export const buildReleaseManifest = (params: {
   releaseId: string
@@ -12,7 +13,7 @@ export const buildReleaseManifest = (params: {
 }) => ({
   releaseId: params.releaseId,
   generatedAt: new Date().toISOString(),
-  baseDir: path.relative(params.cwd ?? process.cwd(), params.baseDir),
+  baseDir: relativeCompat(params.cwd ?? process.cwd(), params.baseDir),
   files: [...params.manifestEntries].sort((a, b) => a.path.localeCompare(b.path)),
 })
 
@@ -28,7 +29,7 @@ export const writeReleaseArchive = async (params: {
 
   for (const filePath of params.files) {
     const buffer = params.fileContents?.get(filePath) ?? (await fs.readFile(filePath))
-    const rel = path.relative(params.baseDir, filePath).replace(/\\/g, '/')
+    const rel = relativeCompat(params.baseDir, filePath).replace(/\\/g, '/')
     zip.addFile(rel, buffer)
     manifestEntries.push({
       path: rel,

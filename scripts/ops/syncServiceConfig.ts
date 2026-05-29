@@ -1,5 +1,5 @@
-import { resolve } from 'node:path'
 import type { SyncBootstrapResource, SyncServiceConfig } from './syncServiceTypes'
+import { resolveCompat } from './pathCompat'
 
 export const DEFAULT_SYNC_PATH = '/api/sync'
 export const DEFAULT_SYNC_PORT = 8789
@@ -64,7 +64,7 @@ export const resolveSyncServiceConfig = (
 ): SyncServiceConfig => ({
   path: normalizeSyncText(env.PARKKING_SYNC_PATH) ?? DEFAULT_SYNC_PATH,
   port: parsePositiveInteger(env.PARKKING_SYNC_PORT, DEFAULT_SYNC_PORT),
-  storageFile: resolve(cwd, env.PARKKING_SYNC_FILE ?? DEFAULT_SYNC_FILE),
+  storageFile: resolveCompat(cwd, env.PARKKING_SYNC_FILE ?? DEFAULT_SYNC_FILE),
   defaultScope: normalizeScope(env.PARKKING_SYNC_DEFAULT_SCOPE),
   maxBodyBytes: parsePositiveInteger(
     env.PARKKING_SYNC_MAX_BODY_BYTES,

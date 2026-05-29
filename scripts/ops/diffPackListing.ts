@@ -1,8 +1,8 @@
-import * as path from 'node:path'
 import fg from 'fast-glob'
+import { relativeCompat } from './pathCompat'
 
 export const normalizeRelPath = (baseDir: string, filePath: string) => {
-  return path.relative(baseDir, filePath).replace(/\\/g, '/')
+  return relativeCompat(baseDir, filePath).replace(/\\/g, '/')
 }
 
 export const listFiles = async (dir: string): Promise<string[]> => {

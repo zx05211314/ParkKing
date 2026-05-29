@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises'
-import * as path from 'node:path'
 
 import type { SourceEntry, SourceManifest } from './fetchSourcesTypes'
+import { isAbsoluteCompat, resolveCompat } from './pathCompat'
 
 export const readSourceManifest = async (manifestPath: string): Promise<SourceManifest> => {
   const raw = await fs.readFile(manifestPath, 'utf-8')
@@ -15,7 +15,9 @@ export const resolveSourceDestinations = (
   manifestDir: string,
 ): string[] => {
   return sources.map((source) =>
-    path.isAbsolute(source.dest) ? source.dest : path.resolve(manifestDir, source.dest),
+    isAbsoluteCompat(source.dest)
+      ? source.dest
+      : resolveCompat(manifestDir, source.dest),
   )
 }
 

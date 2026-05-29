@@ -1,4 +1,4 @@
-import * as path from 'node:path'
+import { resolveCompat } from './pathCompat'
 
 const DEFAULT_REPORT_NAME = 'diff_report.json'
 
@@ -25,7 +25,7 @@ export const parseDiffPackArgs = (argv: string[]): DiffPackCliArgs => {
 }
 
 export const resolveDiffPackReportPath = (nextDir: string, outPath: string | null) =>
-  outPath ?? path.resolve(nextDir, DEFAULT_REPORT_NAME)
+  outPath ?? resolveCompat(nextDir, DEFAULT_REPORT_NAME)
 
 export const buildDiffPackUsageError = () =>
   new Error('Usage: tsx diffPacks.ts --next <path> [--prev <path>] [--out <path>] [--format json|md]')

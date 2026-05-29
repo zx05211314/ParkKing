@@ -202,14 +202,18 @@ describe('p1ReleaseReadiness', () => {
         startPreview: true,
       }),
     )
-    expect(runners.runSmokeUiParkingAnswers).toHaveBeenCalledWith({
-      district: 'xinyi',
-      casesPath: 'configs\\prod\\xinyi.answer-cases.json',
-      view: 'MAP',
-      limit: 1,
-      timeoutMs: 25000,
-      startPreview: true,
-    })
+    expect(runners.runSmokeUiParkingAnswers).toHaveBeenCalledWith(
+      expect.objectContaining({
+        district: 'xinyi',
+        casesPath: expect.stringMatching(
+          /^configs[\\/]prod[\\/]xinyi\.answer-cases\.json$/,
+        ),
+        view: 'MAP',
+        limit: 1,
+        timeoutMs: 25000,
+        startPreview: true,
+      }),
+    )
     expect(runners.runSmokeUiMapView).toHaveBeenCalledWith({
       district: 'xinyi',
       timeoutMs: 25000,

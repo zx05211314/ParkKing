@@ -1,8 +1,8 @@
-import * as path from 'node:path'
 import type { NewDistrictOptions } from './newDistrictTypes'
+import { isAbsoluteCompat } from './pathCompat'
 
 export const ensureRelative = (value: string) => {
-  if (path.isAbsolute(value)) {
+  if (isAbsoluteCompat(value)) {
     throw new Error('sourceRoot must be a relative path')
   }
   return value.replace(/\\/g, '/')

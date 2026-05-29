@@ -57,48 +57,21 @@ jobs:
         run: npm run ops:p3-release-readiness
       - name: Resolve release metadata
         id: release_meta
-        shell: bash
-        run: |
-          release_id="$(node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync('.tmp/p3-release-readiness.json','utf8')); process.stdout.write(data.releasePackage.summary.releaseId)")"
-          tag="${{ inputs.tag }}"
-          if [ -z "$tag" ]; then
-            tag="data-$release_id"
-          fi
-          echo "release_id=$release_id" >> "$GITHUB_OUTPUT"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+        env:
+          PARKKING_RELEASE_TAG_INPUT: ${{ inputs.tag }}
+        run: npm run ops:release-data-meta
       - name: Publish GitHub Release assets
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.release_meta.outputs.tag }}
-          MAKE_LATEST: ${{ inputs.latest }}
-        shell: bash
-        run: |
-          latest_flag="--latest=false"
-          if [ "$MAKE_LATEST" = "true" ]; then
-            latest_flag="--latest"
-          fi
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" dist/releases/*.zip dist/releases/release_manifest_*.json --clobber
-            if [ "$MAKE_LATEST" = "true" ]; then
-              gh release edit "$RELEASE_TAG" --latest
-            fi
-          else
-            gh release create "$RELEASE_TAG" dist/releases/*.zip dist/releases/release_manifest_*.json --target "$GITHUB_SHA" --title "ParkKing data ${{ steps.release_meta.outputs.release_id }}" --notes-file .tmp/p3-release-readiness.md "$latest_flag"
-          fi
+          PARKKING_RELEASE_ID: ${{ steps.release_meta.outputs.release_id }}
+          PARKKING_RELEASE_TAG: ${{ steps.release_meta.outputs.tag }}
+          PARKKING_RELEASE_LATEST: ${{ inputs.latest }}
+        run: npm run ops:release-data-publish
       - name: Summarize release URLs
         env:
-          RELEASE_ID: ${{ steps.release_meta.outputs.release_id }}
-          RELEASE_TAG: ${{ steps.release_meta.outputs.tag }}
-          REPOSITORY: ${{ github.repository }}
-        shell: bash
-        run: |
-          base_url="https://github.com/$REPOSITORY/releases/download/$RELEASE_TAG"
-          {
-            echo "## Render release data URLs"
-            echo ""
-            echo "- PARKKING_RELEASE_PACKAGE_URL=$base_url/park-king-data_$RELEASE_ID.zip"
-            echo "- PARKKING_RELEASE_MANIFEST_URL=$base_url/release_manifest_$RELEASE_ID.json"
-          } >> "$GITHUB_STEP_SUMMARY"
+          PARKKING_RELEASE_ID: ${{ steps.release_meta.outputs.release_id }}
+          PARKKING_RELEASE_TAG: ${{ steps.release_meta.outputs.tag }}
+        run: npm run ops:release-data-summary
       - name: Upload release readiness artifacts
         if: always()
         uses: actions/upload-artifact@v4

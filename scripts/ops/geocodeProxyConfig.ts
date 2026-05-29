@@ -1,4 +1,3 @@
-import { resolve } from 'node:path'
 import {
   DEFAULT_CACHE_FILE,
   DEFAULT_CACHE_TTL_MS,
@@ -14,6 +13,7 @@ import {
   parsePositiveInteger,
 } from './geocodeProxyParsing'
 import type { GeocodeProxyConfig } from './geocodeProxyTypes'
+import { resolveCompat } from './pathCompat'
 
 export {
   DEFAULT_CACHE_FILE,
@@ -56,7 +56,7 @@ export const resolveGeocodeProxyConfig = (
       env.PARKKING_GEOCODER_CACHE_TTL_MS,
       DEFAULT_CACHE_TTL_MS,
     ),
-    cacheFile: resolve(cwd, env.PARKKING_GEOCODER_CACHE_FILE ?? DEFAULT_CACHE_FILE),
+    cacheFile: resolveCompat(cwd, env.PARKKING_GEOCODER_CACHE_FILE ?? DEFAULT_CACHE_FILE),
     userAgent: normalizeGeocodeText(env.PARKKING_GEOCODER_USER_AGENT) ?? DEFAULT_USER_AGENT,
     path: normalizeGeocodeText(env.PARKKING_GEOCODER_PATH) ?? DEFAULT_PROXY_PATH,
     port: parsePositiveInteger(env.PARKKING_GEOCODER_PORT, DEFAULT_PROXY_PORT),
