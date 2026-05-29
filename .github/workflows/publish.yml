@@ -70,6 +70,9 @@ jobs:
       - name: P3 reviewed release readiness
         if: ${{ inputs.configsGlob == 'configs/prod/*.json' }}
         run: npm run ops:p3-release-readiness
+      - name: Deploy readiness
+        if: ${{ inputs.configsGlob == 'configs/prod/*.json' }}
+        run: npm run ops:deploy-readiness
       - name: Package release
         if: ${{ inputs.configsGlob != 'configs/prod/*.json' }}
         run: npm run ops:package-release
