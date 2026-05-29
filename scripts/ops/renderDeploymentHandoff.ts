@@ -319,7 +319,8 @@ export const buildRenderDeploymentHandoff = async (
       'Run GitHub Actions -> Release Data Package with configsGlob=configs/prod/*.json.',
       `Use release tag ${release.tag}; leave tag blank in the workflow to use this default.`,
       'Set the Render environment variables shown below, plus a download token/header if the repository is private.',
-      'Deploy the Render Blueprint and verify /api/parking-answer/ready returns status ok.',
+      'Deploy the Render Blueprint.',
+      'Run npm run ops:render-deployment-verify -- --app-url <Render service URL> and require PASS before treating the deploy as live.',
     ],
   }
 }
