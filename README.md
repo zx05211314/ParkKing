@@ -457,6 +457,9 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
 - Render deployment handoff from the current release artifacts:
   `npm run ops:render-deployment-handoff`
   This reads `.tmp/p3-release-readiness.json` and `.tmp/deploy-readiness.json`, verifies both gates point at the same passing release, then writes `.tmp/render-deployment-handoff.md` and `.tmp/render-deployment-handoff.json` with the exact GitHub Release asset URLs and Render env vars. The URLs become live after the `Release Data Package` workflow publishes the release assets.
+- Render Blueprint contract check:
+  `npm run ops:render-blueprint-check`
+  This fails if `render.yaml` loses the release package install build step, same-origin parking-answer health check, or required Render environment variables. CI, publish, and release-data workflows run the same check before release/deploy gates.
 - Registry-scoped UI smoke check for reviewed generated packs:
   `npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --reviewed --timeout-ms 25000`
   Add `--view MAP --limit 1` when you want the same reviewed-pack discovery path to exercise map/list mode instead of list mode:

@@ -28,6 +28,8 @@ jobs:
           cache: 'npm'
       - name: Install
         run: npm ci
+      - name: Validate Render blueprint
+        run: npm run ops:render-blueprint-check
       - name: Fetch production sources
         if: ${{ startsWith(inputs.configsGlob, 'configs/prod/') }}
         run: npm run ops:fetch-sources -- --manifest configs/sources.prod.taipei.json

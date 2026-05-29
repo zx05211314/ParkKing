@@ -96,6 +96,17 @@ URLs and exact `PARKKING_RELEASE_PACKAGE_URL` /
 `PARKKING_RELEASE_MANIFEST_URL` values. Those URLs become live after the
 `Release Data Package` workflow publishes the release assets.
 
+Validate the checked-in Blueprint contract before relying on a deploy:
+
+```powershell
+npm run ops:render-blueprint-check
+```
+
+This fails if `render.yaml` no longer installs the release package before
+building, no longer uses `/api/parking-answer/ready` as the health check, or
+loses required same-origin API / release-data environment variables. CI,
+publish, and release-data workflows run this gate automatically.
+
 Run `ops:p3-release-readiness` after `npm run build` because Vite cleans `dist`
 before building and would otherwise remove `dist/releases`.
 

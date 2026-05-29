@@ -20,6 +20,8 @@ jobs:
         run: npm run ops:validate-configs
       - name: Validate reviewed answer cases
         run: npm run ops:validate-answer-cases
+      - name: Validate Render blueprint
+        run: npm run ops:render-blueprint-check
       - name: Lint
         run: npm run lint -- --max-warnings=0
       - name: Build
