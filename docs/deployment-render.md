@@ -95,8 +95,10 @@ npm run ops:render-deployment-handoff
 This writes `.tmp/render-deployment-handoff.md` and
 `.tmp/render-deployment-handoff.json` with the expected GitHub Release asset
 URLs and exact `PARKKING_RELEASE_PACKAGE_URL` /
-`PARKKING_RELEASE_MANIFEST_URL` values. Those URLs become live after the
-`Release Data Package` workflow publishes the release assets.
+`PARKKING_RELEASE_MANIFEST_URL` values. The JSON and markdown also include the
+expected per-district dataset hashes that the live Render service must expose
+from `/api/parking-answer/ready`. Those URLs become live after the `Release Data
+Package` workflow publishes the release assets.
 
 After publishing GitHub Release assets, verify the URLs before assigning them to
 Render:
@@ -108,6 +110,17 @@ npm run ops:release-data-url-smoke
 The release workflow runs this automatically after `ops:release-data-publish`.
 It checks the package URL with `HEAD`, fetches the manifest URL, and verifies the
 manifest `releaseId` matches the released package.
+
+After Render finishes deploying those release URLs, verify the live service
+against the handoff contract:
+
+```powershell
+npm run ops:render-deployment-verify -- --app-url https://<service>.onrender.com
+```
+
+This reads `.tmp/render-deployment-handoff.json`, fetches
+`/api/parking-answer/ready`, and fails if any reviewed district is missing, not
+ready, or serving a dataset hash different from the handoff release.
 
 Validate the checked-in Blueprint contract before relying on a deploy:
 

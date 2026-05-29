@@ -85,6 +85,24 @@ describe('renderDeploymentHandoff', () => {
       appServer: {
         pass: true,
       },
+      generatedPacks: {
+        result: {
+          packResults: [
+            {
+              districtId: 'daan',
+              parkingSummary: {
+                datasetHash: 'hash-daan',
+              },
+            },
+            {
+              districtId: 'xinyi',
+              parkingSummary: {
+                datasetHash: 'hash-xinyi',
+              },
+            },
+          ],
+        },
+      },
     })
 
     const result = await buildRenderDeploymentHandoff({
@@ -99,6 +117,19 @@ describe('renderDeploymentHandoff', () => {
     )
     expect(renderRenderDeploymentHandoff(result)).toContain(
       '# Render Deployment Handoff: READY',
+    )
+    expect(result.expectedDatasets).toEqual([
+      {
+        districtId: 'daan',
+        datasetHash: 'hash-daan',
+      },
+      {
+        districtId: 'xinyi',
+        datasetHash: 'hash-xinyi',
+      },
+    ])
+    expect(renderRenderDeploymentHandoff(result)).toContain(
+      'Expected datasets: daan:hash-daan, xinyi:hash-xinyi',
     )
   })
 
@@ -165,6 +196,7 @@ describe('renderDeploymentHandoff', () => {
       releaseTotalBytes: 2,
       installedFileCount: 1,
       releaseAssetPaths: ['release.zip', 'release.json'],
+      expectedDatasets: [{ districtId: 'xinyi', datasetHash: 'hash-xinyi' }],
       blockers: [],
       renderEnv: {
         PARKKING_RELEASE_PACKAGE_URL: 'package-url',

@@ -45,6 +45,11 @@ interface DeployReadinessJson {
   appServer?: {
     pass?: unknown
   }
+  generatedPacks?: {
+    result?: {
+      packResults?: unknown
+    } | null
+  }
 }
 
 export interface RenderDeploymentHandoffOptions {
@@ -56,6 +61,11 @@ export interface RenderDeploymentHandoffOptions {
   jsonOutPath?: string | null
 }
 
+export interface RenderDeploymentHandoffDataset {
+  districtId: string
+  datasetHash: string
+}
+
 export interface RenderDeploymentHandoffResult {
   ready: boolean
   repository: string
@@ -65,6 +75,7 @@ export interface RenderDeploymentHandoffResult {
   p3ReadinessPass: boolean
   deployReadinessPass: boolean
   districts: string[]
+  expectedDatasets: RenderDeploymentHandoffDataset[]
   releaseFileCount: number | null
   releaseTotalBytes: number | null
   installedFileCount: number | null
@@ -114,6 +125,35 @@ const toStringArray = (value: unknown) =>
 
 const toNumberOrNull = (value: unknown) =>
   typeof value === 'number' && Number.isFinite(value) ? value : null
+
+const toRecord = (value: unknown): Record<string, unknown> | null =>
+  value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value
+    : null
+
+const getStringField = (record: Record<string, unknown> | null, key: string) =>
+  typeof record?.[key] === 'string' ? record[key] : null
+
+const toExpectedDatasets = (
+  packResults: unknown,
+): RenderDeploymentHandoffDataset[] => {
+  if (!Array.isArray(packResults)) {
+    return []
+  }
+  return packResults
+    .map((pack) => {
+      const record = toRecord(pack)
+      const districtId = getStringField(record, 'districtId')
+      const parkingSummary = toRecord(record?.parkingSummary)
+      const exactSummary = toRecord(record?.exactSummary)
+      const datasetHash =
+        getStringField(parkingSummary, 'datasetHash') ??
+        getStringField(exactSummary, 'datasetHash')
+      return districtId && datasetHash ? { districtId, datasetHash } : null
+    })
+    .filter((entry): entry is RenderDeploymentHandoffDataset => entry !== null)
+    .sort((left, right) => left.districtId.localeCompare(right.districtId))
+}
 
 const fileExists = async (filePath: string) => {
   try {
@@ -198,6 +238,16 @@ export const buildRenderDeploymentHandoff = async (
   const p3ReadinessPass = p3.pass === true
   const deployReadinessPass = deploy.pass === true
   const blockers: string[] = []
+  const districts =
+    toStringArray(p3Release?.districtIds).length > 0
+      ? toStringArray(p3Release?.districtIds)
+      : toStringArray(p3.inputs?.districtIds)
+  const expectedDatasets = toExpectedDatasets(
+    deploy.generatedPacks?.result?.packResults,
+  )
+  const expectedDatasetMap = new Map(
+    expectedDatasets.map((entry) => [entry.districtId, entry.datasetHash]),
+  )
 
   if (!p3ReadinessPass) {
     blockers.push(`${p3ReadinessJsonPath} is not passing`)
@@ -215,6 +265,14 @@ export const buildRenderDeploymentHandoff = async (
   }
   if (deploy.appServer?.pass !== true) {
     blockers.push('Deploy readiness app server smoke is not passing')
+  }
+  const missingExpectedDatasetDistricts = districts.filter(
+    (districtId) => !expectedDatasetMap.has(districtId),
+  )
+  if (districts.length > 0 && missingExpectedDatasetDistricts.length > 0) {
+    blockers.push(
+      `Deploy readiness did not record dataset hashes for: ${missingExpectedDatasetDistricts.join(', ')}`,
+    )
   }
   if (releaseAssetPaths.length === 0) {
     blockers.push(
@@ -237,11 +295,6 @@ export const buildRenderDeploymentHandoff = async (
     )
   }
 
-  const districts =
-    toStringArray(p3Release?.districtIds).length > 0
-      ? toStringArray(p3Release?.districtIds)
-      : toStringArray(p3.inputs?.districtIds)
-
   return {
     ready: blockers.length === 0,
     repository,
@@ -251,6 +304,7 @@ export const buildRenderDeploymentHandoff = async (
     p3ReadinessPass,
     deployReadinessPass,
     districts,
+    expectedDatasets,
     releaseFileCount: toNumberOrNull(p3Release?.fileCount),
     releaseTotalBytes: toNumberOrNull(p3Release?.totalBytes),
     installedFileCount: toNumberOrNull(deploy.install?.result?.fileCount),
@@ -286,6 +340,11 @@ export const renderRenderDeploymentHandoff = (
     `- Installed files: ${result.installedFileCount ?? '-'}`,
     `- Total bytes: ${result.releaseTotalBytes ?? '-'}`,
     `- Local assets: ${result.releaseAssetPaths.join(', ') || '-'}`,
+    `- Expected datasets: ${
+      result.expectedDatasets
+        .map((entry) => `${entry.districtId}:${entry.datasetHash.slice(0, 12)}`)
+        .join(', ') || '-'
+    }`,
     '',
     '## Gate Status',
     '',
