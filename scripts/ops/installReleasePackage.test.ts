@@ -6,6 +6,7 @@ import AdmZip from 'adm-zip'
 import { buildReleaseManifest } from './packageReleaseArchive'
 import { sha256Buffer } from './packageReleaseUtils'
 import {
+  buildDownloadHeaders,
   extractReleasePackage,
   installReleasePackage,
   normalizeZipEntryPath,
@@ -148,8 +149,10 @@ describe('installReleasePackage', () => {
   it('parses deployment env and strict manifest flags', () => {
     const previousPackageUrl = process.env.PARKKING_RELEASE_PACKAGE_URL
     const previousManifestUrl = process.env.PARKKING_RELEASE_MANIFEST_URL
+    const previousDownloadToken = process.env.PARKKING_RELEASE_DOWNLOAD_TOKEN
     process.env.PARKKING_RELEASE_PACKAGE_URL = 'https://example.test/data.zip'
     process.env.PARKKING_RELEASE_MANIFEST_URL = 'https://example.test/manifest.json'
+    process.env.PARKKING_RELEASE_DOWNLOAD_TOKEN = 'token-a'
 
     try {
       expect(
@@ -163,6 +166,7 @@ describe('installReleasePackage', () => {
       ).toMatchObject({
         url: 'https://example.test/data.zip',
         manifestUrl: 'https://example.test/manifest.json',
+        downloadToken: 'token-a',
         requireManifest: true,
         districtIds: ['xinyi', 'daan'],
       })
@@ -177,6 +181,25 @@ describe('installReleasePackage', () => {
       } else {
         process.env.PARKKING_RELEASE_MANIFEST_URL = previousManifestUrl
       }
+      if (previousDownloadToken === undefined) {
+        delete process.env.PARKKING_RELEASE_DOWNLOAD_TOKEN
+      } else {
+        process.env.PARKKING_RELEASE_DOWNLOAD_TOKEN = previousDownloadToken
+      }
     }
+  })
+
+  it('builds authenticated download headers when release assets are private', () => {
+    expect(buildDownloadHeaders({ downloadToken: 'token-a' })).toMatchObject({
+      authorization: 'Bearer token-a',
+    })
+    expect(
+      buildDownloadHeaders({
+        downloadToken: 'token-a',
+        downloadAuthHeader: 'token token-b',
+      }),
+    ).toMatchObject({
+      authorization: 'token token-b',
+    })
   })
 })

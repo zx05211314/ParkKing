@@ -15,6 +15,12 @@ Create and validate the package locally:
 npm run ops:p3-release-readiness
 ```
 
+Or publish stable GitHub Release assets from Actions:
+
+```text
+Actions -> Release Data Package -> Run workflow
+```
+
 Upload both generated files from `dist/releases` to stable URLs:
 
 - `park-king-data_<release-id>.zip`
@@ -28,6 +34,13 @@ Set these Render environment variables before deploying:
 ```text
 PARKKING_RELEASE_PACKAGE_URL=<stable zip URL>
 PARKKING_RELEASE_MANIFEST_URL=<stable manifest JSON URL>
+```
+
+For private GitHub release assets, also set one of:
+
+```text
+PARKKING_RELEASE_DOWNLOAD_TOKEN=<token with release asset read access>
+PARKKING_RELEASE_DOWNLOAD_AUTH_HEADER=<complete Authorization header>
 ```
 
 The blueprint runs:

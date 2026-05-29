@@ -18,6 +18,8 @@ export interface InstallReleasePackageArgs {
   manifestPath?: string | null
   outRoot?: string | null
   tmpDir?: string | null
+  downloadToken?: string | null
+  downloadAuthHeader?: string | null
   requireManifest?: boolean
   allowExisting?: boolean
   clean?: boolean
@@ -79,6 +81,14 @@ export const parseInstallReleasePackageArgs = (
     getArgValue(argv, '--tmp-dir', '--tmpDir') ??
     process.env.PARKKING_RELEASE_PACKAGE_TMP_DIR ??
     DEFAULT_TMP_DIR,
+  downloadToken:
+    getArgValue(argv, '--download-token', '--downloadToken') ??
+    process.env.PARKKING_RELEASE_DOWNLOAD_TOKEN ??
+    null,
+  downloadAuthHeader:
+    getArgValue(argv, '--download-auth-header', '--downloadAuthHeader') ??
+    process.env.PARKKING_RELEASE_DOWNLOAD_AUTH_HEADER ??
+    null,
   requireManifest:
     hasFlag(argv, '--require-manifest', '--requireManifest') ||
     process.env.PARKKING_RELEASE_REQUIRE_MANIFEST === 'true',
@@ -100,11 +110,28 @@ const fileExists = async (filePath: string) => {
   }
 }
 
-const downloadFile = async (url: string, outputPath: string) => {
+export const buildDownloadHeaders = (params: {
+  downloadToken?: string | null
+  downloadAuthHeader?: string | null
+}) => {
+  const headers: Record<string, string> = {
+    'user-agent': 'ParkKing release package installer',
+  }
+  if (params.downloadAuthHeader) {
+    headers.authorization = params.downloadAuthHeader
+  } else if (params.downloadToken) {
+    headers.authorization = `Bearer ${params.downloadToken}`
+  }
+  return headers
+}
+
+const downloadFile = async (
+  url: string,
+  outputPath: string,
+  auth: Pick<InstallReleasePackageArgs, 'downloadToken' | 'downloadAuthHeader'>,
+) => {
   const response = await fetch(url, {
-    headers: {
-      'user-agent': 'ParkKing release package installer',
-    },
+    headers: buildDownloadHeaders(auth),
   })
   if (!response.ok) {
     throw new Error(`Failed to download ${url}: HTTP ${response.status}`)
@@ -121,6 +148,8 @@ const resolvePackageFile = async (params: {
   url?: string | null
   tmpDir: string
   filename: string
+  downloadToken?: string | null
+  downloadAuthHeader?: string | null
 }) => {
   if (params.pathValue) {
     return path.resolve(params.pathValue)
@@ -131,6 +160,10 @@ const resolvePackageFile = async (params: {
   return await downloadFile(
     params.url,
     path.resolve(params.tmpDir, params.filename),
+    {
+      downloadToken: params.downloadToken,
+      downloadAuthHeader: params.downloadAuthHeader,
+    },
   )
 }
 
@@ -272,12 +305,16 @@ export const installReleasePackage = async (
     url: args.url,
     tmpDir,
     filename: 'park-king-data.zip',
+    downloadToken: args.downloadToken,
+    downloadAuthHeader: args.downloadAuthHeader,
   })
   const manifestPath = await resolvePackageFile({
     pathValue: args.manifestPath,
     url: args.manifestUrl,
     tmpDir,
     filename: 'release_manifest.json',
+    downloadToken: args.downloadToken,
+    downloadAuthHeader: args.downloadAuthHeader,
   })
 
   if (!zipPath) {

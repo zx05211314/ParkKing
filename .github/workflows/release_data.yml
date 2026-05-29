@@ -1,0 +1,112 @@
+name: Release Data Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      configsGlob:
+        description: Config glob to ingest before packaging
+        required: true
+        default: configs/prod/*.json
+      allowWarn:
+        description: Allow WARN anomalies with override
+        required: false
+        type: boolean
+        default: false
+      overrideReason:
+        description: Override reason when allowWarn=true
+        required: false
+      tag:
+        description: Optional GitHub Release tag. Defaults to data-<release-id>.
+        required: false
+      latest:
+        description: Mark the data release as latest
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release-data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+      - name: Install
+        run: npm ci
+      - name: Fetch production sources
+        if: ${{ startsWith(inputs.configsGlob, 'configs/prod/') }}
+        run: npm run ops:fetch-sources -- --manifest configs/sources.prod.taipei.json
+      - name: Unpack production sources
+        if: ${{ startsWith(inputs.configsGlob, 'configs/prod/') }}
+        run: npm run ops:unpack-sources -- --sourceDir data/sources/shared
+      - name: Preflight sign overrides
+        run: npm run ops:preflight-sign-overrides:batch -- --configs "${{ inputs.configsGlob }}" --out-dir .tmp/sign-override-preflight
+      - name: Ingest and publish
+        env:
+          CONFIGS_GLOB: ${{ inputs.configsGlob }}
+          ALLOW_WARN: ${{ inputs.allowWarn }}
+          OVERRIDE_REASON: ${{ inputs.overrideReason }}
+        run: npm run ops:workflow-publish-ingest
+      - name: P3 reviewed release readiness
+        run: npm run ops:p3-release-readiness
+      - name: Resolve release metadata
+        id: release_meta
+        shell: bash
+        run: |
+          release_id="$(node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync('.tmp/p3-release-readiness.json','utf8')); process.stdout.write(data.releasePackage.summary.releaseId)")"
+          tag="${{ inputs.tag }}"
+          if [ -z "$tag" ]; then
+            tag="data-$release_id"
+          fi
+          echo "release_id=$release_id" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - name: Publish GitHub Release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release_meta.outputs.tag }}
+          MAKE_LATEST: ${{ inputs.latest }}
+        shell: bash
+        run: |
+          latest_flag="--latest=false"
+          if [ "$MAKE_LATEST" = "true" ]; then
+            latest_flag="--latest"
+          fi
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" dist/releases/*.zip dist/releases/release_manifest_*.json --clobber
+            if [ "$MAKE_LATEST" = "true" ]; then
+              gh release edit "$RELEASE_TAG" --latest
+            fi
+          else
+            gh release create "$RELEASE_TAG" dist/releases/*.zip dist/releases/release_manifest_*.json --target "$GITHUB_SHA" --title "ParkKing data ${{ steps.release_meta.outputs.release_id }}" --notes-file .tmp/p3-release-readiness.md "$latest_flag"
+          fi
+      - name: Summarize release URLs
+        env:
+          RELEASE_ID: ${{ steps.release_meta.outputs.release_id }}
+          RELEASE_TAG: ${{ steps.release_meta.outputs.tag }}
+          REPOSITORY: ${{ github.repository }}
+        shell: bash
+        run: |
+          base_url="https://github.com/$REPOSITORY/releases/download/$RELEASE_TAG"
+          {
+            echo "## Render release data URLs"
+            echo ""
+            echo "- PARKKING_RELEASE_PACKAGE_URL=$base_url/park-king-data_$RELEASE_ID.zip"
+            echo "- PARKKING_RELEASE_MANIFEST_URL=$base_url/release_manifest_$RELEASE_ID.json"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload release readiness artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-data-package
+          path: |
+            dist/releases/*.zip
+            dist/releases/release_manifest_*.json
+            .tmp/p3-release-readiness.md
+            .tmp/p3-release-readiness.json
+          if-no-files-found: warn

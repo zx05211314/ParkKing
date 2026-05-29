@@ -31,6 +31,10 @@ services:
         sync: false
       - key: PARKKING_RELEASE_MANIFEST_URL
         sync: false
+      - key: PARKKING_RELEASE_DOWNLOAD_TOKEN
+        sync: false
+      - key: PARKKING_RELEASE_DOWNLOAD_AUTH_HEADER
+        sync: false
       - key: PARKKING_RELEASE_REQUIRE_MANIFEST
         value: "true"
       - key: PARKKING_RELEASE_PACKAGE_OUT_ROOT
