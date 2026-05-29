@@ -56,6 +56,14 @@ const createDatasetDir = async (district = 'xinyi') => {
       ),
     ),
   )
+  await fs.writeFile(
+    path.join(datasetDir, 'LATEST.json'),
+    JSON.stringify({
+      datasetHash: 'hash-1',
+      publishedAt: '2026-05-23T15:44:29.212Z',
+    }),
+    'utf-8',
+  )
   return { root, datasetDir }
 }
 
@@ -124,6 +132,9 @@ describe('createParkingAnswerServiceMiddleware', () => {
           ready: true,
           missingFiles: [],
           invalidFiles: [],
+          datasetHash: 'hash-1',
+          latestDatasetHash: 'hash-1',
+          latestPublishedAt: '2026-05-23T15:44:29.212Z',
         },
       ],
     })

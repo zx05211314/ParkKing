@@ -80,7 +80,9 @@ The gate installs the latest `dist/releases` zip/manifest pair into
 `dist/data/generated` has the same reviewed district hashes, runs reviewed pack
 and parking-answer API smokes against the installed release, then starts the app
 server with `PARKKING_PARKING_ANSWER_DATASET_ROOT` pointing at that installed
-release. The same command writes `.tmp/deploy-readiness.md` and
+release. The app-server smoke also verifies `/api/parking-answer/ready` exposes
+district readiness metadata with dataset hashes, so a live deploy can be checked
+against the handoff package. The same command writes `.tmp/deploy-readiness.md` and
 `.tmp/deploy-readiness.json`, and the release workflows upload those files with
 the release package artifacts.
 

@@ -64,6 +64,97 @@ describe('runSmokeAppServer', () => {
       '/',
     ])
   })
+
+  it('requires parking-answer readiness metadata when probing the same-origin service', async () => {
+    const staticDir = await makeStaticDir()
+    const result = await runSmokeAppServer(
+      {},
+      {
+        config: {
+          ...baseConfig(staticDir),
+          api: {
+            geocoder: false,
+            routing: false,
+            parkingAnswer: true,
+            sync: false,
+          },
+        },
+        middlewares: [
+          (req, res, next) => {
+            if (req.url !== '/api/parking-answer/ready') {
+              next?.()
+              return false
+            }
+            res.statusCode = 200
+            res.setHeader('Content-Type', 'application/json')
+            res.end(
+              JSON.stringify({
+                status: 'ok',
+                districts: [
+                  {
+                    district: 'xinyi',
+                    ready: true,
+                    datasetHash: 'hash-1',
+                  },
+                ],
+              }),
+            )
+            return true
+          },
+        ],
+      },
+    )
+
+    expect(result.pass).toBe(true)
+    expect(result.probes.find((probe) => probe.path === '/api/parking-answer/ready')).toMatchObject({
+      summary: 'ok; xinyi:hash-1',
+    })
+  })
+
+  it('fails when parking-answer readiness lacks dataset hashes', async () => {
+    const staticDir = await makeStaticDir()
+    const result = await runSmokeAppServer(
+      {},
+      {
+        config: {
+          ...baseConfig(staticDir),
+          api: {
+            geocoder: false,
+            routing: false,
+            parkingAnswer: true,
+            sync: false,
+          },
+        },
+        middlewares: [
+          (req, res, next) => {
+            if (req.url !== '/api/parking-answer/ready') {
+              next?.()
+              return false
+            }
+            res.statusCode = 200
+            res.setHeader('Content-Type', 'application/json')
+            res.end(
+              JSON.stringify({
+                status: 'ok',
+                districts: [
+                  {
+                    district: 'xinyi',
+                    ready: true,
+                  },
+                ],
+              }),
+            )
+            return true
+          },
+        ],
+      },
+    )
+
+    expect(result.pass).toBe(false)
+    expect(result.probes.find((probe) => probe.path === '/api/parking-answer/ready')).toMatchObject({
+      error: 'ready districts missing datasetHash: xinyi',
+    })
+  })
 })
 
 describe('renderSmokeAppServer', () => {

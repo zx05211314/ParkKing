@@ -82,6 +82,49 @@ const fetchWithTimeout = async (url: string, timeoutMs: number) => {
   }
 }
 
+const summarizeParkingAnswerReadiness = (payload: { districts?: unknown }) => {
+  if (!Array.isArray(payload.districts)) {
+    return {
+      pass: false,
+      summary: 'missing district readiness metadata',
+      error: 'expected parking-answer readiness districts',
+    }
+  }
+  const districts = payload.districts.filter(
+    (district): district is Record<string, unknown> =>
+      district !== null && typeof district === 'object' && !Array.isArray(district),
+  )
+  const missingHashes = districts
+    .filter((district) => district.ready === true)
+    .filter((district) => typeof district.datasetHash !== 'string')
+    .map((district) =>
+      typeof district.district === 'string' ? district.district : 'unknown',
+    )
+  return {
+    pass: districts.length > 0 && missingHashes.length === 0,
+    summary:
+      districts.length > 0
+        ? `ok; ${districts
+            .map((district) => {
+              const districtId =
+                typeof district.district === 'string' ? district.district : 'unknown'
+              const datasetHash =
+                typeof district.datasetHash === 'string'
+                  ? district.datasetHash.slice(0, 12)
+                  : 'missing-hash'
+              return `${districtId}:${datasetHash}`
+            })
+            .join(', ')}`
+        : 'missing district readiness metadata',
+    error:
+      districts.length === 0
+        ? 'expected parking-answer readiness districts'
+        : missingHashes.length > 0
+          ? `ready districts missing datasetHash: ${missingHashes.join(', ')}`
+          : null,
+  }
+}
+
 const probeJson = async (
   baseUrl: string,
   path: string,
@@ -98,16 +141,22 @@ const probeJson = async (
         : typeof payload.error === 'string'
           ? payload.error
           : 'missing status'
-    const pass =
+    const statusPass =
       response.status === expectedStatus && statusText.includes(expectedStatusText)
+    const readinessSummary =
+      path === '/api/parking-answer/ready'
+        ? summarizeParkingAnswerReadiness(payload)
+        : null
+    const pass = statusPass && (readinessSummary?.pass ?? true)
     return {
       path,
       status: response.status,
       pass,
-      summary: statusText,
+      summary: readinessSummary?.summary ?? statusText,
       error: pass
         ? null
-        : `expected ${expectedStatus} containing "${expectedStatusText}"`,
+        : readinessSummary?.error ??
+          `expected ${expectedStatus} containing "${expectedStatusText}"`,
     }
   } catch (error) {
     return {

@@ -21,6 +21,18 @@ export interface ParkingAnswerServiceDistrictReadiness {
   ready: boolean
   missingFiles: string[]
   invalidFiles: string[]
+  districtName?: string
+  datasetHash?: string
+  publishedAt?: string
+  generatedAt?: string
+  latestDatasetHash?: string
+  latestPublishedAt?: string
+  counts?: {
+    segments?: number
+    parkingSpaces?: number
+    signOverrides?: number
+    inferredCandidates?: number
+  }
 }
 
 export interface ParkingAnswerServiceHealthResponse {

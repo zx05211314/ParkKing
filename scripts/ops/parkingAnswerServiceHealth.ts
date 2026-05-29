@@ -35,6 +35,14 @@ const getReadinessDistricts = (config: ParkingAnswerServiceConfig) =>
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
 
+const getString = (record: Record<string, unknown>, key: string) =>
+  typeof record[key] === 'string' ? record[key] : undefined
+
+const getNumber = (record: Record<string, unknown>, key: string) =>
+  typeof record[key] === 'number' && Number.isFinite(record[key])
+    ? record[key]
+    : undefined
+
 const isValidRequiredDatasetFile = (fileName: string, parsed: unknown) => {
   if (fileName === 'dataset_meta.json') {
     return isRecord(parsed)
@@ -69,6 +77,39 @@ const inspectRequiredFiles = async (datasetDir: string) => {
   return { missing, invalid }
 }
 
+const readJsonRecord = async (filePath: string) => {
+  try {
+    const parsed = JSON.parse(await readFile(filePath, 'utf-8')) as unknown
+    return isRecord(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+const readDistrictReadinessMetadata = async (datasetDir: string) => {
+  const [meta, latest] = await Promise.all([
+    readJsonRecord(resolve(datasetDir, 'dataset_meta.json')),
+    readJsonRecord(resolve(datasetDir, 'LATEST.json')),
+  ])
+  const counts = isRecord(meta?.counts) ? meta.counts : null
+  return {
+    districtName: meta ? getString(meta, 'districtName') : undefined,
+    datasetHash: meta ? getString(meta, 'datasetHash') : undefined,
+    publishedAt: meta ? getString(meta, 'publishedAt') : undefined,
+    generatedAt: meta ? getString(meta, 'generatedAt') : undefined,
+    latestDatasetHash: latest ? getString(latest, 'datasetHash') : undefined,
+    latestPublishedAt: latest ? getString(latest, 'publishedAt') : undefined,
+    counts: counts
+      ? {
+          segments: getNumber(counts, 'segments'),
+          parkingSpaces: getNumber(counts, 'parkingSpaces'),
+          signOverrides: getNumber(counts, 'signOverrides'),
+          inferredCandidates: getNumber(counts, 'inferredCandidates'),
+        }
+      : undefined,
+  }
+}
+
 export const buildParkingAnswerServiceDistrictReadiness = async (
   config: ParkingAnswerServiceConfig,
 ): Promise<ParkingAnswerServiceDistrictReadiness[]> =>
@@ -76,12 +117,14 @@ export const buildParkingAnswerServiceDistrictReadiness = async (
     getReadinessDistricts(config).map(async (district) => {
       const datasetDir = resolve(config.districtDatasetRoot, district)
       const { missing, invalid } = await inspectRequiredFiles(datasetDir)
+      const metadata = await readDistrictReadinessMetadata(datasetDir)
       return {
         district,
         datasetDir,
         ready: missing.length === 0 && invalid.length === 0,
         missingFiles: missing,
         invalidFiles: invalid,
+        ...metadata,
       }
     }),
   )
