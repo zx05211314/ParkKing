@@ -7,6 +7,7 @@ import {
   parseDeployReadinessArgs,
   renderDeployReadiness,
   runDeployReadiness,
+  writeDeployReadinessOutputs,
   type DeployReadinessRunners,
 } from './deployReadiness'
 
@@ -181,5 +182,66 @@ describe('deployReadiness', () => {
     expect(process.env.PARKKING_APP_STATIC_DIR).toBe('previous-static')
     expect(process.env.PARKKING_PARKING_ANSWER_DATASET_ROOT).toBe('previous-data')
     expect(renderDeployReadiness(result)).toContain('# Deploy Readiness: PASS')
+  })
+
+  it('writes markdown and JSON deployment readiness artifacts', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'deploy-readiness-out-'))
+    const installRoot = path.join(base, 'installed')
+    const staticDir = path.join(base, 'dist')
+    const staticRoot = path.join(staticDir, 'data', 'generated')
+    await writePackPointer(staticRoot, 'xinyi', 'hash-a')
+
+    const runners: DeployReadinessRunners = {
+      resolveReleasePackagePaths: async () => ({
+        releaseId: 'release-1',
+        zipPath: path.join(base, 'release.zip'),
+        manifestPath: path.join(base, 'release.json'),
+      }),
+      installReleasePackage: async (args) => {
+        await writePackPointer(args.outRoot ?? installRoot, 'xinyi', 'hash-a')
+        return {
+          source: args.zipPath ?? 'release.zip',
+          manifestSource: args.manifestPath ?? null,
+          outRoot: args.outRoot ?? installRoot,
+          registryDistrictIds: ['xinyi'],
+          fileCount: 3,
+          extractedFiles: 3,
+          manifestValidation: null,
+        }
+      },
+      runSmokeGeneratedPacks: async () => ({
+        root: installRoot,
+        registryPath: path.join(installRoot, 'registry.json'),
+        reportPath: null,
+        packResults: [],
+        errors: [],
+        hasErrors: false,
+      }),
+      runSmokeParkingAnswerServices: async () => ({
+        root: installRoot,
+        registryPath: path.join(installRoot, 'registry.json'),
+        reportPath: null,
+        packResults: [],
+        errors: [],
+        hasErrors: false,
+      }),
+      runSmokeAppServer: async () => ({
+        pass: true,
+        baseUrl: 'http://127.0.0.1:1',
+        probes: [],
+      }),
+    }
+
+    const result = await runDeployReadiness({ installRoot, staticDir }, runners)
+    const outPath = path.join(base, 'deploy.md')
+    const jsonOutPath = path.join(base, 'deploy.json')
+    await writeDeployReadinessOutputs(result, { outPath, jsonOutPath })
+
+    await expect(fs.readFile(outPath, 'utf-8')).resolves.toContain(
+      '# Deploy Readiness: PASS',
+    )
+    await expect(fs.readFile(jsonOutPath, 'utf-8')).resolves.toContain(
+      '"pass": true',
+    )
   })
 })

@@ -88,4 +88,6 @@ jobs:
             dist/releases/release_manifest_*.json
             .tmp/p3-release-readiness.md
             .tmp/p3-release-readiness.json
+            .tmp/deploy-readiness.md
+            .tmp/deploy-readiness.json
           if-no-files-found: warn

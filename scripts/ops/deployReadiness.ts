@@ -51,6 +51,8 @@ export interface DeployReadinessOptions {
   skipGeneratedSmoke?: boolean | null
   skipApiSmoke?: boolean | null
   skipAppSmoke?: boolean | null
+  outPath?: string | null
+  jsonOutPath?: string | null
   summaryPath?: string | null
 }
 
@@ -177,6 +179,8 @@ export const parseDeployReadinessArgs = (
   ),
   skipApiSmoke: hasFlag(argv, '--skip-api-smoke', '--skipApiSmoke'),
   skipAppSmoke: hasFlag(argv, '--skip-app-smoke', '--skipAppSmoke'),
+  outPath: getArgValue(argv, '--out'),
+  jsonOutPath: getArgValue(argv, '--json-out', '--jsonOut'),
   summaryPath: getArgValue(argv, '--summary', '--summary-path', '--summaryPath'),
 })
 
@@ -577,9 +581,26 @@ export const resolveDeployReadinessSummaryPath = (
   env: NodeJS.ProcessEnv = process.env,
 ) => (options.summaryPath ?? env.GITHUB_STEP_SUMMARY?.trim()) || undefined
 
+export const writeDeployReadinessOutputs = async (
+  result: DeployReadinessResult,
+  options: Pick<DeployReadinessOptions, 'outPath' | 'jsonOutPath'>,
+) => {
+  if (options.outPath) {
+    const resolved = path.resolve(options.outPath)
+    await fs.mkdir(path.dirname(resolved), { recursive: true })
+    await fs.writeFile(resolved, `${renderDeployReadiness(result)}\n`, 'utf-8')
+  }
+  if (options.jsonOutPath) {
+    const resolved = path.resolve(options.jsonOutPath)
+    await fs.mkdir(path.dirname(resolved), { recursive: true })
+    await fs.writeFile(resolved, `${JSON.stringify(result, null, 2)}\n`, 'utf-8')
+  }
+}
+
 const run = async () => {
   const options = parseDeployReadinessArgs(process.argv)
   const result = await runDeployReadiness(options)
+  await writeDeployReadinessOutputs(result, options)
   const output = renderDeployReadiness(result)
   console.log(output)
   const summaryPath = resolveDeployReadinessSummaryPath(options)

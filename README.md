@@ -453,7 +453,7 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   `npm run build`
   `npm run ops:p3-release-readiness`
   `npm run ops:deploy-readiness`
-  This installs the latest `dist/releases` zip/manifest pair into `.tmp/deploy-readiness/public/data/generated`, verifies the built `dist/data/generated` registry and per-district `LATEST.json` hashes match that installed release, runs reviewed generated-pack and parking-answer API smokes against the installed release root, then starts the production app server against the same installed release root. Use this before assigning release asset URLs to Render so stale `dist` assets, bad package installs, or same-origin API readiness failures are caught locally.
+  This installs the latest `dist/releases` zip/manifest pair into `.tmp/deploy-readiness/public/data/generated`, verifies the built `dist/data/generated` registry and per-district `LATEST.json` hashes match that installed release, runs reviewed generated-pack and parking-answer API smokes against the installed release root, then starts the production app server against the same installed release root. It writes `.tmp/deploy-readiness.md` and `.tmp/deploy-readiness.json` for release handoff artifacts. Use this before assigning release asset URLs to Render so stale `dist` assets, bad package installs, or same-origin API readiness failures are caught locally.
 - Registry-scoped UI smoke check for reviewed generated packs:
   `npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --reviewed --timeout-ms 25000`
   Add `--view MAP --limit 1` when you want the same reviewed-pack discovery path to exercise map/list mode instead of list mode:

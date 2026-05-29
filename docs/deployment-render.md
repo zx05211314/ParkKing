@@ -80,7 +80,9 @@ The gate installs the latest `dist/releases` zip/manifest pair into
 `dist/data/generated` has the same reviewed district hashes, runs reviewed pack
 and parking-answer API smokes against the installed release, then starts the app
 server with `PARKKING_PARKING_ANSWER_DATASET_ROOT` pointing at that installed
-release.
+release. The same command writes `.tmp/deploy-readiness.md` and
+`.tmp/deploy-readiness.json`, and the release workflows upload those files with
+the release package artifacts.
 
 Run `ops:p3-release-readiness` after `npm run build` because Vite cleans `dist`
 before building and would otherwise remove `dist/releases`.
