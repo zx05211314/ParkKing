@@ -449,6 +449,11 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
 - P3 reviewed release readiness for all reviewed/published districts:
   `npm run ops:p3-release-readiness`
   This discovers reviewed districts from `configs/prod/*.answer-cases.json`, runs the strict district readiness matrix, runs reviewed generated-pack smoke with reviewed cases required for each reviewed district, probes the registry-scoped HTTP parking-answer API path for reviewed packs, then writes and validates a district-scoped release package only after those prerequisite checks pass. The markdown report prints the release ID, zip path, manifest path, districts, file count, and total bytes for handoff. The current reviewed release set is Xinyi, Daan, and Zhongshan. Use `npm run ops:package-release:reviewed` and `npm run ops:validate-release-package:reviewed` when you only need the reviewed release archive and validation report; those shortcuts discover the same reviewed district set from answer-case files instead of hard-coding district ids.
+- Deploy readiness gate for the reviewed release package:
+  `npm run build`
+  `npm run ops:p3-release-readiness`
+  `npm run ops:deploy-readiness`
+  This installs the latest `dist/releases` zip/manifest pair into `.tmp/deploy-readiness/public/data/generated`, verifies the built `dist/data/generated` registry and per-district `LATEST.json` hashes match that installed release, runs reviewed generated-pack and parking-answer API smokes against the installed release root, then starts the production app server against the same installed release root. Use this before assigning release asset URLs to Render so stale `dist` assets, bad package installs, or same-origin API readiness failures are caught locally.
 - Registry-scoped UI smoke check for reviewed generated packs:
   `npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --reviewed --timeout-ms 25000`
   Add `--view MAP --limit 1` when you want the same reviewed-pack discovery path to exercise map/list mode instead of list mode:

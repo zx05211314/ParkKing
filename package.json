@@ -119,6 +119,7 @@
     "ops:package-release:reviewed": "tsx scripts/ops/packageRelease.ts --reviewed",
     "ops:validate-release-package": "tsx scripts/ops/validateReleasePackage.ts",
     "ops:install-release-package": "tsx scripts/ops/installReleasePackage.ts",
+    "ops:deploy-readiness": "tsx scripts/ops/deployReadiness.ts",
     "ops:release-data-meta": "tsx scripts/ops/releaseDataWorkflow.ts --mode resolve-meta",
     "ops:release-data-publish": "tsx scripts/ops/releaseDataWorkflow.ts --mode publish",
     "ops:release-data-summary": "tsx scripts/ops/releaseDataWorkflow.ts --mode summarize",

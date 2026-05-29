@@ -66,15 +66,28 @@ Vite copies `/data/generated` into `dist` for browser-side static data reads.
 
 ## Local Deploy Smoke
 
-Use a local release package to test the deploy data restore without touching the
-checked-in source data:
+Use the deploy readiness gate to test the latest local release package without
+touching the checked-in source data:
+
+```powershell
+npm run build
+npm run ops:p3-release-readiness
+npm run ops:deploy-readiness
+```
+
+The gate installs the latest `dist/releases` zip/manifest pair into
+`.tmp/deploy-readiness/public/data/generated`, checks that built static data in
+`dist/data/generated` has the same reviewed district hashes, runs reviewed pack
+and parking-answer API smokes against the installed release, then starts the app
+server with `PARKKING_PARKING_ANSWER_DATASET_ROOT` pointing at that installed
+release.
+
+Run `ops:p3-release-readiness` after `npm run build` because Vite cleans `dist`
+before building and would otherwise remove `dist/releases`.
+
+For lower-level debugging, install a specific release package into an isolated
+folder:
 
 ```powershell
 npm run ops:install-release-package -- --zip dist\releases\park-king-data_<release-id>.zip --manifest dist\releases\release_manifest_<release-id>.json --out-root .tmp\deploy-generated --require-manifest
-```
-
-Then run the app server smoke against the normal local generated data:
-
-```powershell
-npm run ops:smoke-app-server
 ```
