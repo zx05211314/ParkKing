@@ -61,6 +61,23 @@ const releasePackagePass: PackageReleaseResult = {
   manifestPath: 'dist/releases/release_manifest_release-1.json',
   baseDir: 'public/data/generated',
   districtIds: ['xinyi', 'daan', 'zhongshan'],
+  releaseDistricts: [
+    {
+      districtId: 'daan',
+      datasetHash: 'hash-daan',
+      publishedAt: '2026-05-01T00:00:00Z',
+    },
+    {
+      districtId: 'xinyi',
+      datasetHash: 'hash-xinyi',
+      publishedAt: '2026-05-01T00:00:00Z',
+    },
+    {
+      districtId: 'zhongshan',
+      datasetHash: 'hash-zhongshan',
+      publishedAt: '2026-05-01T00:00:00Z',
+    },
+  ],
   fileCount: 100,
   totalBytes: 12345,
 }
@@ -72,6 +89,7 @@ const packageValidationPass: ValidateReleasePackageResult = {
   pass: true,
   expectedDistrictIds: ['xinyi', 'daan', 'zhongshan'],
   registryDistrictIds: ['daan', 'xinyi', 'zhongshan'],
+  manifestDistrictIds: ['daan', 'xinyi', 'zhongshan'],
   fileCount: 100,
   totalBytes: 12345,
   errors: [],

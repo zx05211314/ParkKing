@@ -48,6 +48,8 @@ describe('renderDeploymentVerify', () => {
         'https://parkking.onrender.com',
         '--handoff-json',
         '.tmp/handoff.json',
+        '--manifest-url',
+        'https://example.test/release_manifest.json',
         '--timeout-ms',
         '1000',
         '--out',
@@ -58,6 +60,7 @@ describe('renderDeploymentVerify', () => {
     ).toMatchObject({
       appUrl: 'https://parkking.onrender.com',
       handoffJsonPath: '.tmp/handoff.json',
+      manifestUrl: 'https://example.test/release_manifest.json',
       timeoutMs: 1000,
       outPath: '.tmp/verify.md',
       jsonOutPath: '.tmp/verify.json',
@@ -148,6 +151,47 @@ describe('renderDeploymentVerify', () => {
     }
   })
 
+  it('can verify against a release manifest contract without a handoff file', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'render-verify-manifest-'))
+    const manifestPath = path.join(base, 'release_manifest.json')
+    await writeJson(manifestPath, {
+      releaseId: 'release-a',
+      districts: [
+        {
+          districtId: 'xinyi',
+          datasetHash: 'hash-xinyi',
+          publishedAt: '2026-05-01T00:00:00Z',
+        },
+      ],
+      files: [],
+    })
+    const server = await startJsonServer({
+      status: 'ok',
+      districts: [
+        {
+          district: 'xinyi',
+          ready: true,
+          datasetHash: 'hash-xinyi',
+          latestDatasetHash: 'hash-xinyi',
+        },
+      ],
+    })
+
+    try {
+      const result = await verifyRenderDeployment({
+        appUrl: server.baseUrl,
+        manifestPath,
+        timeoutMs: 1000,
+      })
+
+      expect(result.pass).toBe(true)
+      expect(result.contractSource).toBe(path.resolve(manifestPath))
+      expect(result.releaseId).toBe('release-a')
+    } finally {
+      await server.close()
+    }
+  })
+
   it('writes markdown and JSON verification artifacts', async () => {
     const base = await fs.mkdtemp(path.join(tmpdir(), 'render-verify-out-'))
     const outPath = path.join(base, 'verify.md')
@@ -157,6 +201,7 @@ describe('renderDeploymentVerify', () => {
         pass: true,
         appUrl: 'https://parkking.onrender.com',
         readinessUrl: 'https://parkking.onrender.com/api/parking-answer/ready',
+        contractSource: '.tmp/render-deployment-handoff.json',
         releaseId: 'release-a',
         releaseTag: 'data-release-a',
         status: 200,

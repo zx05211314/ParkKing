@@ -1,7 +1,10 @@
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import AdmZip from 'adm-zip'
-import type { ReleaseManifestEntry } from './packageReleaseTypes'
+import type {
+  ReleaseManifestDistrict,
+  ReleaseManifestEntry,
+} from './packageReleaseTypes'
 import { sha256Buffer } from './packageReleaseUtils'
 import { relativeCompat } from './pathCompat'
 
@@ -9,11 +12,15 @@ export const buildReleaseManifest = (params: {
   releaseId: string
   baseDir: string
   manifestEntries: ReleaseManifestEntry[]
+  districts?: ReleaseManifestDistrict[]
   cwd?: string
 }) => ({
   releaseId: params.releaseId,
   generatedAt: new Date().toISOString(),
   baseDir: relativeCompat(params.cwd ?? process.cwd(), params.baseDir),
+  districts: [...(params.districts ?? [])].sort((a, b) =>
+    a.districtId.localeCompare(b.districtId),
+  ),
   files: [...params.manifestEntries].sort((a, b) => a.path.localeCompare(b.path)),
 })
 
@@ -22,6 +29,7 @@ export const writeReleaseArchive = async (params: {
   baseDir: string
   files: string[]
   releaseId: string
+  districts?: ReleaseManifestDistrict[]
   fileContents?: Map<string, Buffer>
 }) => {
   const manifestEntries: ReleaseManifestEntry[] = []
@@ -46,6 +54,7 @@ export const writeReleaseArchive = async (params: {
     releaseId: params.releaseId,
     baseDir: params.baseDir,
     manifestEntries,
+    districts: params.districts,
   })
   const manifestPath = path.resolve(
     params.outDir,

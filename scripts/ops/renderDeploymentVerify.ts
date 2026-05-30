@@ -9,6 +9,10 @@ const DEFAULT_TIMEOUT_MS = 15_000
 export interface RenderDeploymentVerifyOptions {
   appUrl?: string | null
   handoffJsonPath?: string | null
+  manifestPath?: string | null
+  manifestUrl?: string | null
+  downloadToken?: string | null
+  downloadAuthHeader?: string | null
   timeoutMs?: number | null
   outPath?: string | null
   jsonOutPath?: string | null
@@ -28,6 +32,7 @@ export interface RenderDeploymentVerifyResult {
   pass: boolean
   appUrl: string
   readinessUrl: string
+  contractSource: string
   releaseId: string | null
   releaseTag: string | null
   status: number | null
@@ -41,6 +46,14 @@ export interface RenderDeploymentVerifyResult {
 interface FetchJsonResult {
   status: number
   payload: unknown
+}
+
+interface ExpectedDatasetContract {
+  contractSource: string
+  releaseId: string | null
+  releaseTag: string | null
+  expectedDatasets: RenderDeploymentHandoffDataset[]
+  errors: string[]
 }
 
 const getArgValue = (argv: string[], ...flags: string[]) => {
@@ -72,7 +85,21 @@ export const parseRenderDeploymentVerifyArgs = (
     process.env.PARKKING_RENDER_APP_URL ??
     null,
   handoffJsonPath:
-    getArgValue(argv, '--handoff-json', '--handoffJson') ?? DEFAULT_HANDOFF_JSON,
+    getArgValue(argv, '--handoff-json', '--handoffJson') ?? null,
+  manifestPath:
+    getArgValue(argv, '--manifest', '--manifest-path', '--manifestPath') ?? null,
+  manifestUrl:
+    getArgValue(argv, '--manifest-url', '--manifestUrl') ??
+    process.env.PARKKING_RELEASE_MANIFEST_URL ??
+    null,
+  downloadToken:
+    getArgValue(argv, '--download-token', '--downloadToken') ??
+    process.env.PARKKING_RELEASE_DOWNLOAD_TOKEN ??
+    null,
+  downloadAuthHeader:
+    getArgValue(argv, '--download-auth-header', '--downloadAuthHeader') ??
+    process.env.PARKKING_RELEASE_DOWNLOAD_AUTH_HEADER ??
+    null,
   timeoutMs:
     parsePositiveInteger(
       getArgValue(argv, '--timeout-ms', '--timeoutMs'),
@@ -114,6 +141,39 @@ const getExpectedDatasets = (
     .sort((left, right) => left.districtId.localeCompare(right.districtId))
 }
 
+const getExpectedDatasetsFromManifest = (
+  manifest: Record<string, unknown>,
+): RenderDeploymentHandoffDataset[] => {
+  const rawDistricts = manifest.districts
+  if (!Array.isArray(rawDistricts)) {
+    return []
+  }
+  return rawDistricts
+    .map((entry) => {
+      const record = toRecord(entry)
+      const districtId = getString(record, 'districtId')
+      const datasetHash = getString(record, 'datasetHash')
+      return districtId && datasetHash ? { districtId, datasetHash } : null
+    })
+    .filter((entry): entry is RenderDeploymentHandoffDataset => entry !== null)
+    .sort((left, right) => left.districtId.localeCompare(right.districtId))
+}
+
+const buildDownloadHeaders = (params: {
+  downloadToken?: string | null
+  downloadAuthHeader?: string | null
+}) => {
+  const headers: Record<string, string> = {
+    'user-agent': 'ParkKing render deployment verifier',
+  }
+  if (params.downloadAuthHeader) {
+    headers.authorization = params.downloadAuthHeader
+  } else if (params.downloadToken) {
+    headers.authorization = `Bearer ${params.downloadToken}`
+  }
+  return headers
+}
+
 export const normalizeRenderAppUrl = (value: string | null | undefined) => {
   const trimmed = value?.trim()
   if (!trimmed) {
@@ -126,6 +186,22 @@ export const normalizeRenderAppUrl = (value: string | null | undefined) => {
   url.hash = ''
   url.search = ''
   return url.toString().replace(/\/+$/g, '')
+}
+
+const fetchJsonDocument = async (params: {
+  url: string
+  timeoutMs: number
+  downloadToken?: string | null
+  downloadAuthHeader?: string | null
+}) => {
+  const response = await fetch(params.url, {
+    headers: buildDownloadHeaders(params),
+    signal: AbortSignal.timeout(params.timeoutMs),
+  })
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${params.url}: HTTP ${response.status}`)
+  }
+  return (await response.json()) as unknown
 }
 
 const fetchJsonWithTimeout = async (
@@ -142,6 +218,57 @@ const fetchJsonWithTimeout = async (
     }
   } finally {
     clearTimeout(timeout)
+  }
+}
+
+const loadExpectedDatasetContract = async (
+  options: RenderDeploymentVerifyOptions,
+  timeoutMs: number,
+): Promise<ExpectedDatasetContract> => {
+  const explicitHandoffJsonPath = options.handoffJsonPath?.trim()
+  const manifestPath = options.manifestPath?.trim()
+  const manifestUrl = options.manifestUrl?.trim()
+
+  if (!explicitHandoffJsonPath && (manifestPath || manifestUrl)) {
+    const source = manifestPath ? path.resolve(manifestPath) : manifestUrl ?? ''
+    const parsed = toRecord(
+      manifestPath
+        ? await readJsonFile<Record<string, unknown>>(manifestPath)
+        : await fetchJsonDocument({
+            url: manifestUrl ?? '',
+            timeoutMs,
+            downloadToken: options.downloadToken,
+            downloadAuthHeader: options.downloadAuthHeader,
+          }),
+    )
+    const expectedDatasets = parsed ? getExpectedDatasetsFromManifest(parsed) : []
+    return {
+      contractSource: source,
+      releaseId: getString(parsed, 'releaseId'),
+      releaseTag: null,
+      expectedDatasets,
+      errors:
+        expectedDatasets.length > 0
+          ? []
+          : [`${source} has no districts dataset contract`],
+    }
+  }
+
+  const handoffJsonPath = explicitHandoffJsonPath || DEFAULT_HANDOFF_JSON
+  const handoff = await readJsonFile<Record<string, unknown>>(handoffJsonPath)
+  const release = toRecord(handoff.release)
+  const expectedDatasets = getExpectedDatasets(handoff)
+  return {
+    contractSource: handoffJsonPath,
+    releaseId: getString(release, 'releaseId'),
+    releaseTag: getString(release, 'tag'),
+    expectedDatasets,
+    errors: [
+      ...(handoff.ready === true ? [] : [`${handoffJsonPath} is not marked ready`]),
+      ...(expectedDatasets.length > 0
+        ? []
+        : [`${handoffJsonPath} has no expectedDatasets contract`]),
+    ],
   }
 }
 
@@ -179,22 +306,10 @@ export const verifyRenderDeployment = async (
   options: RenderDeploymentVerifyOptions = {},
 ): Promise<RenderDeploymentVerifyResult> => {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
-  const handoffJsonPath = options.handoffJsonPath ?? DEFAULT_HANDOFF_JSON
-  const handoff = await readJsonFile<Record<string, unknown>>(handoffJsonPath)
-  const release = toRecord(handoff.release)
-  const releaseId = getString(release, 'releaseId')
-  const releaseTag = getString(release, 'tag')
-  const expectedDatasets = getExpectedDatasets(handoff)
+  const contract = await loadExpectedDatasetContract(options, timeoutMs)
   const appUrl = normalizeRenderAppUrl(options.appUrl ?? process.env.PARKKING_RENDER_APP_URL)
   const readinessUrl = buildRenderReadinessUrl(appUrl)
-  const errors: string[] = []
-
-  if (handoff.ready !== true) {
-    errors.push(`${handoffJsonPath} is not marked ready`)
-  }
-  if (expectedDatasets.length === 0) {
-    errors.push(`${handoffJsonPath} has no expectedDatasets contract`)
-  }
+  const errors: string[] = [...contract.errors]
 
   let status: number | null = null
   let serviceStatus: string | null = null
@@ -224,9 +339,9 @@ export const verifyRenderDeployment = async (
     actualDistricts.map((district) => [district.districtId, district]),
   )
   const expectedDistrictIds = new Set(
-    expectedDatasets.map((dataset) => dataset.districtId),
+    contract.expectedDatasets.map((dataset) => dataset.districtId),
   )
-  const districts = expectedDatasets.map((expected) => {
+  const districts = contract.expectedDatasets.map((expected) => {
     const actual = actualByDistrict.get(expected.districtId) ?? null
     const districtErrors: string[] = []
     if (!actual) {
@@ -268,11 +383,12 @@ export const verifyRenderDeployment = async (
     pass: errors.length === 0 && districts.every((district) => district.pass),
     appUrl,
     readinessUrl,
-    releaseId,
-    releaseTag,
+    contractSource: contract.contractSource,
+    releaseId: contract.releaseId,
+    releaseTag: contract.releaseTag,
     status,
     serviceStatus,
-    expectedDatasets,
+    expectedDatasets: contract.expectedDatasets,
     districts,
     unexpectedDistricts,
     errors,
@@ -289,6 +405,7 @@ export const renderRenderDeploymentVerify = (
     '',
     `- App URL: ${result.appUrl}`,
     `- Readiness URL: ${result.readinessUrl}`,
+    `- Contract source: ${result.contractSource}`,
     `- Release ID: ${result.releaseId ?? '-'}`,
     `- Release tag: ${result.releaseTag ?? '-'}`,
     `- HTTP status: ${result.status ?? '-'}`,

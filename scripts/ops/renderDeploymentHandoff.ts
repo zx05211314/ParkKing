@@ -320,7 +320,7 @@ export const buildRenderDeploymentHandoff = async (
       `Use release tag ${release.tag}; leave tag blank in the workflow to use this default.`,
       'Set the Render environment variables shown below, plus a download token/header if the repository is private.',
       'Deploy the Render Blueprint.',
-      'Run npm run ops:render-deployment-verify -- --app-url <Render service URL> and require PASS before treating the deploy as live.',
+      `Run npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl} and require PASS before treating the deploy as live.`,
     ],
   }
 }

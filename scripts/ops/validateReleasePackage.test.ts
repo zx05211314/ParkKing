@@ -113,6 +113,7 @@ describe('validateReleasePackage', () => {
 
     expect(result.pass).toBe(true)
     expect(result.registryDistrictIds).toEqual(['xinyi'])
+    expect(result.manifestDistrictIds).toEqual(['xinyi'])
     expect(result.errors).toEqual([])
   })
 
@@ -207,6 +208,7 @@ describe('validateReleasePackage', () => {
       pass: false,
       expectedDistrictIds: ['xinyi'],
       registryDistrictIds: ['xinyi', 'daan'],
+      manifestDistrictIds: ['xinyi', 'daan'],
       fileCount: 2,
       totalBytes: 100,
       errors: ['district-scoped release contains unexpected file: daan/file.json'],
@@ -215,6 +217,7 @@ describe('validateReleasePackage', () => {
     expect(output).toContain('# Validate Release Package: FAIL')
     expect(output).toContain('- Expected districts: xinyi')
     expect(output).toContain('- Registry districts: xinyi, daan')
+    expect(output).toContain('- Manifest districts: xinyi, daan')
     expect(output).toContain(
       '- district-scoped release contains unexpected file: daan/file.json',
     )
@@ -229,6 +232,7 @@ describe('validateReleasePackage', () => {
       pass: true,
       expectedDistrictIds: ['xinyi'],
       registryDistrictIds: ['xinyi'],
+      manifestDistrictIds: ['xinyi'],
       fileCount: 2,
       totalBytes: 100,
       errors: [],

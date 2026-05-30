@@ -78,7 +78,19 @@ describe('releaseDataWorkflow', () => {
         response.writeHead(200, {
           'content-type': 'application/json',
         })
-        response.end(JSON.stringify({ releaseId, files: [] }))
+        response.end(
+          JSON.stringify({
+            releaseId,
+            districts: [
+              {
+                districtId: 'xinyi',
+                datasetHash: 'hash-xinyi',
+                publishedAt: '2026-05-01T00:00:00Z',
+              },
+            ],
+            files: [],
+          }),
+        )
         return
       }
       response.writeHead(404)

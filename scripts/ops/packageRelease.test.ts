@@ -136,6 +136,18 @@ describe('packageRelease', () => {
     }
 
     expect(scopedRegistry.districts.map((district) => district.districtId)).toEqual(['xinyi'])
+    const releaseManifest = JSON.parse(
+      await fs.readFile(result.manifestPath, 'utf-8'),
+    ) as {
+      districts: Array<{ districtId: string; datasetHash: string }>
+    }
+    expect(releaseManifest.districts).toEqual([
+      {
+        districtId: 'xinyi',
+        datasetHash: 'hash-a',
+        publishedAt: '2026-02-04T00:00:00Z',
+      },
+    ])
     expect(zip.getEntry('xinyi/red_yellow.geojson')).toBeTruthy()
     expect(zip.getEntry('daan/red_yellow.geojson')).toBeNull()
   })
@@ -168,6 +180,13 @@ describe('packageRelease', () => {
       manifestPath: 'dist/releases/release_manifest_20260523T000000Z_abcdef0.json',
       baseDir: 'public/data/generated',
       districtIds: ['xinyi'],
+      releaseDistricts: [
+        {
+          districtId: 'xinyi',
+          datasetHash: 'hash-a',
+          publishedAt: '2026-02-04T00:00:00Z',
+        },
+      ],
       fileCount: 3,
       totalBytes: 1234,
     })
@@ -181,6 +200,7 @@ describe('packageRelease', () => {
       '- Manifest: dist/releases/release_manifest_20260523T000000Z_abcdef0.json',
     )
     expect(output).toContain('- Districts: xinyi')
+    expect(output).toContain('- Dataset hashes: xinyi:hash-a')
     expect(output).toContain('- Files: 3')
     expect(output).toContain('- Total bytes: 1234')
   })

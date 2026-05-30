@@ -25,6 +25,13 @@ const releasePackagePass: PackageReleaseResult = {
   manifestPath: 'dist/releases/release_manifest_release-1.json',
   baseDir: 'public/data/generated',
   districtIds: ['xinyi'],
+  releaseDistricts: [
+    {
+      districtId: 'xinyi',
+      datasetHash: 'hash-xinyi',
+      publishedAt: '2026-05-01T00:00:00Z',
+    },
+  ],
   fileCount: 10,
   totalBytes: 1234,
 }
@@ -36,6 +43,7 @@ const validationPass: ValidateReleasePackageResult = {
   pass: true,
   expectedDistrictIds: ['xinyi'],
   registryDistrictIds: ['xinyi'],
+  manifestDistrictIds: ['xinyi'],
   fileCount: 10,
   totalBytes: 1234,
   errors: [],

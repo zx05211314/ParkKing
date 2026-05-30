@@ -115,12 +115,14 @@ After Render finishes deploying those release URLs, verify the live service
 against the handoff contract:
 
 ```powershell
-npm run ops:render-deployment-verify -- --app-url https://<service>.onrender.com
+npm run ops:render-deployment-verify -- --app-url https://<service>.onrender.com --manifest-url <PARKKING_RELEASE_MANIFEST_URL>
 ```
 
-This reads `.tmp/render-deployment-handoff.json`, fetches
+This reads the release manifest dataset-hash contract, fetches
 `/api/parking-answer/ready`, and fails if any reviewed district is missing, not
-ready, or serving a dataset hash different from the handoff release.
+ready, or serving a dataset hash different from the released package. If you are
+verifying from the same machine that generated the handoff, the command can use
+`.tmp/render-deployment-handoff.json` instead of `--manifest-url`.
 
 Validate the checked-in Blueprint contract before relying on a deploy:
 

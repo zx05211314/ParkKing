@@ -252,9 +252,31 @@ const fetchSmokeCheck = async (params: {
   }
 }
 
-const readManifestReleaseId = async (response: Response) => {
-  const parsed = (await response.json()) as { releaseId?: unknown }
-  return typeof parsed.releaseId === 'string' ? parsed.releaseId : null
+const readManifestMetadata = async (response: Response) => {
+  const parsed = (await response.json()) as {
+    releaseId?: unknown
+    districts?: unknown
+  }
+  const districts = Array.isArray(parsed.districts)
+    ? parsed.districts.filter(
+        (district): district is { districtId: string; datasetHash: string } => {
+          const record =
+            district !== null &&
+            typeof district === 'object' &&
+            !Array.isArray(district)
+              ? (district as Record<string, unknown>)
+              : null
+          return (
+            typeof record?.districtId === 'string' &&
+            typeof record.datasetHash === 'string'
+          )
+        },
+      )
+    : []
+  return {
+    releaseId: typeof parsed.releaseId === 'string' ? parsed.releaseId : null,
+    districts,
+  }
 }
 
 export const smokeReleaseDataAssetUrls = async (
@@ -293,11 +315,15 @@ export const smokeReleaseDataAssetUrls = async (
     )
   } else {
     try {
-      const manifestReleaseId = await readManifestReleaseId(manifestCheck.response)
+      const manifestMetadata = await readManifestMetadata(manifestCheck.response)
+      const manifestReleaseId = manifestMetadata.releaseId
       if (manifestReleaseId !== options.releaseId) {
         errors.push(
           `Manifest releaseId ${manifestReleaseId ?? 'missing'} does not match ${options.releaseId}`,
         )
+      }
+      if (manifestMetadata.districts.length === 0) {
+        errors.push('Manifest does not include district dataset hashes')
       }
     } catch (error) {
       errors.push(
@@ -386,9 +412,16 @@ const runSummarize = async () => {
     '',
     `- PARKKING_RELEASE_PACKAGE_URL=${urls.packageUrl}`,
     `- PARKKING_RELEASE_MANIFEST_URL=${urls.manifestUrl}`,
+    '',
+    '## Live deploy verification',
+    '',
+    `Run: \`npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl}\``,
   ])
   console.log(`PARKKING_RELEASE_PACKAGE_URL=${urls.packageUrl}`)
   console.log(`PARKKING_RELEASE_MANIFEST_URL=${urls.manifestUrl}`)
+  console.log(
+    `VERIFY_RENDER_DEPLOY=npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl}`,
+  )
 }
 
 const runSmokeUrls = async () => {

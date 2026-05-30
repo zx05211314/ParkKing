@@ -68,6 +68,13 @@ const createReleaseZip = async (base: string) => {
       releaseId: 'test',
       baseDir: path.join(base, 'public', 'data', 'generated'),
       manifestEntries,
+      districts: [
+        {
+          districtId: 'xinyi',
+          datasetHash: 'hash-a',
+          publishedAt: '2026-05-01T00:00:00Z',
+        },
+      ],
       cwd: base,
     }),
   )

@@ -8,7 +8,10 @@ import {
   getGitShortSha,
   readReleaseJson,
 } from './packageReleaseUtils'
-import type { RegistryEntry } from './packageReleaseTypes'
+import type {
+  RegistryEntry,
+  ReleaseManifestDistrict,
+} from './packageReleaseTypes'
 import {
   DEFAULT_REVIEWED_ANSWER_CASES_GLOB,
   discoverReviewedDistrictIds,
@@ -22,23 +25,47 @@ export interface PackageReleaseResult {
   manifestPath: string
   baseDir: string
   districtIds: string[]
+  releaseDistricts: ReleaseManifestDistrict[]
   fileCount: number
   totalBytes: number
 }
 
-const buildScopedRegistryContents = async (
+const toReleaseManifestDistricts = (
+  districts: RegistryEntry[],
+): ReleaseManifestDistrict[] =>
+  districts
+    .map((district) => {
+      const datasetHash = district.latest?.datasetHash
+      const publishedAt = district.latest?.publishedAt
+      if (!datasetHash || !publishedAt) {
+        throw new Error(
+          `Release package registry district ${district.districtId} is missing latest datasetHash/publishedAt`,
+        )
+      }
+      return {
+        districtId: district.districtId,
+        datasetHash,
+        publishedAt,
+      }
+    })
+    .sort((left, right) => left.districtId.localeCompare(right.districtId))
+
+const resolveReleaseRegistryScope = async (
   registryPath: string,
   districtIds: string[],
 ) => {
-  if (districtIds.length === 0) {
-    return null
-  }
-
   const registry = await readReleaseJson<{ districts?: RegistryEntry[] } & Record<string, unknown>>(
     registryPath,
   )
-  const districtSet = new Set(districtIds)
   const districts = registry.districts ?? []
+  if (districtIds.length === 0) {
+    return {
+      registryContents: null,
+      releaseDistricts: toReleaseManifestDistricts(districts),
+    }
+  }
+
+  const districtSet = new Set(districtIds)
   const scopedDistricts = districts.filter((district) => districtSet.has(district.districtId))
   const foundDistricts = new Set(scopedDistricts.map((district) => district.districtId))
   const missingDistricts = districtIds.filter((districtId) => !foundDistricts.has(districtId))
@@ -47,10 +74,13 @@ const buildScopedRegistryContents = async (
     throw new Error(`Release package district not found in registry: ${missingDistricts.join(', ')}`)
   }
 
-  return Buffer.from(
-    `${JSON.stringify({ ...registry, districts: scopedDistricts }, null, 2)}\n`,
-    'utf-8',
-  )
+  return {
+    registryContents: Buffer.from(
+      `${JSON.stringify({ ...registry, districts: scopedDistricts }, null, 2)}\n`,
+      'utf-8',
+    ),
+    releaseDistricts: toReleaseManifestDistricts(scopedDistricts),
+  }
 }
 
 export const packageRelease = async (params: {
@@ -67,13 +97,19 @@ export const packageRelease = async (params: {
     includeGlob: params.includeGlob,
     districtIds,
   })
-  const registryContents = await buildScopedRegistryContents(registryPath, districtIds)
-  const fileContents = registryContents ? new Map([[registryPath, registryContents]]) : undefined
+  const { registryContents, releaseDistricts } = await resolveReleaseRegistryScope(
+    registryPath,
+    districtIds,
+  )
+  const fileContents = registryContents
+    ? new Map([[registryPath, registryContents]])
+    : undefined
   const { zipPath, manifestPath, releaseManifest } = await writeReleaseArchive({
     outDir: params.outDir,
     baseDir,
     files,
     releaseId,
+    districts: releaseDistricts,
     fileContents,
   })
   const totalBytes = releaseManifest.files.reduce((sum, file) => sum + file.bytes, 0)
@@ -84,6 +120,7 @@ export const packageRelease = async (params: {
     manifestPath,
     baseDir,
     districtIds,
+    releaseDistricts: releaseManifest.districts,
     fileCount: releaseManifest.files.length,
     totalBytes,
   }
@@ -98,6 +135,11 @@ export const renderPackageReleaseResult = (result: PackageReleaseResult) =>
     `- Manifest: ${result.manifestPath}`,
     `- Base dir: ${result.baseDir}`,
     `- Districts: ${result.districtIds.length > 0 ? result.districtIds.join(', ') : 'all'}`,
+    `- Dataset hashes: ${
+      result.releaseDistricts
+        .map((district) => `${district.districtId}:${district.datasetHash.slice(0, 12)}`)
+        .join(', ') || '-'
+    }`,
     `- Files: ${result.fileCount}`,
     `- Total bytes: ${result.totalBytes}`,
   ].join('\n')

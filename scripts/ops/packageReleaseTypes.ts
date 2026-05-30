@@ -13,6 +13,12 @@ export interface LatestPointer {
   schemaVersion?: number
 }
 
+export interface ReleaseManifestDistrict {
+  districtId: string
+  datasetHash: string
+  publishedAt: string
+}
+
 export interface ReleaseManifestEntry {
   path: string
   sha256: string

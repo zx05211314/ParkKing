@@ -2,7 +2,11 @@ import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import AdmZip from 'adm-zip'
-import type { ReleaseManifestEntry, RegistryEntry } from './packageReleaseTypes'
+import type {
+  ReleaseManifestDistrict,
+  ReleaseManifestEntry,
+  RegistryEntry,
+} from './packageReleaseTypes'
 import { sha256Buffer } from './packageReleaseUtils'
 import {
   DEFAULT_REVIEWED_ANSWER_CASES_GLOB,
@@ -12,6 +16,7 @@ import {
 export interface ReleaseManifest {
   releaseId: string
   baseDir?: string
+  districts?: ReleaseManifestDistrict[]
   files: ReleaseManifestEntry[]
 }
 
@@ -36,6 +41,7 @@ export interface ValidateReleasePackageResult extends ReleasePackagePaths {
   pass: boolean
   expectedDistrictIds: string[]
   registryDistrictIds: string[]
+  manifestDistrictIds: string[]
   fileCount: number
   totalBytes: number
   errors: string[]
@@ -191,14 +197,23 @@ const isAllowedDistrictScopedEntry = (
       entryPath.startsWith(`_ops/manifests/${districtId}/`),
   )
 
-const parseRegistryDistrictIds = (registryContents: string) => {
+const parseRegistryDistricts = (registryContents: string) => {
   const registry = JSON.parse(registryContents) as {
-    districts?: RegistryEntry[]
+    districts?: unknown
   }
-  return (registry.districts ?? [])
-    .map((district) => district.districtId)
-    .filter((districtId): districtId is string => typeof districtId === 'string')
+  return (Array.isArray(registry.districts) ? registry.districts : []).filter(
+    (district): district is RegistryEntry => {
+      const record =
+        district !== null && typeof district === 'object' && !Array.isArray(district)
+          ? (district as Record<string, unknown>)
+          : null
+      return typeof record?.districtId === 'string'
+    },
+  )
 }
+
+const toReleaseManifestDistrictMap = (districts: ReleaseManifestDistrict[]) =>
+  new Map(districts.map((district) => [district.districtId, district]))
 
 export const resolveValidateReleasePackageDistrictIds = async (
   args: Pick<
@@ -272,11 +287,68 @@ export const validateReleasePackage = async (
   }
 
   const registryEntry = zip.getEntry('registry.json')
-  const registryDistrictIds = registryEntry
-    ? parseRegistryDistrictIds(registryEntry.getData().toString('utf-8'))
+  const registryDistricts = registryEntry
+    ? parseRegistryDistricts(registryEntry.getData().toString('utf-8'))
     : []
+  const registryDistrictIds = registryDistricts.map((district) => district.districtId)
+  const manifestDistricts = Array.isArray(manifest.districts)
+    ? manifest.districts.filter(
+        (district): district is ReleaseManifestDistrict => {
+          const record =
+            district !== null &&
+            typeof district === 'object' &&
+            !Array.isArray(district)
+              ? (district as Record<string, unknown>)
+              : null
+          return (
+            typeof record?.districtId === 'string' &&
+            typeof record.datasetHash === 'string' &&
+            typeof record.publishedAt === 'string'
+          )
+        },
+      )
+    : []
+  const manifestDistrictIds = manifestDistricts.map((district) => district.districtId)
   if (!registryEntry) {
     errors.push('zip is missing registry.json')
+  }
+  if (!Array.isArray(manifest.districts) || manifestDistricts.length === 0) {
+    errors.push('manifest is missing districts dataset contract')
+  }
+  if (
+    registryDistrictIds.length > 0 &&
+    manifestDistricts.length > 0 &&
+    !sameStringSet(manifestDistrictIds, registryDistrictIds)
+  ) {
+    errors.push(
+      `manifest districts ${manifestDistrictIds.join(', ') || 'none'} do not match registry ${registryDistrictIds.join(', ') || 'none'}`,
+    )
+  }
+
+  const manifestDistrictMap = toReleaseManifestDistrictMap(manifestDistricts)
+  for (const registryDistrict of registryDistricts) {
+    const manifestDistrict = manifestDistrictMap.get(registryDistrict.districtId)
+    if (!manifestDistrict) {
+      continue
+    }
+    const registryHash = registryDistrict.latest?.datasetHash
+    const registryPublishedAt = registryDistrict.latest?.publishedAt
+    if (!registryHash || !registryPublishedAt) {
+      errors.push(
+        `registry district ${registryDistrict.districtId} is missing latest datasetHash/publishedAt`,
+      )
+      continue
+    }
+    if (manifestDistrict.datasetHash !== registryHash) {
+      errors.push(
+        `manifest district ${registryDistrict.districtId} datasetHash ${manifestDistrict.datasetHash} does not match registry ${registryHash}`,
+      )
+    }
+    if (manifestDistrict.publishedAt !== registryPublishedAt) {
+      errors.push(
+        `manifest district ${registryDistrict.districtId} publishedAt ${manifestDistrict.publishedAt} does not match registry ${registryPublishedAt}`,
+      )
+    }
   }
 
   if (expectedDistrictIds.length > 0) {
@@ -299,6 +371,7 @@ export const validateReleasePackage = async (
     pass: errors.length === 0,
     expectedDistrictIds,
     registryDistrictIds,
+    manifestDistrictIds,
     fileCount: manifestEntries.length,
     totalBytes: manifestEntries.reduce((sum, entry) => sum + entry.bytes, 0),
     errors,
@@ -322,6 +395,11 @@ export const renderValidateReleasePackageResult = (
     `- Registry districts: ${
       result.registryDistrictIds.length > 0
         ? result.registryDistrictIds.join(', ')
+        : 'none'
+    }`,
+    `- Manifest districts: ${
+      result.manifestDistrictIds.length > 0
+        ? result.manifestDistrictIds.join(', ')
         : 'none'
     }`,
     `- Files: ${result.fileCount}`,
