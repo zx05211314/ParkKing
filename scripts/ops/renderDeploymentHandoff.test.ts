@@ -131,6 +131,12 @@ describe('renderDeploymentHandoff', () => {
     expect(renderRenderDeploymentHandoff(result)).toContain(
       'Expected datasets: daan:hash-daan, xinyi:hash-xinyi',
     )
+    expect(result.externalSteps.join('\n')).toContain(
+      'Run GitHub Actions -> Render Live Verify',
+    )
+    expect(result.externalSteps.join('\n')).toContain(
+      'manifestUrl=https://github.com/owner/repo/releases/download/data-20260529_abcd123/release_manifest_20260529_abcd123.json',
+    )
   })
 
   it('blocks when deploy readiness points at a different release', async () => {
