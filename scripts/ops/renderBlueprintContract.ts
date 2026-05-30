@@ -44,6 +44,7 @@ const REQUIRED_SERVICE_FIELDS: Array<{
 ]
 
 const REQUIRED_ENV_VALUES: Record<string, string> = {
+  NODE_VERSION: '24.16.0',
   NODE_ENV: 'production',
   PARKKING_APP_HOST: '0.0.0.0',
   PARKKING_APP_STATIC_DIR: 'dist',

@@ -12,6 +12,7 @@ describe('renderBlueprintContract', () => {
 
     expect(result.pass).toBe(true)
     expect(result.errors).toEqual([])
+    expect(result.checkedEnvVars).toContain('NODE_VERSION')
     expect(result.checkedEnvVars).toContain('PARKKING_RELEASE_PACKAGE_URL')
     expect(result.checkedEnvVars).toContain('PARKKING_PARKING_ANSWER_DATASET_ROOT')
   })

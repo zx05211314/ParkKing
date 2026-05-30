@@ -66,6 +66,8 @@ Vite copies `/data/generated` into `dist` for browser-side static data reads.
 - Build command: installs dependencies, restores release data, builds the UI.
 - Start command: `npm start`.
 - Bind host: `0.0.0.0`.
+- Node version: `NODE_VERSION=24.16.0`, matching CI and bounded by the
+  `package.json` engines range.
 - Health check: `/api/parking-answer/ready`, so deploys fail if core parking
   answer data is unavailable.
 
