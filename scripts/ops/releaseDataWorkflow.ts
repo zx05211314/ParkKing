@@ -387,6 +387,16 @@ export const buildReleaseDataSummaryLines = (urls: {
   `Local: \`npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl}\``,
 ]
 
+export const buildReleaseDataConsoleLines = (urls: {
+  packageUrl: string
+  manifestUrl: string
+}) => [
+  `PARKKING_RELEASE_PACKAGE_URL=${urls.packageUrl}`,
+  `PARKKING_RELEASE_MANIFEST_URL=${urls.manifestUrl}`,
+  `VERIFY_RENDER_DEPLOY_WORKFLOW_INPUTS=appUrl=<Render service URL> manifestUrl=${urls.manifestUrl} useGithubToken=<true for private release assets, false for public assets> skipSyncIssueRoundtrip=false`,
+  `VERIFY_RENDER_DEPLOY_LOCAL=npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl}`,
+]
+
 const runResolveMetadata = async () => {
   const metadata = await resolveReleaseDataMetadata({
     tagInput: process.env.PARKKING_RELEASE_TAG_INPUT,
@@ -426,14 +436,7 @@ const runSummarize = async () => {
     process.env.GITHUB_STEP_SUMMARY,
     buildReleaseDataSummaryLines(urls),
   )
-  console.log(`PARKKING_RELEASE_PACKAGE_URL=${urls.packageUrl}`)
-  console.log(`PARKKING_RELEASE_MANIFEST_URL=${urls.manifestUrl}`)
-  console.log(
-    `VERIFY_RENDER_DEPLOY_WORKFLOW=Render Live Verify appUrl=<Render service URL> manifestUrl=${urls.manifestUrl} useGithubToken=false skipSyncIssueRoundtrip=false`,
-  )
-  console.log(
-    `VERIFY_RENDER_DEPLOY_LOCAL=npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl}`,
-  )
+  buildReleaseDataConsoleLines(urls).forEach((line) => console.log(line))
 }
 
 const runSmokeUrls = async () => {

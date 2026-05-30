@@ -4,6 +4,7 @@ import * as path from 'node:path'
 import { tmpdir } from 'node:os'
 import { createServer } from 'node:http'
 import {
+  buildReleaseDataConsoleLines,
   buildReleaseDataSummaryLines,
   buildReleaseAssetSmokeHeaders,
   buildReleaseDataUrls,
@@ -77,6 +78,25 @@ describe('releaseDataWorkflow', () => {
     expect(lines).toContain('useGithubToken=true only for private')
     expect(lines).toContain('skipSyncIssueRoundtrip=false unless')
     expect(lines).toContain('npm run ops:render-deployment-verify')
+  })
+
+  it('prints non-misleading Render workflow dispatch inputs', () => {
+    const lines = buildReleaseDataConsoleLines({
+      packageUrl: 'https://example.test/data.zip',
+      manifestUrl: 'https://example.test/release_manifest.json',
+    }).join('\n')
+
+    expect(lines).toContain(
+      'VERIFY_RENDER_DEPLOY_WORKFLOW_INPUTS=appUrl=<Render service URL>',
+    )
+    expect(lines).toContain(
+      'manifestUrl=https://example.test/release_manifest.json',
+    )
+    expect(lines).toContain(
+      'useGithubToken=<true for private release assets, false for public assets>',
+    )
+    expect(lines).toContain('skipSyncIssueRoundtrip=false')
+    expect(lines).not.toContain('useGithubToken=false')
   })
 
   it('smokes package and manifest release URLs', async () => {
