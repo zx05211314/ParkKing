@@ -5,6 +5,11 @@ import { describe, expect, it } from 'vitest'
 const readWorkflow = async (name: string) =>
   await fs.readFile(path.resolve('.github/workflows', name), 'utf-8')
 
+const readPackageJson = async () =>
+  JSON.parse(await fs.readFile(path.resolve('package.json'), 'utf-8')) as {
+    scripts?: Record<string, string>
+  }
+
 const expectCommandsInOrder = (content: string, commands: string[]) => {
   let cursor = 0
   const missing: string[] = []
@@ -17,6 +22,13 @@ const expectCommandsInOrder = (content: string, commands: string[]) => {
     cursor = index + command.length
   }
   expect(missing).toEqual([])
+}
+
+const expectWorkflowInputs = (content: string, inputs: string[]) => {
+  expect(content).toContain('workflow_dispatch:')
+  for (const input of inputs) {
+    expect(content).toContain(`${input}:`)
+  }
 }
 
 describe('release workflow contracts', () => {
@@ -72,6 +84,41 @@ describe('release workflow contracts', () => {
       "run: npm run ops:render-deployment-verify -- ${{ inputs.skipSyncIssueRoundtrip && '--skip-sync-issue-roundtrip' || '' }}",
     )
     expect(workflow).not.toContain('--skip-api-services')
+  })
+
+  it('keeps Release Data Package dispatch helper aligned with workflow inputs', async () => {
+    const [workflow, packageJson] = await Promise.all([
+      readWorkflow('release_data.yml'),
+      readPackageJson(),
+    ])
+
+    expect(packageJson.scripts?.['ops:release-data-dispatch']).toBe(
+      'tsx scripts/ops/dispatchReleaseDataWorkflow.ts',
+    )
+    expectWorkflowInputs(workflow, [
+      'configsGlob',
+      'allowWarn',
+      'overrideReason',
+      'tag',
+      'latest',
+    ])
+  })
+
+  it('keeps Render Live Verify dispatch helper aligned with workflow inputs', async () => {
+    const [workflow, packageJson] = await Promise.all([
+      readWorkflow('render_live_verify.yml'),
+      readPackageJson(),
+    ])
+
+    expect(packageJson.scripts?.['ops:render-live-verify-dispatch']).toBe(
+      'tsx scripts/ops/dispatchRenderLiveVerifyWorkflow.ts',
+    )
+    expectWorkflowInputs(workflow, [
+      'appUrl',
+      'manifestUrl',
+      'useGithubToken',
+      'skipSyncIssueRoundtrip',
+    ])
   })
 
   it('keeps CI P2 automation blockers visible while preserving artifact upload', async () => {
