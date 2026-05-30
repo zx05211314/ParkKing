@@ -100,6 +100,10 @@ describe('renderDeploymentVerify', () => {
         'https://example.test/release_manifest.json',
         '--timeout-ms',
         '1000',
+        '--skip-api-services',
+        '--api-services',
+        'geocode,routing',
+        '--skip-sync-issue-roundtrip',
         '--out',
         '.tmp/verify.md',
         '--json-out',
@@ -110,6 +114,9 @@ describe('renderDeploymentVerify', () => {
       handoffJsonPath: '.tmp/handoff.json',
       manifestUrl: 'https://example.test/release_manifest.json',
       timeoutMs: 1000,
+      skipApiServices: true,
+      apiServices: ['geocode', 'routing'],
+      syncIssueRoundtrip: false,
       outPath: '.tmp/verify.md',
       jsonOutPath: '.tmp/verify.json',
     })
@@ -290,6 +297,51 @@ describe('renderDeploymentVerify', () => {
       expect(result.pass).toBe(true)
       expect(result.contractSource).toBe(path.resolve(manifestPath))
       expect(result.releaseId).toBe('release-a')
+    } finally {
+      await server.close()
+    }
+  })
+
+  it('does not run sync roundtrip when selected API services exclude sync', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'render-verify-geocode-'))
+    const manifestPath = path.join(base, 'release_manifest.json')
+    await writeJson(manifestPath, {
+      releaseId: 'release-a',
+      districts: [
+        {
+          districtId: 'xinyi',
+          datasetHash: 'hash-xinyi',
+          publishedAt: '2026-05-01T00:00:00Z',
+        },
+      ],
+      files: [],
+    })
+    const server = await startJsonServer({
+      status: 'ok',
+      districts: [
+        {
+          district: 'xinyi',
+          ready: true,
+          datasetHash: 'hash-xinyi',
+          latestDatasetHash: 'hash-xinyi',
+        },
+      ],
+    })
+
+    try {
+      const result = await verifyRenderDeployment({
+        appUrl: server.baseUrl,
+        manifestPath,
+        timeoutMs: 1000,
+        apiServices: ['geocode'],
+      })
+
+      expect(result.pass).toBe(true)
+      expect(result.apiServices?.results.map((probe) => probe.service)).toEqual([
+        'geocode',
+        'geocode',
+      ])
+      expect(result.apiServices?.actions).toEqual([])
     } finally {
       await server.close()
     }
