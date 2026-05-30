@@ -21,6 +21,15 @@ Or publish stable GitHub Release assets from Actions:
 Actions -> Release Data Package -> Run workflow
 ```
 
+You can also dispatch the same workflow from this repo after previewing the
+payload:
+
+```powershell
+npm run ops:release-data-dispatch -- --repo zx05211314/ParkKing --ref main --dry-run
+$env:GH_TOKEN="<token with Actions workflow dispatch access>"
+npm run ops:release-data-dispatch -- --repo zx05211314/ParkKing --ref main
+```
+
 That workflow fetches production sources, ingests reviewed packs, builds the UI,
 runs the bundle budget, runs reviewed answer UI smokes in LIST and MAP modes,
 passes P3 release readiness and deploy readiness, then publishes the package and
