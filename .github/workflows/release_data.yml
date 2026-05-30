@@ -59,6 +59,10 @@ jobs:
         run: npm run build
       - name: Bundle budget
         run: npm run ops:bundle-budget
+      - name: Smoke reviewed UI answers
+        run: npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --reviewed --timeout-ms 25000
+      - name: Smoke reviewed MAP UI answers
+        run: npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --reviewed --view MAP --limit 1 --timeout-ms 25000
       - name: P3 reviewed release readiness
         run: npm run ops:p3-release-readiness
       - name: Deploy readiness

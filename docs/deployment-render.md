@@ -21,6 +21,11 @@ Or publish stable GitHub Release assets from Actions:
 Actions -> Release Data Package -> Run workflow
 ```
 
+That workflow fetches production sources, ingests reviewed packs, builds the UI,
+runs the bundle budget, runs reviewed answer UI smokes in LIST and MAP modes,
+passes P3 release readiness and deploy readiness, then publishes the package and
+manifest assets.
+
 Upload both generated files from `dist/releases` to stable URLs:
 
 - `park-king-data_<release-id>.zip`
