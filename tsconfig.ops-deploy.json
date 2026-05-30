@@ -27,6 +27,9 @@
     "scripts/ops/dispatchRenderLiveVerifyWorkflow.test.ts",
     "scripts/ops/githubWorkflowDispatch.ts",
     "scripts/ops/githubWorkflowDispatch.test.ts",
+    "scripts/ops/installReleasePackage.ts",
+    "scripts/ops/installReleasePackage.test.ts",
+    "scripts/ops/packageRelease*.ts",
     "scripts/ops/releaseDataWorkflow.ts",
     "scripts/ops/releaseDataWorkflow.test.ts",
     "scripts/ops/releaseWorkflowContract.test.ts",
@@ -35,6 +38,8 @@
     "scripts/ops/renderDeploymentHandoff.ts",
     "scripts/ops/renderDeploymentHandoff.test.ts",
     "scripts/ops/renderDeploymentVerify.ts",
-    "scripts/ops/renderDeploymentVerify.test.ts"
+    "scripts/ops/renderDeploymentVerify.test.ts",
+    "scripts/ops/validateReleasePackage.ts",
+    "scripts/ops/validateReleasePackage.test.ts"
   ]
 }

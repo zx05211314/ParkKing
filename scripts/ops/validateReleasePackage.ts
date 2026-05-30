@@ -298,7 +298,7 @@ export const validateReleasePackage = async (
             district !== null &&
             typeof district === 'object' &&
             !Array.isArray(district)
-              ? (district as Record<string, unknown>)
+              ? (district as unknown as Record<string, unknown>)
               : null
           return (
             typeof record?.districtId === 'string' &&
