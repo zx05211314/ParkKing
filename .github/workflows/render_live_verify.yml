@@ -14,6 +14,11 @@ on:
         required: false
         type: boolean
         default: false
+      skipSyncIssueRoundtrip:
+        description: Skip the live sync issue-report write/read roundtrip; health and readiness probes still run
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -35,7 +40,12 @@ jobs:
           PARKKING_RENDER_APP_URL: ${{ inputs.appUrl }}
           PARKKING_RELEASE_MANIFEST_URL: ${{ inputs.manifestUrl }}
           PARKKING_RELEASE_DOWNLOAD_TOKEN: ${{ inputs.useGithubToken && github.token || '' }}
-        run: npm run ops:render-deployment-verify
+        run: |
+          if [ "${{ inputs.skipSyncIssueRoundtrip }}" = "true" ]; then
+            npm run ops:render-deployment-verify -- --skip-sync-issue-roundtrip
+          else
+            npm run ops:render-deployment-verify
+          fi
       - name: Summarize verification
         if: always()
         run: npm run ops:append-workflow-summary -- --append-file .tmp/render-deployment-verify.md

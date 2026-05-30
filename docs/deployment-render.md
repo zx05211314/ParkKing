@@ -129,8 +129,11 @@ Actions -> Render Live Verify -> Run workflow
 
 Pass the live Render service URL and the published release manifest URL. Enable
 `useGithubToken` only when the manifest URL is a private GitHub Release asset
-from this repository. The workflow uploads `.tmp/render-deployment-verify.md` and
-`.tmp/render-deployment-verify.json` as `render-live-verify`.
+from this repository. Leave `skipSyncIssueRoundtrip` false unless the live
+environment intentionally rejects sync smoke writes; dataset hash checks and
+health/ready probes still run when only the roundtrip is skipped. The workflow
+uploads `.tmp/render-deployment-verify.md` and `.tmp/render-deployment-verify.json`
+as `render-live-verify`.
 
 This reads the release manifest dataset-hash contract, fetches
 `/api/parking-answer/ready`, and fails if any reviewed district is missing, not
