@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run ops:assert-no-node-imports && tsc -b && vite build",
+    "ops:typecheck-dispatch": "tsc -p tsconfig.ops-dispatch.json",
     "start": "tsx scripts/ops/appServer.ts",
     "ingest": "tsx scripts/ingest/runAll.ts",
     "ingest:all": "tsx scripts/ingest/ingestAll.ts",

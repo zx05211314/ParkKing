@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.ops-dispatch.tsbuildinfo",
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "types": ["node", "vitest"],
+    "skipLibCheck": true,
+
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
+  },
+  "include": [
+    "scripts/ops/dispatchReleaseDataWorkflow.ts",
+    "scripts/ops/dispatchReleaseDataWorkflow.test.ts",
+    "scripts/ops/dispatchRenderLiveVerifyWorkflow.ts",
+    "scripts/ops/dispatchRenderLiveVerifyWorkflow.test.ts",
+    "scripts/ops/githubWorkflowDispatch.ts",
+    "scripts/ops/githubWorkflowDispatch.test.ts",
+    "scripts/ops/releaseWorkflowContract.test.ts"
+  ]
+}

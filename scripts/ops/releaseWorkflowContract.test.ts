@@ -121,6 +121,16 @@ describe('release workflow contracts', () => {
     ])
   })
 
+  it('keeps CI typechecking deploy dispatch helpers before build', async () => {
+    const workflow = await readWorkflow('ci.yml')
+
+    expectCommandsInOrder(workflow, [
+      'npm run lint -- --max-warnings=0',
+      'npm run ops:typecheck-dispatch',
+      'npm run build',
+    ])
+  })
+
   it('keeps CI P2 automation blockers visible while preserving artifact upload', async () => {
     const workflow = await readWorkflow('ci.yml')
 
