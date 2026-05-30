@@ -57,4 +57,20 @@ describe('release workflow contracts', () => {
       'npm run ops:render-deployment-handoff',
     ])
   })
+
+  it('keeps Render Live Verify wired to live release inputs', async () => {
+    const workflow = await readWorkflow('render_live_verify.yml')
+
+    expect(workflow).toContain('PARKKING_RENDER_APP_URL: ${{ inputs.appUrl }}')
+    expect(workflow).toContain(
+      'PARKKING_RELEASE_MANIFEST_URL: ${{ inputs.manifestUrl }}',
+    )
+    expect(workflow).toContain(
+      "PARKKING_RELEASE_DOWNLOAD_TOKEN: ${{ inputs.useGithubToken && github.token || '' }}",
+    )
+    expect(workflow).toContain(
+      "run: npm run ops:render-deployment-verify -- ${{ inputs.skipSyncIssueRoundtrip && '--skip-sync-issue-roundtrip' || '' }}",
+    )
+    expect(workflow).not.toContain('--skip-api-services')
+  })
 })
