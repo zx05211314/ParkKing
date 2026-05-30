@@ -6,10 +6,19 @@ import {
   type ParkKingAppMiddleware,
   type ParkKingAppServerConfig,
 } from './appServer'
+import {
+  renderSmokeApiServicesSummary,
+  runSmokeApiServices,
+  type SmokeApiServiceId,
+  type SmokeApiServicesSummary,
+} from './smokeApiServices'
 
 export interface SmokeAppServerOptions {
   timeoutMs?: number | null
   skipParkingAnswer?: boolean | null
+  includeApiServices?: boolean | null
+  apiServices?: SmokeApiServiceId[] | null
+  syncIssueRoundtrip?: boolean | null
 }
 
 export interface SmokeAppServerProbe {
@@ -24,6 +33,7 @@ export interface SmokeAppServerResult {
   pass: boolean
   baseUrl: string
   probes: SmokeAppServerProbe[]
+  apiServices?: SmokeApiServicesSummary | null
 }
 
 export interface SmokeAppServerRuntimeOptions {
@@ -57,6 +67,30 @@ const parsePositiveInteger = (value: string | null, label: string) => {
   return parsed
 }
 
+const DEFAULT_API_SERVICES: SmokeApiServiceId[] = [
+  'geocode',
+  'routing',
+  'sync',
+  'parking-answer',
+]
+
+const parseApiServices = (value: string | null): SmokeApiServiceId[] | null => {
+  if (!value) {
+    return null
+  }
+  const services = value
+    .split(',')
+    .map((service) => service.trim())
+    .filter(Boolean)
+  const invalid = services.filter(
+    (service) => !DEFAULT_API_SERVICES.includes(service as SmokeApiServiceId),
+  )
+  if (invalid.length > 0) {
+    throw new Error(`Unknown API services: ${invalid.join(', ')}`)
+  }
+  return services as SmokeApiServiceId[]
+}
+
 export const parseSmokeAppServerArgs = (
   argv: string[],
 ): SmokeAppServerOptions => ({
@@ -65,6 +99,17 @@ export const parseSmokeAppServerArgs = (
     'timeout-ms',
   ),
   skipParkingAnswer: hasFlag(argv, '--skip-parking-answer', '--skipParkingAnswer'),
+  includeApiServices: hasFlag(
+    argv,
+    '--include-api-services',
+    '--includeApiServices',
+  ),
+  apiServices: parseApiServices(getArgValue(argv, '--api-services', '--apiServices')),
+  syncIssueRoundtrip: hasFlag(
+    argv,
+    '--sync-issue-roundtrip',
+    '--syncIssueRoundtrip',
+  ),
 })
 
 const closeServer = async (server: Server) =>
@@ -239,10 +284,19 @@ export const runSmokeAppServer = async (
       await probeJson(baseUrl, '/api/not-found', timeoutMs, 404, 'API route not found'),
       await probeStaticRoot(baseUrl, timeoutMs),
     ]
+    const apiServices = options.includeApiServices
+      ? await runSmokeApiServices({
+          baseUrl,
+          services: options.apiServices ?? undefined,
+          timeoutMs,
+          syncIssueRoundtrip: Boolean(options.syncIssueRoundtrip),
+        })
+      : null
     return {
-      pass: probes.every((probe) => probe.pass),
+      pass: probes.every((probe) => probe.pass) && (apiServices?.failed ?? 0) === 0,
       baseUrl,
       probes,
+      apiServices,
     }
   } finally {
     await closeServer(server)
@@ -261,6 +315,9 @@ export const renderSmokeAppServer = (result: SmokeAppServerResult) => {
       (probe) =>
         `| ${probe.pass ? 'PASS' : 'FAIL'} | ${probe.path} | ${probe.status ?? '-'} | ${probe.summary} | ${probe.error ?? ''} |`,
     ),
+    ...(result.apiServices
+      ? ['', '## Mounted API Services', '', renderSmokeApiServicesSummary(result.apiServices)]
+      : []),
   ]
   return `${lines.join('\n')}\n`
 }

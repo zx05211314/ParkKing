@@ -117,6 +117,7 @@ describe('deployReadiness', () => {
     process.env.PARKKING_PARKING_ANSWER_DATASET_ROOT = 'previous-data'
 
     let appSmokeEnv: Record<string, string | undefined> = {}
+    let appSmokeOptions: unknown = null
     const runners: DeployReadinessRunners = {
       resolveReleasePackagePaths: async () => ({
         releaseId: 'release-1',
@@ -151,7 +152,8 @@ describe('deployReadiness', () => {
         errors: [],
         hasErrors: false,
       }),
-      runSmokeAppServer: async () => {
+      runSmokeAppServer: async (options) => {
+        appSmokeOptions = options
         appSmokeEnv = {
           PARKKING_APP_STATIC_DIR: process.env.PARKKING_APP_STATIC_DIR,
           PARKKING_PARKING_ANSWER_DATASET_ROOT:
@@ -178,6 +180,11 @@ describe('deployReadiness', () => {
     expect(appSmokeEnv).toEqual({
       PARKKING_APP_STATIC_DIR: path.resolve(staticDir),
       PARKKING_PARKING_ANSWER_DATASET_ROOT: path.resolve(installRoot),
+    })
+    expect(appSmokeOptions).toEqual({
+      timeoutMs: 1000,
+      includeApiServices: true,
+      syncIssueRoundtrip: true,
     })
     expect(process.env.PARKKING_APP_STATIC_DIR).toBe('previous-static')
     expect(process.env.PARKKING_PARKING_ANSWER_DATASET_ROOT).toBe('previous-data')

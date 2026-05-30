@@ -38,10 +38,17 @@ describe('parseSmokeAppServerArgs', () => {
         '--timeout-ms',
         '1234',
         '--skip-parking-answer',
+        '--include-api-services',
+        '--api-services',
+        'sync',
+        '--sync-issue-roundtrip',
       ]),
     ).toEqual({
       timeoutMs: 1234,
       skipParkingAnswer: true,
+      includeApiServices: true,
+      apiServices: ['sync'],
+      syncIssueRoundtrip: true,
     })
   })
 })
@@ -154,6 +161,71 @@ describe('runSmokeAppServer', () => {
     expect(result.probes.find((probe) => probe.path === '/api/parking-answer/ready')).toMatchObject({
       error: 'ready districts missing datasetHash: xinyi',
     })
+  })
+
+  it('can run mounted API service probes before closing the app server', async () => {
+    const staticDir = await makeStaticDir()
+    const issues: unknown[] = []
+    const result = await runSmokeAppServer(
+      {
+        skipParkingAnswer: true,
+        includeApiServices: true,
+        apiServices: ['sync'],
+        syncIssueRoundtrip: true,
+      },
+      {
+        config: {
+          ...baseConfig(staticDir),
+          api: {
+            geocoder: false,
+            routing: false,
+            parkingAnswer: false,
+            sync: true,
+          },
+        },
+        middlewares: [
+          async (req, res, next) => {
+            const url = new URL(req.url ?? '/', 'http://localhost')
+            if (!url.pathname.startsWith('/api/sync')) {
+              next?.()
+              return false
+            }
+            res.setHeader('Content-Type', 'application/json')
+            if (url.pathname === '/api/sync/health' || url.pathname === '/api/sync/ready') {
+              res.statusCode = 200
+              res.end(JSON.stringify({ status: 'ok' }))
+              return true
+            }
+            if (url.pathname === '/api/sync/issues' && req.method === 'POST') {
+              const chunks: Buffer[] = []
+              for await (const chunk of req) {
+                chunks.push(Buffer.from(chunk))
+              }
+              const body = JSON.parse(Buffer.concat(chunks).toString('utf-8')) as {
+                issue?: unknown
+              }
+              issues.push(body.issue)
+              res.statusCode = 201
+              res.end(JSON.stringify({ issue: body.issue, revision: issues.length }))
+              return true
+            }
+            if (url.pathname === '/api/sync/issues' && req.method === 'GET') {
+              res.statusCode = 200
+              res.end(JSON.stringify({ issues, revision: issues.length }))
+              return true
+            }
+            next?.()
+            return false
+          },
+        ],
+      },
+    )
+
+    expect(result.pass).toBe(true)
+    expect(result.apiServices).toMatchObject({
+      failed: 0,
+    })
+    expect(renderSmokeAppServer(result)).toContain('Mounted API Services')
   })
 })
 

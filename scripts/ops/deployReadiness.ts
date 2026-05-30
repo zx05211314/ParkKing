@@ -363,6 +363,32 @@ const withTemporaryEnv = async <T>(
   }
 }
 
+const summarizeAppServerFailure = (result: SmokeAppServerResult) => {
+  const probeErrors = result.probes
+    .filter((probe) => !probe.pass)
+    .map((probe) => `${probe.path}: ${probe.error ?? probe.summary}`)
+  const apiServices = result.apiServices
+  const apiServiceErrors =
+    apiServices && apiServices.failed > 0
+      ? [
+          `mounted API service smoke failed (${apiServices.failed}/${apiServices.results.length + apiServices.actions.length})`,
+          ...apiServices.results
+            .filter((probe) => !probe.ok)
+            .map(
+              (probe) =>
+                `${probe.service}/${probe.suffix}: http=${probe.status} status=${probe.serviceStatus ?? 'none'}`,
+            ),
+          ...apiServices.actions
+            .filter((action) => !action.ok)
+            .map(
+              (action) =>
+                `${action.service}/${action.action}: http=${action.status} detail=${action.detail}`,
+            ),
+        ]
+      : []
+  return [...probeErrors, ...apiServiceErrors].join('; ') || 'app server smoke failed'
+}
+
 export const runDeployReadiness = async (
   options: DeployReadinessOptions = {},
   runners: DeployReadinessRunners = defaultRunners,
@@ -476,14 +502,15 @@ export const runDeployReadiness = async (
                 PARKKING_APP_STATIC_DIR: inputs.staticDir,
                 PARKKING_PARKING_ANSWER_DATASET_ROOT: inputs.installRoot,
               },
-              () => runners.runSmokeAppServer({ timeoutMs: inputs.timeoutMs }),
+              () =>
+                runners.runSmokeAppServer({
+                  timeoutMs: inputs.timeoutMs,
+                  includeApiServices: true,
+                  syncIssueRoundtrip: true,
+                }),
             ),
           (result) => result.pass,
-          (result) =>
-            result.probes
-              .filter((probe) => !probe.pass)
-              .map((probe) => `${probe.path}: ${probe.error ?? probe.summary}`)
-              .join('; ') || 'app server smoke failed',
+          summarizeAppServerFailure,
         )
       : failedCheck<SmokeAppServerResult>(
           'same-origin app server answers from installed release',
