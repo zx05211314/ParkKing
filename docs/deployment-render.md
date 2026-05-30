@@ -143,6 +143,18 @@ The same check can run from GitHub Actions:
 Actions -> Render Live Verify -> Run workflow
 ```
 
+Or dispatch that workflow from this repo after previewing the exact payload:
+
+```powershell
+npm run ops:render-live-verify-dispatch -- --app-url https://<service>.onrender.com --dry-run
+$env:GH_TOKEN="<token with Actions workflow dispatch access>"
+npm run ops:render-live-verify-dispatch -- --app-url https://<service>.onrender.com
+```
+
+By default this command reads the manifest URL from
+`.tmp/render-deployment-handoff.json`; pass `--manifest-url` to verify a
+different published release.
+
 Pass the live Render service URL and the published release manifest URL. Enable
 `useGithubToken` only when the manifest URL is a private GitHub Release asset
 from this repository. Leave `skipSyncIssueRoundtrip` false unless the live
