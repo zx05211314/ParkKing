@@ -75,6 +75,7 @@ describe('releaseDataWorkflow', () => {
       'manifestUrl=https://example.test/release_manifest.json',
     )
     expect(lines).toContain('useGithubToken=true only for private')
+    expect(lines).toContain('skipSyncIssueRoundtrip=false unless')
     expect(lines).toContain('npm run ops:render-deployment-verify')
   })
 

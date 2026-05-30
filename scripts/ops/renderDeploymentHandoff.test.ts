@@ -140,6 +140,9 @@ describe('renderDeploymentHandoff', () => {
     expect(result.externalSteps.join('\n')).toContain(
       'manifestUrl=https://github.com/owner/repo/releases/download/data-20260529_abcd123/release_manifest_20260529_abcd123.json',
     )
+    expect(result.externalSteps.join('\n')).toContain(
+      'skipSyncIssueRoundtrip=false unless',
+    )
   })
 
   it('blocks when deploy readiness points at a different release', async () => {
