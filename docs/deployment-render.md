@@ -124,8 +124,9 @@ The same check can run from GitHub Actions:
 Actions -> Render Live Verify -> Run workflow
 ```
 
-Pass the live Render service URL and the published release manifest URL. The
-workflow uploads `.tmp/render-deployment-verify.md` and
+Pass the live Render service URL and the published release manifest URL. Enable
+`useGithubToken` only when the manifest URL is a private GitHub Release asset
+from this repository. The workflow uploads `.tmp/render-deployment-verify.md` and
 `.tmp/render-deployment-verify.json` as `render-live-verify`.
 
 This reads the release manifest dataset-hash contract, fetches

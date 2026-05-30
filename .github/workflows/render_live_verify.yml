@@ -9,6 +9,11 @@ on:
       manifestUrl:
         description: Published release manifest URL
         required: true
+      useGithubToken:
+        description: Send github.token as a Bearer token for private GitHub release assets
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -29,7 +34,7 @@ jobs:
         env:
           PARKKING_RENDER_APP_URL: ${{ inputs.appUrl }}
           PARKKING_RELEASE_MANIFEST_URL: ${{ inputs.manifestUrl }}
-          PARKKING_RELEASE_DOWNLOAD_TOKEN: ${{ github.token }}
+          PARKKING_RELEASE_DOWNLOAD_TOKEN: ${{ inputs.useGithubToken && github.token || '' }}
         run: npm run ops:render-deployment-verify
       - name: Summarize verification
         if: always()
