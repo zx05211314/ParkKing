@@ -1,23 +1,24 @@
 import * as fs from 'node:fs/promises'
-import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import {
+  buildWorkflowDispatchRequest,
+  dispatchWorkflow,
+  getArgValue,
+  hasFlag,
+  normalizeGithubRepository,
+  parseBooleanArg,
+  resolveCurrentGitBranch,
+  resolveWorkflowDispatchToken,
+  validateHttpUrl,
+  type WorkflowDispatchFetch,
+  type WorkflowDispatchInputs,
+  type WorkflowDispatchRequest,
+  type WorkflowDispatchResult,
+} from './githubWorkflowDispatch'
 
 const DEFAULT_WORKFLOW = 'render_live_verify.yml'
 const DEFAULT_HANDOFF_JSON = '.tmp/render-deployment-handoff.json'
-const DEFAULT_TOKEN_ENVS = ['GH_TOKEN', 'GITHUB_TOKEN']
-
-type FetchLike = (
-  input: string,
-  init: {
-    method: string
-    headers: Record<string, string>
-    body: string
-  },
-) => Promise<{
-  status: number
-  statusText: string
-  text: () => Promise<string>
-}>
+const USER_AGENT = 'ParkKing render live verify dispatch'
 
 interface RenderDeploymentHandoffJson {
   repository?: unknown
@@ -39,87 +40,18 @@ export interface RenderLiveVerifyDispatchOptions {
   token?: string | null
 }
 
-export interface RenderLiveVerifyDispatchRequest {
-  url: string
-  payload: {
-    ref: string
-    inputs: {
-      appUrl: string
-      manifestUrl: string
-      useGithubToken: string
-      skipSyncIssueRoundtrip: string
-    }
-  }
+type RenderLiveVerifyDispatchInputs = WorkflowDispatchInputs & {
+  appUrl: string
+  manifestUrl: string
+  useGithubToken: string
+  skipSyncIssueRoundtrip: string
 }
 
-export interface RenderLiveVerifyDispatchResult {
-  dispatched: boolean
-  request: RenderLiveVerifyDispatchRequest
-  status: number | null
-}
+export type RenderLiveVerifyDispatchRequest =
+  WorkflowDispatchRequest<RenderLiveVerifyDispatchInputs>
 
-const getArgValue = (argv: string[], ...flags: string[]) => {
-  for (const flag of flags) {
-    const assignmentPrefix = `${flag}=`
-    const assigned = argv.find((arg) => arg.startsWith(assignmentPrefix))
-    if (assigned) {
-      return assigned.slice(assignmentPrefix.length)
-    }
-    const index = argv.indexOf(flag)
-    if (index >= 0) {
-      const value = argv[index + 1]
-      return value && !value.startsWith('-') ? value : null
-    }
-  }
-  return null
-}
-
-const hasFlag = (argv: string[], flag: string) =>
-  argv.includes(flag) || argv.some((arg) => arg.startsWith(`${flag}=`))
-
-const parseBooleanArg = (
-  argv: string[],
-  flag: string,
-  defaultValue: boolean,
-) => {
-  const value = getArgValue(argv, flag)
-  if (value === null) {
-    return hasFlag(argv, flag) ? true : defaultValue
-  }
-  if (value === 'true') {
-    return true
-  }
-  if (value === 'false') {
-    return false
-  }
-  throw new Error(`${flag} must be true or false when a value is provided`)
-}
-
-const resolveCurrentGitBranch = () => {
-  const result = spawnSync('git', ['branch', '--show-current'], {
-    encoding: 'utf-8',
-    stdio: ['ignore', 'pipe', 'ignore'],
-  })
-  if (result.status !== 0) {
-    return null
-  }
-  const branch = result.stdout.trim()
-  return branch || null
-}
-
-const resolveToken = (argv: string[]) => {
-  const tokenEnv = getArgValue(argv, '--token-env')
-  if (tokenEnv) {
-    return process.env[tokenEnv] ?? null
-  }
-  for (const envName of DEFAULT_TOKEN_ENVS) {
-    const value = process.env[envName]
-    if (value) {
-      return value
-    }
-  }
-  return null
-}
+export type RenderLiveVerifyDispatchResult =
+  WorkflowDispatchResult<RenderLiveVerifyDispatchInputs>
 
 const readHandoffJson = async (filePath: string) => {
   try {
@@ -134,25 +66,6 @@ const readHandoffJson = async (filePath: string) => {
   }
 }
 
-const normalizeRepository = (value: string | null | undefined) => {
-  const trimmed = value?.trim()
-  if (!trimmed) {
-    return null
-  }
-  return /^[^/\s]+\/[^/\s]+$/.test(trimmed) ? trimmed : null
-}
-
-const validateUrl = (value: string, label: string) => {
-  try {
-    const parsed = new URL(value)
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      throw new Error('unsupported protocol')
-    }
-  } catch {
-    throw new Error(`${label} must be an http(s) URL`)
-  }
-}
-
 export const resolveRenderLiveVerifyDispatchOptions = async (
   argv: string[],
 ): Promise<RenderLiveVerifyDispatchOptions> => {
@@ -160,9 +73,9 @@ export const resolveRenderLiveVerifyDispatchOptions = async (
     getArgValue(argv, '--handoff-json', '--handoffJson') ?? DEFAULT_HANDOFF_JSON
   const handoff = await readHandoffJson(handoffPath)
   const repo =
-    normalizeRepository(getArgValue(argv, '--repo')) ??
-    normalizeRepository(process.env.GITHUB_REPOSITORY) ??
-    normalizeRepository(
+    normalizeGithubRepository(getArgValue(argv, '--repo')) ??
+    normalizeGithubRepository(process.env.GITHUB_REPOSITORY) ??
+    normalizeGithubRepository(
       typeof handoff?.repository === 'string' ? handoff.repository : null,
     )
   if (!repo) {
@@ -185,7 +98,7 @@ export const resolveRenderLiveVerifyDispatchOptions = async (
   if (!appUrl) {
     throw new Error('Missing --app-url <Render service URL>')
   }
-  validateUrl(appUrl, '--app-url')
+  validateHttpUrl(appUrl, '--app-url')
 
   const manifestUrl =
     getArgValue(argv, '--manifest-url', '--manifestUrl') ??
@@ -199,7 +112,7 @@ export const resolveRenderLiveVerifyDispatchOptions = async (
       `Missing --manifest-url and no manifestUrl found in ${handoffPath}`,
     )
   }
-  validateUrl(manifestUrl, '--manifest-url')
+  validateHttpUrl(manifestUrl, '--manifest-url')
 
   return {
     repo,
@@ -214,26 +127,28 @@ export const resolveRenderLiveVerifyDispatchOptions = async (
       false,
     ),
     dryRun: hasFlag(argv, '--dry-run'),
-    token: resolveToken(argv),
+    token: resolveWorkflowDispatchToken(argv),
   }
 }
 
+const buildRenderLiveVerifyDispatchInputs = (
+  options: RenderLiveVerifyDispatchOptions,
+): RenderLiveVerifyDispatchInputs => ({
+  appUrl: options.appUrl,
+  manifestUrl: options.manifestUrl,
+  useGithubToken: String(options.useGithubToken),
+  skipSyncIssueRoundtrip: String(options.skipSyncIssueRoundtrip),
+})
+
 export const buildRenderLiveVerifyDispatchRequest = (
   options: RenderLiveVerifyDispatchOptions,
-): RenderLiveVerifyDispatchRequest => ({
-  url: `https://api.github.com/repos/${options.repo}/actions/workflows/${encodeURIComponent(
-    options.workflow,
-  )}/dispatches`,
-  payload: {
+): RenderLiveVerifyDispatchRequest =>
+  buildWorkflowDispatchRequest({
+    repo: options.repo,
     ref: options.ref,
-    inputs: {
-      appUrl: options.appUrl,
-      manifestUrl: options.manifestUrl,
-      useGithubToken: String(options.useGithubToken),
-      skipSyncIssueRoundtrip: String(options.skipSyncIssueRoundtrip),
-    },
-  },
-})
+    workflow: options.workflow,
+    inputs: buildRenderLiveVerifyDispatchInputs(options),
+  })
 
 export const renderRenderLiveVerifyDispatchPlan = (
   options: RenderLiveVerifyDispatchOptions,
@@ -260,48 +175,20 @@ export const renderRenderLiveVerifyDispatchPlan = (
 
 export const dispatchRenderLiveVerifyWorkflow = async (
   options: RenderLiveVerifyDispatchOptions,
-  fetchImpl: FetchLike = fetch,
-): Promise<RenderLiveVerifyDispatchResult> => {
-  const request = buildRenderLiveVerifyDispatchRequest(options)
-  if (options.dryRun) {
-    return {
-      dispatched: false,
-      request,
-      status: null,
-    }
-  }
-
-  if (!options.token) {
-    throw new Error('Missing GH_TOKEN or GITHUB_TOKEN; use --dry-run to preview only')
-  }
-
-  const response = await fetchImpl(request.url, {
-    method: 'POST',
-    headers: {
-      accept: 'application/vnd.github+json',
-      authorization: `Bearer ${options.token}`,
-      'content-type': 'application/json',
-      'user-agent': 'ParkKing render live verify dispatch',
-      'x-github-api-version': '2022-11-28',
+  fetchImpl: WorkflowDispatchFetch = fetch,
+): Promise<RenderLiveVerifyDispatchResult> =>
+  dispatchWorkflow(
+    {
+      repo: options.repo,
+      ref: options.ref,
+      workflow: options.workflow,
+      inputs: buildRenderLiveVerifyDispatchInputs(options),
+      dryRun: options.dryRun,
+      token: options.token,
+      userAgent: USER_AGENT,
     },
-    body: JSON.stringify(request.payload),
-  })
-
-  if (response.status !== 204) {
-    const body = await response.text()
-    throw new Error(
-      `GitHub workflow dispatch failed: HTTP ${response.status} ${
-        response.statusText
-      }${body ? ` - ${body}` : ''}`,
-    )
-  }
-
-  return {
-    dispatched: true,
-    request,
-    status: response.status,
-  }
-}
+    fetchImpl,
+  )
 
 const run = async () => {
   const argv = process.argv.slice(2)
