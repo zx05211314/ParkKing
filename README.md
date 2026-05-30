@@ -432,7 +432,7 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
 - P2 single status report:
   `npm run ops:p2-status`
   This writes `.tmp/p2-status.md` and `.tmp/p2-status.json` by combining current readiness, strict readiness, returned-review intake, review gate, handoff audit, and the latest reviewer zip paths under `.tmp/human-review-packages`. It exits cleanly when the only blocker is pending human review, and exits non-zero only for automation blockers that need code/data repair.
-  CI also uploads the same P2 status and review diagnostics as report-only artifacts so Daan/Zhongshan expansion blockers are visible without blocking the current Xinyi release gate.
+  CI also uploads the same P2 status and review diagnostics with explicit `--report-only` flags so Daan/Zhongshan expansion blockers are visible without blocking the current Xinyi release gate; unhandled CLI errors still fail the workflow.
 - P2 human review handoff for Daan/Zhongshan:
   `npm run ops:p2-human-review-handoff`
   This packages the current `ready-for-review` bundles, writes `.tmp/p2-human-review-handoff.md` and `.tmp/p2-human-review-handoff.json`, and leaves the expansion readiness strict gate blocked until a human fills valid review rows. CI runs this as a report-only handoff helper and uploads `.tmp/human-review-packages/**` with the P2 status artifact.
