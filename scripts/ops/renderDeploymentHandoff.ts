@@ -128,7 +128,7 @@ const toNumberOrNull = (value: unknown) =>
 
 const toRecord = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? value
+    ? (value as Record<string, unknown>)
     : null
 
 const getStringField = (record: Record<string, unknown> | null, key: string) =>

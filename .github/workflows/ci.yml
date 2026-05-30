@@ -24,8 +24,8 @@ jobs:
         run: npm run ops:render-blueprint-check
       - name: Lint
         run: npm run lint -- --max-warnings=0
-      - name: Typecheck deploy dispatch helpers
-        run: npm run ops:typecheck-dispatch
+      - name: Typecheck deploy ops helpers
+        run: npm run ops:typecheck-deploy
       - name: Build
         run: npm run build
       - name: Bundle budget

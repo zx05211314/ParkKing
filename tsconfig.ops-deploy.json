@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.ops-dispatch.tsbuildinfo",
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.ops-deploy.tsbuildinfo",
     "target": "ES2023",
     "lib": ["ES2023"],
     "module": "ESNext",
@@ -27,6 +27,14 @@
     "scripts/ops/dispatchRenderLiveVerifyWorkflow.test.ts",
     "scripts/ops/githubWorkflowDispatch.ts",
     "scripts/ops/githubWorkflowDispatch.test.ts",
-    "scripts/ops/releaseWorkflowContract.test.ts"
+    "scripts/ops/releaseDataWorkflow.ts",
+    "scripts/ops/releaseDataWorkflow.test.ts",
+    "scripts/ops/releaseWorkflowContract.test.ts",
+    "scripts/ops/renderBlueprintContract.ts",
+    "scripts/ops/renderBlueprintContract.test.ts",
+    "scripts/ops/renderDeploymentHandoff.ts",
+    "scripts/ops/renderDeploymentHandoff.test.ts",
+    "scripts/ops/renderDeploymentVerify.ts",
+    "scripts/ops/renderDeploymentVerify.test.ts"
   ]
 }
