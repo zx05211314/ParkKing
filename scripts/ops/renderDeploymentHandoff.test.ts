@@ -135,6 +135,9 @@ describe('renderDeploymentHandoff', () => {
       'Run GitHub Actions -> Render Live Verify',
     )
     expect(result.externalSteps.join('\n')).toContain(
+      'use the package and manifest URLs printed by that workflow run',
+    )
+    expect(result.externalSteps.join('\n')).toContain(
       'manifestUrl=https://github.com/owner/repo/releases/download/data-20260529_abcd123/release_manifest_20260529_abcd123.json',
     )
   })

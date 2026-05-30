@@ -317,8 +317,8 @@ export const buildRenderDeploymentHandoff = async (
     externalSteps: [
       'Merge or deploy the branch that contains the release workflow and render.yaml changes.',
       'Run GitHub Actions -> Release Data Package with configsGlob=configs/prod/*.json.',
-      `Use release tag ${release.tag}; leave tag blank in the workflow to use this default.`,
-      'Set the Render environment variables shown below, plus a download token/header if the repository is private.',
+      `If publishing the local assets listed above manually, use release tag ${release.tag}. If using the workflow, leave tag blank unless you intentionally need a custom tag, then use the package and manifest URLs printed by that workflow run.`,
+      'Set Render environment variables from the published workflow summary or matching handoff artifact, plus a download token/header if the repository is private.',
       'Deploy the Render Blueprint.',
       `Run GitHub Actions -> Render Live Verify with appUrl=<Render service URL>, manifestUrl=${urls.manifestUrl}, and useGithubToken=true only for private GitHub Release assets.`,
       `Or run npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl} locally; require PASS before treating the deploy as live.`,

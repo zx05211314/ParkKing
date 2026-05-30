@@ -98,7 +98,9 @@ URLs and exact `PARKKING_RELEASE_PACKAGE_URL` /
 `PARKKING_RELEASE_MANIFEST_URL` values. The JSON and markdown also include the
 expected per-district dataset hashes that the live Render service must expose
 from `/api/parking-answer/ready`. Those URLs become live after the `Release Data
-Package` workflow publishes the release assets.
+Package` workflow publishes the same release ID. If you run the workflow later
+and let it generate a fresh release ID, use the URLs printed by that workflow
+summary or its uploaded handoff artifact instead of the earlier local preview.
 
 After publishing GitHub Release assets, verify the URLs before assigning them to
 Render:
