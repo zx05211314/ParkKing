@@ -462,7 +462,7 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   This checks the package URL with `HEAD`, fetches the manifest URL, and verifies the manifest `releaseId` matches the release being handed to Render. The `Release Data Package` workflow runs it immediately after publishing GitHub Release assets.
 - Live Render deployment verification:
   `npm run ops:render-deployment-verify -- --app-url https://<service>.onrender.com --manifest-url <PARKKING_RELEASE_MANIFEST_URL>`
-  This reads the release manifest dataset-hash contract, fetches `/api/parking-answer/ready`, and fails if the live service is missing a reviewed district, reports it as not ready, or serves a dataset hash different from the released package. When verifying locally from the same checkout that generated the handoff, the command can use `.tmp/render-deployment-handoff.json` instead of `--manifest-url`.
+  This reads the release manifest dataset-hash contract, fetches `/api/parking-answer/ready`, and fails if the live service is missing a reviewed district, reports it as not ready, or serves a dataset hash different from the released package. The same check is available as the manual `Render Live Verify` GitHub Actions workflow by passing the Render app URL and published manifest URL. When verifying locally from the same checkout that generated the handoff, the command can use `.tmp/render-deployment-handoff.json` instead of `--manifest-url`.
 - Render Blueprint contract check:
   `npm run ops:render-blueprint-check`
   This fails if `render.yaml` loses the release package install build step, same-origin parking-answer health check, or required Render environment variables. CI, publish, and release-data workflows run the same check before release/deploy gates.

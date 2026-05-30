@@ -1,0 +1,45 @@
+name: Render Live Verify
+
+on:
+  workflow_dispatch:
+    inputs:
+      appUrl:
+        description: Live Render service URL, for example https://parkking.onrender.com
+        required: true
+      manifestUrl:
+        description: Published release manifest URL
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+      - name: Install
+        run: npm ci
+      - name: Verify live Render deployment
+        env:
+          PARKKING_RENDER_APP_URL: ${{ inputs.appUrl }}
+          PARKKING_RELEASE_MANIFEST_URL: ${{ inputs.manifestUrl }}
+          PARKKING_RELEASE_DOWNLOAD_TOKEN: ${{ github.token }}
+        run: npm run ops:render-deployment-verify
+      - name: Summarize verification
+        if: always()
+        run: npm run ops:append-workflow-summary -- --append-file .tmp/render-deployment-verify.md
+      - name: Upload verification artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: render-live-verify
+          path: |
+            .tmp/render-deployment-verify.md
+            .tmp/render-deployment-verify.json
+          if-no-files-found: warn

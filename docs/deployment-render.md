@@ -118,6 +118,16 @@ against the handoff contract:
 npm run ops:render-deployment-verify -- --app-url https://<service>.onrender.com --manifest-url <PARKKING_RELEASE_MANIFEST_URL>
 ```
 
+The same check can run from GitHub Actions:
+
+```text
+Actions -> Render Live Verify -> Run workflow
+```
+
+Pass the live Render service URL and the published release manifest URL. The
+workflow uploads `.tmp/render-deployment-verify.md` and
+`.tmp/render-deployment-verify.json` as `render-live-verify`.
+
 This reads the release manifest dataset-hash contract, fetches
 `/api/parking-answer/ready`, and fails if any reviewed district is missing, not
 ready, or serving a dataset hash different from the released package. If you are
