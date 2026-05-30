@@ -372,6 +372,21 @@ export const renderReleaseDataAssetUrlSmokeResult = (
   return `${lines.join('\n')}\n`
 }
 
+export const buildReleaseDataSummaryLines = (urls: {
+  packageUrl: string
+  manifestUrl: string
+}) => [
+  '## Render release data URLs',
+  '',
+  `- PARKKING_RELEASE_PACKAGE_URL=${urls.packageUrl}`,
+  `- PARKKING_RELEASE_MANIFEST_URL=${urls.manifestUrl}`,
+  '',
+  '## Live deploy verification',
+  '',
+  `GitHub Actions: Render Live Verify with appUrl=<Render service URL>, manifestUrl=${urls.manifestUrl}, useGithubToken=true only for private GitHub Release assets.`,
+  `Local: \`npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl}\``,
+]
+
 const runResolveMetadata = async () => {
   const metadata = await resolveReleaseDataMetadata({
     tagInput: process.env.PARKKING_RELEASE_TAG_INPUT,
@@ -407,20 +422,17 @@ const runSummarize = async () => {
     throw new Error('PARKKING_RELEASE_ID, PARKKING_RELEASE_TAG, and GITHUB_REPOSITORY are required')
   }
   const urls = buildReleaseDataUrls({ repository, tag, releaseId })
-  await writeGitHubFileCommand(process.env.GITHUB_STEP_SUMMARY, [
-    '## Render release data URLs',
-    '',
-    `- PARKKING_RELEASE_PACKAGE_URL=${urls.packageUrl}`,
-    `- PARKKING_RELEASE_MANIFEST_URL=${urls.manifestUrl}`,
-    '',
-    '## Live deploy verification',
-    '',
-    `Run: \`npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl}\``,
-  ])
+  await writeGitHubFileCommand(
+    process.env.GITHUB_STEP_SUMMARY,
+    buildReleaseDataSummaryLines(urls),
+  )
   console.log(`PARKKING_RELEASE_PACKAGE_URL=${urls.packageUrl}`)
   console.log(`PARKKING_RELEASE_MANIFEST_URL=${urls.manifestUrl}`)
   console.log(
-    `VERIFY_RENDER_DEPLOY=npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl}`,
+    `VERIFY_RENDER_DEPLOY_WORKFLOW=Render Live Verify appUrl=<Render service URL> manifestUrl=${urls.manifestUrl} useGithubToken=false`,
+  )
+  console.log(
+    `VERIFY_RENDER_DEPLOY_LOCAL=npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl}`,
   )
 }
 
