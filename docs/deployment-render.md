@@ -140,6 +140,11 @@ health/ready probes still run when only the roundtrip is skipped. The workflow
 uploads `.tmp/render-deployment-verify.md` and `.tmp/render-deployment-verify.json`
 as `render-live-verify`.
 
+The `Release Data Package` workflow summary also prints
+`VERIFY_RENDER_DEPLOY_WORKFLOW_INPUTS`; keep `skipSyncIssueRoundtrip=false` and
+choose `useGithubToken=true` for private release assets or `false` for public
+release assets.
+
 This reads the release manifest dataset-hash contract, fetches
 `/api/parking-answer/ready`, and fails if any reviewed district is missing, not
 ready, or serving a dataset hash different from the released package. It also
