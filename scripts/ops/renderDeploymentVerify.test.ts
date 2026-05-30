@@ -16,16 +16,64 @@ const writeJson = async (filePath: string, value: unknown) => {
   await fs.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf-8')
 }
 
-const startJsonServer = async (payload: unknown, status = 200) => {
-  const server = http.createServer((request, response) => {
-    if (request.url !== '/api/parking-answer/ready') {
-      response.statusCode = 404
-      response.end('not found')
+const startJsonServer = async (
+  parkingReadyPayload: unknown,
+  parkingReadyStatus = 200,
+  options: { failApiPaths?: string[] } = {},
+) => {
+  const issues: unknown[] = []
+  const failApiPaths = new Set(options.failApiPaths ?? [])
+  const sendJson = (
+    response: http.ServerResponse,
+    responseStatus: number,
+    body: unknown,
+  ) => {
+    response.statusCode = responseStatus
+    response.setHeader('content-type', 'application/json')
+    response.end(JSON.stringify(body))
+  }
+  const server = http.createServer(async (request, response) => {
+    const url = new URL(request.url ?? '/', 'http://localhost')
+    if (failApiPaths.has(url.pathname)) {
+      sendJson(response, 503, { status: 'error' })
       return
     }
-    response.statusCode = status
-    response.setHeader('content-type', 'application/json')
-    response.end(JSON.stringify(payload))
+    if (url.pathname === '/api/parking-answer/ready') {
+      sendJson(response, parkingReadyStatus, parkingReadyPayload)
+      return
+    }
+    if (
+      [
+        '/api/geocode/health',
+        '/api/geocode/ready',
+        '/api/route/health',
+        '/api/route/ready',
+        '/api/sync/health',
+        '/api/sync/ready',
+        '/api/parking-answer/health',
+      ].includes(url.pathname)
+    ) {
+      sendJson(response, 200, { status: 'ok' })
+      return
+    }
+    if (url.pathname === '/api/sync/issues' && request.method === 'POST') {
+      const chunks: Buffer[] = []
+      for await (const chunk of request) {
+        chunks.push(Buffer.from(chunk))
+      }
+      const body = JSON.parse(Buffer.concat(chunks).toString('utf-8')) as {
+        issue?: unknown
+      }
+      issues.push(body.issue)
+      sendJson(response, 201, { issue: body.issue, revision: issues.length })
+      return
+    }
+    if (url.pathname === '/api/sync/issues' && request.method === 'GET') {
+      sendJson(response, 200, { issues, revision: issues.length })
+      return
+    }
+    response.statusCode = 404
+    response.end('not found')
   })
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const address = server.address() as AddressInfo
@@ -113,9 +161,11 @@ describe('renderDeploymentVerify', () => {
       })
 
       expect(result.pass).toBe(true)
+      expect(result.apiServices).toMatchObject({ failed: 0 })
       expect(renderRenderDeploymentVerify(result)).toContain(
         '# Render Deployment Verify: PASS',
       )
+      expect(renderRenderDeploymentVerify(result)).toContain('Mounted API Services')
     } finally {
       await server.close()
     }
@@ -156,6 +206,49 @@ describe('renderDeploymentVerify', () => {
       expect(result.districts[0]?.errors.join('\n')).toContain(
         'does not match expected hash-expected',
       )
+    } finally {
+      await server.close()
+    }
+  })
+
+  it('fails when mounted live API service probes fail', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'render-verify-api-fail-'))
+    const handoffPath = path.join(base, 'handoff.json')
+    await writeJson(handoffPath, {
+      ready: true,
+      expectedDatasets: [
+        {
+          districtId: 'xinyi',
+          datasetHash: 'hash-xinyi',
+        },
+      ],
+    })
+    const server = await startJsonServer(
+      {
+        status: 'ok',
+        districts: [
+          {
+            district: 'xinyi',
+            ready: true,
+            datasetHash: 'hash-xinyi',
+            latestDatasetHash: 'hash-xinyi',
+          },
+        ],
+      },
+      200,
+      { failApiPaths: ['/api/route/ready'] },
+    )
+
+    try {
+      const result = await verifyRenderDeployment({
+        appUrl: server.baseUrl,
+        handoffJsonPath: handoffPath,
+        timeoutMs: 1000,
+      })
+
+      expect(result.pass).toBe(false)
+      expect(result.apiServices?.failed).toBe(1)
+      expect(result.errors.join('\n')).toContain('mounted API service smoke failed')
     } finally {
       await server.close()
     }

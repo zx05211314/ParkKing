@@ -2,6 +2,12 @@ import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { RenderDeploymentHandoffDataset } from './renderDeploymentHandoff'
+import {
+  renderSmokeApiServicesSummary,
+  runSmokeApiServices,
+  type SmokeApiServiceId,
+  type SmokeApiServicesSummary,
+} from './smokeApiServices'
 
 const DEFAULT_HANDOFF_JSON = '.tmp/render-deployment-handoff.json'
 const DEFAULT_TIMEOUT_MS = 15_000
@@ -14,6 +20,9 @@ export interface RenderDeploymentVerifyOptions {
   downloadToken?: string | null
   downloadAuthHeader?: string | null
   timeoutMs?: number | null
+  skipApiServices?: boolean | null
+  apiServices?: SmokeApiServiceId[] | null
+  syncIssueRoundtrip?: boolean | null
   outPath?: string | null
   jsonOutPath?: string | null
 }
@@ -40,6 +49,7 @@ export interface RenderDeploymentVerifyResult {
   expectedDatasets: RenderDeploymentHandoffDataset[]
   districts: RenderDeploymentVerifyDistrict[]
   unexpectedDistricts: string[]
+  apiServices?: SmokeApiServicesSummary | null
   errors: string[]
 }
 
@@ -77,6 +87,33 @@ const parsePositiveInteger = (value: string | null, label: string) => {
   return parsed
 }
 
+const hasFlag = (argv: string[], ...flags: string[]) =>
+  flags.some((flag) => argv.includes(flag))
+
+const DEFAULT_API_SERVICES: SmokeApiServiceId[] = [
+  'geocode',
+  'routing',
+  'sync',
+  'parking-answer',
+]
+
+const parseApiServices = (value: string | null): SmokeApiServiceId[] | null => {
+  if (!value) {
+    return null
+  }
+  const services = value
+    .split(',')
+    .map((service) => service.trim())
+    .filter(Boolean)
+  const invalid = services.filter(
+    (service) => !DEFAULT_API_SERVICES.includes(service as SmokeApiServiceId),
+  )
+  if (invalid.length > 0) {
+    throw new Error(`Unknown API services: ${invalid.join(', ')}`)
+  }
+  return services as SmokeApiServiceId[]
+}
+
 export const parseRenderDeploymentVerifyArgs = (
   argv: string[],
 ): RenderDeploymentVerifyOptions => ({
@@ -105,6 +142,10 @@ export const parseRenderDeploymentVerifyArgs = (
       getArgValue(argv, '--timeout-ms', '--timeoutMs'),
       'timeout-ms',
     ) ?? DEFAULT_TIMEOUT_MS,
+  skipApiServices: hasFlag(argv, '--skip-api-services', '--skipApiServices'),
+  apiServices: parseApiServices(getArgValue(argv, '--api-services', '--apiServices')),
+  syncIssueRoundtrip:
+    !hasFlag(argv, '--skip-sync-issue-roundtrip', '--skipSyncIssueRoundtrip'),
   outPath: getArgValue(argv, '--out'),
   jsonOutPath: getArgValue(argv, '--json-out', '--jsonOut'),
 })
@@ -378,9 +419,35 @@ export const verifyRenderDeployment = async (
     .map((district) => district.districtId)
     .filter((districtId) => !expectedDistrictIds.has(districtId))
     .sort()
+  let apiServices: SmokeApiServicesSummary | null = null
+  if (!options.skipApiServices) {
+    try {
+      const selectedApiServices = options.apiServices ?? undefined
+      const shouldRunSyncIssueRoundtrip =
+        (options.syncIssueRoundtrip ?? true) &&
+        (selectedApiServices?.includes('sync') ?? true)
+      apiServices = await runSmokeApiServices({
+        baseUrl: appUrl,
+        services: selectedApiServices,
+        timeoutMs,
+        syncIssueRoundtrip: shouldRunSyncIssueRoundtrip,
+      })
+      if (apiServices.failed > 0) {
+        const total = apiServices.results.length + apiServices.actions.length
+        errors.push(`mounted API service smoke failed (${apiServices.failed}/${total})`)
+      }
+    } catch (error) {
+      errors.push(
+        `mounted API service smoke failed: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+  }
 
   return {
-    pass: errors.length === 0 && districts.every((district) => district.pass),
+    pass:
+      errors.length === 0 &&
+      districts.every((district) => district.pass) &&
+      (apiServices?.failed ?? 0) === 0,
     appUrl,
     readinessUrl,
     contractSource: contract.contractSource,
@@ -391,6 +458,7 @@ export const verifyRenderDeployment = async (
     expectedDatasets: contract.expectedDatasets,
     districts,
     unexpectedDistricts,
+    apiServices,
     errors,
   }
 }
@@ -418,6 +486,14 @@ export const renderRenderDeploymentVerify = (
       (district) =>
         `| ${district.pass ? 'PASS' : 'FAIL'} | ${district.districtId} | ${shortHash(district.expectedDatasetHash)} | ${shortHash(district.actualDatasetHash)} | ${shortHash(district.latestDatasetHash)} | ${String(district.ready)} | ${district.errors.join('; ')} |`,
     ),
+    ...(result.apiServices
+      ? [
+          '',
+          '## Mounted API Services',
+          '',
+          renderSmokeApiServicesSummary(result.apiServices),
+        ]
+      : []),
     '',
     '## Errors',
     '',
