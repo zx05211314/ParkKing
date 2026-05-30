@@ -40,12 +40,7 @@ jobs:
           PARKKING_RENDER_APP_URL: ${{ inputs.appUrl }}
           PARKKING_RELEASE_MANIFEST_URL: ${{ inputs.manifestUrl }}
           PARKKING_RELEASE_DOWNLOAD_TOKEN: ${{ inputs.useGithubToken && github.token || '' }}
-        run: |
-          if [ "${{ inputs.skipSyncIssueRoundtrip }}" = "true" ]; then
-            npm run ops:render-deployment-verify -- --skip-sync-issue-roundtrip
-          else
-            npm run ops:render-deployment-verify
-          fi
+        run: npm run ops:render-deployment-verify -- ${{ inputs.skipSyncIssueRoundtrip && '--skip-sync-issue-roundtrip' || '' }}
       - name: Summarize verification
         if: always()
         run: npm run ops:append-workflow-summary -- --append-file .tmp/render-deployment-verify.md
