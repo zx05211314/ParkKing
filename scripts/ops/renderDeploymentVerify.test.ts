@@ -67,6 +67,16 @@ describe('renderDeploymentVerify', () => {
     })
   })
 
+  it('keeps the npm shortcut from forcing local handoff mode', async () => {
+    const packageJson = JSON.parse(
+      await fs.readFile(path.resolve('package.json'), 'utf-8'),
+    ) as { scripts?: Record<string, string> }
+    const script = packageJson.scripts?.['ops:render-deployment-verify'] ?? ''
+
+    expect(script).toContain('scripts/ops/renderDeploymentVerify.ts')
+    expect(script).not.toContain('--handoff-json')
+  })
+
   it('passes when live readiness matches the handoff dataset hashes', async () => {
     const base = await fs.mkdtemp(path.join(tmpdir(), 'render-verify-'))
     const handoffPath = path.join(base, 'handoff.json')
