@@ -169,6 +169,7 @@ describe('p2Status', () => {
         '--json-out',
         '.tmp/p2-status.json',
         '--skip-p1',
+        '--report-only',
         '--json',
       ]),
     ).toMatchObject({
@@ -184,6 +185,7 @@ describe('p2Status', () => {
       outPath: '.tmp/p2-status.md',
       jsonOutPath: '.tmp/p2-status.json',
       skipP1: true,
+      reportOnly: true,
       json: true,
     })
   })

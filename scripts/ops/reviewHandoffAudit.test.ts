@@ -83,6 +83,7 @@ describe('reviewHandoffAudit', () => {
         '.tmp/priority.json',
         '--summary',
         '.tmp/summary.md',
+        '--report-only',
         '--json',
       ]),
     ).toEqual({
@@ -97,6 +98,7 @@ describe('reviewHandoffAudit', () => {
       priorityCsvOutPath: '.tmp/priority.csv',
       priorityJsonOutPath: '.tmp/priority.json',
       summaryPath: '.tmp/summary.md',
+      reportOnly: true,
       json: true,
     })
   })

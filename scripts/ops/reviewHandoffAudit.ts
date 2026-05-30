@@ -36,6 +36,7 @@ export interface ReviewHandoffAuditOptions {
   priorityJsonOutPath?: string | null
   summaryPath?: string
   json?: boolean
+  reportOnly?: boolean
 }
 
 export interface ReviewHandoffRowIssue {
@@ -172,6 +173,7 @@ export const parseReviewHandoffAuditArgs = (
   summaryPath:
     getArgValue(argv, '--summary', '--summary-path', '--summaryPath') ?? undefined,
   json: hasFlag(argv, '--json'),
+  reportOnly: hasFlag(argv, '--report-only', '--reportOnly'),
 })
 
 const getCsvValue = (row: Record<string, unknown>, keys: string[]) => {
@@ -732,7 +734,7 @@ const run = async () => {
     await fs.appendFile(summaryPath, `${markdown}\n\n`)
   }
 
-  if (!result.pass) {
+  if (!result.pass && !options.reportOnly) {
     process.exit(1)
   }
 }

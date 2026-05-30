@@ -78,9 +78,9 @@ describe('release workflow contracts', () => {
     const workflow = await readWorkflow('ci.yml')
 
     expectCommandsInOrder(workflow, [
-      'npm run ops:p2-human-review-handoff',
-      'npm run ops:p2-status -- --skip-p1',
-      'npm run ops:p2-review-diagnostics',
+      'npm run ops:p2-human-review-handoff -- --report-only',
+      'npm run ops:p2-status -- --skip-p1 --report-only',
+      'npm run ops:p2-review-diagnostics -- --report-only',
       'npm run ops:append-workflow-summary -- --append-file .tmp/p2-human-review-handoff.md --append-file .tmp/p2-status.md --append-file .tmp/p2-review-diagnostics.md',
     ])
     expect(workflow).not.toContain('ops:p2-human-review-handoff || true')

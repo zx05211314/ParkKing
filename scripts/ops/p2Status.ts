@@ -35,6 +35,7 @@ export interface P2StatusOptions {
   jsonOutPath?: string | null
   summaryPath?: string | null
   json?: boolean | null
+  reportOnly?: boolean | null
 }
 
 export interface P2StatusInputs {
@@ -176,6 +177,7 @@ export const parseP2StatusArgs = (argv: string[]): P2StatusOptions => ({
     undefined,
   summaryPath: getArgValue(argv, '--summary', '--summary-path', '--summaryPath'),
   json: hasFlag(argv, '--json'),
+  reportOnly: hasFlag(argv, '--report-only', '--reportOnly'),
 })
 
 export const resolveP2StatusInputs = (
@@ -527,7 +529,7 @@ const run = async () => {
   if (summaryPath) {
     await fs.appendFile(summaryPath, `${markdown}\n\n`)
   }
-  if (!result.pass) {
+  if (!result.pass && !options.reportOnly) {
     process.exit(1)
   }
 }
