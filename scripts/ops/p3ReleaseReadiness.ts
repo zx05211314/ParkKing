@@ -216,7 +216,7 @@ const skippedCheck = <T>(
   error: reason,
 })
 
-const checkBlocker = <T>(check: P3ReleaseReadinessCheck<T>) => {
+const checkBlocker = (check: P3ReleaseReadinessCheck<unknown>) => {
   if (check.pass || check.skipped) {
     return null
   }
@@ -285,13 +285,14 @@ export const runP3ReleaseReadiness = async (
         'Release package',
         'skipped because prior readiness checks failed',
       )
-  const packageValidation = releasePackage.summary
+  const releasePackageSummary = releasePackage.summary
+  const packageValidation = releasePackageSummary
     ? await runCheck(
         'Release package validation',
         async () =>
           await runners.validateReleasePackage({
-            zipPath: releasePackage.summary.zipPath,
-            manifestPath: releasePackage.summary.manifestPath,
+            zipPath: releasePackageSummary.zipPath,
+            manifestPath: releasePackageSummary.manifestPath,
             districtIds: inputs.districtIds,
           }),
         (summary) => summary.pass,
@@ -302,7 +303,7 @@ export const runP3ReleaseReadiness = async (
           ? 'skipped because release package was not created'
           : 'skipped because release package failed',
       )
-  const checks = [
+  const checks: ReadonlyArray<P3ReleaseReadinessCheck<unknown>> = [
     districtMatrix,
     generatedPacks,
     parkingAnswerApis,

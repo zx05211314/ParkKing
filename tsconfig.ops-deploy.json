@@ -33,6 +33,8 @@
     "scripts/ops/installReleasePackage.ts",
     "scripts/ops/installReleasePackage.test.ts",
     "scripts/ops/packageRelease*.ts",
+    "scripts/ops/p3ReleaseReadiness.ts",
+    "scripts/ops/p3ReleaseReadiness.test.ts",
     "scripts/ops/releaseDataWorkflow.ts",
     "scripts/ops/releaseDataWorkflow.test.ts",
     "scripts/ops/releaseWorkflowContract.test.ts",
