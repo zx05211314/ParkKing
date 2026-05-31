@@ -49,6 +49,16 @@ $env:GITHUB_SHA="<target commit sha>"
 npm run ops:release-data-publish
 ```
 
+For the normal local handoff path, prefer the wrapper that reads
+`.tmp/render-deployment-handoff.json`, checks the release ID suffix against
+`git rev-parse <ref>`, and uploads only the handoff zip/manifest pair:
+
+```powershell
+$env:GH_TOKEN="<token with contents:write>"
+npm run ops:release-data-publish-handoff -- --ref main --dry-run
+npm run ops:release-data-publish-handoff -- --ref main
+```
+
 Upload both generated files from `dist/releases` to stable URLs:
 
 - `park-king-data_<release-id>.zip`

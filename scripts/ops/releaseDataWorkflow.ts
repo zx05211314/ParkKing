@@ -102,9 +102,20 @@ export const resolveReleaseDataMetadata = async (params: {
   }
 }
 
-const listReleaseAssetPaths = async (releaseDir = DEFAULT_RELEASE_DIR) => {
+const listReleaseAssetPaths = async (
+  releaseDir = DEFAULT_RELEASE_DIR,
+  explicitAssetPaths?: string[] | null,
+) => {
+  if (explicitAssetPaths) {
+    const sortedAssetPaths = [...explicitAssetPaths].sort()
+    if (sortedAssetPaths.length === 0) {
+      throw new Error('No release assets were provided')
+    }
+    return sortedAssetPaths
+  }
+
   const entries = await fs.readdir(releaseDir, { withFileTypes: true })
-  const assetPaths = entries
+  const discoveredAssetPaths = entries
     .filter(
       (entry) =>
         entry.isFile() &&
@@ -114,10 +125,10 @@ const listReleaseAssetPaths = async (releaseDir = DEFAULT_RELEASE_DIR) => {
     .map((entry) => path.join(releaseDir, entry.name))
     .sort()
 
-  if (assetPaths.length === 0) {
+  if (discoveredAssetPaths.length === 0) {
     throw new Error(`No release assets found in ${releaseDir}`)
   }
-  return assetPaths
+  return discoveredAssetPaths
 }
 
 const buildGitHubApiHeaders = (
@@ -304,11 +315,12 @@ const publishReleaseDataAssetsWithApi = async (params: {
   repository: string
   token: string
   releaseDir?: string
+  assetPaths?: string[] | null
   readinessMarkdownPath?: string
   fetchImpl?: FetchImpl
 }) => {
   const fetchImpl = params.fetchImpl ?? fetch
-  const assets = await listReleaseAssetPaths(params.releaseDir)
+  const assets = await listReleaseAssetPaths(params.releaseDir, params.assetPaths)
   let release = await getGitHubReleaseByTag({
     repository: params.repository,
     tag: params.tag,
@@ -389,6 +401,7 @@ export const publishReleaseDataAssets = async (params: {
   repository?: string | null
   token?: string | null
   releaseDir?: string
+  assetPaths?: string[] | null
   readinessMarkdownPath?: string
   fetchImpl?: FetchImpl
 }) => {
@@ -403,13 +416,14 @@ export const publishReleaseDataAssets = async (params: {
       repository,
       token,
       releaseDir: params.releaseDir,
+      assetPaths: params.assetPaths,
       readinessMarkdownPath: params.readinessMarkdownPath,
       fetchImpl: params.fetchImpl,
     })
     return
   }
 
-  const assets = await listReleaseAssetPaths(params.releaseDir)
+  const assets = await listReleaseAssetPaths(params.releaseDir, params.assetPaths)
   const releaseExists = runGh(['release', 'view', params.tag], {
     allowFailure: true,
   })

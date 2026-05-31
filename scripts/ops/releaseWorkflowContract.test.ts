@@ -130,6 +130,9 @@ describe('release workflow contracts', () => {
     expect(packageJson.scripts?.['ops:release-handoff-status']).toBe(
       'tsx scripts/ops/releaseHandoffStatus.ts',
     )
+    expect(packageJson.scripts?.['ops:release-data-publish-handoff']).toBe(
+      'tsx scripts/ops/publishReleaseDataFromHandoff.ts',
+    )
   })
 
   it('keeps CI typechecking deploy ops helpers before build', async () => {
