@@ -49,6 +49,8 @@ export interface ReleaseHandoffStatusCommands {
   localHandoff: string
   releaseDispatchDryRun: string
   releaseDispatch: string
+  releasePublishEnv: string[]
+  releasePublish: string
   renderLiveVerifyDryRun: string
   renderLiveVerify: string
 }
@@ -236,6 +238,8 @@ const quoteCommandValue = (value: string) =>
 const buildCommands = (params: {
   repository: string
   ref: string
+  releaseId: string
+  tag: string
   manifestUrl: string
   appUrl: string | null
 }): ReleaseHandoffStatusCommands => {
@@ -244,6 +248,14 @@ const buildCommands = (params: {
     localHandoff: 'npm run ops:release-handoff-readiness',
     releaseDispatchDryRun: `npm run ops:release-data-dispatch -- --repo ${params.repository} --ref ${params.ref} --dry-run`,
     releaseDispatch: `npm run ops:release-data-dispatch -- --repo ${params.repository} --ref ${params.ref}`,
+    releasePublishEnv: [
+      `$env:GITHUB_REPOSITORY="${params.repository}"`,
+      '$env:GH_TOKEN="<token with contents:write>"',
+      `$env:PARKKING_RELEASE_ID="${params.releaseId}"`,
+      `$env:PARKKING_RELEASE_TAG="${params.tag}"`,
+      `$env:GITHUB_SHA=(git rev-parse ${quoteCommandValue(params.ref)})`,
+    ],
+    releasePublish: 'npm run ops:release-data-publish',
     renderLiveVerifyDryRun: `npm run ops:render-live-verify-dispatch -- --repo ${params.repository} --ref ${params.ref} --app-url ${quoteCommandValue(appUrl)} --manifest-url ${params.manifestUrl} --dry-run`,
     renderLiveVerify: `npm run ops:render-live-verify-dispatch -- --repo ${params.repository} --ref ${params.ref} --app-url ${quoteCommandValue(appUrl)} --manifest-url ${params.manifestUrl}`,
   }
@@ -281,7 +293,14 @@ export const buildReleaseHandoffStatus = async (
   )
   const handoffReady = handoff.ready === true
   const readinessPass = readiness ? readiness.pass === true : null
-  const commands = buildCommands({ repository, ref, manifestUrl, appUrl })
+  const commands = buildCommands({
+    repository,
+    ref,
+    releaseId,
+    tag,
+    manifestUrl,
+    appUrl,
+  })
   const blockers: string[] = []
   const warnings: string[] = []
 
@@ -319,6 +338,7 @@ export const buildReleaseHandoffStatus = async (
             'Publish GitHub Release assets with GitHub Actions -> Release Data Package.',
             `Preview dispatch payload: ${commands.releaseDispatchDryRun}`,
             `Dispatch with token: ${commands.releaseDispatch}`,
+            `Or publish current local artifacts with REST API: ${commands.releasePublishEnv.join('; ')}; ${commands.releasePublish}`,
           ]
         : !appUrl
           ? [
@@ -387,6 +407,10 @@ export const renderReleaseHandoffStatus = (
     `- Local handoff: ${result.commands.localHandoff}`,
     `- Release dispatch dry-run: ${result.commands.releaseDispatchDryRun}`,
     `- Release dispatch: ${result.commands.releaseDispatch}`,
+    ...result.commands.releasePublishEnv.map(
+      (command) => `- Release publish env: ${command}`,
+    ),
+    `- Release publish: ${result.commands.releasePublish}`,
     `- Render live verify dry-run: ${result.commands.renderLiveVerifyDryRun}`,
     `- Render live verify: ${result.commands.renderLiveVerify}`,
     '',
