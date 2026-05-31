@@ -35,6 +35,20 @@ runs the bundle budget, runs reviewed answer UI smokes in LIST and MAP modes,
 passes P3 release readiness and deploy readiness, then publishes the package and
 manifest assets.
 
+If you need to publish the latest local `dist/releases` assets without the
+Actions UI, `ops:release-data-publish` can use the GitHub REST API directly when
+`GH_TOKEN` or `GITHUB_TOKEN` and `GITHUB_REPOSITORY` are set; otherwise it falls
+back to the GitHub CLI:
+
+```powershell
+$env:GITHUB_REPOSITORY="zx05211314/ParkKing"
+$env:GH_TOKEN="<token with contents:write>"
+$env:PARKKING_RELEASE_ID="<release-id>"
+$env:PARKKING_RELEASE_TAG="data-<release-id>"
+$env:GITHUB_SHA="<target commit sha>"
+npm run ops:release-data-publish
+```
+
 Upload both generated files from `dist/releases` to stable URLs:
 
 - `park-king-data_<release-id>.zip`

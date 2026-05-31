@@ -8,6 +8,7 @@ import {
   buildReleaseDataSummaryLines,
   buildReleaseAssetSmokeHeaders,
   buildReleaseDataUrls,
+  publishReleaseDataAssets,
   resolveReleaseDataMetadata,
   smokeReleaseDataAssetUrls,
 } from './releaseDataWorkflow'
@@ -205,5 +206,133 @@ describe('releaseDataWorkflow', () => {
         server.close((error) => (error ? reject(error) : resolve()))
       })
     }
+  })
+
+  it('publishes release assets through GitHub REST API when token and repository are provided', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'release-data-api-'))
+    const notesPath = path.join(base, 'readiness.md')
+    await fs.writeFile(notesPath, '# Ready\n', 'utf-8')
+    await fs.writeFile(path.join(base, 'park-king-data_release-a.zip'), 'zip', 'utf-8')
+    await fs.writeFile(
+      path.join(base, 'release_manifest_release-a.json'),
+      '{}',
+      'utf-8',
+    )
+
+    const calls: Array<{ url: string; init?: RequestInit }> = []
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const url = String(input)
+      calls.push({ url, init })
+      if (url.endsWith('/repos/owner/repo/releases/tags/data-release-a')) {
+        return new Response('not found', { status: 404 })
+      }
+      if (url.endsWith('/repos/owner/repo/releases') && init?.method === 'POST') {
+        return Response.json({ id: 123 }, { status: 201 })
+      }
+      if (
+        url.startsWith(
+          'https://uploads.github.com/repos/owner/repo/releases/123/assets?',
+        ) &&
+        init?.method === 'POST'
+      ) {
+        return Response.json({ id: 456 }, { status: 201 })
+      }
+      throw new Error(`Unexpected request ${init?.method ?? 'GET'} ${url}`)
+    }
+
+    await publishReleaseDataAssets({
+      releaseId: 'release-a',
+      tag: 'data-release-a',
+      targetSha: 'abc123',
+      makeLatest: false,
+      repository: 'owner/repo',
+      token: 'token',
+      releaseDir: base,
+      readinessMarkdownPath: notesPath,
+      fetchImpl,
+    })
+
+    const createCall = calls.find(
+      (call) =>
+        call.url.endsWith('/repos/owner/repo/releases') &&
+        call.init?.method === 'POST',
+    )
+    expect(createCall).toBeDefined()
+    expect(JSON.parse(String(createCall?.init?.body))).toMatchObject({
+      tag_name: 'data-release-a',
+      target_commitish: 'abc123',
+      name: 'ParkKing data release-a',
+      make_latest: 'false',
+    })
+    expect(
+      calls.filter((call) => call.url.startsWith('https://uploads.github.com/')),
+    ).toHaveLength(2)
+  })
+
+  it('clobbers existing GitHub release assets through the REST API', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'release-data-clobber-'))
+    await fs.writeFile(path.join(base, 'park-king-data_release-a.zip'), 'zip', 'utf-8')
+    await fs.writeFile(
+      path.join(base, 'release_manifest_release-a.json'),
+      '{}',
+      'utf-8',
+    )
+
+    const calls: Array<{ url: string; init?: RequestInit }> = []
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const url = String(input)
+      calls.push({ url, init })
+      if (url.endsWith('/repos/owner/repo/releases/tags/data-release-a')) {
+        return Response.json({ id: 123 })
+      }
+      if (
+        url.endsWith('/repos/owner/repo/releases/123/assets?per_page=100')
+      ) {
+        return Response.json([
+          { id: 1, name: 'park-king-data_release-a.zip' },
+          { id: 2, name: 'release_manifest_release-a.json' },
+        ])
+      }
+      if (url.endsWith('/repos/owner/repo/releases/assets/1')) {
+        return new Response(null, { status: 204 })
+      }
+      if (url.endsWith('/repos/owner/repo/releases/assets/2')) {
+        return new Response(null, { status: 204 })
+      }
+      if (
+        url.startsWith(
+          'https://uploads.github.com/repos/owner/repo/releases/123/assets?',
+        ) &&
+        init?.method === 'POST'
+      ) {
+        return Response.json({ id: 456 }, { status: 201 })
+      }
+      if (url.endsWith('/repos/owner/repo/releases/123') && init?.method === 'PATCH') {
+        return Response.json({ id: 123 })
+      }
+      throw new Error(`Unexpected request ${init?.method ?? 'GET'} ${url}`)
+    }
+
+    await publishReleaseDataAssets({
+      releaseId: 'release-a',
+      tag: 'data-release-a',
+      targetSha: 'abc123',
+      makeLatest: true,
+      repository: 'owner/repo',
+      token: 'token',
+      releaseDir: base,
+      fetchImpl,
+    })
+
+    expect(
+      calls.filter((call) => call.init?.method === 'DELETE').map((call) => call.url),
+    ).toEqual([
+      'https://api.github.com/repos/owner/repo/releases/assets/1',
+      'https://api.github.com/repos/owner/repo/releases/assets/2',
+    ])
+    expect(calls.some((call) => call.init?.method === 'PATCH')).toBe(true)
+    expect(
+      calls.filter((call) => call.url.startsWith('https://uploads.github.com/')),
+    ).toHaveLength(2)
   })
 })

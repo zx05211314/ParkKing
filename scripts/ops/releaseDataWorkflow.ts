@@ -15,6 +15,17 @@ interface P3ReleaseReadinessJson {
   }
 }
 
+type FetchImpl = typeof fetch
+
+interface GitHubRelease {
+  id: number
+}
+
+interface GitHubReleaseAsset {
+  id: number
+  name: string
+}
+
 export interface ReleaseDataMetadata {
   releaseId: string
   tag: string
@@ -109,6 +120,253 @@ const listReleaseAssetPaths = async (releaseDir = DEFAULT_RELEASE_DIR) => {
   return assetPaths
 }
 
+const buildGitHubApiHeaders = (
+  token: string,
+  extraHeaders?: Record<string, string>,
+) => ({
+  accept: 'application/vnd.github+json',
+  authorization: `Bearer ${token}`,
+  'user-agent': 'ParkKing release publisher',
+  'x-github-api-version': '2022-11-28',
+  ...extraHeaders,
+})
+
+const readGitHubErrorBody = async (response: Response) => {
+  try {
+    return await response.text()
+  } catch {
+    return ''
+  }
+}
+
+const assertGitHubResponse = async (response: Response, action: string) => {
+  if (response.ok) {
+    return
+  }
+  const body = await readGitHubErrorBody(response)
+  throw new Error(
+    `${action} failed with HTTP ${response.status}${body ? `: ${body}` : ''}`,
+  )
+}
+
+const githubApiUrl = (repository: string, suffix: string) =>
+  `https://api.github.com/repos/${repository}${suffix}`
+
+const getGitHubReleaseByTag = async (params: {
+  repository: string
+  tag: string
+  token: string
+  fetchImpl: FetchImpl
+}) => {
+  const response = await params.fetchImpl(
+    githubApiUrl(
+      params.repository,
+      `/releases/tags/${encodeURIComponent(params.tag)}`,
+    ),
+    {
+      headers: buildGitHubApiHeaders(params.token),
+    },
+  )
+  if (response.status === 404) {
+    return null
+  }
+  await assertGitHubResponse(response, `GitHub release lookup ${params.tag}`)
+  return (await response.json()) as GitHubRelease
+}
+
+const createGitHubRelease = async (params: {
+  repository: string
+  releaseId: string
+  tag: string
+  targetSha: string
+  makeLatest: boolean
+  notesPath: string
+  token: string
+  fetchImpl: FetchImpl
+}) => {
+  const notes = await fs.readFile(params.notesPath, 'utf-8')
+  const response = await params.fetchImpl(
+    githubApiUrl(params.repository, '/releases'),
+    {
+      method: 'POST',
+      headers: buildGitHubApiHeaders(params.token, {
+        'content-type': 'application/json',
+      }),
+      body: JSON.stringify({
+        tag_name: params.tag,
+        target_commitish: params.targetSha,
+        name: `ParkKing data ${params.releaseId}`,
+        body: notes,
+        draft: false,
+        prerelease: false,
+        make_latest: params.makeLatest ? 'true' : 'false',
+      }),
+    },
+  )
+  await assertGitHubResponse(response, `GitHub release create ${params.tag}`)
+  return (await response.json()) as GitHubRelease
+}
+
+const updateGitHubReleaseLatest = async (params: {
+  repository: string
+  releaseId: number
+  token: string
+  fetchImpl: FetchImpl
+}) => {
+  const response = await params.fetchImpl(
+    githubApiUrl(params.repository, `/releases/${params.releaseId}`),
+    {
+      method: 'PATCH',
+      headers: buildGitHubApiHeaders(params.token, {
+        'content-type': 'application/json',
+      }),
+      body: JSON.stringify({
+        make_latest: 'true',
+      }),
+    },
+  )
+  await assertGitHubResponse(
+    response,
+    `GitHub release mark latest ${params.releaseId}`,
+  )
+}
+
+const listGitHubReleaseAssets = async (params: {
+  repository: string
+  releaseId: number
+  token: string
+  fetchImpl: FetchImpl
+}) => {
+  const response = await params.fetchImpl(
+    githubApiUrl(params.repository, `/releases/${params.releaseId}/assets?per_page=100`),
+    {
+      headers: buildGitHubApiHeaders(params.token),
+    },
+  )
+  await assertGitHubResponse(
+    response,
+    `GitHub release asset list ${params.releaseId}`,
+  )
+  return (await response.json()) as GitHubReleaseAsset[]
+}
+
+const deleteGitHubReleaseAsset = async (params: {
+  repository: string
+  assetId: number
+  token: string
+  fetchImpl: FetchImpl
+}) => {
+  const response = await params.fetchImpl(
+    githubApiUrl(params.repository, `/releases/assets/${params.assetId}`),
+    {
+      method: 'DELETE',
+      headers: buildGitHubApiHeaders(params.token),
+    },
+  )
+  await assertGitHubResponse(
+    response,
+    `GitHub release asset delete ${params.assetId}`,
+  )
+}
+
+const getReleaseAssetContentType = (assetPath: string) =>
+  assetPath.endsWith('.json') ? 'application/json' : 'application/zip'
+
+const uploadGitHubReleaseAsset = async (params: {
+  repository: string
+  releaseId: number
+  assetPath: string
+  token: string
+  fetchImpl: FetchImpl
+}) => {
+  const assetName = path.basename(params.assetPath)
+  const content = await fs.readFile(params.assetPath)
+  const response = await params.fetchImpl(
+    `https://uploads.github.com/repos/${params.repository}/releases/${
+      params.releaseId
+    }/assets?name=${encodeURIComponent(assetName)}`,
+    {
+      method: 'POST',
+      headers: buildGitHubApiHeaders(params.token, {
+        'content-type': getReleaseAssetContentType(params.assetPath),
+      }),
+      body: content as unknown as BodyInit,
+    },
+  )
+  await assertGitHubResponse(response, `GitHub release asset upload ${assetName}`)
+}
+
+const publishReleaseDataAssetsWithApi = async (params: {
+  releaseId: string
+  tag: string
+  targetSha: string
+  makeLatest: boolean
+  repository: string
+  token: string
+  releaseDir?: string
+  readinessMarkdownPath?: string
+  fetchImpl?: FetchImpl
+}) => {
+  const fetchImpl = params.fetchImpl ?? fetch
+  const assets = await listReleaseAssetPaths(params.releaseDir)
+  let release = await getGitHubReleaseByTag({
+    repository: params.repository,
+    tag: params.tag,
+    token: params.token,
+    fetchImpl,
+  })
+  const releaseAlreadyExisted = Boolean(release)
+  if (!release) {
+    release = await createGitHubRelease({
+      repository: params.repository,
+      releaseId: params.releaseId,
+      tag: params.tag,
+      targetSha: params.targetSha,
+      makeLatest: params.makeLatest,
+      notesPath: params.readinessMarkdownPath ?? DEFAULT_READINESS_MD,
+      token: params.token,
+      fetchImpl,
+    })
+  }
+
+  const existingAssets = releaseAlreadyExisted
+    ? await listGitHubReleaseAssets({
+        repository: params.repository,
+        releaseId: release.id,
+        token: params.token,
+        fetchImpl,
+      })
+    : []
+  for (const assetPath of assets) {
+    const assetName = path.basename(assetPath)
+    const existingAsset = existingAssets.find((asset) => asset.name === assetName)
+    if (existingAsset) {
+      await deleteGitHubReleaseAsset({
+        repository: params.repository,
+        assetId: existingAsset.id,
+        token: params.token,
+        fetchImpl,
+      })
+    }
+    await uploadGitHubReleaseAsset({
+      repository: params.repository,
+      releaseId: release.id,
+      assetPath,
+      token: params.token,
+      fetchImpl,
+    })
+  }
+
+  if (releaseAlreadyExisted && params.makeLatest) {
+    await updateGitHubReleaseLatest({
+      repository: params.repository,
+      releaseId: release.id,
+      token: params.token,
+      fetchImpl,
+    })
+  }
+}
+
 const runGh = (args: string[], options?: { allowFailure?: boolean }) => {
   const result = spawnSync('gh', args, {
     stdio: options?.allowFailure ? 'ignore' : 'inherit',
@@ -128,9 +386,29 @@ export const publishReleaseDataAssets = async (params: {
   tag: string
   targetSha: string
   makeLatest: boolean
+  repository?: string | null
+  token?: string | null
   releaseDir?: string
   readinessMarkdownPath?: string
+  fetchImpl?: FetchImpl
 }) => {
+  const token = params.token?.trim()
+  const repository = params.repository?.trim()
+  if (token && repository) {
+    await publishReleaseDataAssetsWithApi({
+      releaseId: params.releaseId,
+      tag: params.tag,
+      targetSha: params.targetSha,
+      makeLatest: params.makeLatest,
+      repository,
+      token,
+      releaseDir: params.releaseDir,
+      readinessMarkdownPath: params.readinessMarkdownPath,
+      fetchImpl: params.fetchImpl,
+    })
+    return
+  }
+
   const assets = await listReleaseAssetPaths(params.releaseDir)
   const releaseExists = runGh(['release', 'view', params.tag], {
     allowFailure: true,
@@ -421,6 +699,8 @@ const runPublish = async () => {
     tag,
     targetSha,
     makeLatest: process.env.PARKKING_RELEASE_LATEST === 'true',
+    repository: process.env.GITHUB_REPOSITORY,
+    token: process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN,
   })
 }
 
