@@ -1,5 +1,5 @@
 import { featureCollection, lineOffset, lineString } from '@turf/turf'
-import type { Feature, LineString, MultiLineString } from 'geojson'
+import type { Feature, Geometry, LineString, MultiLineString } from 'geojson'
 import { fileURLToPath } from 'node:url'
 import { readConfig, type ResolvedConfig } from './readConfig'
 import {

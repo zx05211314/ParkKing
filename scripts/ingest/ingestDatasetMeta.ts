@@ -47,7 +47,7 @@ export const buildDatasetMeta = async (config: ResolvedConfig) => {
     : null
   const boundaryBBox = boundaryCollection ? bboxFromCollection(boundaryCollection) : null
   const boundaryCenter = centerFromBBox(boundaryBBox)
-  const inferredRiskCounts = countRiskTags(inferredCollection)
+  const inferredRiskCounts = countRiskTags(inferredCollection) ?? {}
   const provenanceFetchedAt = await readProvenanceFetchedAt(config)
   const qualityMetrics = buildQualityMetrics(
     redYellowCollection,

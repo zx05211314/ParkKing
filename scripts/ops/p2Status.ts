@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises'
+import type { Dirent } from 'node:fs'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -249,7 +250,7 @@ const findLatestReviewPackages = async (
   if (districtIds.length === 0) {
     return []
   }
-  let entries: Awaited<ReturnType<typeof fs.readdir>>
+  let entries: Dirent[]
   try {
     entries = await fs.readdir(outDir, { withFileTypes: true })
   } catch {

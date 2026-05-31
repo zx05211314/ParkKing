@@ -1,4 +1,6 @@
 import type { ResolvedConfig } from './readConfig'
+import type { HashSummary } from './hashFiles'
+import type { BBox } from './ingestGeoBounds'
 
 export const METRICS_SCHEMA_VERSION = 1
 
@@ -23,11 +25,6 @@ type QualityMetrics = {
   signOverrideUnmatchedNamedCount: number
 }
 
-type FileHashes = {
-  files: Record<string, string>
-  totalBytes: number
-}
-
 type IntersectionsReport = {
   counts: Record<string, number>
   angleSpreadHistogram: number[]
@@ -38,13 +35,13 @@ type BuildDatasetMetaResultOptions = {
   config: ResolvedConfig
   counts: Counts
   districtName: string
-  fileHashes: FileHashes
-  parkingSpacesBBox: number[] | null
-  intersectionsBBox: number[] | null
-  crosswalksBBox: number[] | null
-  signOverridesBBox: number[] | null
-  inferredCandidatesBBox: number[] | null
-  boundaryBBox: number[] | null
+  fileHashes: HashSummary
+  parkingSpacesBBox: BBox | null
+  intersectionsBBox: BBox | null
+  crosswalksBBox: BBox | null
+  signOverridesBBox: BBox | null
+  inferredCandidatesBBox: BBox | null
+  boundaryBBox: BBox | null
   boundaryCenter: number[] | null
   inferredRiskCounts: Record<string, number>
   provenanceFetchedAt: string | null

@@ -4,11 +4,14 @@ import { parse as parseCsv } from 'csv-parse/sync'
 import {
   REPORTS_STORAGE_KEY,
   type ReportStore,
+  type ReportStatus,
   type SegmentReport,
 } from './exportOverrideTypes'
 import { REVIEW_TIMESTAMP_MESSAGE, isValidReviewTimestamp } from './reviewTimestamp'
 
-const VALID_REPORT_STATUSES = ['LEGAL', 'ILLEGAL', 'UNCLEAR']
+const VALID_REPORT_STATUSES = ['LEGAL', 'ILLEGAL', 'UNCLEAR'] as const
+const isReportStatus = (value: string): value is ReportStatus =>
+  (VALID_REPORT_STATUSES as readonly string[]).includes(value)
 
 const getCsvValue = (row: Record<string, unknown>, keys: string[]) => {
   for (const key of keys) {
@@ -73,7 +76,7 @@ export const parseReportCsvPayload = (raw: string): SegmentReport[] => {
 
   const errors: string[] = []
   const reports = rows
-    .map((row, index) => {
+    .map((row, index): SegmentReport | null => {
       const status = getReviewStatus(row)
       if (!status) {
         return null
@@ -84,10 +87,11 @@ export const parseReportCsvPayload = (raw: string): SegmentReport[] => {
       const note = getCsvValue(row, ['reviewNote', 'note', 'overrideNote'])
       const createdAt = getCsvValue(row, ['createdAt', 'reviewedAt', 'verifiedAt'])
       const rowNumber = index + 2
-      if (!VALID_REPORT_STATUSES.includes(normalizedStatus)) {
+      if (!isReportStatus(normalizedStatus)) {
         errors.push(
           `row ${rowNumber}: invalid reviewStatus "${status}" (expected LEGAL, ILLEGAL, or UNCLEAR)`,
         )
+        return null
       }
       if (!districtId) {
         errors.push(`row ${rowNumber}: districtId is required when reviewStatus is set`)

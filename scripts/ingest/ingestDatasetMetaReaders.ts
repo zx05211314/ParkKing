@@ -18,6 +18,12 @@ const daysSince = (timestampMs: number) => {
   return Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)))
 }
 
+export interface IntersectionsReport {
+  counts: Record<string, number>
+  angleSpreadHistogram: number[]
+  removed: Record<string, number>
+}
+
 export const readGeoJsonFeatureCount = async (filePath: string) => {
   if (!(await fileExists(filePath))) {
     return 0
@@ -57,13 +63,15 @@ export const readProvenanceFetchedAt = async (config: ResolvedConfig) => {
   return null
 }
 
-export const readIntersectionsReport = async (generatedDir: string) => {
+export const readIntersectionsReport = async (
+  generatedDir: string,
+): Promise<IntersectionsReport | null> => {
   const reportPath = path.resolve(generatedDir, 'intersections_report.json')
   if (!(await fileExists(reportPath))) {
     return null
   }
   const raw = await fs.readFile(reportPath, 'utf-8')
-  return JSON.parse(raw) as Record<string, unknown>
+  return JSON.parse(raw) as IntersectionsReport
 }
 
 export const resolveSignOverridesFreshness = (config: ResolvedConfig) => {

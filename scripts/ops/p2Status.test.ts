@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { P0AdvanceReviewsResult } from './p0AdvanceReviews'
-import type { P2ExpansionReadinessResult } from './p2ExpansionReadiness'
+import type {
+  P2ExpansionDistrictReadiness,
+  P2ExpansionReadinessResult,
+} from './p2ExpansionReadiness'
 import {
   parseP2StatusArgs,
   renderP2Status,
@@ -16,7 +19,7 @@ const expansionDistrict = (
     | 'finalize-review'
     | 'already-reviewed'
     | 'published',
-) => ({
+): P2ExpansionDistrictReadiness => ({
   districtId,
   runtimeStatus: nextAction === 'published' ? 'published' : 'stale-public-dir',
   dataPackStatus: 'available',

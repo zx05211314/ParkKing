@@ -194,7 +194,7 @@ const getReviewStatus = (row: Record<string, unknown>) => {
 
 const isFinalConfidence = (
   value: string | null,
-): value is SmokeExactParkingAnswerCase['expectedFinalConfidence'] =>
+): value is NonNullable<SmokeExactParkingAnswerCase['expectedFinalConfidence']> =>
   value === 'HIGH' || value === 'MEDIUM' || value === 'LOW'
 
 const buildCaseId = (
@@ -244,7 +244,7 @@ const buildReviewedAnswerCase = (params: {
   const expectedFinalConfidence = getCsvString(params.row, [
     'finalConfidence',
     'final_confidence',
-  ])?.toUpperCase()
+  ])?.toUpperCase() ?? null
   const hasMarkedSpaces = parkingSpaceCount !== null && parkingSpaceCount > 0
   const isInferred = sourceType === 'INFERRED'
   const evidenceLabel = hasMarkedSpaces

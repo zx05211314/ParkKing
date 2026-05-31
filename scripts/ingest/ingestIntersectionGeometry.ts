@@ -1,13 +1,25 @@
 import { bearing } from '@turf/turf'
 import { point } from '@turf/turf'
-import type { Geometry } from 'geojson'
+import type { Geometry, Position } from 'geojson'
+
+type LngLat = [number, number]
+
+const toLngLat = (position: Position): LngLat | null =>
+  typeof position[0] === 'number' && typeof position[1] === 'number'
+    ? [position[0], position[1]]
+    : null
+
+const toLine = (coordinates: Position[]): LngLat[] =>
+  coordinates
+    .map((position) => toLngLat(position))
+    .filter((position): position is LngLat => Boolean(position))
 
 export const extractLines = (geometry: Geometry): [number, number][][] => {
   if (geometry.type === 'LineString') {
-    return [geometry.coordinates]
+    return [toLine(geometry.coordinates)]
   }
   if (geometry.type === 'MultiLineString') {
-    return geometry.coordinates
+    return geometry.coordinates.map((line) => toLine(line))
   }
   if (geometry.type === 'GeometryCollection') {
     return geometry.geometries.flatMap((child) => extractLines(child))

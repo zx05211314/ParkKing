@@ -1,7 +1,19 @@
-import type { Geometry } from 'geojson'
+import type { Geometry, Position } from 'geojson'
+
+type LngLat = [number, number]
+
+const toLngLat = (position: Position): LngLat | null =>
+  typeof position[0] === 'number' && typeof position[1] === 'number'
+    ? [position[0], position[1]]
+    : null
+
+const toLine = (coordinates: Position[]): LngLat[] =>
+  coordinates
+    .map((position) => toLngLat(position))
+    .filter((position): position is LngLat => Boolean(position))
 
 const sampleCoordinates = (
-  coordinates: [number, number][],
+  coordinates: LngLat[],
   maxPoints = 64,
 ) => {
   if (coordinates.length <= maxPoints) {
@@ -11,21 +23,21 @@ const sampleCoordinates = (
   return coordinates.filter((_, index) => index % step === 0)
 }
 
-const squaredDistance = (left: [number, number], right: [number, number]) => {
+const squaredDistance = (left: LngLat, right: LngLat) => {
   const deltaX = left[0] - right[0]
   const deltaY = left[1] - right[1]
   return deltaX * deltaX + deltaY * deltaY
 }
 
 const getRepresentativePolygonLine = (
-  rings: [number, number][][],
-): [number, number][] | null => {
-  const sampled = sampleCoordinates(rings.flat())
+  rings: Position[][],
+): LngLat[] | null => {
+  const sampled = sampleCoordinates(rings.flatMap((ring) => toLine(ring)))
   if (sampled.length < 2) {
     return null
   }
 
-  let bestPair: [[number, number], [number, number]] | null = null
+  let bestPair: [LngLat, LngLat] | null = null
   let bestDistance = 0
 
   for (let leftIndex = 0; leftIndex < sampled.length - 1; leftIndex += 1) {
@@ -52,21 +64,19 @@ const getRepresentativePolygonLine = (
 
 export const extractLines = (geometry: Geometry): [number, number][][] => {
   if (geometry.type === 'LineString') {
-    return [geometry.coordinates]
+    return [toLine(geometry.coordinates)]
   }
   if (geometry.type === 'MultiLineString') {
-    return geometry.coordinates
+    return geometry.coordinates.map((line) => toLine(line))
   }
   if (geometry.type === 'Polygon') {
-    const representative = getRepresentativePolygonLine(
-      geometry.coordinates as [number, number][][],
-    )
+    const representative = getRepresentativePolygonLine(geometry.coordinates)
     return representative ? [representative] : []
   }
   if (geometry.type === 'MultiPolygon') {
     return geometry.coordinates
       .map((polygon) =>
-        getRepresentativePolygonLine(polygon as [number, number][][]),
+        getRepresentativePolygonLine(polygon),
       )
       .filter((line): line is [number, number][] => Boolean(line))
   }

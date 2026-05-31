@@ -5,12 +5,13 @@ import {
   readDistrictInputConfig,
 } from './checkDistrictInputConfig'
 import { validateDistrictInput } from './checkDistrictInputValidation'
+import type { DistrictInputChecklistItem } from './checkDistrictInputTypes'
 
 export const checkDistrictInputs = async (configPath: string) => {
   const configDir = path.dirname(configPath)
   const { inputs, requiredKeys } = await readDistrictInputConfig(configPath)
 
-  const checklist = []
+  const checklist: DistrictInputChecklistItem[] = []
 
   for (const [key, value] of Object.entries(inputs)) {
     if (!value) {

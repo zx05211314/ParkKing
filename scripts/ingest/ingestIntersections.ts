@@ -3,7 +3,7 @@ import {
   featureCollection,
   point,
 } from '@turf/turf'
-import type { Geometry } from 'geojson'
+import type { Feature, Geometry, Point } from 'geojson'
 import { fileURLToPath } from 'node:url'
 import { readConfig, type ResolvedConfig } from './readConfig'
 import {
@@ -138,7 +138,9 @@ export const ingestIntersections = async (config: ResolvedConfig) => {
     return booleanPointInPolygon(point(center), boundary)
   })
 
-  const features = filteredByBoundary.map((entry, index) => {
+  const features: Array<
+    Feature<Point, { id: string; degree: number; angleSpreadDegrees: number }>
+  > = filteredByBoundary.map((entry, index) => {
     const center: [number, number] = [
       entry.cluster.sumX / entry.cluster.count,
       entry.cluster.sumY / entry.cluster.count,

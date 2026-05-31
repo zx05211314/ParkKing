@@ -17,8 +17,8 @@ const current: CurrentMetrics = {
     night: {},
   },
   performance: {
-    day: {},
-    night: {},
+    day: { evalFirstMs: 0 },
+    night: { evalFirstMs: 0 },
   },
   reasonCodes: {
     day: { counts: {}, total: 0, coveragePct: 100 },
@@ -48,8 +48,8 @@ describe('compareBaselineStatus', () => {
         night: {},
       },
       performance: {
-        day: {},
-        night: {},
+        day: { evalFirstMsMedian: 0 },
+        night: { evalFirstMsMedian: 0 },
       },
       reasonCodes: {
         day: { top: {}, other: 0, total: 0, coveragePct: 100 },

@@ -21,13 +21,17 @@ export const compareCounts = (
     { key: 'intersections', label: 'intersections' },
     { key: 'inferredCandidates', label: 'inferredCandidates' },
     { key: 'signOverrides', label: 'signOverrides' },
+    {
+      key: 'signOverrideUnmatchedNamedCount',
+      label: 'signOverrideUnmatchedNamedCount',
+    },
   ]
 
   entries.forEach(({ key, label }) => {
     const baselineValue = baseline[key]
     const currentValue = current[key]
     const delta = deltaPct(currentValue, baselineValue)
-    const threshold = thresholds[key]
+    const threshold = thresholds[key] ?? thresholds.signOverrides
     if (delta > threshold) {
       const severity = severityForDelta(delta, threshold)
       warnings.push({

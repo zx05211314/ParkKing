@@ -117,10 +117,14 @@ export const normalizeFeatures = (
 
   return {
     ...collection,
-    features: collection.features.map((feature) => ({
-      ...feature,
-      geometry: feature.geometry ? transformGeometry(feature.geometry, sourceCrs) : null,
-    })),
+    features: collection.features.map((feature) =>
+      feature.geometry
+        ? {
+            ...feature,
+            geometry: transformGeometry(feature.geometry, sourceCrs),
+          }
+        : feature,
+    ),
   }
 }
 

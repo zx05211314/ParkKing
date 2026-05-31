@@ -1,3 +1,5 @@
+import type { PublishGateRunSummary } from './publishGateRunSummary'
+
 export type Severity = 'INFO' | 'WARN' | 'FAIL'
 
 export interface GateWarning {
@@ -22,7 +24,7 @@ export interface PublishGateOptions {
 
 export interface PublishGateResult {
   exitCode: number
-  summary: Record<string, unknown>
+  summary: PublishGateRunSummary
 }
 
 export interface PublishGateReportDistrict {

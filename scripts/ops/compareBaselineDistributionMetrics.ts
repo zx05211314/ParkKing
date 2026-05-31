@@ -13,14 +13,14 @@ export const compareDistributions = (
   let worst: { key: string; delta: number; baseline: number; current: number } | null =
     null
 
-  keys.forEach((key) => {
+  for (const key of keys) {
     const baselineValue = baseline[key] ?? 0
     const currentValue = current[key] ?? 0
     const delta = deltaPct(currentValue, baselineValue)
     if (!worst || delta > worst.delta) {
       worst = { key, delta, baseline: baselineValue, current: currentValue }
     }
-  })
+  }
 
   if (worst && worst.delta > maxDeltaPct) {
     const severity = severityForDelta(worst.delta, maxDeltaPct)

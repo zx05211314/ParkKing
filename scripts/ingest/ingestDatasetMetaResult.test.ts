@@ -83,15 +83,25 @@ describe('ingestDatasetMetaResult', () => {
       },
       districtName: 'Xinyi',
       fileHashes: {
-        files: { 'dataset_meta.json': 'abc123' },
+        files: { 'dataset_meta.json': { sha256: 'abc123', bytes: 1024 } },
         totalBytes: 1024,
       },
-      parkingSpacesBBox: [121.5, 25.0, 121.6, 25.1],
+      parkingSpacesBBox: {
+        minX: 121.5,
+        minY: 25.0,
+        maxX: 121.6,
+        maxY: 25.1,
+      },
       intersectionsBBox: null,
       crosswalksBBox: null,
       signOverridesBBox: null,
       inferredCandidatesBBox: null,
-      boundaryBBox: [121.4, 24.9, 121.7, 25.2],
+      boundaryBBox: {
+        minX: 121.4,
+        minY: 24.9,
+        maxX: 121.7,
+        maxY: 25.2,
+      },
       boundaryCenter: [121.55, 25.05],
       inferredRiskCounts: { MAJOR_ROAD: 2 },
       provenanceFetchedAt: '2026-03-20T00:00:00.000Z',
@@ -124,7 +134,9 @@ describe('ingestDatasetMetaResult', () => {
       angleSpreadHistogram: [1, 2, 3],
       removed: { duplicates: 1 },
     })
-    expect(result.files).toEqual({ 'dataset_meta.json': 'abc123' })
+    expect(result.files).toEqual({
+      'dataset_meta.json': { sha256: 'abc123', bytes: 1024 },
+    })
     expect(result.totalBytes).toBe(1024)
 
     vi.useRealTimers()

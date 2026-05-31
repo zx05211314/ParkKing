@@ -2,16 +2,22 @@ import { describe, expect, it } from 'vitest'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { tmpdir } from 'node:os'
-import type { FeatureCollection, Polygon, MultiPolygon } from 'geojson'
+import type { FeatureCollection, Position, Polygon, MultiPolygon } from 'geojson'
 import { ingestDistrictBounds } from './ingestDistrictBounds'
 import { ingestSignOverrides } from './ingestSignOverrides'
 import { readConfig } from './readConfig'
 import { applySignOverrides } from '../../src/data/segmentBuilder'
+import type { Segment } from '../../src/ui/types'
 
 const readJson = async <T>(filePath: string): Promise<T> => {
   const raw = await fs.readFile(filePath, 'utf-8')
   return JSON.parse(raw) as T
 }
+
+const toLngLat = (position: Position | undefined): [number, number] =>
+  typeof position?.[0] === 'number' && typeof position[1] === 'number'
+    ? [position[0], position[1]]
+    : [0, 0]
 
 const pickBoundaryPoint = (boundary: FeatureCollection): [number, number] => {
   const feature = boundary.features[0] as { geometry?: Polygon | MultiPolygon }
@@ -19,9 +25,9 @@ const pickBoundaryPoint = (boundary: FeatureCollection): [number, number] => {
     return [0, 0]
   }
   if (feature.geometry.type === 'Polygon') {
-    return feature.geometry.coordinates[0]?.[0] ?? [0, 0]
+    return toLngLat(feature.geometry.coordinates[0]?.[0])
   }
-  return feature.geometry.coordinates[0]?.[0]?.[0] ?? [0, 0]
+  return toLngLat(feature.geometry.coordinates[0]?.[0]?.[0])
 }
 
 describe('ingestSignOverrides overrides merge', () => {
@@ -113,7 +119,7 @@ describe('ingestSignOverrides overrides merge', () => {
         path.join(generatedDir, 'sign_overrides.geojson'),
       )
 
-      const segments = [
+      const segments: Segment[] = [
         {
           id: 'seg-1',
           name: 'Segment 1',

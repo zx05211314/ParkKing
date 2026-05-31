@@ -264,6 +264,7 @@ export const buildQaReviewReportSummary = async ({
     duplicateReviewedRows: segmentSummary.duplicateReviewedRows,
     conflictingReviewedSegments: segmentSummary.conflictingReviewedSegments,
     statusCounts,
+    reviewSourceCounts: {},
     bucketCounts: {},
     reviewedBucketCounts: {},
     districtCounts,

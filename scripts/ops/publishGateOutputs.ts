@@ -3,6 +3,7 @@ import {
   writePublishGateSummaryFile,
   writePublishGateSummaryMarkdownFile,
 } from './publishGateArtifactFiles'
+import type { PublishGateRunSummary } from './publishGateRunSummary'
 export {
   buildPublishGateRunSummary,
 } from './publishGateRunSummary'

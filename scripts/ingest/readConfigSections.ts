@@ -66,6 +66,8 @@ export const resolveOpsConfig = (parsed: IngestConfig): ResolvedConfig['ops'] =>
       intersections: parsed.ops?.thresholds?.counts?.intersections ?? 20,
       inferredCandidates: parsed.ops?.thresholds?.counts?.inferredCandidates ?? 30,
       signOverrides: parsed.ops?.thresholds?.counts?.signOverrides ?? 30,
+      signOverrideUnmatchedNamedCount:
+        parsed.ops?.thresholds?.counts?.signOverrideUnmatchedNamedCount ?? 30,
     },
     tierDistributionMaxDeltaPct:
       parsed.ops?.thresholds?.tierDistributionMaxDeltaPct ?? 15,

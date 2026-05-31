@@ -4,7 +4,7 @@ export interface OpsThresholds {
     intersections: number
     inferredCandidates: number
     signOverrides: number
-    signOverrideUnmatchedNamedCount: number
+    signOverrideUnmatchedNamedCount?: number
   }
   tierDistributionMaxDeltaPct: number
   perfRegressionMaxDeltaPct: number
@@ -56,6 +56,7 @@ export interface CurrentMetrics {
     intersections: number
     inferredCandidates: number
     signOverrides: number
+    signOverrideUnmatchedNamedCount: number
   }
   distributions: {
     day: Record<string, number>

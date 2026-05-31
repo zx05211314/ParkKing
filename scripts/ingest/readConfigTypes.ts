@@ -49,6 +49,7 @@ export interface IngestConfig {
         intersections?: number
         inferredCandidates?: number
         signOverrides?: number
+        signOverrideUnmatchedNamedCount?: number
       }
       tierDistributionMaxDeltaPct?: number
       perfRegressionMaxDeltaPct?: number
@@ -124,6 +125,7 @@ export interface ResolvedConfig {
         intersections: number
         inferredCandidates: number
         signOverrides: number
+        signOverrideUnmatchedNamedCount: number
       }
       tierDistributionMaxDeltaPct: number
       perfRegressionMaxDeltaPct: number

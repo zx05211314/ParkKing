@@ -75,6 +75,7 @@ const createConfig = (
           intersections: 0,
           inferredCandidates: 0,
           signOverrides: 0,
+          signOverrideUnmatchedNamedCount: 0,
         },
         tierDistributionMaxDeltaPct: 0,
         perfRegressionMaxDeltaPct: 0,
@@ -138,7 +139,13 @@ describe('ingestDatasetMetaReaders', () => {
 
     const signOverridePath = path.join(base, 'sign_overrides.geojson')
     const config = createConfig(base, {
-      sourceFiles: [{ path: signOverridePath, mtimeMs: Date.now() - 86_400_000 }],
+      sourceFiles: [
+        {
+          path: signOverridePath,
+          mtimeMs: Date.now() - 86_400_000,
+          size: 1,
+        },
+      ],
     })
 
     expect(await readProvenanceFetchedAt(config)).toBe('2026-03-01T00:00:00.000Z')

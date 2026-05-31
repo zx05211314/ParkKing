@@ -5,30 +5,36 @@ import { comparePerformance } from './compareBaselinePerformanceMetrics'
 
 describe('compareBaselineMetrics', () => {
   it('flags count deltas beyond thresholds', () => {
-    expect(
-      compareCounts(
-        {
-          segments: 140,
-          intersections: 50,
-          inferredCandidates: 20,
-          signOverrides: 10,
-          signOverrideUnmatchedNamedCount: 2,
-        },
-        {
-          segments: 100,
-          intersections: 50,
-          inferredCandidates: 20,
-          signOverrides: 10,
-          signOverrideUnmatchedNamedCount: 0,
-        },
-        {
-          segments: 20,
-          intersections: 20,
-          inferredCandidates: 20,
-          signOverrides: 20,
-        },
-      ).map((warning) => warning.code),
-    ).toEqual(['COUNT_DELTA'])
+    const warnings = compareCounts(
+      {
+        segments: 140,
+        intersections: 50,
+        inferredCandidates: 20,
+        signOverrides: 10,
+        signOverrideUnmatchedNamedCount: 2,
+      },
+      {
+        segments: 100,
+        intersections: 50,
+        inferredCandidates: 20,
+        signOverrides: 10,
+        signOverrideUnmatchedNamedCount: 0,
+      },
+      {
+        segments: 20,
+        intersections: 20,
+        inferredCandidates: 20,
+        signOverrides: 20,
+      },
+    )
+    expect(warnings.map((warning) => warning.code)).toEqual([
+      'COUNT_DELTA',
+      'COUNT_DELTA',
+    ])
+    expect(warnings.map((warning) => warning.metric?.label)).toEqual([
+      'segments',
+      'signOverrideUnmatchedNamedCount',
+    ])
   })
 
   it('flags the worst tier distribution delta beyond the threshold', () => {

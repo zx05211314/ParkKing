@@ -21,6 +21,11 @@ const readJson = async <T>(filePath: string): Promise<T> => {
   return JSON.parse(raw) as T
 }
 
+type DatasetMetaForPublish = Record<string, unknown> & {
+  files?: Record<string, { sha256: string }>
+  totalBytes?: number
+}
+
 export const publishPackAtomic = async (params: {
   sourceDir: string
   destDir: string
@@ -32,7 +37,7 @@ export const publishPackAtomic = async (params: {
 }): Promise<PublishResult> => {
   const { sourceDir, destDir } = params
   const metaPath = path.resolve(sourceDir, 'dataset_meta.json')
-  const meta = await readJson<Record<string, unknown>>(metaPath)
+  const meta = await readJson<DatasetMetaForPublish>(metaPath)
   const datasetHash = (meta.datasetHash as string) ?? 'unknown'
 
   const publishedAt = new Date().toISOString()
@@ -43,9 +48,9 @@ export const publishPackAtomic = async (params: {
   }
   const updatedMetaRaw = `${JSON.stringify(updatedMeta, null, 2)}\n`
   const metaSha256 = crypto.createHash('sha256').update(updatedMetaRaw).digest('hex')
-  const files = updatedMeta.files as Record<string, { sha256: string }>
+  const files = meta.files
   const packSha256 = files ? computePackSha256(files) : ''
-  const totalBytes = Number(updatedMeta.totalBytes ?? 0)
+  const totalBytes = Number(meta.totalBytes ?? 0)
 
   const baseDir = path.dirname(destDir)
   const districtId = path.basename(destDir)
