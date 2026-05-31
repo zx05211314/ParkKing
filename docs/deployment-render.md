@@ -95,6 +95,20 @@ checks that all gate JSON files point at the same release ID. Use it for normal
 local release handoff checks; the lower-level commands are still useful when
 debugging one gate at a time.
 
+After the local handoff is ready, print the external publish/deploy status and
+the exact next commands:
+
+```powershell
+npm run ops:release-handoff-status
+```
+
+This reads `.tmp/render-deployment-handoff.json` and
+`.tmp/release-handoff-readiness.json`, checks whether the expected GitHub
+Release tag is already published, and prints the dry-run/dispatch commands for
+`Release Data Package` and `Render Live Verify`. Pass `--app-url` or set
+`PARKKING_RENDER_APP_URL` to render the final live verification command with a
+real Render service URL.
+
 The deploy readiness gate installs the latest `dist/releases` zip/manifest pair into
 `.tmp/deploy-readiness/public/data/generated`, checks that built static data in
 `dist/data/generated` has the same reviewed district hashes, runs reviewed pack
