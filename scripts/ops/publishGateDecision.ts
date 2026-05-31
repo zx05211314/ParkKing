@@ -3,7 +3,7 @@ export {
 } from './publishGateBaselineAdopt'
 export type {
   PublishGateBaselineAdoptState,
-} from './publishGateBaselineAdopt'
+} from './publishGateBaselineAdoptState'
 export {
   resolvePublishGateBootstrapState,
 } from './publishGateBootstrapDecision'

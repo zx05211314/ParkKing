@@ -249,7 +249,7 @@ const runCheck = async <T>(
   }
 }
 
-const checkBlocker = <T>(check: P1ReleaseReadinessCheck<T>) => {
+const checkBlocker = (check: P1ReleaseReadinessCheck<unknown>) => {
   if (check.pass || !check.required) {
     return null
   }
@@ -392,7 +392,7 @@ export const runP1ReleaseReadiness = async (
           }),
         (summary) => summary.pass,
       )
-  const checks = [
+  const checks: ReadonlyArray<P1ReleaseReadinessCheck<unknown>> = [
     p0Readiness,
     districtMatrix,
     bundleBudget,

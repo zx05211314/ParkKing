@@ -9,6 +9,7 @@ import {
   buildPublishGateTotals,
   resolvePublishGateExitCode,
 } from './publishGateSummary'
+import type { PublishGateCheckedDistrict } from './publishGateSummary'
 import { resolvePublishGateRuntimeOptions } from './publishGateRuntimeOptions'
 import type { PublishGateOptions } from './publishGateTypes'
 
@@ -24,11 +25,12 @@ export const loadPublishGateExecutionState = async (options: PublishGateOptions)
     publishedRootDir: runtime.publishedRootDir,
   })
 
-  let checkedDistricts = await validatePublishGateDistricts(districts, {
-    datasetRootDir: runtime.datasetRootDir,
-    publishedRootDir: runtime.publishedRootDir,
-    strictDiff: runtime.strictDiff,
-  })
+  let checkedDistricts: PublishGateCheckedDistrict[] =
+    await validatePublishGateDistricts(districts, {
+      datasetRootDir: runtime.datasetRootDir,
+      publishedRootDir: runtime.publishedRootDir,
+      strictDiff: runtime.strictDiff,
+    })
 
   const baselineAdoptState = applyPublishGateBaselineAdopt({
     checkedDistricts,
