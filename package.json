@@ -126,6 +126,7 @@
     "ops:release-data-summary": "tsx scripts/ops/releaseDataWorkflow.ts --mode summarize",
     "ops:release-data-url-smoke": "tsx scripts/ops/releaseDataWorkflow.ts --mode smoke-urls",
     "ops:release-data-dispatch": "tsx scripts/ops/dispatchReleaseDataWorkflow.ts",
+    "ops:release-data-publish-handoff": "tsx scripts/ops/publishReleaseDataFromHandoff.ts",
     "ops:render-deployment-handoff": "tsx scripts/ops/renderDeploymentHandoff.ts --out .tmp/render-deployment-handoff.md --json-out .tmp/render-deployment-handoff.json",
     "ops:release-handoff-readiness": "tsx scripts/ops/releaseHandoffReadiness.ts",
     "ops:release-handoff-status": "tsx scripts/ops/releaseHandoffStatus.ts",

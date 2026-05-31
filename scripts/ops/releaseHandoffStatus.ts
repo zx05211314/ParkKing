@@ -51,6 +51,7 @@ export interface ReleaseHandoffStatusCommands {
   releaseDispatch: string
   releasePublishEnv: string[]
   releasePublish: string
+  releasePublishFromHandoff: string
   renderLiveVerifyDryRun: string
   renderLiveVerify: string
 }
@@ -256,6 +257,7 @@ const buildCommands = (params: {
       `$env:GITHUB_SHA=(git rev-parse ${quoteCommandValue(params.ref)})`,
     ],
     releasePublish: 'npm run ops:release-data-publish',
+    releasePublishFromHandoff: `npm run ops:release-data-publish-handoff -- --ref ${params.ref}`,
     renderLiveVerifyDryRun: `npm run ops:render-live-verify-dispatch -- --repo ${params.repository} --ref ${params.ref} --app-url ${quoteCommandValue(appUrl)} --manifest-url ${params.manifestUrl} --dry-run`,
     renderLiveVerify: `npm run ops:render-live-verify-dispatch -- --repo ${params.repository} --ref ${params.ref} --app-url ${quoteCommandValue(appUrl)} --manifest-url ${params.manifestUrl}`,
   }
@@ -338,6 +340,7 @@ export const buildReleaseHandoffStatus = async (
             'Publish GitHub Release assets with GitHub Actions -> Release Data Package.',
             `Preview dispatch payload: ${commands.releaseDispatchDryRun}`,
             `Dispatch with token: ${commands.releaseDispatch}`,
+            `Or publish current local handoff assets with token: ${commands.releasePublishFromHandoff}`,
             `Or publish current local artifacts with REST API: ${commands.releasePublishEnv.join('; ')}; ${commands.releasePublish}`,
           ]
         : !appUrl
@@ -411,6 +414,7 @@ export const renderReleaseHandoffStatus = (
       (command) => `- Release publish env: ${command}`,
     ),
     `- Release publish: ${result.commands.releasePublish}`,
+    `- Release publish from handoff: ${result.commands.releasePublishFromHandoff}`,
     `- Render live verify dry-run: ${result.commands.renderLiveVerifyDryRun}`,
     `- Render live verify: ${result.commands.renderLiveVerify}`,
     '',
