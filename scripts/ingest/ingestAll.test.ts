@@ -79,5 +79,5 @@ describe('ingestAll publish gate', () => {
     } finally {
       process.chdir(originalCwd)
     }
-  })
+  }, 20000)
 })

@@ -12,22 +12,99 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '24.x'
           cache: 'npm'
       - name: Install
         run: npm ci
       - name: Validate configs
         run: npm run ops:validate-configs
+      - name: Validate reviewed answer cases
+        run: npm run ops:validate-answer-cases
+      - name: Validate Render blueprint
+        run: npm run ops:render-blueprint-check
+      - name: Lint
+        run: npm run lint -- --max-warnings=0
+      - name: Typecheck deploy ops helpers
+        run: npm run ops:typecheck-deploy
+      - name: Build
+        run: npm run build
+      - name: Bundle budget
+        run: npm run ops:bundle-budget
+      - name: Optional P1 release package
+        run: npm run ops:ci-optional-p1-release
+      - name: Summarize P1 release package
+        run: npm run ops:append-workflow-summary -- --append-file .tmp/p1-release-package.md
+      - name: Upload P1 release package
+        uses: actions/upload-artifact@v4
+        with:
+          name: p1-release-package
+          path: |
+            dist/releases/*.zip
+            dist/releases/release_manifest_*.json
+            .tmp/p1-release-package.md
+            .tmp/p1-release-package.json
+          if-no-files-found: error
       - name: Test
-        run: |
-          set -o pipefail
-          npm test 2>&1 | tee vitest.log
+        run: npm run ops:run-with-log -- --log vitest.log -- npm test
       - name: Ingest CI fixtures
         env:
           PARKKING_LATEST_NAME: LATEST_CI
+          PARKKING_OVERRIDE_REPORTS_DIR: .tmp/ci-overrides
         run: npm run ingest:all -- --configs "configs/ci-fixtures.json" --allowWarn --override "ci"
       - name: Smoke latest pack
         run: npm run ops:smoke-latest -- --latestName LATEST_CI
+      - name: Smoke parking answers
+        run: npm run ops:smoke-generated-packs -- --root public/data/generated --registry public/data/generated/registry.json --fixture-thresholds
+      - name: Smoke parking answer API
+        run: npm run ops:smoke-parking-answer-apis -- --root public/data/generated --registry public/data/generated/registry.json --fixture-thresholds --timeout-ms 25000
+      - name: Smoke API service probes
+        run: npm run ops:smoke-api-services -- --start-preview --timeout-ms 25000 --sync-issue-roundtrip
+      - name: Inventory generated packs
+        run: npm run ops:generated-pack-inventory -- --root public/data/generated
+      - name: P0 review gate report
+        if: always()
+        run: npm run ops:p0-review-gate-report -- --district daan,zhongshan
+      - name: Summarize P0 review gate
+        if: always()
+        run: npm run ops:append-workflow-summary -- --append-file .tmp/p0-review-gate.md
+      - name: Upload P0 review gate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p0-review-gate
+          path: |
+            .tmp/p0-review-gate.md
+            .tmp/p0-review-gate.json
+          if-no-files-found: warn
+      - name: P2 human review handoff packages
+        if: always()
+        run: npm run ops:p2-human-review-handoff -- --report-only
+      - name: P2 status report
+        if: always()
+        run: npm run ops:p2-status -- --skip-p1 --report-only
+      - name: P2 review diagnostics
+        if: always()
+        run: npm run ops:p2-review-diagnostics -- --report-only
+      - name: Summarize P2 status
+        if: always()
+        run: npm run ops:append-workflow-summary -- --append-file .tmp/p2-human-review-handoff.md --append-file .tmp/p2-status.md --append-file .tmp/p2-review-diagnostics.md
+      - name: Upload P2 status artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-status
+          path: |
+            .tmp/p2-human-review-handoff.md
+            .tmp/p2-human-review-handoff.json
+            .tmp/p2-status.md
+            .tmp/p2-status.json
+            .tmp/p2-review-diagnostics.md
+            .tmp/p2-review-diagnostics.json
+            .tmp/p2-review-priority.md
+            .tmp/p2-review-priority.csv
+            .tmp/p2-review-priority.json
+            .tmp/human-review-packages/**
+          if-no-files-found: warn
       - name: Upload vitest log
         if: failure()
         uses: actions/upload-artifact@v4

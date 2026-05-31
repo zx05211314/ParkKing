@@ -1,0 +1,86 @@
+{
+  "baselineCreatedAt": "2026-05-23T15:39:00.795Z",
+  "baselineDatasetHash": "4c43dbee6a7ce5ca1737bcde149ae7822bb019df2784a1b5c5258bdcd3dfa411",
+  "baselineSchemaVersion": 1,
+  "baselineSourceMetaSha256": "1e66fe34ff8033134ace0616dc3f0253fa464f9868724b666b88845907cbe6b3",
+  "baselineDistrictName": "Zhongshan",
+  "generatedAt": "2026-05-23T15:39:00.796Z",
+  "districtId": "zhongshan",
+  "datasetHash": "4c43dbee6a7ce5ca1737bcde149ae7822bb019df2784a1b5c5258bdcd3dfa411",
+  "counts": {
+    "segments": 15071,
+    "intersections": 267,
+    "inferredCandidates": 2758,
+    "signOverrides": 10,
+    "signOverrideUnmatchedNamedCount": 0
+  },
+  "distributions": {
+    "day": {
+      "RED|NO_STOP": 28730,
+      "YELLOW|TEMP_STOP": 4872,
+      "GREEN|PARK": 5,
+      "YELLOW|PARK": 2
+    },
+    "night": {
+      "RED|NO_STOP": 28730,
+      "GREEN|PARK": 479,
+      "YELLOW|PARK": 4400
+    }
+  },
+  "performance": {
+    "day": {
+      "evalFirstMsMedian": 2236,
+      "evalSecondMsMedian": 2287
+    },
+    "night": {
+      "evalFirstMsMedian": 2361,
+      "evalSecondMsMedian": 2238
+    }
+  },
+  "reasonCodes": {
+    "day": {
+      "top": {
+        "DATA_FRESHNESS_STALE": 23480,
+        "RULE_RED_NO_STOP": 22412,
+        "RULE_YELLOW_DAY_NO_PARK": 11185,
+        "DATA_FRESHNESS_UNKNOWN": 10129,
+        "COVERAGE_LOW": 10113,
+        "INFERRED_CAPPED": 10113,
+        "INFERRED_RISK_HIGH_ZONE_DENSITY": 9209,
+        "ZONE_CROSSWALK": 8852,
+        "ZONE_HYDRANT": 5656,
+        "ZONE_INTERSECTION": 1582,
+        "ZONE_BUS_STOP": 683,
+        "PARKING_SPACE_EVIDENCE": 664,
+        "OVERRIDE_APPLIED": 12,
+        "OVERRIDE_STATUS_LEGAL": 7,
+        "OVERRIDE_STATUS_ILLEGAL": 5
+      },
+      "other": 0,
+      "total": 33609,
+      "coveragePct": 100
+    },
+    "night": {
+      "top": {
+        "DATA_FRESHNESS_STALE": 23480,
+        "RULE_RED_NO_STOP": 22412,
+        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 11185,
+        "DATA_FRESHNESS_UNKNOWN": 10129,
+        "COVERAGE_LOW": 10113,
+        "INFERRED_CAPPED": 10113,
+        "INFERRED_RISK_HIGH_ZONE_DENSITY": 9209,
+        "ZONE_CROSSWALK": 8852,
+        "ZONE_HYDRANT": 5656,
+        "ZONE_INTERSECTION": 1582,
+        "ZONE_BUS_STOP": 683,
+        "PARKING_SPACE_EVIDENCE": 664,
+        "OVERRIDE_APPLIED": 12,
+        "OVERRIDE_STATUS_LEGAL": 7,
+        "OVERRIDE_STATUS_ILLEGAL": 5
+      },
+      "other": 0,
+      "total": 33609,
+      "coveragePct": 100
+    }
+  }
+}

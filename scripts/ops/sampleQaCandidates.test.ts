@@ -140,6 +140,57 @@ describe('sampleQaCandidates', () => {
     expect(parsed.topN).toBe(7)
   })
 
+  it('parses review sampling strategy and custom evaluation time', () => {
+    const parsed = parseArgs([
+      'node',
+      'sampleQaCandidates',
+      '--district',
+      'demo',
+      '--strategy',
+      'review',
+      '--hhmm',
+      '21:00',
+    ])
+
+    expect(parsed.strategy).toBe('review')
+    expect(parsed.hhmm).toBe('21:00')
+  })
+
+  it('parses explicit sidecar output paths', () => {
+    const parsed = parseArgs([
+      'node',
+      'sampleQaCandidates',
+      '--district',
+      'demo',
+      '--manifestOut',
+      '.tmp/demo.manifest.json',
+      '--reviewDocOut',
+      '.tmp/demo.review.md',
+    ])
+
+    expect(parsed.manifestOutPath).toBe('.tmp/demo.manifest.json')
+    expect(parsed.reviewDocOutPath).toBe('.tmp/demo.review.md')
+  })
+
+  it('parses explicit dataset roots', () => {
+    const parsed = parseArgs([
+      'node',
+      'sampleQaCandidates',
+      '--district',
+      'demo',
+      '--dataset-root',
+      'data/generated',
+      '--datasetRoots',
+      'public/data/generated,.tmp/generated',
+    ])
+
+    expect(parsed.datasetRoots).toEqual([
+      'data/generated',
+      'public/data/generated',
+      '.tmp/generated',
+    ])
+  })
+
   it('writes deterministic CSV with reason keys and maps URLs', async () => {
     const base = await fs.mkdtemp(path.join(tmpdir(), 'qa-sampler-test-'))
     const publicRoot = path.join(base, 'public', 'data', 'generated')
@@ -149,7 +200,7 @@ describe('sampleQaCandidates', () => {
     const outA = path.join(base, 'out-a.csv')
     const outB = path.join(base, 'out-b.csv')
 
-    await sampleQaCandidates({
+    const resultA = await sampleQaCandidates({
       districtId: 'demo',
       topN: 5,
       outPath: outA,
@@ -168,8 +219,18 @@ describe('sampleQaCandidates', () => {
 
     const csvA = await fs.readFile(outA, 'utf-8')
     const csvB = await fs.readFile(outB, 'utf-8')
+    const manifestA = JSON.parse(
+      await fs.readFile(path.join(base, 'out-a.manifest.json'), 'utf-8'),
+    ) as { dataset: { datasetHash: string }; rows: { total: number } }
+    const reviewDocA = await fs.readFile(path.join(base, 'out-a.review.md'), 'utf-8')
 
     expect(csvA).toBe(csvB)
+    expect(resultA[0]?.manifestPath).toMatch(/out-a\.manifest\.json$/)
+    expect(resultA[0]?.reviewDocPath).toMatch(/out-a\.review\.md$/)
+    expect(manifestA.dataset.datasetHash).toBe('demo-hash')
+    expect(manifestA.rows.total).toBeGreaterThan(0)
+    expect(reviewDocA).toContain('# QA Review Packet: demo')
+    expect(reviewDocA).toContain('Verdict: LEGAL / ILLEGAL / UNCLEAR')
     expect(csvA).toContain('topReasons[]')
     expect(csvA).toMatch(/https:\/\/www\.google\.com\/maps\?q=-?\d+\.\d{6},-?\d+\.\d{6}/)
     expect(csvA).toMatch(/RULE_[A-Z_]+/)

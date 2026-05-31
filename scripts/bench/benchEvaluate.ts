@@ -1,5 +1,12 @@
 import { performance } from 'node:perf_hooks'
-import type { FeatureCollection, LineString, MultiLineString, Point } from 'geojson'
+import { fileURLToPath } from 'node:url'
+import type {
+  FeatureCollection,
+  Geometry,
+  LineString,
+  MultiLineString,
+  Point,
+} from 'geojson'
 import {
   applySignOverrides,
   buildInferredSegmentsFromFeature,
@@ -7,6 +14,10 @@ import {
   type DatasetMeta,
 } from '../../src/data/segmentBuilder'
 import { loadGeoJson } from '../../src/data/loaders/loadGeoJson.node'
+import {
+  countParkingSpacesNearSegments,
+  type ParkingSpaceCollection,
+} from '../../src/data/parkingSpaces'
 import { evaluateSegmentWithZones } from '../../src/domain/rules/evaluateSegment'
 import { resetClipCacheStats, getClipCacheStats } from '../../src/domain/geometry/clipCache'
 import { getZoneIndex } from '../../src/domain/zones/zoneIndex'
@@ -30,6 +41,13 @@ const computeDistribution = (segments: { tier: string; allowedNow: string }[]) =
   })
   return distribution
 }
+
+const emptyFeatureCollection = <
+  TGeometry extends Geometry = Geometry,
+>(): FeatureCollection<TGeometry> => ({
+  type: 'FeatureCollection',
+  features: [],
+})
 
 export interface BenchmarkResult {
   datasetHash: string
@@ -63,6 +81,34 @@ export interface BenchmarkResult {
   }
 }
 
+export const buildBenchmarkSegments = (params: {
+  redYellow: FeatureCollection<LineString | MultiLineString>
+  parkingSpaces: ParkingSpaceCollection
+  signOverrides: FeatureCollection
+  inferredCandidates: FeatureCollection<LineString | MultiLineString>
+  meta: DatasetMeta
+}) => {
+  const rawSegments = params.redYellow.features.flatMap((feature, index) =>
+    buildSegmentsFromFeature(feature, index, params.meta),
+  )
+  const inferredSegments = params.inferredCandidates.features.flatMap((feature, index) =>
+    buildInferredSegmentsFromFeature(feature, index, params.meta),
+  )
+  const matchTolerance = params.meta?.signOverrideMatchToleranceMeters ?? 15
+  const segmentsWithOverrides = applySignOverrides(
+    [...rawSegments, ...inferredSegments],
+    params.signOverrides,
+    {
+      matchToleranceMeters: matchTolerance,
+    },
+  )
+
+  return countParkingSpacesNearSegments(
+    segmentsWithOverrides,
+    params.parkingSpaces,
+  )
+}
+
 export const runBenchmark = async (
   datasetDir: string,
   hhmm: string,
@@ -72,6 +118,7 @@ export const runBenchmark = async (
     redYellow,
     busStops,
     hydrants,
+    parkingSpaces,
     intersections,
     crosswalks,
     signOverrides,
@@ -84,33 +131,28 @@ export const runBenchmark = async (
     ),
     loadGeoJson<FeatureCollection<Point>>('bus_stops.geojson', { baseDir: datasetDir }),
     loadGeoJson<FeatureCollection<Point>>('hydrants.geojson', { baseDir: datasetDir }),
+    loadGeoJson<ParkingSpaceCollection>('parking_spaces.geojson', { baseDir: datasetDir }),
     loadGeoJson<FeatureCollection<Point>>('intersections.geojson', { baseDir: datasetDir }),
     loadGeoJson<FeatureCollection>('crosswalks.geojson', { baseDir: datasetDir }),
     loadGeoJson<FeatureCollection>('sign_overrides.geojson', {
       baseDir: datasetDir,
-    }).catch(() => ({ type: 'FeatureCollection', features: [] })),
+    }).catch(() => emptyFeatureCollection()),
     loadGeoJson<FeatureCollection<LineString | MultiLineString>>(
       'candidates_inferred.geojson',
       { baseDir: datasetDir },
-    ).catch(() => ({ type: 'FeatureCollection', features: [] })),
+    ).catch(() => emptyFeatureCollection<LineString | MultiLineString>()),
     loadGeoJson<DatasetMeta>('dataset_meta.json', { baseDir: datasetDir }),
   ])
   const loadMs = performance.now() - loadStart
 
   const segmentStart = performance.now()
-  const rawSegments = redYellow.features.flatMap((feature, index) =>
-    buildSegmentsFromFeature(feature, index, meta),
-  )
-  const inferredSegments = inferredCandidates.features.flatMap((feature, index) =>
-    buildInferredSegmentsFromFeature(feature, index, meta),
-  )
-  const matchTolerance = meta?.signOverrideMatchToleranceMeters ?? 15
-  const segments = [
-    ...applySignOverrides(rawSegments, signOverrides, {
-      matchToleranceMeters: matchTolerance,
-    }),
-    ...inferredSegments,
-  ]
+  const segments = buildBenchmarkSegments({
+    redYellow,
+    parkingSpaces,
+    signOverrides,
+    inferredCandidates,
+    meta,
+  })
   const segmentMs = performance.now() - segmentStart
 
   const zoneStart = performance.now()
@@ -211,7 +253,9 @@ const main = async () => {
   console.log(JSON.stringify(report, null, 2))
 }
 
-main().catch((error) => {
-  console.error(error)
-  process.exit(1)
-})
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })
+}

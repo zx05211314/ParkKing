@@ -5,8 +5,14 @@ const REASON_TEXT: Record<ReasonCode, string> = {
   ZONE_HYDRANT: 'zone restriction: hydrant',
   ZONE_INTERSECTION: 'zone restriction: intersection',
   ZONE_CROSSWALK: 'zone restriction: crosswalk',
-  OVERRIDE_APPLIED: 'sign override applied',
-  OVERRIDE_LOW_CONFIDENCE: 'override confidence not high',
+  PARKING_SPACE_EVIDENCE: 'official marked parking spaces mapped along this curb',
+  OVERRIDE_APPLIED: 'reviewed sign evidence applied to this curb',
+  OVERRIDE_LOW_CONFIDENCE: 'reviewed sign evidence has low confidence',
+  OVERRIDE_STATUS_LEGAL:
+    'reviewed sign evidence confirms parking is allowed here',
+  OVERRIDE_STATUS_ILLEGAL:
+    'reviewed sign evidence confirms parking is not allowed here',
+  OVERRIDE_STATUS_UNCLEAR: 'reviewed sign evidence is unclear',
   INFERRED_CAPPED: 'Inferred candidate: not officially marked; verify signage on-site.',
   INFERRED_RISK_NARROW_ROAD: 'inferred risk: narrow road',
   INFERRED_RISK_ARTERIAL: 'inferred risk: arterial road',

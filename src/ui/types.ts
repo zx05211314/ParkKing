@@ -5,6 +5,7 @@ export type Confidence = 'HIGH' | 'MEDIUM' | 'LOW'
 export type ConfidenceLevel = 'HIGH' | 'MED' | 'LOW'
 export type SignConfidence = ConfidenceLevel
 export type SegmentSourceType = 'CURB' | 'INFERRED'
+export type SignOverrideStatus = 'LEGAL' | 'ILLEGAL' | 'UNCLEAR'
 
 export interface TimeWindow {
   label: string
@@ -16,6 +17,7 @@ export interface SignOverride {
   timeWindows: TimeWindow[]
   note: string
   confidence: SignConfidence
+  status?: SignOverrideStatus
   source?: 'segmentId' | 'spatial' | 'dataset'
   verifiedAt?: string
 }
@@ -26,6 +28,7 @@ export interface Segment {
   curbMarking: CurbMarking
   confidence: Confidence
   path: [number, number][]
+  parkingSpaceCount?: number
   signOverride?: SignOverride
   sourceReliability?: ConfidenceLevel
   dataFreshnessDays?: number | null

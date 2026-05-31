@@ -11,13 +11,13 @@ const PACK_FILES = {
     'intersections_report.json',
   ],
   optional: [
+    'parking_spaces.geojson',
     'crosswalks.geojson',
     'sign_overrides.geojson',
     'candidates_inferred.geojson',
     'overrides_applied.geojson',
   ],
 }
-const PACK_FILE_LIST = [...PACK_FILES.required, ...PACK_FILES.optional]
 
 export interface PackValidationResult {
   valid: boolean
@@ -178,7 +178,7 @@ export const validateMeta = (
   if (!files) {
     errors.push('files is required')
   } else {
-    PACK_FILE_LIST.forEach((fileName) => {
+    PACK_FILES.required.forEach((fileName) => {
       const entry = files[fileName]
       if (!entry) {
         errors.push(`files.${fileName} is required`)
@@ -191,6 +191,20 @@ export const validateMeta = (
         errors.push(`files.${fileName}.bytes is required`)
       } else if (PACK_FILES.required.includes(fileName) && entry.bytes <= 0) {
         errors.push(`files.${fileName}.bytes must be > 0`)
+      }
+    })
+
+    PACK_FILES.optional.forEach((fileName) => {
+      const entry = files[fileName]
+      if (!entry) {
+        warnings.push(`files.${fileName} missing; optional layer unavailable`)
+        return
+      }
+      if (typeof entry.sha256 !== 'string' || entry.sha256.length === 0) {
+        errors.push(`files.${fileName}.sha256 is required`)
+      }
+      if (typeof entry.bytes !== 'number') {
+        errors.push(`files.${fileName}.bytes is required`)
       }
     })
   }

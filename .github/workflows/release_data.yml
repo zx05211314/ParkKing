@@ -1,0 +1,111 @@
+name: Release Data Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      configsGlob:
+        description: Config glob to ingest before packaging
+        required: true
+        default: configs/prod/*.json
+      allowWarn:
+        description: Allow WARN anomalies with override
+        required: false
+        type: boolean
+        default: false
+      overrideReason:
+        description: Override reason when allowWarn=true
+        required: false
+      tag:
+        description: Optional GitHub Release tag. Defaults to data-<release-id>.
+        required: false
+      latest:
+        description: Mark the data release as latest
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release-data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+      - name: Install
+        run: npm ci
+      - name: Validate Render blueprint
+        run: npm run ops:render-blueprint-check
+      - name: Fetch production sources
+        if: ${{ startsWith(inputs.configsGlob, 'configs/prod/') }}
+        run: npm run ops:fetch-sources -- --manifest configs/sources.prod.taipei.json
+      - name: Unpack production sources
+        if: ${{ startsWith(inputs.configsGlob, 'configs/prod/') }}
+        run: npm run ops:unpack-sources -- --sourceDir data/sources/shared
+      - name: Preflight sign overrides
+        run: npm run ops:preflight-sign-overrides:batch -- --configs "${{ inputs.configsGlob }}" --out-dir .tmp/sign-override-preflight
+      - name: Ingest and publish
+        env:
+          CONFIGS_GLOB: ${{ inputs.configsGlob }}
+          ALLOW_WARN: ${{ inputs.allowWarn }}
+          OVERRIDE_REASON: ${{ inputs.overrideReason }}
+        run: npm run ops:workflow-publish-ingest
+      - name: Build production UI
+        run: npm run build
+      - name: Bundle budget
+        run: npm run ops:bundle-budget
+      - name: Smoke reviewed UI answers
+        run: npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --reviewed --timeout-ms 25000
+      - name: Smoke reviewed MAP UI answers
+        run: npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --reviewed --view MAP --limit 1 --timeout-ms 25000
+      - name: P3 reviewed release readiness
+        run: npm run ops:p3-release-readiness
+      - name: Deploy readiness
+        run: npm run ops:deploy-readiness
+      - name: Render deployment handoff
+        env:
+          PARKKING_RELEASE_TAG_INPUT: ${{ inputs.tag }}
+        run: npm run ops:render-deployment-handoff
+      - name: Resolve release metadata
+        id: release_meta
+        env:
+          PARKKING_RELEASE_TAG_INPUT: ${{ inputs.tag }}
+        run: npm run ops:release-data-meta
+      - name: Publish GitHub Release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PARKKING_RELEASE_ID: ${{ steps.release_meta.outputs.release_id }}
+          PARKKING_RELEASE_TAG: ${{ steps.release_meta.outputs.tag }}
+          PARKKING_RELEASE_LATEST: ${{ inputs.latest }}
+        run: npm run ops:release-data-publish
+      - name: Smoke release asset URLs
+        env:
+          PARKKING_RELEASE_ID: ${{ steps.release_meta.outputs.release_id }}
+          PARKKING_RELEASE_TAG: ${{ steps.release_meta.outputs.tag }}
+          PARKKING_RELEASE_DOWNLOAD_TOKEN: ${{ github.token }}
+        run: npm run ops:release-data-url-smoke
+      - name: Summarize release URLs
+        env:
+          PARKKING_RELEASE_ID: ${{ steps.release_meta.outputs.release_id }}
+          PARKKING_RELEASE_TAG: ${{ steps.release_meta.outputs.tag }}
+        run: npm run ops:release-data-summary
+      - name: Upload release readiness artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-data-package
+          path: |
+            dist/releases/*.zip
+            dist/releases/release_manifest_*.json
+            .tmp/p3-release-readiness.md
+            .tmp/p3-release-readiness.json
+            .tmp/deploy-readiness.md
+            .tmp/deploy-readiness.json
+            .tmp/render-deployment-handoff.md
+            .tmp/render-deployment-handoff.json
+          if-no-files-found: warn

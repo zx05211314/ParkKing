@@ -1,0 +1,125 @@
+services:
+  - type: web
+    name: parkking
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run ops:install-release-package -- --require-manifest && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/parking-answer/ready
+    envVars:
+      - key: NODE_VERSION
+        value: 24.16.0
+      - key: NODE_ENV
+        value: production
+      - key: PARKKING_APP_HOST
+        value: 0.0.0.0
+      - key: PARKKING_APP_STATIC_DIR
+        value: dist
+      - key: PARKKING_APP_SPA_FALLBACK
+        value: "true"
+      - key: PARKKING_APP_HEALTH_PATH
+        value: /api/app/health
+      - key: PARKKING_APP_READY_PATH
+        value: /api/app/ready
+      - key: PARKKING_APP_ENABLE_GEOCODER
+        value: "true"
+      - key: PARKKING_APP_ENABLE_ROUTING
+        value: "true"
+      - key: PARKKING_APP_ENABLE_PARKING_ANSWER
+        value: "true"
+      - key: PARKKING_APP_ENABLE_SYNC
+        value: "true"
+      - key: PARKKING_RELEASE_PACKAGE_URL
+        sync: false
+      - key: PARKKING_RELEASE_MANIFEST_URL
+        sync: false
+      - key: PARKKING_RELEASE_DOWNLOAD_TOKEN
+        sync: false
+      - key: PARKKING_RELEASE_DOWNLOAD_AUTH_HEADER
+        sync: false
+      - key: PARKKING_RELEASE_REQUIRE_MANIFEST
+        value: "true"
+      - key: PARKKING_RELEASE_PACKAGE_OUT_ROOT
+        value: public/data/generated
+      - key: PARKKING_RELEASE_PACKAGE_TMP_DIR
+        value: .tmp/release-install
+      - key: PARKKING_RELEASE_PACKAGE_CLEAN
+        value: "true"
+      - key: VITE_MAP_RASTER_URL
+        value: https://tile.openstreetmap.org/{z}/{x}/{y}.png
+      - key: VITE_MAP_ATTRIBUTION
+        value: "&copy; OpenStreetMap contributors"
+      - key: VITE_MAP_RASTER_MAX_ZOOM
+        value: "19"
+      - key: VITE_MAP_RASTER_TILE_SIZE
+        value: "256"
+      - key: VITE_GEOCODER_URL
+        value: /api/geocode
+      - key: VITE_ROUTING_URL
+        value: /api/route
+      - key: VITE_PARKING_ANSWER_URL
+        value: /api/parking-answer
+      - key: VITE_SYNC_BASE_URL
+        value: /api/sync
+      - key: VITE_SYNC_BOOTSTRAP_PATH
+        value: bootstrap
+      - key: VITE_SYNC_STATUS_PATH
+        value: status
+      - key: VITE_SYNC_READINESS_PATH
+        value: ready
+      - key: VITE_SYNC_SAVED_PLANS_PATH
+        value: saved-plans
+      - key: VITE_SYNC_REPORTS_PATH
+        value: reports
+      - key: VITE_SYNC_ISSUES_PATH
+        value: issues
+      - key: PARKKING_GEOCODER_PRIMARY_URL
+        value: https://nominatim.openstreetmap.org/search
+      - key: PARKKING_GEOCODER_COUNTRY_CODES
+        value: tw
+      - key: PARKKING_GEOCODER_LIMIT
+        value: "5"
+      - key: PARKKING_GEOCODER_CACHE_TTL_MS
+        value: "21600000"
+      - key: PARKKING_GEOCODER_CACHE_FILE
+        value: .tmp/geocoder-cache.json
+      - key: PARKKING_GEOCODER_USER_AGENT
+        value: ParkKing/1.0 (+https://github.com/zx05211314/ParkKing)
+      - key: PARKKING_GEOCODER_PATH
+        value: /api/geocode
+      - key: PARKKING_ROUTING_PRIMARY_URL
+        value: https://router.project-osrm.org
+      - key: PARKKING_ROUTING_CACHE_TTL_MS
+        value: "1800000"
+      - key: PARKKING_ROUTING_CACHE_FILE
+        value: .tmp/route-cache.json
+      - key: PARKKING_ROUTING_USER_AGENT
+        value: ParkKing/1.0 (+https://github.com/zx05211314/ParkKing)
+      - key: PARKKING_ROUTING_PATH
+        value: /api/route
+      - key: PARKKING_PARKING_ANSWER_PATH
+        value: /api/parking-answer
+      - key: PARKKING_PARKING_ANSWER_DATASET_ROOT
+        value: public/data/generated
+      - key: PARKKING_PARKING_ANSWER_DEFAULT_DISTRICT
+        value: xinyi
+      - key: PARKKING_PARKING_ANSWER_DEFAULT_HHMM
+        value: "21:00"
+      - key: PARKKING_PARKING_ANSWER_ALLOW_DATASET_DIR
+        value: "false"
+      - key: PARKKING_SYNC_PATH
+        value: /api/sync
+      - key: PARKKING_SYNC_FILE
+        value: .tmp/sync-service.json
+      - key: PARKKING_SYNC_DEFAULT_SCOPE
+        value: default
+      - key: PARKKING_SYNC_MAX_BODY_BYTES
+        value: "1048576"
+      - key: PARKKING_SYNC_MAX_ISSUE_REPORTS
+        value: "1000"
+      - key: PARKKING_SYNC_CORS_ORIGINS
+        value: "*"
+      - key: PARKKING_SYNC_WRITE_RATE_LIMIT_WINDOW_MS
+        value: "60000"
+      - key: PARKKING_SYNC_WRITE_RATE_LIMIT_MAX
+        value: "120"

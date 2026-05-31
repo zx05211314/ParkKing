@@ -74,4 +74,37 @@ describe('district pack validation', () => {
     expect(result.errors).toContain('latest.datasetHash is required')
     expect(result.errors).toContain('latest.publishedAt is required')
   })
+
+  it('warns when optional pack files are absent from meta', () => {
+    const result = validateMeta({
+      schemaVersion: PACK_SCHEMA_VERSION,
+      districtId: 'xinyi',
+      datasetHash: 'hash',
+      generatedAt: '2026-02-02T00:00:00Z',
+      districtName: 'Xinyi',
+      publishMode: 'atomic',
+      publishedAt: '2026-02-02T00:00:00Z',
+      files: {
+        'red_yellow.geojson': { sha256: 'a', bytes: 10 },
+        'bus_stops.geojson': { sha256: 'b', bytes: 10 },
+        'hydrants.geojson': { sha256: 'c', bytes: 10 },
+        'intersections.geojson': { sha256: 'd', bytes: 10 },
+        'intersections_report.json': { sha256: 'e', bytes: 10 },
+      },
+      totalBytes: 50,
+      counts: {
+        segments: 1,
+        zones: 1,
+        intersections: 1,
+        signOverrides: 0,
+        inferredCandidates: 0,
+        overridesApplied: 0,
+      },
+    })
+
+    expect(result.valid).toBe(true)
+    expect(
+      result.warnings.some((warning) => warning.includes('parking_spaces.geojson')),
+    ).toBe(true)
+  })
 })

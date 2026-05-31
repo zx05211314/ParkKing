@@ -1,0 +1,72 @@
+import type { MainWorkspaceProps } from './appPresentationBuilderTypes'
+import { buildMapViewProps } from './buildMapViewProps'
+import { buildSegmentListProps } from './buildSegmentListProps'
+import type { BuildMainWorkspacePropsOptions } from './buildMainWorkspaceTypes'
+
+export type { BuildMainWorkspacePropsOptions } from './buildMainWorkspaceTypes'
+
+export const buildMainWorkspaceProps = ({
+  activeView,
+  mapViewComponent,
+  mapRetryKey,
+  onMapRetry,
+  searchAnchor,
+  parkingSpaceCount,
+  selectedParkingSpaceMarkers,
+  recommendedParkingTargetMarkers,
+  selectedRoutePath,
+  selectedRouteProfile,
+  selectedRouteProfileLabel,
+  selectedCenter,
+  selectedArrivalKind,
+  selectedArrivalLabel,
+  ...options
+}: BuildMainWorkspacePropsOptions): MainWorkspaceProps => ({
+  activeView,
+  mapViewComponent,
+  mapRetryKey,
+  onMapRetry,
+  mapViewProps: buildMapViewProps({
+    activeView,
+    mapViewComponent,
+    mapRetryKey,
+    onMapRetry,
+    ...options,
+    searchAnchor,
+    parkingSpaceCount,
+    selectedCenter,
+    selectedArrivalKind,
+    selectedArrivalLabel,
+    selectedRoutePath,
+    selectedRouteProfile,
+    selectedRouteProfileLabel,
+    selectedParkingSpaceMarkers,
+    recommendedParkingTargetMarkers,
+  }),
+  hasPinnedAddress: Boolean(searchAnchor),
+  parkingSpaceCount,
+  selectedParkingSpaceMarkerCount: selectedParkingSpaceMarkers?.length ?? 0,
+  recommendedParkingTargetMarkerCount: recommendedParkingTargetMarkers?.length ?? 0,
+  hasRouteGeometry: Boolean(selectedRoutePath?.geometry),
+  selectedRouteProfile,
+  selectedRouteProfileLabel,
+  hasArrivalTarget: Boolean(selectedCenter),
+  selectedArrivalKind,
+  listProps: buildSegmentListProps({
+    activeView,
+    mapViewComponent,
+    mapRetryKey,
+    onMapRetry,
+    ...options,
+    searchAnchor,
+    parkingSpaceCount,
+    selectedCenter,
+    selectedArrivalKind,
+    selectedArrivalLabel,
+    selectedRoutePath,
+    selectedRouteProfile,
+    selectedRouteProfileLabel,
+    selectedParkingSpaceMarkers,
+    recommendedParkingTargetMarkers,
+  }),
+})

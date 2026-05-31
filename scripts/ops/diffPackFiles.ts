@@ -1,0 +1,6 @@
+export type { FileEntry } from './diffPackHashing'
+export { buildFileMap } from './diffPackFileMap'
+export { hashBuffer, hashFile } from './diffPackHashing'
+export { fileExists, readJson } from './diffPackJson'
+export { normalizeRelPath, listFiles } from './diffPackListing'
+export { getMetaFiles, readMeta } from './diffPackMetaState'

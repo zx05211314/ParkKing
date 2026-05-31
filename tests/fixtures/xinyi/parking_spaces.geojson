@@ -1,0 +1,27 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [121.5642, 25.0332]
+      },
+      "properties": {
+        "id": "ps-1",
+        "name": "Space 1"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [121.5654, 25.0341]
+      },
+      "properties": {
+        "id": "ps-2",
+        "name": "Space 2"
+      }
+    }
+  ]
+}

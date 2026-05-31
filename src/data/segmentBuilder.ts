@@ -10,6 +10,7 @@ import type {
   ConfidenceLevel,
   Segment,
   SignOverride,
+  SignOverrideStatus,
   TimeWindow,
 } from '../ui/types'
 
@@ -27,6 +28,10 @@ export interface DatasetMeta {
   segmentsCount?: number
   overridesAppliedCount?: number
   signOverridesCount?: number
+  signOverrideMatchedSegmentCount?: number
+  signOverrideSpatialMatchCount?: number
+  signOverrideUnmatchedNamedCount?: number
+  parkingSpacesCount?: number
   curbMarkingKnownRate?: number
   restrictionTriggeredRate?: number
   provenanceFetchedAt?: string | null
@@ -37,6 +42,7 @@ export interface DatasetMeta {
     segments: number
     busStops: number
     hydrants: number
+    parkingSpaces?: number
     intersections?: number
     crosswalks?: number
     signOverrides?: number
@@ -51,6 +57,12 @@ export interface DatasetMeta {
     maxY: number
   } | null
   crosswalksBBox?: {
+    minX: number
+    minY: number
+    maxX: number
+    maxY: number
+  } | null
+  parkingSpacesBBox?: {
     minX: number
     minY: number
     maxX: number
@@ -88,10 +100,54 @@ export interface DatasetMeta {
 const parseDate = (value: unknown): Date | null => {
   if (typeof value === 'string' || typeof value === 'number') {
     const parsed = new Date(value)
-    if (!Number.isNaN(parsed.getTime())) {
+    if (!Number.isNaN(parsed.getTime()) && parsed.getUTCFullYear() >= 2000) {
       return parsed
     }
   }
+  return null
+}
+
+const getPropertyValue = (
+  properties: Record<string, unknown> | null,
+  keys: string[],
+): unknown => {
+  if (!properties) {
+    return undefined
+  }
+
+  for (const key of keys) {
+    if (key in properties) {
+      return properties[key]
+    }
+  }
+
+  const entries = Object.entries(properties)
+  for (const key of keys) {
+    const normalizedKey = key.toLowerCase()
+    const found = entries.find(([entryKey]) => entryKey.toLowerCase() === normalizedKey)
+    if (found) {
+      return found[1]
+    }
+  }
+
+  return undefined
+}
+
+const normalizeTaipeiCurbType = (
+  value: unknown,
+): Segment['curbMarking'] | null => {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  const normalized = String(value).trim().toUpperCase()
+  if (normalized === '01') {
+    return 'RED'
+  }
+  if (normalized === '02') {
+    return 'YELLOW'
+  }
+
   return null
 }
 
@@ -100,6 +156,16 @@ const daysSince = (date: Date): number => {
   return Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)))
 }
 
+const CURB_MARKING_TEXT_TOKENS = {
+  RED: ['red', '\u7d05', '\u7ea2'],
+  YELLOW: ['yellow', '\u9ec3', '\u9ec4'],
+} as const
+
+const includesCurbMarkingToken = (
+  value: string,
+  marking: keyof typeof CURB_MARKING_TEXT_TOKENS,
+) => CURB_MARKING_TEXT_TOKENS[marking].some((token) => value.includes(token))
+
 const inferCurbMarking = (
   properties: Record<string, unknown> | null,
 ): Segment['curbMarking'] => {
@@ -107,15 +173,22 @@ const inferCurbMarking = (
     return 'UNKNOWN'
   }
 
+  const taipeiCurbType = normalizeTaipeiCurbType(
+    getPropertyValue(properties, ['patype', 'curb_type', 'curbType']),
+  )
+  if (taipeiCurbType) {
+    return taipeiCurbType
+  }
+
   const preferredKeys = ['color', 'curb', 'marking', 'type', 'class']
   for (const key of preferredKeys) {
-    const value = properties[key]
+    const value = getPropertyValue(properties, [key])
     if (typeof value === 'string') {
       const normalized = value.toLowerCase()
-      if (normalized.includes('red') || normalized.includes('紅')) {
+      if (includesCurbMarkingToken(normalized, 'RED')) {
         return 'RED'
       }
-      if (normalized.includes('yellow') || normalized.includes('黃')) {
+      if (includesCurbMarkingToken(normalized, 'YELLOW')) {
         return 'YELLOW'
       }
     }
@@ -130,10 +203,10 @@ const inferCurbMarking = (
   }
 
   const serialized = JSON.stringify(properties).toLowerCase()
-  if (serialized.includes('red') || serialized.includes('紅')) {
+  if (includesCurbMarkingToken(serialized, 'RED')) {
     return 'RED'
   }
-  if (serialized.includes('yellow') || serialized.includes('黃')) {
+  if (includesCurbMarkingToken(serialized, 'YELLOW')) {
     return 'YELLOW'
   }
 
@@ -146,7 +219,7 @@ const inferConfidence = (
   if (!properties) {
     return 'HIGH'
   }
-  const value = properties.confidence ?? properties.conf ?? properties.quality
+  const value = getPropertyValue(properties, ['confidence', 'conf', 'quality'])
   if (typeof value === 'string') {
     const normalized = value.toLowerCase()
     if (normalized.includes('low')) {
@@ -198,14 +271,30 @@ const normalizeOverrideConfidence = (
   return 'MED'
 }
 
+const normalizeOverrideStatus = (
+  value: unknown,
+): SignOverrideStatus | undefined => {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  const normalized = value.trim().toUpperCase()
+  if (normalized === 'LEGAL' || normalized === 'ILLEGAL' || normalized === 'UNCLEAR') {
+    return normalized
+  }
+  return undefined
+}
+
 const inferSourceReliability = (
   properties: Record<string, unknown> | null,
 ): ConfidenceLevel | undefined => {
   if (!properties) {
     return undefined
   }
-  const value =
-    properties.reliability ?? properties.source_reliability ?? properties.source
+  const value = getPropertyValue(properties, [
+    'reliability',
+    'source_reliability',
+    'source',
+  ])
   if (typeof value === 'string') {
     const normalized = value.toLowerCase()
     if (normalized.includes('low')) {
@@ -234,10 +323,17 @@ const deriveFreshnessDays = (
   properties: Record<string, unknown> | null,
   meta: DatasetMeta | null,
 ): number | null => {
-  const propDate =
-    parseDate(properties?.updated_at) ??
-    parseDate(properties?.update_date) ??
-    parseDate(properties?.date)
+  const propDate = parseDate(
+    getPropertyValue(properties, [
+      'updated_at',
+      'update_date',
+      'date',
+      'edittime',
+      'padate',
+      'verified_at',
+      'verifiedAt',
+    ]),
+  )
 
   if (propDate) {
     return daysSince(propDate)
@@ -275,19 +371,22 @@ const parseSignOverride = (
 
   if (raw && typeof raw === 'object') {
     const override = raw as Partial<SignOverride>
-    if (override.note && override.confidence && Array.isArray(override.timeWindows)) {
-      const windows = override.timeWindows.filter(
+    if (override.note && override.confidence) {
+      const windows = Array.isArray(override.timeWindows)
+        ? override.timeWindows.filter(
         (window) =>
           typeof window?.startHHMM === 'string' &&
           typeof window?.endHHMM === 'string' &&
           typeof window?.label === 'string',
-      ) as SignOverride['timeWindows']
+        )
+        : []
 
-      if (windows.length > 0) {
+      if (windows.length > 0 || override.status) {
         return {
           note: String(override.note),
           confidence: normalizeOverrideConfidence(override.confidence),
           timeWindows: windows,
+          status: normalizeOverrideStatus(override.status),
           verifiedAt: override.verifiedAt,
         }
       }
@@ -297,20 +396,24 @@ const parseSignOverride = (
   const note = properties.sign_override_note
   const confidence = properties.sign_override_confidence
   const windows = properties.sign_override_windows
+  const status = normalizeOverrideStatus(properties.sign_override_status)
 
-  if (typeof note === 'string' && typeof confidence === 'string' && Array.isArray(windows)) {
-    const parsedWindows = windows.filter(
+  if (typeof note === 'string' && typeof confidence === 'string') {
+    const parsedWindows = Array.isArray(windows)
+      ? windows.filter(
       (window) =>
         typeof window?.startHHMM === 'string' &&
         typeof window?.endHHMM === 'string' &&
         typeof window?.label === 'string',
-    ) as SignOverride['timeWindows']
+      )
+      : []
 
-    if (parsedWindows.length > 0) {
+    if (parsedWindows.length > 0 || status) {
       return {
         note,
         confidence: normalizeOverrideConfidence(confidence),
         timeWindows: parsedWindows,
+        status,
         verifiedAt:
           typeof properties.sign_override_verified_at === 'string'
             ? properties.sign_override_verified_at
@@ -563,11 +666,18 @@ const parseOverrideProperties = (
       properties.updated_at ??
       properties.update_date ??
       properties.date) as string | undefined
+  const status = normalizeOverrideStatus(
+    properties.status ??
+      properties.override_status ??
+      properties.overrideStatus ??
+      properties.sign_override_status,
+  )
 
   return {
     note: note ? String(note) : 'Sign override',
     confidence: normalizeOverrideConfidence(confidenceValue),
     timeWindows,
+    status,
     verifiedAt: verifiedAt ? String(verifiedAt) : undefined,
   }
 }
@@ -720,13 +830,33 @@ export interface SignOverrideMatchOptions {
   matchToleranceMeters: number
 }
 
-export const applySignOverrides = (
+export interface AppliedSignOverrideStats {
+  matchedBySegmentIdCount: number
+  matchedBySpatialCount: number
+  unmatchedNamedOverrideCount: number
+}
+
+export interface ApplySignOverridesResult {
+  segments: Segment[]
+  stats: AppliedSignOverrideStats
+}
+
+const buildEmptySignOverrideStats = (): AppliedSignOverrideStats => ({
+  matchedBySegmentIdCount: 0,
+  matchedBySpatialCount: 0,
+  unmatchedNamedOverrideCount: 0,
+})
+
+export const applySignOverridesWithStats = (
   segments: Segment[],
   overrides: FeatureCollection | null,
   options: SignOverrideMatchOptions,
-): Segment[] => {
+): ApplySignOverridesResult => {
   if (!overrides || overrides.features.length === 0) {
-    return segments
+    return {
+      segments,
+      stats: buildEmptySignOverrideStats(),
+    }
   }
 
   const parsed = overrides.features
@@ -734,23 +864,32 @@ export const applySignOverrides = (
     .filter((entry): entry is ParsedOverride => Boolean(entry))
 
   if (parsed.length === 0) {
-    return segments
+    return {
+      segments,
+      stats: buildEmptySignOverrideStats(),
+    }
   }
 
   const bySegmentId = new Map<string, ParsedOverride[]>()
-  const spatial = parsed.filter((entry) => entry.coord)
+  // Fail closed when an override already names a segment id. If that id no longer
+  // exists, do not silently rematch the override onto a different curb by distance.
+  const spatial = parsed.filter((entry) => entry.coord && !entry.segmentId)
+  const matchedNamedOverrideIds = new Set<string>()
+  const namedOverrideIds = new Set<string>()
+  let matchedBySpatialCount = 0
 
   parsed.forEach((entry) => {
     if (!entry.segmentId) {
       return
     }
+    namedOverrideIds.add(entry.segmentId)
     const existing = bySegmentId.get(entry.segmentId) ?? []
     existing.push(entry)
     bySegmentId.set(entry.segmentId, existing)
   })
 
-  return segments.map((segment) => {
-    if (segment.signOverride || segment.sourceType === 'INFERRED') {
+  const nextSegments = segments.map((segment) => {
+    if (segment.signOverride) {
       return segment
     }
 
@@ -758,14 +897,19 @@ export const applySignOverrides = (
     if (matchedById && matchedById.length > 0) {
       const selected = selectBestOverride(matchedById)
       if (selected) {
+        matchedNamedOverrideIds.add(segment.id)
         return {
           ...segment,
           signOverride: {
             ...selected.override,
-            source: 'segmentId',
+            source: 'segmentId' as const,
           },
         }
       }
+    }
+
+    if (segment.sourceType === 'INFERRED') {
+      return segment
     }
 
     if (spatial.length === 0) {
@@ -792,17 +936,37 @@ export const applySignOverrides = (
 
     if (best) {
       const chosen = best as ParsedOverride
+      matchedBySpatialCount += 1
       return {
         ...segment,
         signOverride: {
           ...chosen.override,
-          source: 'spatial',
+          source: 'spatial' as const,
         },
       }
     }
 
     return segment
   })
+
+  return {
+    segments: nextSegments,
+    stats: {
+      matchedBySegmentIdCount: matchedNamedOverrideIds.size,
+      matchedBySpatialCount,
+      unmatchedNamedOverrideCount: Array.from(namedOverrideIds).filter(
+        (segmentId) => !matchedNamedOverrideIds.has(segmentId),
+      ).length,
+    },
+  }
+}
+
+export const applySignOverrides = (
+  segments: Segment[],
+  overrides: FeatureCollection | null,
+  options: SignOverrideMatchOptions,
+): Segment[] => {
+  return applySignOverridesWithStats(segments, overrides, options).segments
 }
 
 export const applyMockOverrides = (segments: Segment[]): Segment[] => {

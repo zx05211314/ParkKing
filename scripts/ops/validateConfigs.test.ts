@@ -28,6 +28,22 @@ describe('validateConfigs', () => {
         districtBounds: '/abs/path.geojson',
       },
     }
+    const sourceManifest = {
+      districtId: 'xinyi',
+      configPath: './prod/xinyi.json',
+      sources: [
+        {
+          url: 'https://example.test/source.zip',
+          dest: '../data/sources/shared/source.zip',
+        },
+      ],
+    }
+    const answerCases = {
+      schemaVersion: 1,
+      districtId: 'xinyi',
+      datasetHash: 'hash-1',
+      cases: [],
+    }
 
     await fs.writeFile(
       path.join(configsDir, 'valid.json'),
@@ -39,6 +55,16 @@ describe('validateConfigs', () => {
       JSON.stringify(invalid, null, 2),
       'utf-8',
     )
+    await fs.writeFile(
+      path.join(configsDir, 'sources.prod.taipei.json'),
+      JSON.stringify(sourceManifest, null, 2),
+      'utf-8',
+    )
+    await fs.writeFile(
+      path.join(configsDir, 'xinyi.answer-cases.json'),
+      JSON.stringify(answerCases, null, 2),
+      'utf-8',
+    )
 
     const result = await validateConfigs({ configsDir })
     const issueByFile = new Map(
@@ -47,6 +73,8 @@ describe('validateConfigs', () => {
 
     expect(issueByFile.get('valid.json')?.errors.length).toBe(0)
     expect(issueByFile.get('invalid.json')?.errors.length).toBeGreaterThan(0)
+    expect(issueByFile.has('sources.prod.taipei.json')).toBe(false)
+    expect(issueByFile.has('xinyi.answer-cases.json')).toBe(false)
     expect(result.hasErrors).toBe(true)
   })
 })

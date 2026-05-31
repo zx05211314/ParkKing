@@ -1,0 +1,46 @@
+import type { HeaderPanelsProps } from './appPresentationBuilderTypes'
+
+export type AddressRecommendationsProps =
+  HeaderPanelsProps['addressRecommendationsProps']
+
+export interface BuildAddressRecommendationsPropsOptions {
+  searchAnchor: AddressRecommendationsProps['hasPinnedAddress'] extends boolean
+    ? HeaderPanelsProps['addressSearchPanelProps']['searchAnchor']
+    : never
+  recommendationRankMode: AddressRecommendationsProps['recommendationRankMode']
+  addressRecommendationRankingLabel: AddressRecommendationsProps['addressRecommendationRankingLabel']
+  addressRecommendationFeedbackLabel: AddressRecommendationsProps['addressRecommendationFeedbackLabel']
+  parkingAnswer: AddressRecommendationsProps['parkingAnswer']
+  parkingAnswerServiceStatus: AddressRecommendationsProps['parkingAnswerServiceStatus']
+  parkingAnswerServiceError: AddressRecommendationsProps['parkingAnswerServiceError']
+  parkingAnswerReport: AddressRecommendationsProps['parkingAnswerReport']
+  nearbySnapshot: AddressRecommendationsProps['nearbySnapshot']
+  bestAddressRecommendation: AddressRecommendationsProps['bestAddressRecommendation']
+  bestAddressRecommendationTarget: AddressRecommendationsProps['bestAddressRecommendationTarget']
+  bestAddressRecommendationReason: AddressRecommendationsProps['bestAddressRecommendationReason']
+  bestAddressRecommendationFeedback: AddressRecommendationsProps['bestAddressRecommendationFeedback']
+  bestAddressRecommendationReport: AddressRecommendationsProps['bestAddressRecommendationReport']
+  bestAddressRecommendationArrivalHint: AddressRecommendationsProps['bestAddressRecommendationArrivalHint']
+  bestAddressRecommendationArrivalKind: AddressRecommendationsProps['bestAddressRecommendationArrivalKind']
+  bestAddressRecommendationWalkDistance: AddressRecommendationsProps['bestAddressRecommendationWalkDistance']
+  bestAddressRecommendationNavigationLinks: AddressRecommendationsProps['bestAddressRecommendationNavigationLinks']
+  bestAddressRecommendationRouteEta: AddressRecommendationsProps['bestAddressRecommendationRouteEta']
+  alternativeAddressRecommendations: AddressRecommendationsProps['alternativeAddressRecommendations']
+  addressRecommendationEmptyMessage: AddressRecommendationsProps['addressRecommendationEmptyMessage']
+  routeEtaStatus: AddressRecommendationsProps['routeEtaStatus']
+  routeEtaError: AddressRecommendationsProps['routeEtaError']
+  routeEtaBySegmentId: AddressRecommendationsProps['routeEtaBySegmentId']
+  reportsBySegment: AddressRecommendationsProps['reportsBySegment']
+  navigationOrigin: AddressRecommendationsProps['navigationOrigin']
+  searchLocation: AddressRecommendationsProps['searchLocation']
+  selectedId: AddressRecommendationsProps['selectedId']
+  bestRecommendationIndex: AddressRecommendationsProps['bestRecommendationIndex']
+  alternativeRecommendationOffset: AddressRecommendationsProps['alternativeRecommendationOffset']
+  registerSearchActionRef: AddressRecommendationsProps['registerSearchActionRef']
+  onSearchActionKeyDown: AddressRecommendationsProps['onSearchActionKeyDown']
+  onRecommendationRankModeChange: AddressRecommendationsProps['onRecommendationRankModeChange']
+  onParkingAnswerReport: AddressRecommendationsProps['onParkingAnswerReport']
+  onSelectAddressRecommendation: AddressRecommendationsProps['onSelectAddressRecommendation']
+  onSaveBestRecommendationPlan: AddressRecommendationsProps['onSaveBestRecommendationPlan']
+  onNavigateToRecommendation: AddressRecommendationsProps['onNavigateToRecommendation']
+}

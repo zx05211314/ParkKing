@@ -10,6 +10,7 @@
     "redYellow": "../../data/sources/shared/red_yellow/red_yellow.shp",
     "busStops": "../../data/sources/shared/bus_stops/bus_stops.shp",
     "hydrants": "../../data/sources/shared/hydrants.csv",
+    "parking_spaces": "../../data/sources/shared/parking_spaces/parking_spaces.shp",
     "intersections": "../../data/sources/shared/signals.csv",
     "road_centerlines": "../../data/sources/shared/road_centerlines_gt8m/road_centerlines_gt8m.shp",
     "crosswalks": "../../data/sources/shared/crosswalks/crosswalks.shp"

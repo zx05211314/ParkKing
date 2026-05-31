@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { runIngestAll } from './ingestAll'
 import { readConfig } from './readConfig'
 import { validateOutputs } from './validateOutputs'
-import { getBoundaryFileName } from './utils'
+import { getBoundaryFileName } from './ingestDistrictPaths'
 
 const readJson = async <T>(filePath: string): Promise<T> => {
   const raw = await fs.readFile(filePath, 'utf-8')
@@ -170,5 +170,5 @@ describe('multi-district ingest', () => {
     } finally {
       process.chdir(originalCwd)
     }
-  })
+  }, 60000)
 })

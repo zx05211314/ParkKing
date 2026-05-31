@@ -45,6 +45,74 @@ describe('evaluateSegment', () => {
     expect(evaluatedLow.tier).toBe('YELLOW')
   })
 
+  it('official parking-space evidence can keep yellow night parking green despite stale data', () => {
+    const segment: Segment = {
+      ...baseSegment,
+      curbMarking: 'YELLOW',
+      confidence: 'HIGH',
+      dataFreshnessDays: 500,
+      parkingSpaceCount: 3,
+    }
+
+    const evaluated = evaluateSegment(segment, '21:00')
+
+    expect(evaluated.allowedNow).toBe('PARK')
+    expect(evaluated.tier).toBe('GREEN')
+    expect(evaluated.reasonCodes).toContain('PARKING_SPACE_EVIDENCE')
+    expect(evaluated.reasonCodes).toContain('DATA_FRESHNESS_STALE')
+  })
+
+  it('multiple official parking spaces can rescue very stale yellow night parking', () => {
+    const segment: Segment = {
+      ...baseSegment,
+      curbMarking: 'YELLOW',
+      confidence: 'HIGH',
+      dataFreshnessDays: 900,
+      parkingSpaceCount: 2,
+    }
+
+    const evaluated = evaluateSegment(segment, '21:00')
+
+    expect(evaluated.allowedNow).toBe('PARK')
+    expect(evaluated.tier).toBe('GREEN')
+    expect(evaluated.finalConfidence).toBe('HIGH')
+    expect(evaluated.reasonCodes).toContain('PARKING_SPACE_EVIDENCE')
+    expect(evaluated.reasonCodes).toContain('DATA_FRESHNESS_STALE')
+  })
+
+  it('a single parking-space match does not rescue very stale yellow night parking', () => {
+    const segment: Segment = {
+      ...baseSegment,
+      curbMarking: 'YELLOW',
+      confidence: 'HIGH',
+      dataFreshnessDays: 900,
+      parkingSpaceCount: 1,
+    }
+
+    const evaluated = evaluateSegment(segment, '21:00')
+
+    expect(evaluated.allowedNow).toBe('PARK')
+    expect(evaluated.tier).toBe('YELLOW')
+    expect(evaluated.finalConfidence).toBe('LOW')
+    expect(evaluated.reasonCodes).toContain('PARKING_SPACE_EVIDENCE')
+    expect(evaluated.reasonCodes).toContain('DATA_FRESHNESS_STALE')
+  })
+
+  it('parking-space evidence does not rescue low-confidence yellow segments', () => {
+    const segment: Segment = {
+      ...baseSegment,
+      curbMarking: 'YELLOW',
+      confidence: 'LOW',
+      dataFreshnessDays: 500,
+      parkingSpaceCount: 3,
+    }
+
+    const evaluated = evaluateSegment(segment, '21:00')
+
+    expect(evaluated.allowedNow).toBe('PARK')
+    expect(evaluated.tier).toBe('YELLOW')
+  })
+
   it('WHITE_EDGE/NONE never auto GREEN', () => {
     const whiteEdge: Segment = { ...baseSegment, curbMarking: 'WHITE_EDGE' }
     const none: Segment = { ...baseSegment, curbMarking: 'NONE' }
@@ -74,5 +142,41 @@ describe('evaluateSegment', () => {
     expect(evaluated.allowedNow).toBe('PARK')
     expect(evaluated.tier).toBe('YELLOW')
     expect(evaluated.reasonCodes).toContain('INFERRED_CAPPED')
+  })
+
+  it('LEGAL override status can promote a segment to parkable', () => {
+    const segment: Segment = {
+      ...baseSegment,
+      curbMarking: 'RED',
+      signOverride: {
+        note: 'Field verified legal',
+        confidence: 'HIGH',
+        status: 'LEGAL',
+        timeWindows: [],
+      },
+    }
+
+    const evaluated = evaluateSegment(segment, '12:00')
+    expect(evaluated.allowedNow).toBe('PARK')
+    expect(evaluated.tier).toBe('GREEN')
+    expect(evaluated.reasonCodes).toContain('OVERRIDE_STATUS_LEGAL')
+  })
+
+  it('ILLEGAL override status forces NO_STOP', () => {
+    const segment: Segment = {
+      ...baseSegment,
+      curbMarking: 'YELLOW',
+      signOverride: {
+        note: 'Field verified illegal',
+        confidence: 'HIGH',
+        status: 'ILLEGAL',
+        timeWindows: [],
+      },
+    }
+
+    const evaluated = evaluateSegment(segment, '21:00')
+    expect(evaluated.allowedNow).toBe('NO_STOP')
+    expect(evaluated.tier).toBe('RED')
+    expect(evaluated.reasonCodes).toContain('OVERRIDE_STATUS_ILLEGAL')
   })
 })

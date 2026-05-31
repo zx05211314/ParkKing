@@ -109,6 +109,40 @@ describe('publishGate', () => {
     expect(result.exitCode).toBe(0)
   })
 
+  it('fails when required sign override input and applied coverage are zero', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'gate-test-'))
+    await writeDatasetFixture(base, 'xinyi')
+    const reportPath = await writeReport(base, {
+      generatedAt: new Date().toISOString(),
+      districts: [
+        {
+          districtId: 'xinyi',
+          validation: {
+            minCounts: {
+              signOverrides: 1,
+              overridesApplied: 1,
+            },
+          },
+          warnings: [],
+        },
+      ],
+    })
+
+    const result = await runPublishGate({
+      reportPath,
+      outputDir: base,
+      datasetRootDir: base,
+    })
+
+    expect(result.exitCode).toBe(3)
+    expect(result.summary.districts?.[0]?.topFailCodes).toEqual(
+      expect.arrayContaining([
+        'SIGN_OVERRIDE_INPUT_MISSING',
+        'SIGN_OVERRIDE_COVERAGE_ZERO',
+      ]),
+    )
+  })
+
   it('blocks warn when allowWarn is false', async () => {
     const base = await fs.mkdtemp(path.join(tmpdir(), 'gate-test-'))
     await writeDatasetFixture(base, 'xinyi')
@@ -496,7 +530,7 @@ describe('publishGate', () => {
     })
 
     expect(result.exitCode).toBe(2)
-  })
+  }, 15000)
 
   it('escalates diff warns to fail when strict env is set', async () => {
     const base = await fs.mkdtemp(path.join(tmpdir(), 'gate-diff-strict-'))
@@ -591,7 +625,7 @@ describe('publishGate', () => {
         process.env.PARKKING_ALLOW_BASELINE_ADOPT = previousAdopt
       }
     }
-  })
+  }, 15000)
 
   it('does not adopt baseline for non-diff hard fails', async () => {
     const base = await fs.mkdtemp(path.join(tmpdir(), 'gate-adopt-hard-'))

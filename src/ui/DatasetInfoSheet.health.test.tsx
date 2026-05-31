@@ -23,7 +23,10 @@ describe('DatasetInfoSheet health panel', () => {
         provenanceFetchedAt: '2026-02-03T12:00:00Z',
         segmentsCount: 12,
         signOverridesCount: 2,
+        signOverrideMatchedSegmentCount: 1,
+        signOverrideSpatialMatchCount: 1,
         overridesAppliedCount: 1,
+        signOverrideUnmatchedNamedCount: 1,
         curbMarkingKnownRate: 0.5,
         restrictionTriggeredRate: 0.2,
       },
@@ -51,6 +54,9 @@ describe('DatasetInfoSheet health panel', () => {
 
     expect(html).toContain('Dataset health')
     expect(html).toContain('Segments')
+    expect(html).toContain('Unmatched named overrides')
+    expect(html).toContain('Sign overrides matched by segment id')
+    expect(html).toContain('Sign overrides matched by spatial fallback')
     expect(html).toContain('Curb marking known')
     expect(html).toContain('Restrictions triggered')
     expect(html).toContain('Since last publish')

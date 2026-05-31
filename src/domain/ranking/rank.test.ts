@@ -50,12 +50,13 @@ describe('ranking', () => {
       buildInferredSegmentsFromFeature(feature, index, meta),
     )
     const matchTolerance = meta?.signOverrideMatchToleranceMeters ?? 15
-    const segments = [
-      ...applySignOverrides(baseSegments, signOverrides, {
+    const segments = applySignOverrides(
+      [...baseSegments, ...inferredSegments],
+      signOverrides,
+      {
         matchToleranceMeters: matchTolerance,
-      }),
-      ...inferredSegments,
-    ]
+      },
+    )
 
     const zones = makeZonesFromPOIs(busStops, hydrants, intersections, crosswalks)
     const zoneIndex = getZoneIndex(zones, meta?.datasetHash ?? 'local', ZONE_PARAMS_VERSION)

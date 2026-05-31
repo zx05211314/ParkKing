@@ -1,202 +1,184 @@
-import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
-import crypto from 'node:crypto'
-import fg from 'fast-glob'
-import { execSync } from 'node:child_process'
-import AdmZip from 'adm-zip'
 import { fileURLToPath } from 'node:url'
+import { parsePackageReleaseArgs } from './packageReleaseArgs'
+import { writeReleaseArchive } from './packageReleaseArchive'
+import { collectReleaseFiles } from './packageReleaseCollection'
+import {
+  buildReleaseTimestampId,
+  getGitShortSha,
+  readReleaseJson,
+} from './packageReleaseUtils'
+import type {
+  RegistryEntry,
+  ReleaseManifestDistrict,
+} from './packageReleaseTypes'
+import {
+  DEFAULT_REVIEWED_ANSWER_CASES_GLOB,
+  discoverReviewedDistrictIds,
+} from './reviewedDistrictDiscovery'
 
-interface RegistryEntry {
-  districtId: string
-  latest?: {
-    datasetHash: string
-    publishedAt: string
-  }
+export { collectReleaseFiles } from './packageReleaseCollection'
+
+export interface PackageReleaseResult {
+  releaseId: string
+  zipPath: string
+  manifestPath: string
+  baseDir: string
+  districtIds: string[]
+  releaseDistricts: ReleaseManifestDistrict[]
+  fileCount: number
+  totalBytes: number
 }
 
-interface LatestPointer {
-  datasetHash: string
-  publishedAt: string
-  manifestPath?: string
-  schemaVersion?: number
-}
-
-const parseArgs = (argv: string[]) => {
-  const args = [...argv]
-  const outIndex = args.findIndex((arg) => arg === '--outDir')
-  const includeIndex = args.findIndex((arg) => arg === '--include')
-  const registryIndex = args.findIndex((arg) => arg === '--registry')
-  return {
-    outDir: outIndex >= 0 ? args[outIndex + 1] : null,
-    include: includeIndex >= 0 ? args[includeIndex + 1] : null,
-    registry: registryIndex >= 0 ? args[registryIndex + 1] : null,
-  }
-}
-
-const readJson = async <T>(filePath: string): Promise<T> => {
-  const raw = await fs.readFile(filePath, 'utf-8')
-  return JSON.parse(raw) as T
-}
-
-const sha256 = (buffer: Buffer) => {
-  return crypto.createHash('sha256').update(buffer).digest('hex')
-}
-
-const timestampId = () => {
-  const now = new Date()
-  const pad = (value: number) => String(value).padStart(2, '0')
-  return `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(
-    now.getUTCDate(),
-  )}${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}`
-}
-
-const getGitShortSha = () => {
-  try {
-    const stdout = execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
-    return stdout.toString().trim()
-  } catch {
-    return 'nogit'
-  }
-}
-
-const resolveManifestPath = (baseDir: string, manifestPath?: string) => {
-  if (!manifestPath) {
-    return null
-  }
-  const normalized = manifestPath.replace(/\\/g, '/')
-  if (path.isAbsolute(normalized)) {
-    return normalized
-  }
-  return path.resolve(baseDir, normalized)
-}
-
-export const collectReleaseFiles = async (params: {
-  registryPath: string
-  includeGlob: string
-}) => {
-  const registryPath = path.resolve(params.registryPath)
-  const baseDir = path.dirname(registryPath)
-  const registry = await readJson<{ districts: RegistryEntry[] }>(registryPath)
-
-  const files = new Set<string>()
-  files.add(registryPath)
-
-  const includeMatches = await fg(params.includeGlob, { onlyFiles: true })
-  includeMatches.forEach((entry) => {
-    const normalized = path.resolve(entry)
-    const normalizedPath = normalized.replace(/\\/g, '/')
-    if (normalizedPath.includes('/.backup/') || normalizedPath.includes('/.staging/')) {
-      return
-    }
-    files.add(normalized)
-  })
-
-  const opsReport = path.resolve(baseDir, 'ingest_all_report.json')
-  const opsGate = path.resolve(baseDir, '_ops', 'publish_gate_summary.json')
-  try {
-    await fs.access(opsReport)
-    files.add(opsReport)
-  } catch {
-    // ignore
-  }
-  try {
-    await fs.access(opsGate)
-    files.add(opsGate)
-  } catch {
-    // ignore
-  }
-
-  for (const district of registry.districts ?? []) {
-    const districtDir = path.resolve(baseDir, district.districtId)
-    const districtFiles = await fg(`${districtDir.replace(/\\/g, '/')}/**`, {
-      onlyFiles: true,
-    })
-    districtFiles.forEach((entry) => files.add(path.resolve(entry)))
-
-    const latestPath = path.resolve(districtDir, 'LATEST.json')
-    let latest: LatestPointer | null = null
-    try {
-      latest = await readJson<LatestPointer>(latestPath)
-    } catch {
-      latest = null
-    }
-
-    const manifestPath = resolveManifestPath(baseDir, latest?.manifestPath)
-    if (manifestPath) {
-      try {
-        await fs.access(manifestPath)
-        files.add(manifestPath)
-      } catch {
-        // fall back to include all manifests
-        const manifestDir = path.resolve(baseDir, '_ops', 'manifests', district.districtId)
-        const manifestFiles = await fg(`${manifestDir.replace(/\\/g, '/')}/**`, {
-          onlyFiles: true,
-        })
-        manifestFiles.forEach((entry) => files.add(path.resolve(entry)))
+const toReleaseManifestDistricts = (
+  districts: RegistryEntry[],
+): ReleaseManifestDistrict[] =>
+  districts
+    .map((district) => {
+      const datasetHash = district.latest?.datasetHash
+      const publishedAt = district.latest?.publishedAt
+      if (!datasetHash || !publishedAt) {
+        throw new Error(
+          `Release package registry district ${district.districtId} is missing latest datasetHash/publishedAt`,
+        )
       }
+      return {
+        districtId: district.districtId,
+        datasetHash,
+        publishedAt,
+      }
+    })
+    .sort((left, right) => left.districtId.localeCompare(right.districtId))
+
+const resolveReleaseRegistryScope = async (
+  registryPath: string,
+  districtIds: string[],
+) => {
+  const registry = await readReleaseJson<{ districts?: RegistryEntry[] } & Record<string, unknown>>(
+    registryPath,
+  )
+  const districts = registry.districts ?? []
+  if (districtIds.length === 0) {
+    return {
+      registryContents: null,
+      releaseDistricts: toReleaseManifestDistricts(districts),
     }
   }
 
-  return { baseDir, files: Array.from(files) }
+  const districtSet = new Set(districtIds)
+  const scopedDistricts = districts.filter((district) => districtSet.has(district.districtId))
+  const foundDistricts = new Set(scopedDistricts.map((district) => district.districtId))
+  const missingDistricts = districtIds.filter((districtId) => !foundDistricts.has(districtId))
+
+  if (missingDistricts.length > 0) {
+    throw new Error(`Release package district not found in registry: ${missingDistricts.join(', ')}`)
+  }
+
+  return {
+    registryContents: Buffer.from(
+      `${JSON.stringify({ ...registry, districts: scopedDistricts }, null, 2)}\n`,
+      'utf-8',
+    ),
+    releaseDistricts: toReleaseManifestDistricts(scopedDistricts),
+  }
 }
 
 export const packageRelease = async (params: {
   outDir: string
   includeGlob: string
   registryPath: string
-}) => {
-  const releaseId = `${timestampId()}_${getGitShortSha()}`
+  districtIds?: string[] | null
+}): Promise<PackageReleaseResult> => {
+  const registryPath = path.resolve(params.registryPath)
+  const districtIds = params.districtIds ?? []
+  const releaseId = `${buildReleaseTimestampId()}_${getGitShortSha()}`
   const { baseDir, files } = await collectReleaseFiles({
-    registryPath: params.registryPath,
+    registryPath,
     includeGlob: params.includeGlob,
+    districtIds,
   })
-
-  const manifestEntries: Array<{ path: string; sha256: string; bytes: number }> = []
-  const zip = new AdmZip()
-
-  for (const filePath of files) {
-    const buffer = await fs.readFile(filePath)
-    const rel = path.relative(baseDir, filePath).replace(/\\/g, '/')
-    zip.addFile(rel, buffer)
-    manifestEntries.push({
-      path: rel,
-      sha256: sha256(buffer),
-      bytes: buffer.length,
-    })
-  }
-
-  await fs.mkdir(params.outDir, { recursive: true })
-  const zipPath = path.resolve(params.outDir, `park-king-data_${releaseId}.zip`)
-  zip.writeZip(zipPath)
-
-  const releaseManifest = {
-    releaseId,
-    generatedAt: new Date().toISOString(),
-    baseDir: path.relative(process.cwd(), baseDir),
-    files: manifestEntries.sort((a, b) => a.path.localeCompare(b.path)),
-  }
-
-  const manifestPath = path.resolve(
-    params.outDir,
-    `release_manifest_${releaseId}.json`,
+  const { registryContents, releaseDistricts } = await resolveReleaseRegistryScope(
+    registryPath,
+    districtIds,
   )
-  await fs.writeFile(manifestPath, `${JSON.stringify(releaseManifest, null, 2)}\n`, 'utf-8')
+  const fileContents = registryContents
+    ? new Map([[registryPath, registryContents]])
+    : undefined
+  const { zipPath, manifestPath, releaseManifest } = await writeReleaseArchive({
+    outDir: params.outDir,
+    baseDir,
+    files,
+    releaseId,
+    districts: releaseDistricts,
+    fileContents,
+  })
+  const totalBytes = releaseManifest.files.reduce((sum, file) => sum + file.bytes, 0)
 
-  return { zipPath, manifestPath, releaseId }
+  return {
+    releaseId,
+    zipPath,
+    manifestPath,
+    baseDir,
+    districtIds,
+    releaseDistricts: releaseManifest.districts,
+    fileCount: releaseManifest.files.length,
+    totalBytes,
+  }
+}
+
+export const renderPackageReleaseResult = (result: PackageReleaseResult) =>
+  [
+    '# Release Package: PASS',
+    '',
+    `- Release ID: ${result.releaseId}`,
+    `- Zip: ${result.zipPath}`,
+    `- Manifest: ${result.manifestPath}`,
+    `- Base dir: ${result.baseDir}`,
+    `- Districts: ${result.districtIds.length > 0 ? result.districtIds.join(', ') : 'all'}`,
+    `- Dataset hashes: ${
+      result.releaseDistricts
+        .map((district) => `${district.districtId}:${district.datasetHash.slice(0, 12)}`)
+        .join(', ') || '-'
+    }`,
+    `- Files: ${result.fileCount}`,
+    `- Total bytes: ${result.totalBytes}`,
+  ].join('\n')
+
+export const resolvePackageReleaseDistrictIds = async (args: {
+  districtIds: string[]
+  reviewed?: boolean
+  answerCasesGlob?: string | null
+}) => {
+  if (args.districtIds.length > 0) {
+    return args.districtIds
+  }
+  if (!args.reviewed) {
+    return []
+  }
+  return await discoverReviewedDistrictIds(
+    args.answerCasesGlob?.trim() || DEFAULT_REVIEWED_ANSWER_CASES_GLOB,
+  )
 }
 
 const run = async () => {
-  const args = parseArgs(process.argv)
+  const args = parsePackageReleaseArgs(process.argv)
+  const districtIds = await resolvePackageReleaseDistrictIds(args)
   const outDir = args.outDir ?? 'dist/releases'
-  const includeGlob = args.include ?? 'public/data/generated/**'
+  const includeGlob =
+    args.include ??
+    (districtIds.length === 1
+      ? `public/data/generated/${districtIds[0]}/**`
+      : 'public/data/generated/**')
   const registryPath =
     args.registry ?? 'public/data/generated/registry.json'
 
-  await packageRelease({
+  const result = await packageRelease({
     outDir,
     includeGlob,
     registryPath,
+    districtIds,
   })
+  console.log(renderPackageReleaseResult(result))
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
