@@ -11,8 +11,21 @@ export interface RunWithLogOptions {
   echo?: boolean
 }
 
-const commandForPlatform = (command: string) =>
-  process.platform === 'win32' && command === 'npm' ? 'npm.cmd' : command
+const commandForPlatform = (command: string, args: string[]) => {
+  if (process.platform !== 'win32' || command !== 'npm') {
+    return { command, args }
+  }
+
+  const npmExecPath = process.env.npm_execpath
+  if (npmExecPath) {
+    return {
+      command: process.execPath,
+      args: [npmExecPath, ...args],
+    }
+  }
+
+  return { command: 'npm.cmd', args }
+}
 
 export const parseRunWithLogArgs = (argv: string[]): RunWithLogOptions => {
   const logIndex = argv.indexOf('--log')
@@ -41,7 +54,8 @@ export const runWithLog = async ({
 
   return await new Promise<number>((resolve, reject) => {
     const log = fs.createWriteStream(resolvedLogPath, { flags: 'w' })
-    const child = spawn(commandForPlatform(command), args, {
+    const resolved = commandForPlatform(command, args)
+    const child = spawn(resolved.command, resolved.args, {
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: false,
     })
