@@ -91,8 +91,15 @@ describe('releaseHandoffStatus', () => {
     expect(result.nextActions.join('\n')).toContain(
       'npm run ops:release-data-dispatch -- --repo zx05211314/ParkKing --ref main --dry-run',
     )
+    expect(result.commands.releasePublishEnv).toContain(
+      '$env:GITHUB_REPOSITORY="zx05211314/ParkKing"',
+    )
+    expect(result.nextActions.join('\n')).toContain('npm run ops:release-data-publish')
     expect(renderReleaseHandoffStatus(result)).toContain(
       '# Release Handoff Status: READY FOR RELEASE PUBLISH',
+    )
+    expect(renderReleaseHandoffStatus(result)).toContain(
+      '- Release publish: npm run ops:release-data-publish',
     )
   })
 
