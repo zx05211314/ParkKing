@@ -42,12 +42,12 @@ describe('release workflow contracts', () => {
       'npm run ops:bundle-budget',
       'npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --reviewed --timeout-ms 25000',
       'npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --reviewed --view MAP --limit 1 --timeout-ms 25000',
-      'npm run ops:p3-release-readiness',
-      'npm run ops:deploy-readiness',
-      'npm run ops:render-deployment-handoff',
+      'npm run ops:release-handoff-readiness -- --skip-build',
       'npm run ops:release-data-publish',
       'npm run ops:release-data-url-smoke',
     ])
+    expect(workflow).toContain('.tmp/release-handoff-readiness.md')
+    expect(workflow).toContain('.tmp/release-handoff-readiness.json')
   })
 
   it('keeps Publish Packs guarded by reviewed UI smokes before release gates', async () => {
@@ -64,10 +64,10 @@ describe('release workflow contracts', () => {
       'npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --reviewed --timeout-ms 25000',
       'npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --reviewed --view MAP --limit 1 --timeout-ms 25000',
       'npm run ops:p1-release-readiness',
-      'npm run ops:p3-release-readiness',
-      'npm run ops:deploy-readiness',
-      'npm run ops:render-deployment-handoff',
+      'npm run ops:release-handoff-readiness -- --skip-build',
     ])
+    expect(workflow).toContain('.tmp/release-handoff-readiness.md')
+    expect(workflow).toContain('.tmp/release-handoff-readiness.json')
   })
 
   it('keeps Render Live Verify wired to live release inputs', async () => {
