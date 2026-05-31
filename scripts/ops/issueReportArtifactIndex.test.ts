@@ -455,7 +455,7 @@ describe('issueReportArtifactIndex', () => {
         csvRootUrl: null,
         csvArtifactUrl: null,
       },
-    }
+    } as unknown as typeof index
     expect(renderIssueReportArtifactIndex(packetManifestFallbackIndex)).toContain(
       '- Packet summary entry: summary.md',
     )

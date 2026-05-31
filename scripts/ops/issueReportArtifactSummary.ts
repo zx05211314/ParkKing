@@ -60,10 +60,6 @@ type IssueReportArtifactSummaryIndexInput =
   | IssueReportArtifactIndexOutput
   | IssueReportSummaryIndexOutput
 
-type IssueReportArtifactSummaryJsonSourceInput =
-  | IssueReportArtifactSummaryIndexInput
-  | IssueReportArtifactSummaryJsonOutput
-
 type IssueReportArtifactSummaryInput =
   | IssueReportArtifactSummaryIndexInput
   | IssueReportArtifactSummaryJsonOutput
@@ -352,11 +348,14 @@ const renderSummaryReasonRows = (
   })
 
 const buildIssueReportArtifactSummaryJsonOutput = (params: {
-  index: IssueReportArtifactSummaryJsonSourceInput
+  index: IssueReportArtifactSummaryInput
   options: IssueReportArtifactSummaryOptions
 }): IssueReportArtifactSummaryJsonOutput => {
   if (isIssueReportArtifactSummaryJson(params.index)) {
     return params.index
+  }
+  if (isIssueReportArtifactSummarySurface(params.index)) {
+    throw new Error('cannot build issue report artifact summary json from summary surface')
   }
 
   const topCount = params.options.topCount ?? 5
@@ -804,8 +803,8 @@ const renderIssueReportArtifactSummaryFromSurface = (
   const titlePrefix = titleLabel ? `${titleLabel} ` : ''
   const inputArtifactType =
     options.inputArtifactType ?? surface.artifactType
-  const inputUrl = options.inputUrl
-  const publishGateSummaryUrl = options.publishGateSummaryUrl
+  const inputUrl = options.inputUrl ?? null
+  const publishGateSummaryUrl = options.publishGateSummaryUrl ?? null
   const {
     packetRootUrl,
     csvRootUrl,
@@ -1267,7 +1266,7 @@ const parseIssueReportArtifactSummaryJsonOutput = (
       `issue report artifact summary json schemaVersion must be ${ISSUE_REPORT_ARTIFACT_SUMMARY_JSON_SCHEMA_VERSION}`,
     )
   }
-  const output = value as IssueReportArtifactSummaryJsonOutput
+  const output = value as unknown as IssueReportArtifactSummaryJsonOutput
   const {
     packetRootUrl,
     csvRootUrl,
@@ -1324,7 +1323,7 @@ const parseIssueReportArtifactSummarySurfaceSummary = (
       `issue report artifact summary surface schemaVersion must be ${ISSUE_REPORT_ARTIFACT_SUMMARY_SURFACE_SCHEMA_VERSION}`,
     )
   }
-  const summary = value as IssueReportArtifactSummarySurfaceSummary
+  const summary = value as unknown as IssueReportArtifactSummarySurfaceSummary
   const {
     packetRootUrl,
     csvRootUrl,
@@ -1389,7 +1388,7 @@ const loadIssueReportArtifactSummaryInputDetails = async (
     if (await pathExists(indexSurfacePath)) {
       return {
         index: parseIssueReportArtifactSummarySurfaceSummary(
-          JSON.parse(await readFile(indexSurfacePath, 'utf8')),
+          JSON.parse(await readFile(indexSurfacePath!, 'utf8')),
         ),
         inputArtifactType: 'issue-report-workflow-artifacts',
       }
@@ -1403,7 +1402,7 @@ const loadIssueReportArtifactSummaryInputDetails = async (
 
     if (await pathExists(artifactIndexPath)) {
       return {
-        index: await loadIssueReportArtifactIndex(artifactIndexPath, cwd),
+        index: await loadIssueReportArtifactIndex(artifactIndexPath!, cwd),
         inputArtifactType: 'issue-report-workflow-artifacts',
       }
     }
@@ -1420,7 +1419,7 @@ const loadIssueReportArtifactSummaryInputDetails = async (
       parsed.artifactIndexPath,
     )
     if (await pathExists(artifactIndexPath)) {
-      const loaded = await loadIssueReportArtifactSummaryInputDetails(artifactIndexPath, cwd)
+      const loaded = await loadIssueReportArtifactSummaryInputDetails(artifactIndexPath!, cwd)
       return {
         index: loaded.index,
         inputArtifactType: 'issue-report-summary-artifacts',
@@ -1433,7 +1432,7 @@ const loadIssueReportArtifactSummaryInputDetails = async (
       parsed.sourceSummaryPath,
     )
     if (await pathExists(sourceSummaryPath)) {
-      const loaded = await loadIssueReportArtifactSummaryInputDetails(sourceSummaryPath, cwd)
+      const loaded = await loadIssueReportArtifactSummaryInputDetails(sourceSummaryPath!, cwd)
       return {
         index: loaded.index,
         inputArtifactType: 'issue-report-summary-artifacts',
@@ -1499,9 +1498,7 @@ const loadIssueReportArtifactSummaryInputDetails = async (
           {
             summaryPath: resolvedPath,
             outPath: null,
-            indexBaseUrl: null,
             json: true,
-            topCount: 5,
             writeIndex: true,
           },
           cwd,

@@ -15,7 +15,7 @@ describe('ingestIntersectionRoadClasses', () => {
           road_type: 'Residential',
         },
         geometry: null,
-      }),
+      } as never),
     ).toBe('residential')
   })
 

@@ -25,10 +25,13 @@ describe('syncServiceApi', () => {
             },
           ],
           reports: [],
+          issueReports: [],
           savedPlansRevision: 1,
           reportsRevision: 0,
+          issueReportsRevision: 0,
           savedPlansUpdatedAt: '2026-03-13T00:00:00.000Z',
           reportsUpdatedAt: null,
+          issueReportsUpdatedAt: null,
         },
       },
     })

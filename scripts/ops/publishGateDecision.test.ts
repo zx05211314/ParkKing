@@ -81,7 +81,7 @@ describe('publishGateDecision', () => {
     const checkedDistricts = [
       {
         districtId: 'xinyi',
-        warnings: [{ severity: 'FAIL', code: 'PERF_REGRESSION', message: 'hard fail' }],
+        warnings: [{ severity: 'FAIL' as const, code: 'PERF_REGRESSION', message: 'hard fail' }],
       },
     ]
     const result = applyPublishGateBaselineAdopt({

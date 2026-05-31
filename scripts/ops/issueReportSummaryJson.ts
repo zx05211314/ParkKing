@@ -436,9 +436,9 @@ export const parseIssueReportSummaryJsonOutput = (
   })
 
   return {
-    ...(record as IssueReportSummaryJsonOutput),
+    ...(record as unknown as IssueReportSummaryJsonOutput),
     artifacts: {
-      ...((record as IssueReportSummaryJsonOutput).artifacts),
+      ...((record as unknown as IssueReportSummaryJsonOutput).artifacts),
       csvRootUrl: canonicalCsvRootUrl,
       csvBaseUrl: normalizedCsvBaseUrl,
       packetRootUrl: canonicalPacketRootUrl,

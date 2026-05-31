@@ -46,7 +46,7 @@ describe('ingest utils', () => {
       type: 'Feature',
       properties: { id: 'missingGeometry' },
       geometry: null,
-    }
+    } as never
 
     const filtered = filterToBoundary(
       featureCollection([inside, crossing, outside, missingGeometry]) as FeatureCollection,

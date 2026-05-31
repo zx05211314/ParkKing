@@ -22,7 +22,7 @@ describe('ingestCandidateClassification', () => {
         type: 'Feature',
         geometry: null,
         properties: { HIGHWAY: ' Primary ' },
-      }),
+      } as never),
     ).toBe('primary')
 
     expect(

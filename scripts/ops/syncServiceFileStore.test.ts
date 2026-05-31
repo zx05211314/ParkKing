@@ -29,6 +29,9 @@ describe('syncServiceFileStore', () => {
           reports: [],
           reportsRevision: 0,
           reportsUpdatedAt: null,
+          issueReports: [],
+          issueReportsRevision: 0,
+          issueReportsUpdatedAt: null,
         },
       },
     })

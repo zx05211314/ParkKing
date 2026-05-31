@@ -4,8 +4,8 @@ import { loadGeoJson } from '../../src/data/loaders/loadGeoJson.node'
 import type { ParkingSpaceCollection } from '../../src/data/parkingSpaces'
 import {
   loadOptionalGeoJson,
-  QaLineCollection,
 } from './sampleQaCandidateDataset'
+import type { QaLineCollection } from './sampleQaCandidateDataset'
 
 export const loadQaCandidateOptionalLayers = async (baseDir: string) => {
   const [crosswalks, signOverrides, inferredCandidates, parkingSpaces, meta] =

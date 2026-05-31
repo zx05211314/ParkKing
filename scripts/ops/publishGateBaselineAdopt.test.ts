@@ -8,8 +8,8 @@ describe('publishGateBaselineAdopt', () => {
         {
           districtId: 'xinyi',
           warnings: [
-            { severity: 'FAIL', code: 'DIFF_SEGMENT_COUNT_DELTA', message: 'adoptable' },
-            { severity: 'WARN', code: 'COUNT_DELTA', message: 'warn' },
+            { severity: 'FAIL' as const, code: 'DIFF_SEGMENT_COUNT_DELTA', message: 'adoptable' },
+            { severity: 'WARN' as const, code: 'COUNT_DELTA', message: 'warn' },
           ],
         },
       ],
@@ -32,7 +32,7 @@ describe('publishGateBaselineAdopt', () => {
     const checkedDistricts = [
       {
         districtId: 'xinyi',
-        warnings: [{ severity: 'FAIL', code: 'PERF_REGRESSION', message: 'hard fail' }],
+        warnings: [{ severity: 'FAIL' as const, code: 'PERF_REGRESSION', message: 'hard fail' }],
       },
     ]
     const result = applyPublishGateBaselineAdopt({

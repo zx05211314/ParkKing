@@ -157,10 +157,10 @@ export const collectSyncIssueReportEntries = (
       return left.issueId.localeCompare(right.issueId)
     })
 
-export const filterSyncIssueReportEntries = (
-  issues: SyncIssueReportRawIssue[],
+export const filterSyncIssueReportEntries = <T extends SyncIssueReportEntry>(
+  issues: T[],
   filters: IssueReportSummaryFilters,
-) =>
+): T[] =>
   issues.filter((issue) => {
     if (filters.scope && issue.scope !== filters.scope) {
       return false
@@ -424,8 +424,9 @@ export const loadIssueReportSummary = async (
   cwd = process.cwd(),
 ): Promise<IssueReportSummaryResult> => {
   const config = resolveSyncServiceConfig(env, cwd)
-  const storageFile = normalizeSyncText(args.syncStorePath)
-    ? resolve(cwd, args.syncStorePath)
+  const syncStorePath = normalizeSyncText(args.syncStorePath)
+  const storageFile = syncStorePath
+    ? resolve(cwd, syncStorePath)
     : config.storageFile
 
   const filters: IssueReportSummaryFilters = {

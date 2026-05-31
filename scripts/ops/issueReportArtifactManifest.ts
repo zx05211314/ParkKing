@@ -22,6 +22,7 @@ import type {
   IssueReportTriagePacketManifest,
   IssueReportWorkflowArtifactsManifest,
 } from './issueReportSummaryTypes'
+import type { NightlyPublishGateSummary } from './notifyNightlyTypes'
 
 export interface LoadedIssueReportArtifactManifest {
   manifestPath: string
@@ -313,7 +314,21 @@ const assertSummaryFilters = (value: unknown, label: string) => {
   }
 }
 
-const assertNightlyPublishGateSummary = (value: unknown, label: string) => {
+const assertNightlyPublishGateMode = (
+  value: unknown,
+  label: string,
+): NightlyPublishGateSummary['mode'] => {
+  const mode = assertString(value, label)
+  if (mode !== 'strict' && mode !== 'warn') {
+    throw new Error(`${label} must be strict or warn`)
+  }
+  return mode
+}
+
+const assertNightlyPublishGateSummary = (
+  value: unknown,
+  label: string,
+): NightlyPublishGateSummary | null => {
   if (value === null) {
     return null
   }
@@ -321,7 +336,7 @@ const assertNightlyPublishGateSummary = (value: unknown, label: string) => {
   const totals = assertRecord(record.totals, `${label}.totals`)
   return {
     generatedAt: assertString(record.generatedAt, `${label}.generatedAt`),
-    mode: assertString(record.mode, `${label}.mode`),
+    mode: assertNightlyPublishGateMode(record.mode, `${label}.mode`),
     exitCode: assertNumber(record.exitCode, `${label}.exitCode`),
     allowWarn: assertBoolean(record.allowWarn, `${label}.allowWarn`),
     allowFail: assertBoolean(record.allowFail, `${label}.allowFail`),
@@ -1025,10 +1040,14 @@ export function assertIssueReportArtifactManifestKind(
   manifest: IssueReportArtifactManifest,
   expectedKind: 'any',
 ): IssueReportArtifactManifest
-export const assertIssueReportArtifactManifestKind = (
+export function assertIssueReportArtifactManifestKind(
   manifest: IssueReportArtifactManifest,
   expectedKind: 'any' | 'workflow' | 'manual' | 'packet',
-) => {
+): IssueReportArtifactManifest
+export function assertIssueReportArtifactManifestKind(
+  manifest: IssueReportArtifactManifest,
+  expectedKind: 'any' | 'workflow' | 'manual' | 'packet',
+) {
   if (expectedKind === 'any') {
     return manifest
   }

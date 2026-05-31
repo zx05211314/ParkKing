@@ -10,7 +10,7 @@ const collectCoordinateNumbers = (coords: unknown, result: number[]) => {
   }
 }
 
-export const hasValidCoordinates = (geometry: Geometry | null) => {
+export const hasValidCoordinates = (geometry: Geometry | null): boolean => {
   if (!geometry) {
     return false
   }

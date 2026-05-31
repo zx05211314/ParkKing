@@ -4,6 +4,7 @@ import {
   selectMetricTrigger,
   sortIssues,
 } from './reportGateAnomalyIssueRanking'
+import type { DiffIssue } from './diffPackTypes'
 
 describe('reportGateAnomalyIssueRanking', () => {
   it('sorts issues by severity then code and selects the strongest metric trigger', () => {
@@ -11,7 +12,7 @@ describe('reportGateAnomalyIssueRanking', () => {
       { severity: 'WARN', code: 'B_CODE', message: 'warn b', metric: { drop: 0.2 } },
       { severity: 'FAIL', code: 'A_CODE', message: 'fail a', metric: { drop: 0.1 } },
       { severity: 'WARN', code: 'A_CODE', message: 'warn a', metric: { drop: 0.5 } },
-    ]
+    ] satisfies DiffIssue[]
 
     expect(sortIssues(issues).map((issue) => issue.code)).toEqual([
       'A_CODE',

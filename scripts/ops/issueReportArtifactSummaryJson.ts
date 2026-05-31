@@ -2,7 +2,11 @@ import { access, readFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseIssueReportArtifactSummaryJsonArgs } from './issueReportArtifactSummaryJsonArgs'
-import { buildIssueReportArtifactIndex, parseIssueReportArtifactIndex } from './issueReportArtifactIndex'
+import {
+  buildIssueReportArtifactIndex,
+  loadIssueReportArtifactIndex,
+  parseIssueReportArtifactIndex,
+} from './issueReportArtifactIndex'
 import {
   applyIssueReportManualManifestPreferredCsvToSummaryIndex,
   applyIssueReportManualManifestPreferredCsvToSummaryJson,
@@ -10,7 +14,6 @@ import {
 } from './issueReportManualPreferredCsv'
 import {
   buildIssueReportArtifactSummaryJsonOutput,
-  loadIssueReportArtifactSummaryInputDetails,
   parseIssueReportArtifactSummaryJsonOutput,
   parseIssueReportArtifactSummarySurfaceSummary,
 } from './issueReportArtifactSummary'
@@ -37,12 +40,19 @@ import {
   resolveIssueReportWorkflowArtifactEntryPath,
 } from './issueReportWorkflowArtifactPaths'
 import type {
+  IssueReportArtifactIndexOutput,
   IssueReportArtifactSummaryJsonOutput,
   IssueReportArtifactSummaryInputArtifactType,
   IssueReportArtifactSummarySurfaceSummary,
   IssueReportSummaryArtifactsManifest,
+  IssueReportSummaryIndexOutput,
 } from './issueReportSummaryTypes'
 import { ISSUE_REPORT_ARTIFACT_SUMMARY_SURFACE_SCHEMA_VERSION } from './issueReportSummaryTypes'
+
+type IssueReportArtifactSummaryJsonSourceInput =
+  | IssueReportArtifactIndexOutput
+  | IssueReportSummaryIndexOutput
+  | IssueReportArtifactSummaryJsonOutput
 
 export interface LoadedIssueReportArtifactSummaryJsonOutput {
   summaryPath: string
@@ -59,9 +69,7 @@ export interface LoadedIssueReportArtifactSummarySurfaceInput {
 const toLoadedIssueReportArtifactSummaryJsonOutput = (params: {
   summaryPath: string
   inputArtifactType: IssueReportArtifactSummaryInputArtifactType
-  summary:
-    | Awaited<ReturnType<typeof buildIssueReportArtifactIndex>>
-    | Awaited<ReturnType<typeof loadIssueReportArtifactSummaryInputDetails>>['index']
+  summary: IssueReportArtifactSummaryJsonSourceInput
 }) => ({
   summaryPath: params.summaryPath,
   summary: buildIssueReportArtifactSummaryJsonOutput({
@@ -261,9 +269,7 @@ export const loadIssueReportArtifactSummarySurfaceInput = async (
                 {
                   summaryPath: resolvedPath,
                   outPath: null,
-                  indexBaseUrl: null,
                   json: true,
-                  topCount: 5,
                   writeIndex: true,
                 },
                 cwd,
@@ -452,7 +458,7 @@ export const loadIssueReportArtifactSummarySurfaceInput = async (
 
 export const buildIssueReportArtifactSummaryJsonSurfaceSummary = (
   loaded: LoadedIssueReportArtifactSummaryJsonOutput,
-): IssueReportArtifactSummaryJsonSurfaceSummary => {
+): IssueReportArtifactSummarySurfaceSummary => {
   const summaryEntries = loaded.summary.summaryEntries
   const bundleRoot = dirname(loaded.summaryPath)
   const relativeEntries = [
@@ -626,7 +632,7 @@ export const buildIssueReportArtifactSummaryJsonSurfaceSummary = (
 }
 
 export const renderIssueReportArtifactSummaryJsonSurfaceSummary = (
-  summary: IssueReportArtifactSummaryJsonSurfaceSummary,
+  summary: IssueReportArtifactSummarySurfaceSummary,
 ) => {
   const {
     packetRootUrl,
@@ -782,7 +788,7 @@ export const renderIssueReportArtifactSummaryJsonSurfaceSummary = (
 
 export const renderIssueReportArtifactSummaryJsonSurfaceWriteResult = (
   outPath: string,
-  summary: IssueReportArtifactSummaryJsonSurfaceSummary,
+  summary: IssueReportArtifactSummarySurfaceSummary,
 ) => [
   `Wrote issue report artifact summary surface to ${outPath}`,
   '',

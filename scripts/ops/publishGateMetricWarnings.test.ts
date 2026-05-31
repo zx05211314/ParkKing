@@ -10,6 +10,8 @@ describe('publishGateMetricWarnings', () => {
           segmentsCount: 10,
           overridesAppliedCount: 7,
           signOverridesCount: 7,
+          signOverrideMatchedSegmentCount: 5,
+          signOverrideSpatialMatchCount: 0,
           signOverrideUnmatchedNamedCount: 2,
           curbMarkingKnownRate: 0.01,
           restrictionTriggeredRate: 0.001,

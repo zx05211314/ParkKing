@@ -27,7 +27,10 @@ import {
 } from './issueReportSummaryHotspots'
 import type { IssueReportWorkflowArtifactArgs } from './issueReportWorkflowArtifactArgs'
 import type { NightlyPublishGateSummary } from './notifyNightlyTypes'
-import type { IssueReportWorkflowArtifactsManifest } from './issueReportSummaryTypes'
+import type {
+  IssueReportSegmentPacket,
+  IssueReportWorkflowArtifactsManifest,
+} from './issueReportSummaryTypes'
 import type { IssueReportSummaryCsvWriteResult } from './issueReportSummaryCsvFiles'
 
 export type IssueReportWorkflowArtifactsResult = IssueReportWorkflowArtifactsManifest
@@ -51,7 +54,7 @@ const buildRootCompatArtifactLinks = (params: {
 
 const buildIssueReportWorkflowPublishGateHotspots = (params: {
   publishGateSummary: NightlyPublishGateSummary | null
-  segmentEntries: Array<{ packet: { packetId: string }; relativePath: string }>
+  segmentEntries: Array<{ packet: IssueReportSegmentPacket; relativePath: string }>
   packetRootUrl: string | null
   packetLegacyArtifactUrl: string | null
   csvRootUrl: string | null

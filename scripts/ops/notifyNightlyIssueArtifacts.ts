@@ -29,8 +29,8 @@ import {
 import { writeIssueReportTriagePacketBundle } from './issueReportSummaryPacketFiles'
 import { buildIssueReportTriagePacketBundle } from './issueReportSummaryPackets'
 import { loadIssueReportSummary } from './issueReportSummaryState'
+import type { IssueReportArtifactSummarySurfaceSummary } from './issueReportSummaryTypes'
 import type {
-  IssueReportArtifactSummarySurfaceSummary,
   NotifyNightlyArgs,
   NightlyIssueArtifactOutputs,
   NightlyIssueReasonHotspot,
@@ -307,16 +307,26 @@ const nightlyFileExists = async (filePath: string) => {
   }
 }
 
-export const loadNightlyIssueArtifacts = async (
-  args: Pick<
+type LoadNightlyIssueArtifactsArgs =
+  Pick<
     NotifyNightlyArgs,
     | 'syncStorePath'
-    | 'issueInputPath'
     | 'issueLimit'
     | 'issuePacketOutPath'
     | 'issueCsvOutPath'
     | 'issuePacketIssueLimit'
-  >,
+  >
+  & Partial<
+    Pick<
+      NotifyNightlyArgs,
+      | 'issueInputPath'
+      | 'issuePacketUrl'
+      | 'issueCsvUrl'
+    >
+  >
+
+export const loadNightlyIssueArtifacts = async (
+  args: LoadNightlyIssueArtifactsArgs,
   env: NodeJS.ProcessEnv = process.env,
   cwd = process.cwd(),
 ): Promise<NightlyIssueArtifactResult> => {
@@ -623,6 +633,8 @@ export const loadNightlyIssueArtifacts = async (
   let preferredCsvPath: string | null = null
   let preferredCsvRelativePath: string | null = null
   let csvWrite: Awaited<ReturnType<typeof writeIssueReportSummaryCsvFiles>> | null = null
+  const issuePacketUrl = args.issuePacketUrl ?? null
+  const issueCsvUrl = args.issueCsvUrl ?? null
 
   if (args.issueCsvOutPath) {
     csvWrite = await writeIssueReportSummaryCsvFiles(
@@ -649,9 +661,9 @@ export const loadNightlyIssueArtifacts = async (
       args.issuePacketOutPath,
       packetBundle,
       {
-        packetRootUrl: args.issuePacketUrl,
+        packetRootUrl: issuePacketUrl,
         csvWrite,
-        csvRootUrl: args.issueCsvUrl,
+        csvRootUrl: issueCsvUrl,
       },
       cwd,
     )
@@ -680,8 +692,8 @@ export const loadNightlyIssueArtifacts = async (
       indexSurfacePath: null,
       indexSurfaceRelativePath: null,
       packetSummaryUrl: resolveIssueReportArtifactBundleUrls({
-        packetRootUrl: args.issuePacketUrl,
-        csvRootUrl: args.issueCsvUrl,
+        packetRootUrl: issuePacketUrl,
+        csvRootUrl: issueCsvUrl,
         preferredCsvUrl: null,
         preferredCsvRelativePath,
         packetSummaryUrl: null,
@@ -692,8 +704,8 @@ export const loadNightlyIssueArtifacts = async (
       packetSummaryPath,
       packetSummaryRelativePath: packetSummaryPath ? 'summary.md' : null,
       packetManifestUrl: resolveIssueReportArtifactBundleUrls({
-        packetRootUrl: args.issuePacketUrl,
-        csvRootUrl: args.issueCsvUrl,
+        packetRootUrl: issuePacketUrl,
+        csvRootUrl: issueCsvUrl,
         preferredCsvUrl: null,
         preferredCsvRelativePath,
         packetSummaryUrl: null,
@@ -704,12 +716,12 @@ export const loadNightlyIssueArtifacts = async (
       packetManifestPath,
       packetManifestRelativePath: packetManifestPath ? 'manifest.json' : null,
       packetRootPath,
-      packetRootUrl: args.issuePacketUrl,
+      packetRootUrl: issuePacketUrl,
       csvRootPath,
-      csvRootUrl: args.issueCsvUrl,
+      csvRootUrl: issueCsvUrl,
       preferredCsvUrl: resolveIssueReportArtifactBundleUrls({
-        packetRootUrl: args.issuePacketUrl,
-        csvRootUrl: args.issueCsvUrl,
+        packetRootUrl: issuePacketUrl,
+        csvRootUrl: issueCsvUrl,
         preferredCsvUrl: null,
         preferredCsvRelativePath,
         packetSummaryUrl: null,
@@ -719,8 +731,8 @@ export const loadNightlyIssueArtifacts = async (
       }).preferredCsvUrl,
       preferredCsvPath,
       preferredCsvRelativePath,
-      packetUrl: args.issuePacketUrl,
-      csvUrl: args.issueCsvUrl,
+      packetUrl: issuePacketUrl,
+      csvUrl: issueCsvUrl,
     },
   }
 }

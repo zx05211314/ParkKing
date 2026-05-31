@@ -1,14 +1,15 @@
 import { featureCollection, lineString, point } from '@turf/turf'
+import type { FeatureCollection } from 'geojson'
 import { describe, expect, it } from 'vitest'
 import { buildQualityMetrics, countRiskTags } from './ingestDatasetQualityMetrics'
 
 describe('ingestDatasetQualityMetrics', () => {
   it('counts risk tags across alternate property shapes', () => {
     const collection = featureCollection([
-      point([121.5, 25.0], { riskTags: ['night', 'clearance'] }),
-      point([121.6, 25.1], { risk_tag: 'night;hydrant' }),
-      point([121.7, 25.2], { risk_tags: 'clearance' }),
-    ])
+      point([121.5, 25.0], { riskTags: ['night', 'clearance'] }) as never,
+      point([121.6, 25.1], { risk_tag: 'night;hydrant' }) as never,
+      point([121.7, 25.2], { risk_tags: 'clearance' }) as never,
+    ]) as FeatureCollection
 
     expect(countRiskTags(collection)).toEqual({
       night: 2,

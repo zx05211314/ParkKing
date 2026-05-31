@@ -45,10 +45,16 @@ describe('sampleQaCandidateFlags', () => {
     expect(
       toTopReasons(
         createSegment({
-          reasonCodes: ['RULE_A', 'RULE_A', 'RULE_B', 'RULE_C', 'RULE_D'],
+          reasonCodes: [
+            'ZONE_HYDRANT',
+            'ZONE_HYDRANT',
+            'ZONE_CROSSWALK',
+            'OVERRIDE_APPLIED',
+            'DATA_FRESHNESS_UNKNOWN',
+          ],
         }),
       ),
-    ).toEqual(['RULE_A', 'RULE_B', 'RULE_C'])
+    ).toEqual(['ZONE_HYDRANT', 'ZONE_CROSSWALK', 'OVERRIDE_APPLIED'])
   })
 
   it('derives sorted qa flags from reason codes, risk tags, and inferred status', () => {

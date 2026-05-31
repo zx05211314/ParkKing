@@ -25,8 +25,9 @@ export const loadNightlyIssueReports = async (
   cwd = process.cwd(),
 ): Promise<NightlyIssueReportSummary[]> => {
   const config = resolveSyncServiceConfig(env, cwd)
-  const storageFile = normalizeSyncText(syncStorePath)
-    ? resolve(cwd, syncStorePath)
+  const normalizedSyncStorePath = normalizeSyncText(syncStorePath)
+  const storageFile = normalizedSyncStorePath
+    ? resolve(cwd, normalizedSyncStorePath)
     : config.storageFile
 
   if (!(await nightlyFileExists(storageFile))) {

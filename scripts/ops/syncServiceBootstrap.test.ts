@@ -10,10 +10,13 @@ describe('syncServiceBootstrap', () => {
         alpha: {
           savedPlans: [{ key: 'plan-a' }],
           reports: [{ districtId: 'xinyi' }],
+          issueReports: [],
           savedPlansRevision: 2,
           reportsRevision: 3,
+          issueReportsRevision: 0,
           savedPlansUpdatedAt: null,
           reportsUpdatedAt: null,
+          issueReportsUpdatedAt: null,
         },
       },
     }

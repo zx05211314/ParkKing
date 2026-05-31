@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import { buildGateAnomalyPackContext } from './reportGateAnomalyPackContextState'
+import type { DistrictMetaDiff } from './diffPackMetrics'
+
+const emptyMetaDiff: DistrictMetaDiff = {
+  segmentsCount: { prev: null, next: null, delta: null, deltaPct: null },
+  overridesAppliedCount: { prev: null, next: null, delta: null, deltaPct: null },
+  signOverridesCount: { prev: null, next: null, delta: null, deltaPct: null },
+  signOverrideUnmatchedNamedCount: { prev: null, next: null, delta: null, deltaPct: null },
+  curbMarkingKnownRate: { prev: null, next: null, delta: null, deltaPct: null },
+  restrictionTriggeredRate: { prev: null, next: null, delta: null, deltaPct: null },
+  boundaryBBox: {
+    prev: null,
+    next: null,
+    delta: null,
+    area: { prev: null, next: null, delta: null, deltaPct: null },
+  },
+  boundaryCenter: { prev: null, next: null, delta: null, distance: null },
+  provenanceFetchedAt: { prev: null, next: null, changed: false },
+}
 
 describe('reportGateAnomalyPackContextState', () => {
   it('builds context state and extracts the matching district diff', () => {
@@ -26,7 +44,7 @@ describe('reportGateAnomalyPackContextState', () => {
             status: 'UPDATED',
             severity: 'WARN',
             issues: [],
-            meta: {},
+            meta: emptyMetaDiff,
             files: {
               added: [],
               removed: [],

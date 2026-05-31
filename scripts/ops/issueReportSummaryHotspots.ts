@@ -16,7 +16,10 @@ export const findDistrictIssueHotspot = <T extends DistrictIssueHotspot>(
 ): T | null => hotspots.find((hotspot) => hotspot.districtId === districtId) ?? null
 
 export const formatDistrictIssueHotspotLabel = (
-  hotspot: Pick<DistrictIssueHotspot, 'segmentId' | 'segmentName'> | null,
+  hotspot:
+    | (Pick<DistrictIssueHotspot, 'segmentId' | 'segmentName'>
+      & Partial<Pick<DistrictIssueHotspot, 'districtId'>>)
+    | null,
 ) => {
   if (!hotspot) {
     return '-'

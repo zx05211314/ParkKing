@@ -1,6 +1,24 @@
 import { describe, expect, it } from 'vitest'
 import { buildPublishGateDiffReportWarnings } from './publishGateDiffWarningState'
 import type { PackDiffReport } from './diffPackTypes'
+import type { DistrictMetaDiff } from './diffPackMetrics'
+
+const emptyMetaDiff: DistrictMetaDiff = {
+  segmentsCount: { prev: null, next: null, delta: null, deltaPct: null },
+  overridesAppliedCount: { prev: null, next: null, delta: null, deltaPct: null },
+  signOverridesCount: { prev: null, next: null, delta: null, deltaPct: null },
+  signOverrideUnmatchedNamedCount: { prev: null, next: null, delta: null, deltaPct: null },
+  curbMarkingKnownRate: { prev: null, next: null, delta: null, deltaPct: null },
+  restrictionTriggeredRate: { prev: null, next: null, delta: null, deltaPct: null },
+  boundaryBBox: {
+    prev: null,
+    next: null,
+    delta: null,
+    area: { prev: null, next: null, delta: null, deltaPct: null },
+  },
+  boundaryCenter: { prev: null, next: null, delta: null, distance: null },
+  provenanceFetchedAt: { prev: null, next: null, changed: false },
+}
 
 const baseReport: PackDiffReport = {
   schemaVersion: 1,
@@ -25,7 +43,7 @@ const baseReport: PackDiffReport = {
           message: 'segment count changed',
         },
       ],
-      meta: {},
+      meta: emptyMetaDiff,
       files: { added: [], removed: [], modified: [] },
     },
   ],

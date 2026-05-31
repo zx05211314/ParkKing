@@ -7,10 +7,9 @@ describe('diffPackBoundaryIssues', () => {
       buildBoundaryAreaIssues({
         districtId: 'beta',
         boundaryBBox: {
-          prev: [0, 0, 1, 1],
-          next: [0, 0, 0, 0],
+          prev: { minX: 0, minY: 0, maxX: 1, maxY: 1 },
+          next: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
           delta: null,
-          deltaPct: null,
           area: {
             prev: 1,
             next: 1e-12,

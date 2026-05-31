@@ -1,5 +1,5 @@
 export interface IssueReportSummaryArtifactsArgs {
-  inputPath: string
+  inputPath?: string
   summaryPath?: string
   label: string | null
   inputUrl: string | null

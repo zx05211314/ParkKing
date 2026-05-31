@@ -20,6 +20,7 @@ describe('reportGateBoundaryDiffAnomalies', () => {
         segmentsCount: { prev: null, next: null, delta: null, deltaPct: null },
         overridesAppliedCount: { prev: null, next: null, delta: null, deltaPct: null },
         signOverridesCount: { prev: null, next: null, delta: null, deltaPct: null },
+        signOverrideUnmatchedNamedCount: { prev: null, next: null, delta: null, deltaPct: null },
         curbMarkingKnownRate: { prev: null, next: null, delta: null, deltaPct: null },
         restrictionTriggeredRate: { prev: null, next: null, delta: null, deltaPct: null },
         boundaryBBox: {

@@ -1,5 +1,5 @@
 export interface IssueReportWorkflowArtifactArgs {
-  manifestPath: string | null
+  manifestPath?: string | null
   syncStorePath: string | null
   outRoot: string
   limit: number

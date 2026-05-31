@@ -55,6 +55,7 @@ const makeSummary = (
       id: 'case-1',
       label: null,
       url: 'http://127.0.0.1:4173',
+      view: options.view ?? 'LIST',
       expectedKind: 'PARK',
       expectedEvidenceKind: 'MARKED_SPACE',
       requiredText: ['Pinned location answer'],

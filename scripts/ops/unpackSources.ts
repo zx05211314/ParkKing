@@ -2,6 +2,7 @@ import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseUnpackSourceArgs } from './unpackSourceArgs'
 import { listZipFiles, unpackZipFile } from './unpackSourceFiles'
+import type { UnpackSummary } from './unpackSourceTypes'
 export { chooseMainShpEntry } from './unpackSourceZip'
 export type { UnpackSummary, ZipEntryInfo } from './unpackSourceTypes'
 

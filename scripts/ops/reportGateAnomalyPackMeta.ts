@@ -34,7 +34,7 @@ export const listDistrictIdsInPack = async (packPath: string | null) => {
     }
   }
 
-  let entries: Awaited<ReturnType<typeof fs.readdir>> = []
+  let entries: Array<{ name: string; isDirectory: () => boolean }> = []
   try {
     entries = await fs.readdir(packPath, { withFileTypes: true })
   } catch {

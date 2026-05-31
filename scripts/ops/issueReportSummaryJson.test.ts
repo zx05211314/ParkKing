@@ -527,7 +527,7 @@ describe('issueReportSummaryJson', () => {
       },
     }) as ReturnType<typeof buildIssueReportSummaryJsonOutput>
 
-    ;(parsed.artifacts as Record<string, unknown>).csvBaseUrl = 42
+    ;(parsed.artifacts as unknown as Record<string, unknown>).csvBaseUrl = 42
 
     expect(() => parseIssueReportSummaryJsonOutput(parsed)).toThrow(
       'artifacts.csvBaseUrl is a legacy compat alias for csvRootUrl and must be a string or null',

@@ -88,8 +88,6 @@ describe('issueReportSummaryArtifacts', () => {
           issueHotspotSegmentId: 'seg-1',
           issueHotspotSegmentName: 'C2 curb',
           issueHotspotSegmentLabel: 'C2 curb (seg-1)',
-          issueHotspotPacketPath: 'segment-packets/seg-1.json',
-          issueHotspotPacketUrl: 'https://example.com/manual-packets/segment-packets/seg-1.json',
         },
       ],
       artifacts: {

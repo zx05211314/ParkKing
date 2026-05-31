@@ -7,16 +7,11 @@ import {
 } from './reportGateAnomalyIssues'
 import { DELTA_FIELDS } from './reportGateAnomalyConstants'
 import type { GateAnomalyReport, ThresholdDeltaEntry } from './reportGateAnomalyTypes'
+import type { DiffIssue, DistrictDiff } from './diffPackTypes'
 
 export const buildThresholdDeltaSummary = (
   rawMeta: Record<string, Record<string, unknown> | undefined>,
-  rawIssues: Array<{
-    severity: string
-    code: string
-    message: string
-    metric?: Record<string, unknown>
-    threshold?: Record<string, unknown>
-  }>,
+  rawIssues: DiffIssue[],
 ) => {
   const issues: GateAnomalyReport['thresholdDeltas']['issues'] = sortIssues(rawIssues).map(
     (issue) => ({
@@ -56,5 +51,5 @@ export const buildThresholdDeltaSummary = (
 
 export const buildBoundaryCenterAnomalySummary = (
   meta: Record<string, unknown>,
-  districtDiff: unknown,
+  districtDiff: DistrictDiff | null,
 ) => boundaryAnomalies(meta, districtDiff)

@@ -6,6 +6,7 @@ import {
   buildGateResultLabel,
   writeIngestAllRegistry,
 } from './ingestAllPublishRegistry'
+import type { RegistryEntry } from '../ops/registryUtils'
 import type { IngestDistrictSummary } from './ingestAllTypes'
 
 const createSummary = (
@@ -47,6 +48,32 @@ const createSummary = (
     ...overrides,
   }) as IngestDistrictSummary
 
+const createRegistryEntry = (
+  overrides: Partial<RegistryEntry> = {},
+): RegistryEntry => {
+  const districtId = overrides.districtId ?? 'xinyi'
+  const districtName = overrides.districtName ?? 'Xinyi'
+  const datasetHash = overrides.datasetHash ?? overrides.latest?.datasetHash ?? 'hash-1'
+  const publishedAt =
+    overrides.publishedAt ?? overrides.latest?.publishedAt ?? '2026-03-21T00:00:00.000Z'
+  return {
+    districtId,
+    districtName,
+    schemaVersion: overrides.schemaVersion ?? 3,
+    datasetHash,
+    publishedAt,
+    generatedAt: overrides.generatedAt ?? '2026-03-21T00:00:00.000Z',
+    totalBytes: overrides.totalBytes ?? 100,
+    fileCount: overrides.fileCount ?? 1,
+    metaSha256: overrides.metaSha256 ?? `${districtId}-meta-sha`,
+    packSha256: overrides.packSha256 ?? `${districtId}-pack-sha`,
+    latest: overrides.latest ?? {
+      datasetHash,
+      publishedAt,
+    },
+  }
+}
+
 describe('ingestAllPublishRegistry', () => {
   it('builds publish gate result labels from warning state and overrides', () => {
     expect(
@@ -59,7 +86,7 @@ describe('ingestAllPublishRegistry', () => {
     expect(
       buildGateResultLabel(
         createSummary({
-          warnings: [{ severity: 'WARN', code: 'WARN_ONLY', message: 'warn' }],
+          warnings: [{ severity: 'WARN', code: 'COUNT_DELTA', message: 'warn' }],
         }),
         { allowWarn: false, allowFail: false },
       ),
@@ -68,7 +95,7 @@ describe('ingestAllPublishRegistry', () => {
     expect(
       buildGateResultLabel(
         createSummary({
-          warnings: [{ severity: 'FAIL', code: 'FAIL_ONLY', message: 'fail' }],
+          warnings: [{ severity: 'FAIL', code: 'BASELINE_MISSING', message: 'fail' }],
         }),
         { allowWarn: true, allowFail: false },
       ),
@@ -78,17 +105,10 @@ describe('ingestAllPublishRegistry', () => {
   it('writes registry entries for published summaries only', async () => {
     const cwd = await fs.mkdtemp(path.join(tmpdir(), 'ingest-all-registry-'))
     const messages: string[] = []
+    const xinyiEntry = createRegistryEntry()
     const summaries = [
       createSummary({
-        registryEntry: {
-          districtId: 'xinyi',
-          districtName: 'Xinyi',
-          latest: {
-            datasetHash: 'hash-1',
-            publishedAt: '2026-03-21T00:00:00.000Z',
-            manifestPath: 'public/data/generated/xinyi/manifest.json',
-          },
-        },
+        registryEntry: xinyiEntry,
       }),
       createSummary({ districtId: 'daan', registryEntry: undefined }),
     ]
@@ -104,17 +124,7 @@ describe('ingestAllPublishRegistry', () => {
     const raw = await fs.readFile(registryPath, 'utf-8')
     expect(JSON.parse(raw)).toEqual({
       generatedAt: '2026-03-21T01:00:00.000Z',
-      districts: [
-        {
-          districtId: 'xinyi',
-          districtName: 'Xinyi',
-          latest: {
-            datasetHash: 'hash-1',
-            publishedAt: '2026-03-21T00:00:00.000Z',
-            manifestPath: 'public/data/generated/xinyi/manifest.json',
-          },
-        },
-      ],
+      districts: [xinyiEntry],
     })
     expect(messages).toContain(`Wrote registry to ${registryPath}`)
   })
@@ -122,22 +132,34 @@ describe('ingestAllPublishRegistry', () => {
   it('preserves existing published registry entries outside the current publish run', async () => {
     const cwd = await fs.mkdtemp(path.join(tmpdir(), 'ingest-all-registry-preserve-'))
     const registryPath = path.resolve(cwd, 'public/data/generated/registry.json')
+    const preservedXinyiEntry = createRegistryEntry({
+      districtId: 'xinyi',
+      districtName: 'Xinyi',
+      datasetHash: 'xinyi-hash',
+      publishedAt: '2026-03-20T00:00:00.000Z',
+      generatedAt: '2026-03-20T00:00:00.000Z',
+      latest: {
+        datasetHash: 'xinyi-hash',
+        publishedAt: '2026-03-20T00:00:00.000Z',
+      },
+    })
+    const daanEntry = createRegistryEntry({
+      districtId: 'daan',
+      districtName: 'Daan',
+      datasetHash: 'daan-hash',
+      publishedAt: '2026-03-21T00:00:00.000Z',
+      latest: {
+        datasetHash: 'daan-hash',
+        publishedAt: '2026-03-21T00:00:00.000Z',
+      },
+    })
     await fs.mkdir(path.dirname(registryPath), { recursive: true })
     await fs.writeFile(
       registryPath,
       JSON.stringify(
         {
           generatedAt: '2026-03-20T00:00:00.000Z',
-          districts: [
-            {
-              districtId: 'xinyi',
-              districtName: 'Xinyi',
-              latest: {
-                datasetHash: 'xinyi-hash',
-                publishedAt: '2026-03-20T00:00:00.000Z',
-              },
-            },
-          ],
+          districts: [preservedXinyiEntry],
         },
         null,
         2,
@@ -149,14 +171,7 @@ describe('ingestAllPublishRegistry', () => {
       summaries: [
         createSummary({
           districtId: 'daan',
-          registryEntry: {
-            districtId: 'daan',
-            districtName: 'Daan',
-            latest: {
-              datasetHash: 'daan-hash',
-              publishedAt: '2026-03-21T00:00:00.000Z',
-            },
-          },
+          registryEntry: daanEntry,
         }),
       ],
       generatedAt: '2026-03-21T01:00:00.000Z',
@@ -167,24 +182,7 @@ describe('ingestAllPublishRegistry', () => {
     const raw = await fs.readFile(registryPath, 'utf-8')
     expect(JSON.parse(raw)).toEqual({
       generatedAt: '2026-03-21T01:00:00.000Z',
-      districts: [
-        {
-          districtId: 'daan',
-          districtName: 'Daan',
-          latest: {
-            datasetHash: 'daan-hash',
-            publishedAt: '2026-03-21T00:00:00.000Z',
-          },
-        },
-        {
-          districtId: 'xinyi',
-          districtName: 'Xinyi',
-          latest: {
-            datasetHash: 'xinyi-hash',
-            publishedAt: '2026-03-20T00:00:00.000Z',
-          },
-        },
-      ],
+      districts: [daanEntry, preservedXinyiEntry],
     })
   })
 })

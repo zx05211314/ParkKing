@@ -708,34 +708,17 @@ describe('issueReportArtifactSummary', () => {
       },
       publishGateSummary: {
         generatedAt: '2026-04-02T12:30:00.000Z',
-        reportPath: 'report.json',
         summaryPath: null,
         summaryUrl: null,
         mode: 'strict',
         allowWarn: false,
         allowFail: false,
-        allowFailRequested: false,
-        allowBaselineAdopt: false,
         overrideReason: null,
-        bootstrap: {
-          requested: false,
-          modeUsed: false,
-          denied: false,
-          previousPackExists: true,
-        },
-        baselineAdopt: {
-          enabled: false,
-          applied: false,
-          districtIds: [],
-          reason: null,
-        },
-        gateMessageFlags: [],
         totals: {
           info: 0,
           warn: 1,
           fail: 0,
         },
-        districts: [],
         topDistricts: [],
         exitCode: 0,
       },
@@ -1214,6 +1197,9 @@ describe('issueReportArtifactSummary', () => {
     const loaded = await loadIssueReportArtifactSummaryInputDetails(workflow.manifestPath)
     expect(loaded.inputArtifactType).toBe('issue-report-workflow-artifacts')
     expect(loaded.index.artifactType).toBe('issue-report-artifact-index')
+    if (loaded.index.artifactType !== 'issue-report-artifact-index') {
+      throw new Error('expected artifact index')
+    }
     expect(loaded.index.generatedAt).toBe('2026-04-11T00:00:00.000Z')
     expect(
       buildIssueReportArtifactSummaryJsonOutput({

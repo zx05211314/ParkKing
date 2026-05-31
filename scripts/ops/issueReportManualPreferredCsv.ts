@@ -237,6 +237,10 @@ const toSummaryArtifactPacketOutputs = (
       rootPath: manifest.packetRootPath,
       baseUrl: packetRootUrl,
       path: pathValue,
+      relativePath: manifest.packetRootPath
+        ? toPortablePath(relative(manifest.packetRootPath, pathValue))
+        : null,
+      url: null,
     }),
   )
   return {

@@ -32,6 +32,7 @@ import {
   ISSUE_REPORT_SUMMARY_ARTIFACTS_MANIFEST_SCHEMA_VERSION,
 } from './issueReportSummaryTypes'
 import type { IssueReportSummaryArtifactsManifest } from './issueReportSummaryTypes'
+import type { IssueReportSummaryArtifactsArgs } from './issueReportSummaryArtifactsArgs'
 import {
   isIssueReportSummaryArtifactsManifest,
   resolveIssueReportArtifactEntryPath,
@@ -314,7 +315,7 @@ const buildIssueReportSummaryArtifactsManifestHotspots = (params: {
   })
 
 export const buildIssueReportSummaryArtifacts = async (
-  args: ReturnType<typeof parseIssueReportSummaryArtifactsArgs>,
+  args: IssueReportSummaryArtifactsArgs,
   cwd = process.cwd(),
 ): Promise<IssueReportSummaryArtifactsResult> => {
   const inputPath = args.inputPath ?? args.summaryPath

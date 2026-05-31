@@ -76,7 +76,7 @@ export const hydrateQaRowsWithReviewReports = (
     }
 
     candidate.reviewStatus = report.status
-    candidate.reviewNote = report.note
+    candidate.reviewNote = report.note ?? ''
     candidate.createdAt = report.createdAt
     candidate.reviewSource = 'stored_override'
   })

@@ -162,7 +162,7 @@ export const parseIssueReportArtifactIndex = (
       `artifact index schemaVersion must be ${ISSUE_REPORT_ARTIFACT_INDEX_SCHEMA_VERSION}`,
     )
   }
-  const index = value as IssueReportArtifactIndexOutput
+  const index = value as unknown as IssueReportArtifactIndexOutput
   const rootLinks = resolveIssueReportArtifactIndexRootManifestLinks(index)
   const packetLinks = resolveIssueReportArtifactIndexPacketManifestLinks(index)
   return {

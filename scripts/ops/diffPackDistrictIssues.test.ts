@@ -14,9 +14,9 @@ describe('buildDistrictDiffIssues', () => {
       curbMarkingKnownRate: { prev: 0.95, next: 0.7, delta: -0.25, deltaPct: -0.263 },
       restrictionTriggeredRate: { prev: 0.2, next: 0.1, delta: -0.1, deltaPct: -0.5 },
       boundaryBBox: {
-        prev: [0, 0, 1, 1],
-        next: [0, 0, 0, 0],
-        changed: true,
+        prev: { minX: 0, minY: 0, maxX: 1, maxY: 1 },
+        next: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
+        delta: null,
         area: { prev: 1, next: 0, delta: -1, deltaPct: -1 },
       },
     })

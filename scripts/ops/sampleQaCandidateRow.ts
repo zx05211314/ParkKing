@@ -16,7 +16,8 @@ export const toQaCandidateRow = (
   const [lon, lat] = getPathMidpoint(segment.path)
   const latText = formatCoord(lat)
   const lonText = formatCoord(lon)
-  const score = formatScore(segment.rankScore)
+  const rankScore = (segment as EvaluatedSegment & { rankScore?: unknown }).rankScore
+  const score = formatScore(typeof rankScore === 'number' ? rankScore : 0)
   return {
     districtId,
     segmentId: segment.id,

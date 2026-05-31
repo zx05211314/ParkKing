@@ -361,7 +361,7 @@ export const parseIssueReportSummaryIndex = (
     )
   }
 
-  const index = value as IssueReportSummaryIndexOutput
+  const index = value as unknown as IssueReportSummaryIndexOutput
   const {
     csvRootUrl: canonicalCsvRootUrl,
     csvBaseUrl: normalizedCsvBaseUrl,

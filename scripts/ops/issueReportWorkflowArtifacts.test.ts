@@ -3,7 +3,10 @@ import * as path from 'node:path'
 import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
 import { writeSyncStoreFile } from './syncServiceFileStore'
-import { loadIssueReportArtifactManifest } from './issueReportArtifactManifest'
+import {
+  assertIssueReportArtifactManifestKind,
+  loadIssueReportArtifactManifest,
+} from './issueReportArtifactManifest'
 import { buildIssueReportWorkflowArtifacts } from './issueReportWorkflowArtifacts'
 import type { SyncServiceStore } from './syncServiceTypes'
 
@@ -278,9 +281,13 @@ describe('issueReportWorkflowArtifacts', () => {
       '"csvArtifactUrl": null',
     )
     const parsedManifest = await loadIssueReportArtifactManifest(result.manifestPath)
-    expect(parsedManifest.manifest.packetArtifactUrl).toBeNull()
-    expect(parsedManifest.manifest.csvArtifactUrl).toBeNull()
-    expect(parsedManifest.manifest.publishGateHotspots).toMatchObject([
+    const workflowManifest = assertIssueReportArtifactManifestKind(
+      parsedManifest.manifest,
+      'workflow',
+    )
+    expect(workflowManifest.packetArtifactUrl).toBeNull()
+    expect(workflowManifest.csvArtifactUrl).toBeNull()
+    expect(workflowManifest.publishGateHotspots).toMatchObject([
       {
         districtId: 'xinyi',
         packetRootUrl: 'https://example.com/issue-packets',
@@ -334,8 +341,9 @@ describe('issueReportWorkflowArtifacts', () => {
     await expect(fs.readFile(result.manifestPath, 'utf8')).resolves.toContain(
       '"artifactIndexUrl": "https://example.com/issue-index/artifact-index.json"',
     )
+    expect(result.preferredCsvPath).not.toBeNull()
     await expect(fs.readFile(result.manifestPath, 'utf8')).resolves.toContain(
-      `"preferredCsvPath": "${result.preferredCsvPath.replace(/\\/g, '\\\\')}"`,
+      `"preferredCsvPath": "${result.preferredCsvPath!.replace(/\\/g, '\\\\')}"`,
     )
     await expect(fs.readFile(result.manifestPath, 'utf8')).resolves.toContain(
       '"preferredCsvRelativePath": "publish-gate-districts.csv"',

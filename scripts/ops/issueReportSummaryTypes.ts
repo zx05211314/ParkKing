@@ -525,6 +525,7 @@ export interface IssueReportArtifactIndexOutput {
 }
 
 export interface IssueReportArtifactSummaryJsonTopSegmentEntry {
+  scope: string
   districtId: string
   segmentId: string | null
   segmentName: string | null
@@ -543,6 +544,7 @@ export interface IssueReportArtifactSummaryJsonTopReasonEntry {
   districtCount: number
   segmentCount: number
   latestCreatedAt: string | null
+  latestDistrictId: string | null
   latestSegmentId: string | null
   latestSegmentName: string | null
   packetPath: string | null

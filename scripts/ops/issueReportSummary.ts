@@ -35,18 +35,49 @@ export {
   loadIssueReportSummary,
 }
 
+const normalizeIssueReportSummaryArtifactOutputs = (
+  artifacts: Partial<IssueReportSummaryArtifactOutputs>,
+): IssueReportSummaryArtifactOutputs => ({
+  summaryPath: null,
+  summaryRelativePath: null,
+  summaryUrl: null,
+  rawIssuesPath: null,
+  rawIssuesRelativePath: null,
+  rawIssuesUrl: null,
+  csvRootPath: null,
+  csvRootUrl: null,
+  csvBaseUrl: null,
+  preferredCsvPath: null,
+  preferredCsvRelativePath: null,
+  preferredCsvUrl: null,
+  csvPaths: [],
+  csvRelativePaths: [],
+  packetRootPath: null,
+  packetRootUrl: null,
+  packetBaseUrl: null,
+  packetSummaryPath: null,
+  packetSummaryRelativePath: null,
+  packetSummaryUrl: null,
+  packetManifestPath: null,
+  packetManifestRelativePath: null,
+  packetManifestUrl: null,
+  packetPaths: [],
+  packetRelativePaths: [],
+  ...artifacts,
+})
+
 export const buildIssueReportSummaryJsonOutput = (params: {
   result: Awaited<ReturnType<typeof loadIssueReportSummary>>
   publishGateSummary: Awaited<ReturnType<typeof loadNightlyPublishGateSummary>>
   publishGateHotspots: ReturnType<typeof buildIssueReportPublishGateHotspots>
-  artifacts: IssueReportSummaryArtifactOutputs
+  artifacts: Partial<IssueReportSummaryArtifactOutputs>
 }): IssueReportSummaryJsonOutput => ({
   ...params.result,
   artifactType: 'issue-report-summary-json',
   schemaVersion: ISSUE_REPORT_SUMMARY_JSON_SCHEMA_VERSION,
   publishGateSummary: params.publishGateSummary,
   publishGateHotspots: params.publishGateHotspots,
-  artifacts: params.artifacts,
+  artifacts: normalizeIssueReportSummaryArtifactOutputs(params.artifacts),
 })
 
 const toPortablePath = (value: string) => value.replace(/\\/g, '/')
