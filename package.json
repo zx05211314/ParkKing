@@ -128,6 +128,7 @@
     "ops:release-data-dispatch": "tsx scripts/ops/dispatchReleaseDataWorkflow.ts",
     "ops:render-deployment-handoff": "tsx scripts/ops/renderDeploymentHandoff.ts --out .tmp/render-deployment-handoff.md --json-out .tmp/render-deployment-handoff.json",
     "ops:release-handoff-readiness": "tsx scripts/ops/releaseHandoffReadiness.ts",
+    "ops:release-handoff-status": "tsx scripts/ops/releaseHandoffStatus.ts",
     "ops:render-deployment-verify": "tsx scripts/ops/renderDeploymentVerify.ts --out .tmp/render-deployment-verify.md --json-out .tmp/render-deployment-verify.json",
     "ops:render-live-verify-dispatch": "tsx scripts/ops/dispatchRenderLiveVerifyWorkflow.ts",
     "ops:render-blueprint-check": "tsx scripts/ops/renderBlueprintContract.ts",
