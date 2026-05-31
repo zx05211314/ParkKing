@@ -86,12 +86,16 @@ Use the deploy readiness gate to test the latest local release package without
 touching the checked-in source data:
 
 ```powershell
-npm run build
-npm run ops:p3-release-readiness
-npm run ops:deploy-readiness
+npm run ops:release-handoff-readiness
 ```
 
-The gate installs the latest `dist/releases` zip/manifest pair into
+This runner executes `npm run build`, `ops:p3-release-readiness`,
+`ops:deploy-readiness`, and `ops:render-deployment-handoff` sequentially, then
+checks that all gate JSON files point at the same release ID. Use it for normal
+local release handoff checks; the lower-level commands are still useful when
+debugging one gate at a time.
+
+The deploy readiness gate installs the latest `dist/releases` zip/manifest pair into
 `.tmp/deploy-readiness/public/data/generated`, checks that built static data in
 `dist/data/generated` has the same reviewed district hashes, runs reviewed pack
 and parking-answer API smokes against the installed release, then starts the app
@@ -103,7 +107,8 @@ issue-report roundtrip before the app server is accepted. The same command write
 `.tmp/deploy-readiness.md` and `.tmp/deploy-readiness.json`, and the release
 workflows upload those files with the release package artifacts.
 
-Generate the Render handoff after deploy readiness passes:
+If you are running gates manually, generate the Render handoff after deploy
+readiness passes:
 
 ```powershell
 npm run ops:render-deployment-handoff

@@ -121,6 +121,14 @@ describe('release workflow contracts', () => {
     ])
   })
 
+  it('keeps local release handoff runner available for sequential gating', async () => {
+    const packageJson = await readPackageJson()
+
+    expect(packageJson.scripts?.['ops:release-handoff-readiness']).toBe(
+      'tsx scripts/ops/releaseHandoffReadiness.ts',
+    )
+  })
+
   it('keeps CI typechecking deploy ops helpers before build', async () => {
     const workflow = await readWorkflow('ci.yml')
 
