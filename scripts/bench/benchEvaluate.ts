@@ -1,6 +1,12 @@
 import { performance } from 'node:perf_hooks'
 import { fileURLToPath } from 'node:url'
-import type { FeatureCollection, LineString, MultiLineString, Point } from 'geojson'
+import type {
+  FeatureCollection,
+  Geometry,
+  LineString,
+  MultiLineString,
+  Point,
+} from 'geojson'
 import {
   applySignOverrides,
   buildInferredSegmentsFromFeature,
@@ -35,6 +41,13 @@ const computeDistribution = (segments: { tier: string; allowedNow: string }[]) =
   })
   return distribution
 }
+
+const emptyFeatureCollection = <
+  TGeometry extends Geometry = Geometry,
+>(): FeatureCollection<TGeometry> => ({
+  type: 'FeatureCollection',
+  features: [],
+})
 
 export interface BenchmarkResult {
   datasetHash: string
@@ -123,11 +136,11 @@ export const runBenchmark = async (
     loadGeoJson<FeatureCollection>('crosswalks.geojson', { baseDir: datasetDir }),
     loadGeoJson<FeatureCollection>('sign_overrides.geojson', {
       baseDir: datasetDir,
-    }).catch(() => ({ type: 'FeatureCollection', features: [] })),
+    }).catch(() => emptyFeatureCollection()),
     loadGeoJson<FeatureCollection<LineString | MultiLineString>>(
       'candidates_inferred.geojson',
       { baseDir: datasetDir },
-    ).catch(() => ({ type: 'FeatureCollection', features: [] })),
+    ).catch(() => emptyFeatureCollection<LineString | MultiLineString>()),
     loadGeoJson<DatasetMeta>('dataset_meta.json', { baseDir: datasetDir }),
   ])
   const loadMs = performance.now() - loadStart

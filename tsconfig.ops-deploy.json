@@ -2,7 +2,7 @@
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.ops-deploy.tsbuildinfo",
     "target": "ES2023",
-    "lib": ["ES2023"],
+    "lib": ["ES2023", "DOM"],
     "module": "ESNext",
     "types": ["node", "vitest"],
     "skipLibCheck": true,
@@ -21,6 +21,9 @@
     "noUncheckedSideEffectImports": true
   },
   "include": [
+    "scripts/bench/benchEvaluate.ts",
+    "scripts/ops/deployReadiness.ts",
+    "scripts/ops/deployReadiness.test.ts",
     "scripts/ops/dispatchReleaseDataWorkflow.ts",
     "scripts/ops/dispatchReleaseDataWorkflow.test.ts",
     "scripts/ops/dispatchRenderLiveVerifyWorkflow.ts",
@@ -39,6 +42,16 @@
     "scripts/ops/renderDeploymentHandoff.test.ts",
     "scripts/ops/renderDeploymentVerify.ts",
     "scripts/ops/renderDeploymentVerify.test.ts",
+    "scripts/ops/smokeAppServer.ts",
+    "scripts/ops/smokeAppServer.test.ts",
+    "scripts/ops/smokeExactParkingAnswers.ts",
+    "scripts/ops/smokeExactParkingAnswers.test.ts",
+    "scripts/ops/smokeGeneratedPacks.ts",
+    "scripts/ops/smokeGeneratedPacks.test.ts",
+    "scripts/ops/smokeParkingAnswerService.ts",
+    "scripts/ops/smokeParkingAnswerService.test.ts",
+    "scripts/ops/smokeParkingAnswerServices.ts",
+    "scripts/ops/smokeParkingAnswerServices.test.ts",
     "scripts/ops/validateReleasePackage.ts",
     "scripts/ops/validateReleasePackage.test.ts"
   ]

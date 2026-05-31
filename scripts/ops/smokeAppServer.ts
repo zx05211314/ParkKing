@@ -179,7 +179,11 @@ const probeJson = async (
 ): Promise<SmokeAppServerProbe> => {
   try {
     const response = await fetchWithTimeout(`${baseUrl}${path}`, timeoutMs)
-    const payload = await response.json() as { status?: unknown; error?: unknown }
+    const payload = await response.json() as {
+      status?: unknown
+      error?: unknown
+      districts?: unknown
+    }
     const statusText =
       typeof payload.status === 'string'
         ? payload.status

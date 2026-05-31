@@ -341,21 +341,24 @@ export const runSmokeParkingAnswerService = async (
   const caseFile = options.casesPath
     ? await loadSmokeExactParkingAnswerCases(options.casesPath)
     : null
-  const exactSummary = caseFile
-    ? null
-    : await runSmokeExactParkingAnswers({
-        datasetDir: sampleDatasetDir,
-        hhmm,
-        searchRadiusMeters,
-        minParkAnswers: options.minParkAnswers,
-        minNoStopAnswers: options.minNoStopAnswers,
-        minMarkedSpaceParkAnswers: options.minMarkedSpaceParkAnswers,
-      })
-  const allCases = caseFile
-    ? caseFile.cases
-    : exactSummary.samples.map((sample) =>
-        buildCaseFromSample(sample, hhmm, searchRadiusMeters),
-      )
+  let exactSummary: Awaited<ReturnType<typeof runSmokeExactParkingAnswers>> | null =
+    null
+  let allCases: SmokeExactParkingAnswerCase[]
+  if (caseFile) {
+    allCases = caseFile.cases
+  } else {
+    exactSummary = await runSmokeExactParkingAnswers({
+      datasetDir: sampleDatasetDir,
+      hhmm,
+      searchRadiusMeters,
+      minParkAnswers: options.minParkAnswers,
+      minNoStopAnswers: options.minNoStopAnswers,
+      minMarkedSpaceParkAnswers: options.minMarkedSpaceParkAnswers,
+    })
+    allCases = exactSummary.samples.map((sample) =>
+      buildCaseFromSample(sample, hhmm, searchRadiusMeters),
+    )
+  }
   const cases =
     options.maxCases && options.maxCases > 0
       ? allCases.slice(0, options.maxCases)

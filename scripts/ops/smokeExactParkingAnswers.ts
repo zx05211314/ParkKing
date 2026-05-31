@@ -272,7 +272,11 @@ const parseCase = (
   const lng = getNumber(record, 'lng') ?? getNumber(record, 'lon')
   const lat = getNumber(record, 'lat')
   const expectedKind = getString(record, 'expectedKind')
-  const expectedEvidenceKind = getString(record, 'expectedEvidenceKind')
+  const rawExpectedEvidenceKind = getString(record, 'expectedEvidenceKind')
+  const expectedEvidenceKind =
+    rawExpectedEvidenceKind && isEvidenceKind(rawExpectedEvidenceKind)
+      ? rawExpectedEvidenceKind
+      : null
   const rawExpectedFinalConfidence = getString(record, 'expectedFinalConfidence')
   const expectedFinalConfidence = parseFinalConfidence(rawExpectedFinalConfidence)
 
@@ -287,7 +291,7 @@ const parseCase = (
       `answer case ${id}: expectedKind must be PARK, TEMP_STOP, NO_STOP, or NO_DATA`,
     )
   }
-  if (expectedEvidenceKind && !isEvidenceKind(expectedEvidenceKind)) {
+  if (rawExpectedEvidenceKind && !expectedEvidenceKind) {
     throw new Error(
       `answer case ${id}: expectedEvidenceKind must be MARKED_SPACE, CURB_RULE, INFERRED, or NO_DATA`,
     )
