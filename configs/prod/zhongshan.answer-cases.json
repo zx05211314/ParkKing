@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "districtId": "zhongshan",
-  "datasetHash": "4c43dbee6a7ce5ca1737bcde149ae7822bb019df2784a1b5c5258bdcd3dfa411",
+  "datasetHash": "255919e69bcdc914c3bdca196dc438f9683c08aa8872a377888efb211000ab3e",
   "cases": [
     {
       "id": "zhongshan-reviewed-legal-seg-394",
@@ -44,15 +44,15 @@
     },
     {
       "id": "zhongshan-reviewed-legal-seg-8660",
-      "label": "Reviewed legal parking answer from curb-rule evidence",
+      "label": "Reviewed legal parking answer with marked-space evidence",
       "lng": 121.543002,
       "lat": 25.07953,
       "hhmm": "21:00",
       "searchRadiusMeters": 25,
       "expectedKind": "PARK",
-      "expectedEvidenceKind": "CURB_RULE",
+      "expectedEvidenceKind": "MARKED_SPACE",
       "expectedPrimarySegmentId": "seg-8660",
-      "expectedFinalConfidence": "MEDIUM"
+      "expectedFinalConfidence": "HIGH"
     },
     {
       "id": "zhongshan-reviewed-legal-seg-380",
@@ -95,15 +95,15 @@
     },
     {
       "id": "zhongshan-reviewed-legal-seg-15043",
-      "label": "Reviewed legal parking answer from curb-rule evidence",
+      "label": "Reviewed legal parking answer with marked-space evidence",
       "lng": 121.542723,
       "lat": 25.079513,
       "hhmm": "21:00",
       "searchRadiusMeters": 25,
       "expectedKind": "PARK",
-      "expectedEvidenceKind": "CURB_RULE",
+      "expectedEvidenceKind": "MARKED_SPACE",
       "expectedPrimarySegmentId": "seg-15043",
-      "expectedFinalConfidence": "MEDIUM"
+      "expectedFinalConfidence": "HIGH"
     },
     {
       "id": "zhongshan-reviewed-legal-seg-7254",

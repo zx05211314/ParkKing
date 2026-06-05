@@ -121,6 +121,9 @@ const readJsonIfExists = async (targetPath: string) => {
   return JSON.parse(raw) as Record<string, unknown>
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+
 const getString = (record: Record<string, unknown> | null, key: string) => {
   const value = record?.[key]
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
@@ -259,6 +262,16 @@ const readPublishGateEntries = async (paths: string[]) => {
   for (const summaryPath of paths) {
     const summary = await readJsonIfExists(summaryPath)
     const districts = Array.isArray(summary?.districts) ? summary.districts : []
+    const baselineAdopt = isRecord(summary?.baselineAdopt)
+      ? summary.baselineAdopt
+      : null
+    const baselineAdoptedIds = new Set(
+      Array.isArray(baselineAdopt?.districtIds)
+        ? baselineAdopt.districtIds.filter(
+            (value): value is string => typeof value === 'string',
+          )
+        : [],
+    )
     districts.forEach((entry) => {
       if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
         return
@@ -276,9 +289,10 @@ const readPublishGateEntries = async (paths: string[]) => {
       const topWarnCodes = Array.isArray(record.topWarnCodes)
         ? record.topWarnCodes.filter((value): value is string => typeof value === 'string')
         : []
+      const baselineAdopted = baselineAdoptedIds.has(districtId) && fail === 0
       entries.set(districtId, {
-        status: fail > 0 ? 'fail' : warn > 0 ? 'warn' : 'pass',
-        warnCodes: topWarnCodes,
+        status: fail > 0 ? 'fail' : warn > 0 && !baselineAdopted ? 'warn' : 'pass',
+        warnCodes: baselineAdopted ? [] : topWarnCodes,
         failCodes: topFailCodes,
       })
     })

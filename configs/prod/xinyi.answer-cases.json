@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "districtId": "xinyi",
-  "datasetHash": "bd71b53a837a88c328f5a225bea353218e4b4be660afa2733ef742ab1a24960a",
+  "datasetHash": "106fc5a5577e72f928f1d5a222c299f8500446c95a2a06407173c47ad10c75a8",
   "cases": [
     {
       "id": "xinyi-reviewed-legal-seg-8953-part-2",
@@ -44,16 +44,15 @@
     },
     {
       "id": "xinyi-reviewed-legal-seg-1016",
-      "label": "Reviewed legal parking answer with marked-space evidence",
+      "label": "Reviewed legal parking answer from curb-rule evidence",
       "lng": 121.569443,
       "lat": 25.025968,
       "hhmm": "21:00",
       "searchRadiusMeters": 25,
       "expectedKind": "PARK",
-      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedEvidenceKind": "CURB_RULE",
       "expectedPrimarySegmentId": "seg-1016",
-      "expectedFinalConfidence": "HIGH",
-      "minParkingSpaceCount": 4
+      "expectedFinalConfidence": "LOW"
     },
     {
       "id": "xinyi-reviewed-illegal-seg-1671",

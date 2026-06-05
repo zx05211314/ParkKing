@@ -125,7 +125,21 @@ describe('districtReadinessMatrix', () => {
       districts: [{ districtId: 'xinyi' }],
     })
     await writeJson(path.join(publicRoot, '_ops', 'publish_gate_summary.json'), {
-      districts: [{ districtId: 'xinyi', warn: 0, fail: 0, topFailCodes: [] }],
+      baselineAdopt: {
+        enabled: true,
+        applied: true,
+        districtIds: ['xinyi'],
+        reason: 'baseline_adopt',
+      },
+      districts: [
+        {
+          districtId: 'xinyi',
+          warn: 1,
+          fail: 0,
+          topWarnCodes: ['TIER_DELTA'],
+          topFailCodes: [],
+        },
+      ],
     })
     await writeJson(path.join(dryRunRoot, '_ops', 'publish_gate_summary.json'), {
       districts: [
