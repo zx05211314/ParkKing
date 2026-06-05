@@ -12,6 +12,7 @@ import {
   loadSmokeExactParkingAnswerCases,
   type SmokeExactParkingAnswerCase,
 } from './smokeExactParkingAnswers'
+import { resolveReviewedCaseHashMismatchAllowance } from './reviewedCaseHashMismatch'
 
 export interface SmokeUiParkingAnswersOptions {
   appUrl?: string
@@ -27,6 +28,7 @@ export interface SmokeUiParkingAnswersOptions {
   previewPort?: number
   datasetMetaUrl?: string | null
   allowUnpinnedCases?: boolean
+  allowMismatchedCaseHash?: boolean
 }
 
 export interface SmokeUiParkingAnswerCaseExpectation {
@@ -217,6 +219,13 @@ export const parseSmokeUiParkingAnswersArgs = (
     '--allow-unpinned-cases',
     '--allowUnpinnedCases',
   ),
+  allowMismatchedCaseHash: hasFlag(
+    argv,
+    '--allow-mismatched-case-hash',
+    '--allowMismatchedCaseHash',
+  )
+    ? true
+    : undefined,
 })
 
 const toUiTimePreset = (hhmm: string | undefined) => {
@@ -275,6 +284,7 @@ export const validateSmokeUiDatasetHash = (params: {
   caseDatasetHash?: string | null
   runtimeDatasetHash?: string | null
   allowUnpinnedCases?: boolean
+  allowMismatchedCaseHash?: boolean
 }) => {
   if (!params.caseDatasetHash) {
     return params.allowUnpinnedCases
@@ -285,6 +295,9 @@ export const validateSmokeUiDatasetHash = (params: {
     return 'runtime dataset_meta.json is missing datasetHash'
   }
   if (params.caseDatasetHash !== params.runtimeDatasetHash) {
+    if (params.allowMismatchedCaseHash) {
+      return null
+    }
     return `answer cases datasetHash ${params.caseDatasetHash} does not match runtime datasetHash ${params.runtimeDatasetHash}`
   }
   return null
@@ -837,6 +850,8 @@ export const runSmokeUiParkingAnswers = async (
   const filter = options.filter === undefined ? DEFAULT_FILTER : options.filter
   const view = options.view ?? DEFAULT_VIEW
   const caseFile = await loadSmokeExactParkingAnswerCases(casesPath)
+  const allowMismatchedCaseHash =
+    resolveReviewedCaseHashMismatchAllowance(options.allowMismatchedCaseHash)
   const district = options.district ?? caseFile.districtId ?? DEFAULT_DISTRICT
   const selectedCases =
     options.limit === undefined
@@ -869,6 +884,7 @@ export const runSmokeUiParkingAnswers = async (
       caseDatasetHash,
       runtimeDatasetHash,
       allowUnpinnedCases: options.allowUnpinnedCases,
+      allowMismatchedCaseHash,
     })
     if (hashError) {
       throw new Error(hashError)

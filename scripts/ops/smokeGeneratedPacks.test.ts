@@ -129,6 +129,7 @@ describe('smokeGeneratedPacks', () => {
         'xinyi,daan',
         '--require-reviewed-cases',
         'zhongshan',
+        '--allow-mismatched-case-hash',
       ]),
     ).toEqual({
       root: 'data/generated',
@@ -142,6 +143,7 @@ describe('smokeGeneratedPacks', () => {
       requiredReviewedCaseDistricts: ['xinyi', 'daan', 'zhongshan'],
       requireGenerated: true,
       scanDirectories: false,
+      allowMismatchedCaseHash: true,
     })
   })
 
@@ -305,6 +307,31 @@ describe('smokeGeneratedPacks', () => {
     expect(renderSmokeGeneratedPacksResult(result)).toContain(
       `Reviewed cases: used ${path.join(casesDir, 'xinyi.answer-cases.json')}`,
     )
+  })
+
+  it('forwards the reviewed-case hash mismatch allowance to exact smokes', async () => {
+    const root = await makeTempRoot()
+    const casesDir = path.join(root, 'cases')
+    await writePackMeta(root, 'xinyi')
+    await fs.mkdir(casesDir, { recursive: true })
+    await fs.writeFile(path.join(casesDir, 'xinyi.answer-cases.json'), '{}')
+    const calls = { parking: [] as SmokeParkingAnswersOptions[], exact: [] as SmokeExactParkingAnswersOptions[] }
+
+    const result = await runSmokeGeneratedPacks(
+      {
+        root,
+        answerCasesDir: casesDir,
+        useReviewedCases: true,
+        allowMismatchedCaseHash: true,
+      },
+      makeRunners(calls),
+    )
+
+    expect(result.hasErrors).toBe(false)
+    expect(calls.exact[0]).toMatchObject({
+      casesPath: path.join(casesDir, 'xinyi.answer-cases.json'),
+      allowMismatchedCaseHash: true,
+    })
   })
 
   it('discovers required reviewed districts when reviewed mode is requested', async () => {

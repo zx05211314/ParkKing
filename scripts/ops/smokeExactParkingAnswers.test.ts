@@ -58,6 +58,7 @@ describe('smokeExactParkingAnswers', () => {
       '--cases',
       'configs/prod/xinyi.answer-cases.json',
       '--allow-unpinned-cases',
+      '--allow-mismatched-case-hash',
     ]),
     ).toEqual({
       datasetDir: 'public/data/generated/xinyi',
@@ -68,6 +69,7 @@ describe('smokeExactParkingAnswers', () => {
       minMarkedSpaceParkAnswers: 1,
       casesPath: 'configs/prod/xinyi.answer-cases.json',
       allowUnpinnedCases: true,
+      allowMismatchedCaseHash: true,
     })
   })
 
@@ -240,6 +242,56 @@ describe('smokeExactParkingAnswers', () => {
         casesPath,
       }),
     ).rejects.toThrow('Answer cases file must include datasetHash')
+  })
+
+  it('keeps hash pinning strict unless mismatched case hashes are explicitly allowed', async () => {
+    const base = await fs.mkdtemp(path.join(os.tmpdir(), 'smoke-exact-stale-'))
+    const casesPath = path.join(base, 'cases.json')
+    await fs.writeFile(
+      casesPath,
+      JSON.stringify(
+        {
+          schemaVersion: 1,
+          districtId: 'xinyi',
+          datasetHash: 'stale-hash',
+          cases: [
+            {
+              id: 'case-1',
+              lng: 121.56385035,
+              lat: 25.033,
+              hhmm: '21:00',
+              expectedKind: 'PARK',
+              expectedEvidenceKind: 'CURB_RULE',
+              expectedPrimarySegmentId: 'seg-1-part-1',
+              expectedFinalConfidence: 'MED',
+            },
+          ],
+        },
+        null,
+        2,
+      ),
+    )
+
+    const options = {
+      datasetDir: 'tests/fixtures/xinyi',
+      hhmm: '21:00',
+      minParkAnswers: 0,
+      minNoStopAnswers: 0,
+      minMarkedSpaceParkAnswers: 0,
+      casesPath,
+    }
+
+    await expect(runSmokeExactParkingAnswers(options)).rejects.toThrow(
+      'Answer cases datasetHash stale-hash does not match runtime datasetHash fixture-xinyi-v7',
+    )
+    await expect(
+      runSmokeExactParkingAnswers({
+        ...options,
+        allowMismatchedCaseHash: true,
+      }),
+    ).resolves.toMatchObject({
+      caseResults: [expect.objectContaining({ id: 'case-1', pass: true })],
+    })
   })
 
   it('normalizes MEDIUM confidence in answer-case files to runtime MED confidence', async () => {

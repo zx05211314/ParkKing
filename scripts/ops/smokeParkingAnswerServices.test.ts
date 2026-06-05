@@ -104,6 +104,7 @@ describe('smokeParkingAnswerServices', () => {
         '--radius',
         '35',
         '--skip-health-check',
+        '--allow-mismatched-case-hash',
       ]),
     ).toEqual({
       root: 'data/generated',
@@ -122,6 +123,7 @@ describe('smokeParkingAnswerServices', () => {
       hhmm: '13:00',
       searchRadiusMeters: 35,
       skipHealthCheck: true,
+      allowMismatchedCaseHash: true,
     })
   })
 
@@ -197,6 +199,31 @@ describe('smokeParkingAnswerServices', () => {
     expect(result.hasErrors).toBe(false)
     expect(xinyi?.casesPath).toBe(path.join(casesDir, 'xinyi.answer-cases.json'))
     expect(zhongshan?.casesPath).toBeUndefined()
+  })
+
+  it('forwards the reviewed-case hash mismatch allowance to API smokes', async () => {
+    const root = await makeTempRoot()
+    const casesDir = path.join(root, 'cases')
+    await writePackMeta(root, 'xinyi')
+    await fs.mkdir(casesDir, { recursive: true })
+    await fs.writeFile(path.join(casesDir, 'xinyi.answer-cases.json'), '{}')
+    const calls: SmokeParkingAnswerServiceOptions[] = []
+
+    const result = await runSmokeParkingAnswerServices(
+      {
+        root,
+        answerCasesDir: casesDir,
+        useReviewedCases: true,
+        allowMismatchedCaseHash: true,
+      },
+      makeRunners(calls),
+    )
+
+    expect(result.hasErrors).toBe(false)
+    expect(calls[0]).toMatchObject({
+      casesPath: path.join(casesDir, 'xinyi.answer-cases.json'),
+      allowMismatchedCaseHash: true,
+    })
   })
 
   it('discovers required reviewed API case districts when reviewed mode is requested', async () => {

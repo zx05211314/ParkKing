@@ -9,6 +9,7 @@ import {
 } from '../../src/domain/answers/parkingAnswer'
 import { getPathMidpoint } from '../../src/map/geo'
 import { loadEvaluatedSegmentsForAnswer } from './queryParkingAnswer'
+import { resolveReviewedCaseHashMismatchAllowance } from './reviewedCaseHashMismatch'
 
 export interface SmokeExactParkingAnswersOptions {
   datasetDir?: string
@@ -19,6 +20,7 @@ export interface SmokeExactParkingAnswersOptions {
   minMarkedSpaceParkAnswers?: number
   casesPath?: string
   allowUnpinnedCases?: boolean
+  allowMismatchedCaseHash?: boolean
 }
 
 export interface SmokeExactParkingAnswerSample {
@@ -143,6 +145,13 @@ export const parseSmokeExactParkingAnswersArgs = (
     '--allow-unpinned-cases',
     '--allowUnpinnedCases',
   ),
+  allowMismatchedCaseHash: hasFlag(
+    argv,
+    '--allow-mismatched-case-hash',
+    '--allowMismatchedCaseHash',
+  )
+    ? true
+    : undefined,
 })
 
 const makeSample = (
@@ -561,6 +570,8 @@ export const runSmokeExactParkingAnswers = async (
   const caseFile = options.casesPath
     ? await loadSmokeExactParkingAnswerCases(options.casesPath)
     : null
+  const allowMismatchedCaseHash =
+    resolveReviewedCaseHashMismatchAllowance(options.allowMismatchedCaseHash)
   if (caseFile && !caseFile.datasetHash && !options.allowUnpinnedCases) {
     throw new Error(
       [
@@ -571,7 +582,8 @@ export const runSmokeExactParkingAnswers = async (
   }
   if (
     caseFile?.datasetHash &&
-    caseFile.datasetHash !== datasetHash
+    caseFile.datasetHash !== datasetHash &&
+    !allowMismatchedCaseHash
   ) {
     throw new Error(
       `Answer cases datasetHash ${caseFile.datasetHash} does not match runtime datasetHash ${datasetHash}`,

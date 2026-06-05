@@ -13,6 +13,7 @@ import {
   type SmokeUiParkingAnswersSummary,
 } from './smokeUiParkingAnswers'
 import { discoverReviewedDistrictIds } from './reviewedDistrictDiscovery'
+import { resolveReviewedCaseHashMismatchAllowance } from './reviewedCaseHashMismatch'
 
 export interface SmokeReviewedUiPacksOptions extends SmokeGeneratedPacksOptions {
   appUrl?: string
@@ -143,6 +144,13 @@ export const parseSmokeReviewedUiPacksArgs = (
     '--all-dirs',
     '--allDirs',
   ),
+  allowMismatchedCaseHash: hasFlag(
+    argv,
+    '--allow-mismatched-case-hash',
+    '--allowMismatchedCaseHash',
+  )
+    ? true
+    : undefined,
   appUrl: getArgValue(argv, '--app-url', '--appUrl') ?? undefined,
   chromePath:
     getArgValue(argv, '--chrome-path', '--chromePath') ??
@@ -202,6 +210,8 @@ export const runSmokeReviewedUiPacks = async (
   runners: SmokeReviewedUiPacksRunners = defaultRunners,
 ): Promise<SmokeReviewedUiPacksResult> => {
   const root = options.root ?? DEFAULT_ROOT
+  const allowMismatchedCaseHash =
+    resolveReviewedCaseHashMismatchAllowance(options.allowMismatchedCaseHash)
   const resolvedSource = await resolveGeneratedPackSource({
     root,
     registryPath: options.registryPath,
@@ -256,6 +266,7 @@ export const runSmokeReviewedUiPacks = async (
           startPreview: options.startPreview ?? true,
           limit: options.limit,
           view: options.view,
+          allowMismatchedCaseHash,
         })
       } catch (error) {
         packErrors.push(error instanceof Error ? error.message : String(error))
