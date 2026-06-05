@@ -10,6 +10,9 @@ describe('releaseDataWorkflowInputs', () => {
       }),
     ).toMatchObject({
       releaseConfigsGlob: 'configs/prod/*.json',
+      releaseAllowWarn: 'true',
+      releaseOverrideReason:
+        'Tag-triggered release uses reviewed UI, P3, deploy, and URL-smoke gates after production ingest.',
       releaseTagInput: 'data-20260605140713_21e282f',
       releaseIdInput: '20260605140713_21e282f',
       releaseLatest: 'false',
@@ -22,10 +25,14 @@ describe('releaseDataWorkflowInputs', () => {
         PARKKING_WORKFLOW_EVENT_NAME: 'workflow_dispatch',
         PARKKING_INPUT_CONFIGS_GLOB: 'configs/dev/*.json',
         PARKKING_INPUT_TAG: 'data-manual',
+        PARKKING_INPUT_ALLOW_WARN: 'false',
+        PARKKING_INPUT_OVERRIDE_REASON: 'manual override',
         PARKKING_INPUT_LATEST: 'true',
       }),
     ).toMatchObject({
       releaseConfigsGlob: 'configs/dev/*.json',
+      releaseAllowWarn: 'false',
+      releaseOverrideReason: 'manual override',
       releaseTagInput: 'data-manual',
       releaseIdInput: 'manual',
       releaseLatest: 'true',
