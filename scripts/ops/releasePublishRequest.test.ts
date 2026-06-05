@@ -83,6 +83,29 @@ const writeHandoffFixture = async (base: string) => {
 const fetchResponse = (response: Response): typeof fetch =>
   (async () => response) as typeof fetch
 
+const publishedReleaseFetch = (): typeof fetch =>
+  (async (input) => {
+    const url = String(input)
+    if (url.includes('/api.github.com/repos/')) {
+      return new Response(
+        JSON.stringify({
+          html_url: 'https://github.com/owner/repo/releases/tag/data-20260531_abc1234',
+        }),
+        { status: 200 },
+      )
+    }
+    if (url.includes('/releases/download/')) {
+      return new Response(
+        JSON.stringify({
+          releaseId: '20260531_abc1234',
+          districts: [{ districtId: 'xinyi', datasetHash: 'hash' }],
+        }),
+        { status: 200 },
+      )
+    }
+    throw new Error(`Unexpected URL ${url}`)
+  }) as typeof fetch
+
 describe('releasePublishRequest', () => {
   it('parses publish request defaults', () => {
     expect(
@@ -178,20 +201,17 @@ describe('releasePublishRequest', () => {
         targetSha: 'abc1234ffff',
         appUrl: 'https://parkking.onrender.com',
       },
-      fetchResponse(
-        new Response(
-          JSON.stringify({
-            html_url: 'https://github.com/owner/repo/releases/tag/data-20260531_abc1234',
-          }),
-          { status: 200 },
-        ),
-      ),
+      publishedReleaseFetch(),
       noToolsEnvironment,
     )
 
     expect(result.state).toBe('ready_for_render_live_verify')
+    expect(result.status.publishedManifest.pass).toBe(true)
     expect(result.externalRequirements.join('\n')).not.toContain(
       'Publish GitHub Release data-20260531_abc1234',
+    )
+    expect(renderReleasePublishRequest(result)).toContain(
+      '- Published manifest parity: yes',
     )
     expect(renderReleasePublishRequest(result)).toContain(
       'npm run ops:render-deployment-verify -- --app-url https://parkking.onrender.com',

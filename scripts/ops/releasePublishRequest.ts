@@ -162,7 +162,11 @@ const quoteCommandValue = (value: string) =>
 const uniqueLines = (values: string[]) => [...new Set(values)]
 
 const localBlockersFromStatus = (status: ReleaseHandoffStatusResult) =>
-  status.blockers.filter((blocker) => !blocker.startsWith('GitHub Release '))
+  status.blockers.filter(
+    (blocker) =>
+      !blocker.startsWith('GitHub Release ') &&
+      !blocker.startsWith('Published release manifest '),
+  )
 
 const renderAppUrlOrPlaceholder = (status: ReleaseHandoffStatusResult) =>
   status.appUrl ?? '<Render service URL>'
@@ -277,6 +281,11 @@ const buildExternalRequirements = (
         'Provide GH_TOKEN/GITHUB_TOKEN with contents:write, install/authenticate gh, push the matching data tag, or run the GitHub Actions workflow from the GitHub UI.',
       )
     }
+  }
+  if (status.publishedManifest.pass === false) {
+    requirements.push(
+      'Resolve published release manifest drift before Render verification: use the matching workflow handoff artifact or republish the local handoff assets after confirming data source drift.',
+    )
   }
   requirements.push(
     'Set Render PARKKING_RELEASE_PACKAGE_URL and PARKKING_RELEASE_MANIFEST_URL to the published release asset URLs.',
@@ -400,6 +409,11 @@ export const renderReleasePublishRequest = (
       result.status.releaseLookup.published === null
         ? 'unknown'
         : formatBool(result.status.releaseLookup.published)
+    }`,
+    `- Published manifest parity: ${
+      result.status.publishedManifest.pass === null
+        ? 'unknown'
+        : formatBool(result.status.publishedManifest.pass)
     }`,
     `- Ready for release publish: ${formatBool(result.status.readyForReleasePublish)}`,
     `- Ready for Render live verify: ${formatBool(result.status.readyForRenderLiveVerify)}`,
