@@ -5,6 +5,8 @@ import { validateReleaseId } from './packageReleaseUtils'
 type Env = NodeJS.ProcessEnv
 
 const DEFAULT_CONFIGS_GLOB = 'configs/prod/*.json'
+const TAG_TRIGGER_ALLOW_WARN_OVERRIDE_REASON =
+  'Tag-triggered release uses reviewed UI, P3, deploy, and URL-smoke gates after production ingest.'
 
 export interface ReleaseDataWorkflowInputs {
   releaseConfigsGlob: string
@@ -37,12 +39,17 @@ export const resolveReleaseDataWorkflowInputs = (
   const releaseIdInput = tagInput.startsWith('data-')
     ? validateReleaseId(tagInput.slice('data-'.length))
     : ''
+  const isDataTagPush = eventName === 'push' && tagInput.startsWith('data-')
 
   return {
     releaseConfigsGlob:
       normalizeText(env.PARKKING_INPUT_CONFIGS_GLOB) || DEFAULT_CONFIGS_GLOB,
-    releaseAllowWarn: normalizeBooleanText(env.PARKKING_INPUT_ALLOW_WARN),
-    releaseOverrideReason: normalizeText(env.PARKKING_INPUT_OVERRIDE_REASON),
+    releaseAllowWarn: isDataTagPush
+      ? 'true'
+      : normalizeBooleanText(env.PARKKING_INPUT_ALLOW_WARN),
+    releaseOverrideReason: isDataTagPush
+      ? TAG_TRIGGER_ALLOW_WARN_OVERRIDE_REASON
+      : normalizeText(env.PARKKING_INPUT_OVERRIDE_REASON),
     releaseTagInput: tagInput,
     releaseIdInput,
     releaseLatest: normalizeBooleanText(env.PARKKING_INPUT_LATEST),
