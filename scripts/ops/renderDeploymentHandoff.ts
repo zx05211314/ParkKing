@@ -10,6 +10,7 @@ import {
 
 const DEFAULT_P3_READINESS_JSON = '.tmp/p3-release-readiness.json'
 const DEFAULT_DEPLOY_READINESS_JSON = '.tmp/deploy-readiness.json'
+const DEFAULT_HANDOFF_ASSET_DIR = '.tmp/release-handoff-assets'
 
 interface P3ReadinessJson {
   pass?: unknown
@@ -55,6 +56,7 @@ interface DeployReadinessJson {
 export interface RenderDeploymentHandoffOptions {
   p3ReadinessJsonPath?: string | null
   deployReadinessJsonPath?: string | null
+  handoffAssetDir?: string | null
   repository?: string | null
   tagInput?: string | null
   outPath?: string | null
@@ -104,6 +106,9 @@ export const parseRenderDeploymentHandoffArgs = (
   deployReadinessJsonPath:
     getArgValue(argv, '--deploy-json', '--deployJson') ??
     DEFAULT_DEPLOY_READINESS_JSON,
+  handoffAssetDir:
+    getArgValue(argv, '--handoff-asset-dir', '--handoffAssetDir') ??
+    DEFAULT_HANDOFF_ASSET_DIR,
   repository:
     getArgValue(argv, '--repository', '--repo') ??
     process.env.GITHUB_REPOSITORY ??
@@ -164,6 +169,28 @@ const fileExists = async (filePath: string) => {
   }
 }
 
+const copyReleaseAssetsForHandoff = async (params: {
+  releaseId: string
+  sourceAssetPaths: string[]
+  handoffAssetDir: string
+}) => {
+  const [sourceZipPath, sourceManifestPath] = params.sourceAssetPaths
+  if (!sourceZipPath || !sourceManifestPath) {
+    return params.sourceAssetPaths
+  }
+  const targetDir = path.join(params.handoffAssetDir, params.releaseId)
+  await fs.mkdir(targetDir, { recursive: true })
+  const copiedPaths = [
+    path.join(targetDir, `park-king-data_${params.releaseId}.zip`),
+    path.join(targetDir, `release_manifest_${params.releaseId}.json`),
+  ]
+  await Promise.all([
+    fs.copyFile(sourceZipPath, copiedPaths[0]),
+    fs.copyFile(sourceManifestPath, copiedPaths[1]),
+  ])
+  return copiedPaths
+}
+
 export const normalizeRepository = (value: string | null | undefined) => {
   const trimmed = value?.trim()
   if (!trimmed) {
@@ -212,6 +239,7 @@ export const buildRenderDeploymentHandoff = async (
     options.p3ReadinessJsonPath ?? DEFAULT_P3_READINESS_JSON
   const deployReadinessJsonPath =
     options.deployReadinessJsonPath ?? DEFAULT_DEPLOY_READINESS_JSON
+  const handoffAssetDir = options.handoffAssetDir ?? DEFAULT_HANDOFF_ASSET_DIR
   const [p3, deploy, release] = await Promise.all([
     readJsonFile<P3ReadinessJson>(p3ReadinessJsonPath),
     readJsonFile<DeployReadinessJson>(deployReadinessJsonPath),
@@ -229,7 +257,7 @@ export const buildRenderDeploymentHandoff = async (
   const p3Release = p3.releasePackage?.summary
   const deployReleaseId =
     typeof deploy.release?.releaseId === 'string' ? deploy.release.releaseId : null
-  const releaseAssetPaths = [
+  let releaseAssetPaths = [
     typeof deploy.release?.zipPath === 'string' ? deploy.release.zipPath : null,
     typeof deploy.release?.manifestPath === 'string'
       ? deploy.release.manifestPath
@@ -293,6 +321,21 @@ export const buildRenderDeploymentHandoff = async (
     blockers.push(
       `Release assets are missing locally: ${missingReleaseAssets.join(', ')}. Run npm run ops:p3-release-readiness after npm run build, then rerun npm run ops:deploy-readiness.`,
     )
+  }
+  if (blockers.length === 0) {
+    try {
+      releaseAssetPaths = await copyReleaseAssetsForHandoff({
+        releaseId: release.releaseId,
+        sourceAssetPaths: releaseAssetPaths,
+        handoffAssetDir,
+      })
+    } catch (error) {
+      blockers.push(
+        `Could not copy release assets into handoff asset directory ${handoffAssetDir}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      )
+    }
   }
 
   return {

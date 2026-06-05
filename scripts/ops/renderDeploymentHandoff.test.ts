@@ -29,12 +29,15 @@ describe('renderDeploymentHandoff', () => {
         '.tmp/handoff.md',
         '--json-out',
         '.tmp/handoff.json',
+        '--handoff-asset-dir',
+        '.tmp/handoff-assets',
       ]),
     ).toMatchObject({
       repository: 'owner/repo',
       tagInput: 'data-release',
       outPath: '.tmp/handoff.md',
       jsonOutPath: '.tmp/handoff.json',
+      handoffAssetDir: '.tmp/handoff-assets',
     })
   })
 
@@ -51,6 +54,7 @@ describe('renderDeploymentHandoff', () => {
     const deployJson = path.join(base, 'deploy.json')
     const zipPath = path.join(base, 'release.zip')
     const manifestPath = path.join(base, 'release.json')
+    const handoffAssetDir = path.join(base, 'handoff-assets')
     await fs.writeFile(zipPath, 'zip')
     await fs.writeFile(manifestPath, '{}')
     await writeJson(p3Json, {
@@ -108,6 +112,7 @@ describe('renderDeploymentHandoff', () => {
     const result = await buildRenderDeploymentHandoff({
       p3ReadinessJsonPath: p3Json,
       deployReadinessJsonPath: deployJson,
+      handoffAssetDir,
       repository: 'owner/repo',
     })
 
@@ -115,6 +120,15 @@ describe('renderDeploymentHandoff', () => {
     expect(result.packageUrl).toBe(
       'https://github.com/owner/repo/releases/download/data-20260529_abcd123/park-king-data_20260529_abcd123.zip',
     )
+    expect(result.releaseAssetPaths).toEqual([
+      path.join(handoffAssetDir, '20260529_abcd123', 'park-king-data_20260529_abcd123.zip'),
+      path.join(handoffAssetDir, '20260529_abcd123', 'release_manifest_20260529_abcd123.json'),
+    ])
+    await expect(fs.readFile(result.releaseAssetPaths[0], 'utf-8')).resolves.toBe('zip')
+    await expect(fs.readFile(result.releaseAssetPaths[1], 'utf-8')).resolves.toBe('{}')
+    await fs.rm(zipPath)
+    await fs.rm(manifestPath)
+    await expect(fs.readFile(result.releaseAssetPaths[0], 'utf-8')).resolves.toBe('zip')
     expect(renderRenderDeploymentHandoff(result)).toContain(
       '# Render Deployment Handoff: READY',
     )

@@ -51,7 +51,7 @@ npm run ops:release-data-publish
 
 For the normal local handoff path, prefer the wrapper that reads
 `.tmp/render-deployment-handoff.json`, checks the release ID suffix against
-`git rev-parse <ref>`, and uploads only the handoff zip/manifest pair:
+`git rev-parse <ref>`, and uploads only the copied handoff zip/manifest pair:
 
 ```powershell
 $env:GH_TOKEN="<token with contents:write>"
@@ -59,13 +59,18 @@ npm run ops:release-data-publish-handoff -- --ref main --dry-run
 npm run ops:release-data-publish-handoff -- --ref main
 ```
 
-Upload both generated files from `dist/releases` to stable URLs:
+The handoff JSON points at copied assets under
+`.tmp/release-handoff-assets/<release-id>/`, so the wrapper can still publish
+the exact handoff pair after another Vite build clears `dist/releases`.
+
+Upload both handoff files to stable URLs:
 
 - `park-king-data_<release-id>.zip`
 - `release_manifest_<release-id>.json`
 
-Do this before running another `npm run build`; `dist` is a build output and can
-be cleaned by later builds.
+If you bypass the handoff wrapper and upload directly from `dist/releases`, do
+that before running another `npm run build`; `dist` is a build output and can be
+cleaned by later builds.
 
 Set these Render environment variables before deploying:
 
@@ -127,11 +132,11 @@ npm run ops:release-handoff-status
 ```
 
 This reads `.tmp/render-deployment-handoff.json` and
-`.tmp/release-handoff-readiness.json`, checks whether the expected GitHub
-Release tag is already published, and prints the dry-run/dispatch commands for
-`Release Data Package` and `Render Live Verify`. Pass `--app-url` or set
-`PARKKING_RENDER_APP_URL` to render the final live verification command with a
-real Render service URL.
+`.tmp/release-handoff-readiness.json`, checks that copied local release assets
+still exist, checks whether the expected GitHub Release tag is already
+published, and prints the dry-run/dispatch commands for `Release Data Package`
+and `Render Live Verify`. Pass `--app-url` or set `PARKKING_RENDER_APP_URL` to
+render the final live verification command with a real Render service URL.
 
 When credentials are not available in the local environment, generate a single
 handoff request for the human/operator who will publish the release and deploy
@@ -169,12 +174,15 @@ npm run ops:render-deployment-handoff
 This writes `.tmp/render-deployment-handoff.md` and
 `.tmp/render-deployment-handoff.json` with the expected GitHub Release asset
 URLs and exact `PARKKING_RELEASE_PACKAGE_URL` /
-`PARKKING_RELEASE_MANIFEST_URL` values. The JSON and markdown also include the
-expected per-district dataset hashes that the live Render service must expose
-from `/api/parking-answer/ready`. Those URLs become live after the `Release Data
-Package` workflow publishes the same release ID. If you run the workflow later
-and let it generate a fresh release ID, use the URLs printed by that workflow
-summary or its uploaded handoff artifact instead of the earlier local preview.
+`PARKKING_RELEASE_MANIFEST_URL` values. The handoff also copies the local
+zip/manifest into `.tmp/release-handoff-assets/<release-id>/` and stores those
+copied paths in `releaseAssetPaths` for local publishing. The JSON and markdown
+also include the expected per-district dataset hashes that the live Render
+service must expose from `/api/parking-answer/ready`. Those URLs become live
+after the `Release Data Package` workflow publishes the same release ID. If you
+run the workflow later and let it generate a fresh release ID, use the URLs
+printed by that workflow summary or its uploaded handoff artifact instead of
+the earlier local preview.
 
 After publishing GitHub Release assets, verify the URLs before assigning them to
 Render:
