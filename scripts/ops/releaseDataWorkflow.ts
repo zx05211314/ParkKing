@@ -544,6 +544,60 @@ const fetchSmokeCheck = async (params: {
   }
 }
 
+const cancelResponseBody = async (response: Response | null) => {
+  if (!response?.body) {
+    return
+  }
+  try {
+    await response.body.cancel()
+  } catch {
+    // The URL smoke only needs headers/status. Ignore cancellation races.
+  }
+}
+
+const fetchPackageSmokeChecks = async (params: {
+  url: string
+  headers: Record<string, string>
+  timeoutMs: number
+}) => {
+  const checks: ReleaseDataAssetUrlSmokeCheck[] = []
+  const headCheck = await fetchSmokeCheck({
+    label: 'package',
+    url: params.url,
+    method: 'HEAD',
+    headers: params.headers,
+    timeoutMs: params.timeoutMs,
+  })
+  checks.push(headCheck.check)
+  if (headCheck.check.ok) {
+    return { checks, ok: true, error: null }
+  }
+
+  const rangeGetCheck = await fetchSmokeCheck({
+    label: 'package-range',
+    url: params.url,
+    method: 'GET',
+    headers: {
+      ...params.headers,
+      range: 'bytes=0-0',
+    },
+    timeoutMs: params.timeoutMs,
+  })
+  await cancelResponseBody(rangeGetCheck.response)
+  checks.push(rangeGetCheck.check)
+  if (rangeGetCheck.check.ok) {
+    return { checks, ok: true, error: null }
+  }
+
+  return {
+    checks,
+    ok: false,
+    error: `HEAD ${headCheck.check.error ?? 'unknown error'}; range GET ${
+      rangeGetCheck.check.error ?? 'unknown error'
+    }`,
+  }
+}
+
 const readManifestMetadata = async (response: Response) => {
   const parsed = (await response.json()) as {
     releaseId?: unknown
@@ -579,17 +633,15 @@ export const smokeReleaseDataAssetUrls = async (
   const errors: string[] = []
   const checks: ReleaseDataAssetUrlSmokeCheck[] = []
 
-  const packageCheck = await fetchSmokeCheck({
-    label: 'package',
+  const packageCheck = await fetchPackageSmokeChecks({
     url: options.packageUrl,
-    method: 'HEAD',
     headers,
     timeoutMs,
   })
-  checks.push(packageCheck.check)
-  if (!packageCheck.check.ok) {
+  checks.push(...packageCheck.checks)
+  if (!packageCheck.ok) {
     errors.push(
-      `Package URL is not reachable: ${packageCheck.check.error ?? 'unknown error'}`,
+      `Package URL is not reachable: ${packageCheck.error ?? 'unknown error'}`,
     )
   }
 

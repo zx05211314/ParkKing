@@ -162,6 +162,108 @@ describe('releaseDataWorkflow', () => {
     }
   })
 
+  it('falls back to a ranged package GET when package HEAD is rejected', async () => {
+    const releaseId = '20260529_abcd123'
+    const packageRequests: Array<{
+      method: string | undefined
+      range: string | undefined
+    }> = []
+    const server = createServer((request, response) => {
+      if (request.url === '/data.zip') {
+        packageRequests.push({
+          method: request.method,
+          range: request.headers.range,
+        })
+      }
+      if (request.url === '/data.zip' && request.method === 'HEAD') {
+        response.writeHead(401)
+        response.end()
+        return
+      }
+      if (
+        request.url === '/data.zip' &&
+        request.method === 'GET' &&
+        request.headers.range === 'bytes=0-0'
+      ) {
+        response.writeHead(206, {
+          'content-length': '1',
+          'content-range': 'bytes 0-0/123',
+          'content-type': 'application/zip',
+        })
+        response.end('x')
+        return
+      }
+      if (request.url === '/manifest.json' && request.method === 'GET') {
+        response.writeHead(200, {
+          'content-type': 'application/json',
+        })
+        response.end(
+          JSON.stringify({
+            releaseId,
+            districts: [
+              {
+                districtId: 'xinyi',
+                datasetHash: 'hash-xinyi',
+                publishedAt: '2026-05-01T00:00:00Z',
+              },
+            ],
+            files: [],
+          }),
+        )
+        return
+      }
+      response.writeHead(404)
+      response.end()
+    })
+
+    await new Promise<void>((resolve) => {
+      server.listen(0, '127.0.0.1', resolve)
+    })
+
+    try {
+      const address = server.address()
+      if (!address || typeof address === 'string') {
+        throw new Error('Test server did not bind to a TCP port')
+      }
+      const baseUrl = `http://127.0.0.1:${address.port}`
+      const result = await smokeReleaseDataAssetUrls({
+        releaseId,
+        packageUrl: `${baseUrl}/data.zip`,
+        manifestUrl: `${baseUrl}/manifest.json`,
+        timeoutMs: 1000,
+      })
+
+      expect(result).toMatchObject({
+        pass: true,
+        errors: [],
+      })
+      expect(result.checks).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            label: 'package',
+            method: 'HEAD',
+            ok: false,
+            status: 401,
+          }),
+          expect.objectContaining({
+            label: 'package-range',
+            method: 'GET',
+            ok: true,
+            status: 206,
+          }),
+        ]),
+      )
+      expect(packageRequests).toEqual([
+        { method: 'HEAD', range: undefined },
+        { method: 'GET', range: 'bytes=0-0' },
+      ])
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()))
+      })
+    }
+  })
+
   it('fails release URL smoke when the manifest release ID mismatches', async () => {
     const server = createServer((request, response) => {
       if (request.url === '/data.zip' && request.method === 'HEAD') {
