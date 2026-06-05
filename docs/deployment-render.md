@@ -149,8 +149,9 @@ npm run ops:release-publish-request -- --ref main --app-url https://<service>.on
 This writes `.tmp/release-publish-request.md` and
 `.tmp/release-publish-request.json` with the target SHA, exact local
 zip/manifest paths, asset byte counts and SHA-256 checksums, token/CLI
-availability, exact publish commands, Render environment variables, and final
-verification commands. It does not publish assets or call Render.
+availability, a manual GitHub UI release-publish checklist, exact publish
+commands, Render environment variables, and final verification commands. It
+does not publish assets or call Render.
 
 The deploy readiness gate installs the latest `dist/releases` zip/manifest pair into
 `.tmp/deploy-readiness/public/data/generated`, checks that built static data in
