@@ -72,6 +72,7 @@ describe('smokeUiParkingAnswers', () => {
       previewPort: undefined,
       datasetMetaUrl: undefined,
       allowUnpinnedCases: false,
+      allowMismatchedCaseHash: undefined,
     })
   })
 
@@ -124,6 +125,13 @@ describe('smokeUiParkingAnswers', () => {
         'smokeUiParkingAnswers',
         '--allow-unpinned-cases',
       ]).allowUnpinnedCases,
+    ).toBe(true)
+    expect(
+      parseSmokeUiParkingAnswersArgs([
+        'node',
+        'smokeUiParkingAnswers',
+        '--allow-mismatched-case-hash',
+      ]).allowMismatchedCaseHash,
     ).toBe(true)
   })
 
@@ -229,6 +237,13 @@ describe('smokeUiParkingAnswers', () => {
       validateSmokeUiDatasetHash({
         caseDatasetHash: 'hash-1',
         runtimeDatasetHash: 'hash-1',
+      }),
+    ).toBeNull()
+    expect(
+      validateSmokeUiDatasetHash({
+        caseDatasetHash: 'hash-1',
+        runtimeDatasetHash: 'hash-2',
+        allowMismatchedCaseHash: true,
       }),
     ).toBeNull()
     expect(

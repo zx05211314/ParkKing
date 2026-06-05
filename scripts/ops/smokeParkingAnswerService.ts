@@ -12,6 +12,7 @@ import {
   type SmokeExactParkingAnswerSample,
   type SmokeExactParkingAnswerCase,
 } from './smokeExactParkingAnswers'
+import { resolveReviewedCaseHashMismatchAllowance } from './reviewedCaseHashMismatch'
 
 export interface SmokeParkingAnswerServiceOptions {
   district?: string
@@ -27,6 +28,7 @@ export interface SmokeParkingAnswerServiceOptions {
   minNoStopAnswers?: number
   minMarkedSpaceParkAnswers?: number
   skipHealthCheck?: boolean
+  allowMismatchedCaseHash?: boolean
 }
 
 export interface SmokeParkingAnswerServiceCaseResult {
@@ -308,6 +310,13 @@ export const parseSmokeParkingAnswerServiceArgs = (
       '--skip-health-check',
       '--skipHealthCheck',
     ),
+    allowMismatchedCaseHash: hasFlag(
+      argv,
+      '--allow-mismatched-case-hash',
+      '--allowMismatchedCaseHash',
+    )
+      ? true
+      : undefined,
   }
 }
 
@@ -341,6 +350,8 @@ export const runSmokeParkingAnswerService = async (
   const caseFile = options.casesPath
     ? await loadSmokeExactParkingAnswerCases(options.casesPath)
     : null
+  const allowMismatchedCaseHash =
+    resolveReviewedCaseHashMismatchAllowance(options.allowMismatchedCaseHash)
   let exactSummary: Awaited<ReturnType<typeof runSmokeExactParkingAnswers>> | null =
     null
   let allCases: SmokeExactParkingAnswerCase[]
@@ -406,7 +417,9 @@ export const runSmokeParkingAnswerService = async (
           answerCase,
           responseStatus: response.status,
           payload,
-          expectedDatasetHash: caseFile?.datasetHash ?? exactSummary?.datasetHash,
+          expectedDatasetHash: caseFile && allowMismatchedCaseHash
+            ? undefined
+            : caseFile?.datasetHash ?? exactSummary?.datasetHash,
         }),
       )
     }

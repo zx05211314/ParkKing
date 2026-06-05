@@ -12,6 +12,7 @@ import {
   type SmokeParkingAnswerServiceSummary,
 } from './smokeParkingAnswerService'
 import { discoverReviewedDistrictIds } from './reviewedDistrictDiscovery'
+import { resolveReviewedCaseHashMismatchAllowance } from './reviewedCaseHashMismatch'
 
 export interface SmokeParkingAnswerServicesOptions
   extends SmokeGeneratedPacksOptions {
@@ -168,6 +169,13 @@ export const parseSmokeParkingAnswerServicesArgs = (
     '--skip-health-check',
     '--skipHealthCheck',
   ),
+  allowMismatchedCaseHash: hasFlag(
+    argv,
+    '--allow-mismatched-case-hash',
+    '--allowMismatchedCaseHash',
+  )
+    ? true
+    : undefined,
 })
 
 const fileExists = async (target: string) => {
@@ -234,6 +242,8 @@ export const runSmokeParkingAnswerServices = async (
   runners: SmokeParkingAnswerServicesRunners = defaultRunners,
 ): Promise<SmokeParkingAnswerServicesResult> => {
   const root = options.root ?? DEFAULT_ROOT
+  const allowMismatchedCaseHash =
+    resolveReviewedCaseHashMismatchAllowance(options.allowMismatchedCaseHash)
   const resolvedSource = await resolveGeneratedPackSource({
     root,
     registryPath: options.registryPath,
@@ -294,6 +304,7 @@ export const runSmokeParkingAnswerServices = async (
               searchRadiusMeters:
                 options.searchRadiusMeters ?? DEFAULT_SEARCH_RADIUS_METERS,
               skipHealthCheck: options.skipHealthCheck,
+              allowMismatchedCaseHash,
             },
             districtId,
             options.fixtureThresholds,

@@ -100,6 +100,7 @@ describe('smokeReviewedUiPacks', () => {
         '--view',
         'MAP',
         '--no-start-preview',
+        '--allow-mismatched-case-hash',
       ]),
     ).toEqual({
       root: 'public/data/generated',
@@ -117,6 +118,7 @@ describe('smokeReviewedUiPacks', () => {
       startPreview: false,
       limit: 2,
       view: 'MAP',
+      allowMismatchedCaseHash: true,
     })
   })
 
@@ -170,6 +172,33 @@ describe('smokeReviewedUiPacks', () => {
     expect(renderSmokeReviewedUiPacksResult(result)).toContain(
       'UI cases: 1/1; view MAP',
     )
+  })
+
+  it('forwards the reviewed-case hash mismatch allowance to UI smokes', async () => {
+    const root = await makeTempRoot()
+    const casesDir = path.join(root, 'cases')
+    await writePackMeta(root, 'xinyi')
+    const registryPath = await writeRegistry(root, ['xinyi'])
+    await fs.mkdir(casesDir, { recursive: true })
+    await fs.writeFile(path.join(casesDir, 'xinyi.answer-cases.json'), '{}')
+    const calls: SmokeUiParkingAnswersOptions[] = []
+
+    const result = await runSmokeReviewedUiPacks(
+      {
+        root,
+        registryPath,
+        answerCasesDir: casesDir,
+        allowMismatchedCaseHash: true,
+      },
+      makeRunners(calls),
+    )
+
+    expect(result.hasErrors).toBe(false)
+    expect(calls[0]).toMatchObject({
+      casesPath: path.join(casesDir, 'xinyi.answer-cases.json'),
+      district: 'xinyi',
+      allowMismatchedCaseHash: true,
+    })
   })
 
   it('discovers required reviewed UI case districts when reviewed mode is requested', async () => {

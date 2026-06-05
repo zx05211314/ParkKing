@@ -33,6 +33,7 @@ describe('smokeParkingAnswerService', () => {
         '12000',
         '--max-cases',
         '3',
+        '--allow-mismatched-case-hash',
       ]),
     ).toEqual({
       district: 'xinyi',
@@ -48,6 +49,7 @@ describe('smokeParkingAnswerService', () => {
       minNoStopAnswers: undefined,
       minMarkedSpaceParkAnswers: undefined,
       skipHealthCheck: false,
+      allowMismatchedCaseHash: true,
     })
   })
 

@@ -13,6 +13,7 @@ import {
   type SmokeParkingAnswersSummary,
 } from './smokeParkingAnswers'
 import { discoverReviewedDistrictIds } from './reviewedDistrictDiscovery'
+import { resolveReviewedCaseHashMismatchAllowance } from './reviewedCaseHashMismatch'
 
 export interface SmokeGeneratedPacksOptions {
   root?: string
@@ -26,6 +27,7 @@ export interface SmokeGeneratedPacksOptions {
   requiredReviewedCaseDistricts?: string[]
   requireGenerated?: boolean
   scanDirectories?: boolean
+  allowMismatchedCaseHash?: boolean
 }
 
 export interface SmokeGeneratedPacksRunners {
@@ -143,6 +145,13 @@ export const parseSmokeGeneratedPacksArgs = (
     '--all-dirs',
     '--allDirs',
   ),
+  allowMismatchedCaseHash: hasFlag(
+    argv,
+    '--allow-mismatched-case-hash',
+    '--allowMismatchedCaseHash',
+  )
+    ? true
+    : undefined,
 })
 
 const fileExists = async (target: string) => {
@@ -261,7 +270,10 @@ export const buildSmokeGeneratedPackPlan = async (
   const errors: string[] = []
 
   const parkingOptions: SmokeParkingAnswersOptions = { datasetDir }
-  const exactOptions: SmokeExactParkingAnswersOptions = { datasetDir }
+  const exactOptions: SmokeExactParkingAnswersOptions = {
+    datasetDir,
+    allowMismatchedCaseHash: options.allowMismatchedCaseHash,
+  }
 
   if (options.fixtureThresholds) {
     exactOptions.minMarkedSpaceParkAnswers = 0
@@ -308,10 +320,13 @@ export const runSmokeGeneratedPacks = async (
   runners: SmokeGeneratedPacksRunners = defaultRunners,
 ): Promise<SmokeGeneratedPacksResult> => {
   const root = options.root ?? DEFAULT_ROOT
+  const allowMismatchedCaseHash =
+    resolveReviewedCaseHashMismatchAllowance(options.allowMismatchedCaseHash)
   const requiredReviewedCaseDistricts =
     await resolveSmokeGeneratedPacksRequiredReviewedDistricts(options)
   const planOptions = {
     ...options,
+    allowMismatchedCaseHash,
     requiredReviewedCaseDistricts,
   }
   const resolvedSource = await resolveGeneratedPackSource({
