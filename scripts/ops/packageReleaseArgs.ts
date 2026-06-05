@@ -11,6 +11,9 @@ export const parsePackageReleaseArgs = (argv: string[]) => {
   const answerCasesIndex = args.findIndex(
     (arg) => arg === '--answer-cases' || arg === '--answerCases',
   )
+  const releaseIdIndex = args.findIndex(
+    (arg) => arg === '--release-id' || arg === '--releaseId',
+  )
   const districtIds =
     districtIndex >= 0
       ? args[districtIndex + 1]
@@ -26,5 +29,6 @@ export const parsePackageReleaseArgs = (argv: string[]) => {
     districtIds,
     reviewed: args.includes('--reviewed'),
     answerCasesGlob: answerCasesIndex >= 0 ? args[answerCasesIndex + 1] : null,
+    releaseId: releaseIdIndex >= 0 ? args[releaseIdIndex + 1] : null,
   }
 }

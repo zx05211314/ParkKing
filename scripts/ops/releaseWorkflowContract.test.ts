@@ -35,9 +35,15 @@ describe('release workflow contracts', () => {
   it('keeps Release Data Package guarded before publishing assets', async () => {
     const workflow = await readWorkflow('release_data.yml')
 
+    expect(workflow).toContain('push:')
+    expect(workflow).toContain("- 'data-*'")
+    expect(workflow).toContain('PARKKING_INPUT_TAG: ${{ inputs.tag }}')
     expectCommandsInOrder(workflow, [
+      'npm run ops:release-data-inputs',
       'npm run ops:render-blueprint-check',
-      'npm run ops:workflow-publish-ingest',
+      'npm run ops:release-data-prepare-sources',
+      'npm run ops:release-data-preflight',
+      'npm run ops:workflow-publish-ingest -- --configs-env RELEASE_CONFIGS_GLOB --allow-warn-env RELEASE_ALLOW_WARN --override-env RELEASE_OVERRIDE_REASON',
       'npm run build',
       'npm run ops:bundle-budget',
       'npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --reviewed --timeout-ms 25000',
@@ -94,6 +100,15 @@ describe('release workflow contracts', () => {
 
     expect(packageJson.scripts?.['ops:release-data-dispatch']).toBe(
       'tsx scripts/ops/dispatchReleaseDataWorkflow.ts',
+    )
+    expect(packageJson.scripts?.['ops:release-data-inputs']).toBe(
+      'tsx scripts/ops/releaseDataWorkflowInputs.ts',
+    )
+    expect(packageJson.scripts?.['ops:release-data-prepare-sources']).toBe(
+      'tsx scripts/ops/releaseDataPrepareSources.ts',
+    )
+    expect(packageJson.scripts?.['ops:release-data-preflight']).toBe(
+      'tsx scripts/ops/releaseDataPreflight.ts',
     )
     expectWorkflowInputs(workflow, [
       'configsGlob',

@@ -40,6 +40,7 @@ export interface P3ReleaseReadinessOptions {
   districtIds?: string[] | null
   outDir?: string | null
   includeGlob?: string | null
+  releaseId?: string | null
   outPath?: string | null
   jsonOutPath?: string | null
   summaryPath?: string | null
@@ -54,6 +55,7 @@ export interface P3ReleaseReadinessInputs {
   districtIds: string[]
   outDir: string
   includeGlob: string
+  releaseId: string | null
 }
 
 export interface P3ReleaseReadinessCheck<T> {
@@ -141,6 +143,7 @@ export const parseP3ReleaseReadinessArgs = (
   ),
   outDir: getArgValue(argv, '--out-dir', '--outDir'),
   includeGlob: getArgValue(argv, '--include'),
+  releaseId: getArgValue(argv, '--release-id', '--releaseId'),
   outPath: getArgValue(argv, '--out'),
   jsonOutPath: getArgValue(argv, '--json-out', '--jsonOut'),
   summaryPath: getArgValue(argv, '--summary', '--summary-path', '--summaryPath'),
@@ -165,6 +168,8 @@ export const resolveP3ReleaseReadinessInputs = async (
     (districtIds.length === 1
       ? path.join(root, districtIds[0], '**').replace(/\\/g, '/')
       : path.join(root, '**').replace(/\\/g, '/'))
+  const releaseId =
+    options.releaseId?.trim() || process.env.PARKKING_RELEASE_ID_INPUT?.trim() || null
 
   return {
     root,
@@ -174,6 +179,7 @@ export const resolveP3ReleaseReadinessInputs = async (
     districtIds,
     outDir,
     includeGlob,
+    releaseId,
   }
 }
 
@@ -278,6 +284,7 @@ export const runP3ReleaseReadiness = async (
             includeGlob: inputs.includeGlob,
             registryPath: inputs.registryPath,
             districtIds: inputs.districtIds,
+            releaseId: inputs.releaseId,
           }),
         () => true,
       )
@@ -387,6 +394,7 @@ export const renderP3ReleaseReadiness = (result: P3ReleaseReadinessResult) =>
     `- Answer cases: ${result.inputs.answerCasesGlob}`,
     `- Districts: ${result.inputs.districtIds.join(', ') || 'none'}`,
     `- Release out dir: ${result.inputs.outDir}`,
+    `- Release ID override: ${result.inputs.releaseId ?? '-'}`,
     '',
     '## Checks',
     '',

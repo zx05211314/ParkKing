@@ -18,6 +18,16 @@ export const buildReleaseTimestampId = (now = new Date()) => {
   )}${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}`
 }
 
+export const validateReleaseId = (value: string) => {
+  const releaseId = value.trim()
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(releaseId)) {
+    throw new Error(
+      'Release ID must start with an alphanumeric character and contain only letters, numbers, dots, underscores, or hyphens',
+    )
+  }
+  return releaseId
+}
+
 export const getGitShortSha = () => {
   try {
     const stdout = execSync('git rev-parse --short HEAD', {

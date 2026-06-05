@@ -126,6 +126,8 @@ describe('p3ReleaseReadiness', () => {
         'dist/releases',
         '--include',
         'public/data/generated/**',
+        '--release-id',
+        '20260605140713_21e282f',
         '--out',
         '.tmp/p3.md',
         '--json-out',
@@ -140,6 +142,7 @@ describe('p3ReleaseReadiness', () => {
       districtIds: ['xinyi', 'daan', 'zhongshan'],
       outDir: 'dist/releases',
       includeGlob: 'public/data/generated/**',
+      releaseId: '20260605140713_21e282f',
       outPath: '.tmp/p3.md',
       jsonOutPath: '.tmp/p3.json',
       json: true,
@@ -177,6 +180,7 @@ describe('p3ReleaseReadiness', () => {
     expect(runners.packageRelease).toHaveBeenCalledWith(
       expect.objectContaining({
         districtIds: ['xinyi', 'daan', 'zhongshan'],
+        releaseId: null,
       }),
     )
     const apiCall = vi.mocked(runners.runSmokeParkingAnswerServices).mock.calls[0]?.[0]
@@ -201,6 +205,23 @@ describe('p3ReleaseReadiness', () => {
     expect(output).toContain('## Release Artifacts')
     expect(output).toContain('- Release ID: release-1')
     expect(output).toContain('- Zip: dist/releases/park-king-data_release-1.zip')
+  })
+
+  it('passes an explicit release id to release packaging', async () => {
+    const runners = makeRunners()
+    await runP3ReleaseReadiness(
+      {
+        districtIds: ['xinyi', 'daan', 'zhongshan'],
+        releaseId: '20260605140713_21e282f',
+      },
+      runners,
+    )
+
+    expect(runners.packageRelease).toHaveBeenCalledWith(
+      expect.objectContaining({
+        releaseId: '20260605140713_21e282f',
+      }),
+    )
   })
 
   it('blocks when package validation fails', async () => {

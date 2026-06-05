@@ -7,6 +7,7 @@ import {
   buildReleaseTimestampId,
   getGitShortSha,
   readReleaseJson,
+  validateReleaseId,
 } from './packageReleaseUtils'
 import type {
   RegistryEntry,
@@ -88,10 +89,13 @@ export const packageRelease = async (params: {
   includeGlob: string
   registryPath: string
   districtIds?: string[] | null
+  releaseId?: string | null
 }): Promise<PackageReleaseResult> => {
   const registryPath = path.resolve(params.registryPath)
   const districtIds = params.districtIds ?? []
-  const releaseId = `${buildReleaseTimestampId()}_${getGitShortSha()}`
+  const releaseId = params.releaseId?.trim()
+    ? validateReleaseId(params.releaseId)
+    : `${buildReleaseTimestampId()}_${getGitShortSha()}`
   const { baseDir, files } = await collectReleaseFiles({
     registryPath,
     includeGlob: params.includeGlob,
@@ -177,6 +181,7 @@ const run = async () => {
     includeGlob,
     registryPath,
     districtIds,
+    releaseId: args.releaseId ?? process.env.PARKKING_RELEASE_ID_INPUT,
   })
   console.log(renderPackageReleaseResult(result))
 }
