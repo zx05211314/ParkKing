@@ -1,5 +1,6 @@
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
+import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import {
   getArgValue,
@@ -29,6 +30,7 @@ export interface ReleaseHandoffStatusOptions {
   readinessJsonPath?: string | null
   repository?: string | null
   ref?: string | null
+  targetSha?: string | null
   appUrl?: string | null
   timeoutMs?: number | null
   skipReleaseLookup?: boolean | null
@@ -63,6 +65,7 @@ export interface ReleaseHandoffStatusResult {
   readinessPass: boolean | null
   repository: string
   ref: string
+  targetSha: string | null
   appUrl: string | null
   release: {
     releaseId: string
@@ -98,6 +101,7 @@ export const parseReleaseHandoffStatusArgs = (
     DEFAULT_READINESS_JSON,
   repository: getArgValue(argv, '--repo', '--repository'),
   ref: getArgValue(argv, '--ref'),
+  targetSha: getArgValue(argv, '--target-sha', '--targetSha'),
   appUrl: getArgValue(argv, '--app-url', '--appUrl'),
   timeoutMs:
     parsePositiveInteger(getArgValue(argv, '--timeout-ms', '--timeoutMs'), 'timeout-ms') ??
@@ -150,6 +154,21 @@ const resolveRef = (options: ReleaseHandoffStatusOptions) =>
   process.env.GITHUB_REF_NAME ??
   resolveCurrentGitBranch() ??
   'main'
+
+const resolveTargetSha = (options: ReleaseHandoffStatusOptions, ref: string) => {
+  if (options.targetSha?.trim()) {
+    return options.targetSha.trim()
+  }
+  const result = spawnSync('git', ['rev-parse', ref], {
+    encoding: 'utf-8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+  })
+  if (result.status !== 0) {
+    return null
+  }
+  const sha = result.stdout.trim()
+  return sha || null
+}
 
 const resolveAppUrl = (options: ReleaseHandoffStatusOptions) => {
   const appUrl = options.appUrl ?? process.env.PARKKING_RENDER_APP_URL ?? null
@@ -266,6 +285,11 @@ const buildCommands = (params: {
 const buildStatusText = (value: boolean | null) =>
   value === true ? 'yes' : value === false ? 'no' : 'unknown'
 
+const releaseShaSuffix = (releaseId: string) => {
+  const match = /_([0-9a-f]{7,40})$/i.exec(releaseId)
+  return match?.[1]?.toLowerCase() ?? null
+}
+
 export const buildReleaseHandoffStatus = async (
   options: ReleaseHandoffStatusOptions = {},
   fetchImpl: ReleaseLookupFetch = fetch,
@@ -278,6 +302,7 @@ export const buildReleaseHandoffStatus = async (
   ])
   const repository = resolveRepository(options, handoff)
   const ref = resolveRef(options)
+  const targetSha = resolveTargetSha(options, ref)
   const appUrl = resolveAppUrl(options)
   const releaseId = requireString(handoff.release?.releaseId, 'handoff.release.releaseId')
   const tag = requireString(handoff.release?.tag, 'handoff.release.tag')
@@ -305,9 +330,20 @@ export const buildReleaseHandoffStatus = async (
   })
   const blockers: string[] = []
   const warnings: string[] = []
+  const releaseSuffix = releaseShaSuffix(releaseId)
 
   if (!handoffReady) {
     blockers.push('Local Render deployment handoff is not READY')
+  }
+  if (releaseSuffix && targetSha && !targetSha.toLowerCase().startsWith(releaseSuffix)) {
+    blockers.push(
+      `Local handoff release ID ${releaseId} does not match ${ref} target SHA ${targetSha}`,
+    )
+  }
+  if (releaseSuffix && !targetSha) {
+    warnings.push(
+      `Could not resolve target SHA for ${ref}; stale handoff guard could not run`,
+    )
   }
   if (readinessPass === false) {
     blockers.push('Local release handoff readiness runner did not pass')
@@ -329,7 +365,11 @@ export const buildReleaseHandoffStatus = async (
     warnings.push('Render app URL is not set; pass --app-url or PARKKING_RENDER_APP_URL before live verify')
   }
 
-  const readyForReleasePublish = handoffReady && readinessPass !== false
+  const hasBlockingLocalGate = blockers.some(
+    (blocker) => !blocker.startsWith('GitHub Release '),
+  )
+  const readyForReleasePublish =
+    handoffReady && readinessPass !== false && !hasBlockingLocalGate
   const readyForRenderLiveVerify =
     readyForReleasePublish && releaseLookup.published === true && Boolean(appUrl)
   const nextActions =
@@ -360,6 +400,7 @@ export const buildReleaseHandoffStatus = async (
     readinessPass,
     repository,
     ref,
+    targetSha,
     appUrl,
     release: {
       releaseId,
@@ -391,6 +432,7 @@ export const renderReleaseHandoffStatus = (
     '',
     `- Repository: ${result.repository}`,
     `- Ref: ${result.ref}`,
+    `- Target SHA: ${result.targetSha ?? '-'}`,
     `- Release ID: ${result.release.releaseId}`,
     `- Release tag: ${result.release.tag}`,
     `- Package URL: ${result.release.packageUrl}`,
@@ -463,6 +505,7 @@ const run = async () => {
         '  --readiness-json <path>     Defaults to .tmp/release-handoff-readiness.json',
         '  --repo <owner/name>         Defaults to GITHUB_REPOSITORY or handoff JSON repository',
         '  --ref <branch>              Defaults to GITHUB_REF_NAME, current branch, or main',
+        '  --target-sha <sha>          Override git rev-parse <ref> for stale handoff checks',
         '  --app-url <url>             Render service URL for live verify command rendering',
         '  --skip-release-lookup       Do not query GitHub Release status',
         '  --out <path>                Defaults to .tmp/release-handoff-status.md',

@@ -18,22 +18,26 @@ const writeStatusInputs = async (
   options: {
     ready?: boolean
     readinessPass?: boolean
+    releaseId?: string
+    tag?: string
   } = {},
 ) => {
   const handoffJsonPath = path.join(base, 'handoff.json')
   const readinessJsonPath = path.join(base, 'readiness.json')
+  const releaseId = options.releaseId ?? 'release-a'
+  const tag = options.tag ?? `data-${releaseId}`
   await Promise.all([
     writeJson(handoffJsonPath, {
       ready: options.ready ?? true,
       repository: 'zx05211314/ParkKing',
       release: {
-        releaseId: 'release-a',
-        tag: 'data-release-a',
+        releaseId,
+        tag,
       },
       packageUrl:
-        'https://github.com/zx05211314/ParkKing/releases/download/data-release-a/park-king-data_release-a.zip',
+        `https://github.com/zx05211314/ParkKing/releases/download/${tag}/park-king-data_${releaseId}.zip`,
       manifestUrl:
-        'https://github.com/zx05211314/ParkKing/releases/download/data-release-a/release_manifest_release-a.json',
+        `https://github.com/zx05211314/ParkKing/releases/download/${tag}/release_manifest_${releaseId}.json`,
     }),
     writeJson(readinessJsonPath, {
       pass: options.readinessPass ?? true,
@@ -55,6 +59,8 @@ describe('releaseHandoffStatus', () => {
         'owner/repo',
         '--ref',
         'main',
+        '--target-sha',
+        'abc1234def5678',
         '--app-url',
         'https://parkking.onrender.com',
         '--skip-release-lookup',
@@ -64,6 +70,7 @@ describe('releaseHandoffStatus', () => {
       readinessJsonPath: '.tmp/release-handoff-readiness.json',
       repository: 'owner/repo',
       ref: 'main',
+      targetSha: 'abc1234def5678',
       appUrl: 'https://parkking.onrender.com',
       skipReleaseLookup: true,
     })
@@ -101,6 +108,7 @@ describe('releaseHandoffStatus', () => {
     expect(renderReleaseHandoffStatus(result)).toContain(
       '# Release Handoff Status: READY FOR RELEASE PUBLISH',
     )
+    expect(renderReleaseHandoffStatus(result)).toContain('- Target SHA:')
     expect(renderReleaseHandoffStatus(result)).toContain(
       '- Release publish: npm run ops:release-data-publish',
     )
@@ -136,6 +144,63 @@ describe('releaseHandoffStatus', () => {
     )
     expect(renderReleaseHandoffStatus(result)).toContain(
       '# Release Handoff Status: READY FOR LIVE VERIFY',
+    )
+  })
+
+  it('blocks release publish when the local handoff release suffix does not match the target SHA', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'handoff-status-stale-'))
+    const paths = await writeStatusInputs(base, {
+      releaseId: '20260531_abc1234',
+      tag: 'data-20260531_abc1234',
+    })
+
+    const result = await buildReleaseHandoffStatus(
+      {
+        ...paths,
+        ref: 'main',
+        targetSha: 'def5678ffffeeee',
+        skipReleaseLookup: true,
+      },
+      fetchResponse(new Response('', { status: 200 })),
+    )
+
+    expect(result.readyForReleasePublish).toBe(false)
+    expect(result.targetSha).toBe('def5678ffffeeee')
+    expect(result.blockers).toContain(
+      'Local handoff release ID 20260531_abc1234 does not match main target SHA def5678ffffeeee',
+    )
+    expect(result.nextActions).toEqual([
+      'Run local handoff gate: npm run ops:release-handoff-readiness',
+    ])
+    expect(renderReleaseHandoffStatus(result)).toContain(
+      '# Release Handoff Status: BLOCKED',
+    )
+  })
+
+  it('keeps release publish ready when the local handoff release suffix matches the target SHA', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'handoff-status-fresh-'))
+    const paths = await writeStatusInputs(base, {
+      releaseId: '20260531_abc1234',
+      tag: 'data-20260531_abc1234',
+    })
+
+    const result = await buildReleaseHandoffStatus(
+      {
+        ...paths,
+        ref: 'main',
+        targetSha: 'abc1234ffffeeee',
+      },
+      fetchResponse(new Response('', { status: 404 })),
+    )
+
+    expect(result.readyForReleasePublish).toBe(true)
+    expect(result.readyForRenderLiveVerify).toBe(false)
+    expect(result.targetSha).toBe('abc1234ffffeeee')
+    expect(result.blockers).toEqual([
+      'GitHub Release data-20260531_abc1234 is not published yet',
+    ])
+    expect(renderReleaseHandoffStatus(result)).toContain(
+      '# Release Handoff Status: READY FOR RELEASE PUBLISH',
     )
   })
 

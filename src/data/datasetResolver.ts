@@ -1,6 +1,12 @@
 const isBrowser = () =>
   typeof window !== 'undefined' && typeof window.document !== 'undefined'
 
+type RuntimeEnv = Record<string, string | undefined>
+
+const getRuntimeEnv = (): RuntimeEnv | null =>
+  (globalThis as typeof globalThis & { process?: { env?: RuntimeEnv } }).process
+    ?.env ?? null
+
 const getViteDatasetDir = () => {
   const viteEnv = (import.meta as { env?: Record<string, string> }).env
   return viteEnv?.VITE_DATASET_DIR ?? null
@@ -49,13 +55,13 @@ export const getDatasetRootDir = (): string => {
     return '/data/generated'
   }
 
-  if (typeof process !== 'undefined' && process.env?.DATASET_DIR) {
-    return process.env.DATASET_DIR
+  const runtimeEnv = getRuntimeEnv()
+  if (runtimeEnv?.DATASET_DIR) {
+    return runtimeEnv.DATASET_DIR
   }
 
   const isTestEnv =
-    typeof process !== 'undefined' &&
-    (process.env.VITEST || process.env.NODE_ENV === 'test')
+    Boolean(runtimeEnv?.VITEST) || runtimeEnv?.NODE_ENV === 'test'
 
   if (isTestEnv) {
     return 'tests/fixtures'
@@ -85,13 +91,13 @@ export const getDatasetBaseDir = (datasetId?: string): string => {
     return joinBaseDir('/data/generated', normalizedId)
   }
 
-  if (typeof process !== 'undefined' && process.env?.DATASET_DIR) {
-    return joinBaseDir(process.env.DATASET_DIR, normalizedId)
+  const runtimeEnv = getRuntimeEnv()
+  if (runtimeEnv?.DATASET_DIR) {
+    return joinBaseDir(runtimeEnv.DATASET_DIR, normalizedId)
   }
 
   const isTestEnv =
-    typeof process !== 'undefined' &&
-    (process.env.VITEST || process.env.NODE_ENV === 'test')
+    Boolean(runtimeEnv?.VITEST) || runtimeEnv?.NODE_ENV === 'test'
 
   if (isTestEnv) {
     return joinBaseDir('tests/fixtures', normalizedId)
