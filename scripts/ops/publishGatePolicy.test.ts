@@ -41,6 +41,20 @@ describe('publishGatePolicy', () => {
     expect(
       isAdoptableDiffFail({
         severity: 'FAIL',
+        code: 'TIER_DELTA',
+        message: 'reviewed baseline metric drift',
+      }),
+    ).toBe(true)
+    expect(
+      isAdoptableDiffFail({
+        severity: 'FAIL',
+        code: 'PERF_REGRESSION',
+        message: 'performance hard fail',
+      }),
+    ).toBe(false)
+    expect(
+      isAdoptableDiffFail({
+        severity: 'FAIL',
         code: 'DIFF_SEGMENTS_ZERO',
         message: 'hard diff fail',
       }),

@@ -9,6 +9,7 @@ describe('publishGateBaselineAdopt', () => {
           districtId: 'xinyi',
           warnings: [
             { severity: 'FAIL' as const, code: 'DIFF_SEGMENT_COUNT_DELTA', message: 'adoptable' },
+            { severity: 'FAIL' as const, code: 'TIER_DELTA', message: 'adoptable metric' },
             { severity: 'WARN' as const, code: 'COUNT_DELTA', message: 'warn' },
           ],
         },
@@ -24,6 +25,7 @@ describe('publishGateBaselineAdopt', () => {
     expect(result.checkedDistricts[0]?.warnings).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ code: 'DIFF_SEGMENT_COUNT_DELTA', severity: 'WARN' }),
+        expect.objectContaining({ code: 'TIER_DELTA', severity: 'WARN' }),
       ]),
     )
   })
