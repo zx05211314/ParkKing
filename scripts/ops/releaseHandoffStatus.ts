@@ -26,6 +26,11 @@ interface GitHubReleaseResponse {
   tag_name?: unknown
 }
 
+interface PublishedReleaseManifest {
+  releaseId?: unknown
+  districts?: unknown
+}
+
 export interface ReleaseHandoffStatusOptions {
   handoffJsonPath?: string | null
   readinessJsonPath?: string | null
@@ -46,6 +51,24 @@ export interface ReleaseHandoffReleaseLookup {
   published: boolean | null
   status: number | null
   htmlUrl: string | null
+  error: string | null
+}
+
+export interface ReleaseHandoffPublishedManifestDistrict {
+  districtId: string
+  expectedDatasetHash: string
+  publishedDatasetHash: string | null
+  pass: boolean
+  error: string | null
+}
+
+export interface ReleaseHandoffPublishedManifestParity {
+  checked: boolean
+  url: string
+  pass: boolean | null
+  status: number | null
+  releaseId: string | null
+  districts: ReleaseHandoffPublishedManifestDistrict[]
   error: string | null
 }
 
@@ -79,6 +102,7 @@ export interface ReleaseHandoffStatusResult {
     localAssetsPresent: boolean
   }
   releaseLookup: ReleaseHandoffReleaseLookup
+  publishedManifest: ReleaseHandoffPublishedManifestParity
   commands: ReleaseHandoffStatusCommands
   nextActions: string[]
   blockers: string[]
@@ -219,6 +243,23 @@ const resolveAppUrl = (options: ReleaseHandoffStatusOptions) => {
 const releaseLookupUrl = (repository: string, tag: string) =>
   `https://api.github.com/repos/${repository}/releases/tags/${encodeURIComponent(tag)}`
 
+const buildReleaseAssetHeaders = () => {
+  const headers: Record<string, string> = {
+    'user-agent': 'ParkKing release handoff status',
+  }
+  const authHeader = process.env.PARKKING_RELEASE_DOWNLOAD_AUTH_HEADER
+  const token =
+    process.env.PARKKING_RELEASE_DOWNLOAD_TOKEN ??
+    process.env.GH_TOKEN ??
+    process.env.GITHUB_TOKEN
+  if (authHeader) {
+    headers.authorization = authHeader
+  } else if (token) {
+    headers.authorization = `Bearer ${token}`
+  }
+  return headers
+}
+
 const lookupGitHubRelease = async (
   params: {
     repository: string
@@ -290,6 +331,145 @@ const lookupGitHubRelease = async (
   }
 }
 
+const normalizeExpectedDatasets = (handoff: RenderDeploymentHandoffResult) =>
+  Array.isArray(handoff.expectedDatasets)
+    ? handoff.expectedDatasets
+        .map((entry) => {
+          const record =
+            entry !== null && typeof entry === 'object' && !Array.isArray(entry)
+              ? (entry as Record<string, unknown>)
+              : null
+          return typeof record?.districtId === 'string' &&
+            typeof record.datasetHash === 'string'
+            ? {
+                districtId: record.districtId,
+                datasetHash: record.datasetHash,
+              }
+            : null
+        })
+        .filter(
+          (
+            entry,
+          ): entry is {
+            districtId: string
+            datasetHash: string
+          } => entry !== null,
+        )
+    : []
+
+const parsePublishedManifestDistricts = (manifest: PublishedReleaseManifest) => {
+  if (!Array.isArray(manifest.districts)) {
+    return new Map<string, string>()
+  }
+  return new Map(
+    manifest.districts.flatMap((entry) => {
+      const record =
+        entry !== null && typeof entry === 'object' && !Array.isArray(entry)
+          ? (entry as Record<string, unknown>)
+          : null
+      return typeof record?.districtId === 'string' &&
+        typeof record.datasetHash === 'string'
+        ? [[record.districtId, record.datasetHash] as const]
+        : []
+    }),
+  )
+}
+
+const checkPublishedManifestParity = async (
+  params: {
+    releaseId: string
+    manifestUrl: string
+    expectedDatasets: Array<{ districtId: string; datasetHash: string }>
+    timeoutMs: number
+    skip: boolean
+  },
+  fetchImpl: ReleaseLookupFetch,
+): Promise<ReleaseHandoffPublishedManifestParity> => {
+  if (params.skip) {
+    return {
+      checked: false,
+      url: params.manifestUrl,
+      pass: null,
+      status: null,
+      releaseId: null,
+      districts: [],
+      error: null,
+    }
+  }
+
+  try {
+    const response = await fetchImpl(params.manifestUrl, {
+      headers: buildReleaseAssetHeaders(),
+      signal: AbortSignal.timeout(params.timeoutMs),
+    })
+    if (!response.ok) {
+      return {
+        checked: true,
+        url: params.manifestUrl,
+        pass: null,
+        status: response.status,
+        releaseId: null,
+        districts: [],
+        error: `HTTP ${response.status} ${response.statusText}`,
+      }
+    }
+    const manifest = (await response.json()) as PublishedReleaseManifest
+    const publishedReleaseId =
+      typeof manifest.releaseId === 'string' ? manifest.releaseId : null
+    const publishedDistricts = parsePublishedManifestDistricts(manifest)
+    const districts = params.expectedDatasets.map((expected) => {
+      const publishedDatasetHash = publishedDistricts.get(expected.districtId) ?? null
+      const pass = publishedDatasetHash === expected.datasetHash
+      return {
+        districtId: expected.districtId,
+        expectedDatasetHash: expected.datasetHash,
+        publishedDatasetHash,
+        pass,
+        error: pass
+          ? null
+          : publishedDatasetHash === null
+            ? 'missing from published manifest'
+            : 'dataset hash mismatch',
+      }
+    })
+    const errors = [
+      ...(publishedReleaseId === params.releaseId
+        ? []
+        : [
+            `published manifest releaseId ${
+              publishedReleaseId ?? 'missing'
+            } does not match ${params.releaseId}`,
+          ]),
+      ...districts
+        .filter((district) => !district.pass)
+        .map(
+          (district) =>
+            `${district.districtId} ${district.error ?? 'dataset mismatch'}`,
+        ),
+    ]
+
+    return {
+      checked: true,
+      url: params.manifestUrl,
+      pass: errors.length === 0,
+      status: response.status,
+      releaseId: publishedReleaseId,
+      districts,
+      error: errors.length > 0 ? errors.join('; ') : null,
+    }
+  } catch (error) {
+    return {
+      checked: true,
+      url: params.manifestUrl,
+      pass: null,
+      status: null,
+      releaseId: null,
+      districts: [],
+      error: error instanceof Error ? error.message : String(error),
+    }
+  }
+}
+
 const quoteCommandValue = (value: string) =>
   /\s/.test(value) ? `"${value.replaceAll('"', '\\"')}"` : value
 
@@ -348,6 +528,7 @@ export const buildReleaseHandoffStatus = async (
   const tag = requireString(handoff.release?.tag, 'handoff.release.tag')
   const packageUrl = requireString(handoff.packageUrl, 'handoff.packageUrl')
   const manifestUrl = requireString(handoff.manifestUrl, 'handoff.manifestUrl')
+  const expectedDatasets = normalizeExpectedDatasets(handoff)
   const localAssetPaths = localAssetPathsForHandoff(handoff, releaseId, releaseDir)
   const missingLocalAssets = (
     await Promise.all(
@@ -365,6 +546,17 @@ export const buildReleaseHandoffStatus = async (
       tag,
       timeoutMs,
       skip: Boolean(options.skipReleaseLookup),
+    },
+    fetchImpl,
+  )
+  const publishedManifest = await checkPublishedManifestParity(
+    {
+      releaseId,
+      manifestUrl,
+      expectedDatasets,
+      timeoutMs,
+      skip:
+        Boolean(options.skipReleaseLookup) || releaseLookup.published !== true,
     },
     fetchImpl,
   )
@@ -418,17 +610,37 @@ export const buildReleaseHandoffStatus = async (
       `Could not determine GitHub Release status for ${tag}: ${releaseLookup.error ?? 'unknown error'}`,
     )
   }
+  if (releaseLookup.published === true && expectedDatasets.length === 0) {
+    warnings.push('Local handoff does not include expected dataset hashes')
+  }
+  if (publishedManifest.pass === false) {
+    blockers.push(
+      `Published release manifest does not match local handoff: ${publishedManifest.error ?? 'unknown mismatch'}`,
+    )
+  }
+  if (publishedManifest.pass === null && publishedManifest.checked) {
+    warnings.push(
+      `Could not verify published release manifest parity for ${tag}: ${
+        publishedManifest.error ?? 'unknown error'
+      }`,
+    )
+  }
   if (!appUrl) {
     warnings.push('Render app URL is not set; pass --app-url or PARKKING_RENDER_APP_URL before live verify')
   }
 
   const hasBlockingLocalGate = blockers.some(
-    (blocker) => !blocker.startsWith('GitHub Release '),
+    (blocker) =>
+      !blocker.startsWith('GitHub Release ') &&
+      !blocker.startsWith('Published release manifest '),
   )
   const readyForReleasePublish =
     handoffReady && readinessPass !== false && !hasBlockingLocalGate
   const readyForRenderLiveVerify =
-    readyForReleasePublish && releaseLookup.published === true && Boolean(appUrl)
+    readyForReleasePublish &&
+    releaseLookup.published === true &&
+    publishedManifest.pass === true &&
+    Boolean(appUrl)
   const nextActions =
     !readyForReleasePublish
       ? [`Run local handoff gate: ${commands.localHandoff}`]
@@ -441,6 +653,11 @@ export const buildReleaseHandoffStatus = async (
             `Or publish current local handoff assets with token: ${commands.releasePublishFromHandoff}`,
             `Or publish current local artifacts with REST API: ${commands.releasePublishEnv.join('; ')}; ${commands.releasePublish}`,
           ]
+        : publishedManifest.pass === false
+          ? [
+              'Do not set Render env vars from this local handoff yet.',
+              'Use the handoff artifact from the successful Release Data Package workflow, or republish the local handoff assets after confirming the data source drift is intended.',
+            ]
         : !appUrl
           ? [
               'Set Render env vars from the handoff and deploy Render.',
@@ -469,6 +686,7 @@ export const buildReleaseHandoffStatus = async (
       localAssetsPresent,
     },
     releaseLookup,
+    publishedManifest,
     commands,
     nextActions,
     blockers,
@@ -505,9 +723,27 @@ export const renderReleaseHandoffStatus = (
     `- Local handoff ready: ${buildStatusText(result.handoffReady)}`,
     `- Sequential runner passed: ${buildStatusText(result.readinessPass)}`,
     `- GitHub Release published: ${buildStatusText(result.releaseLookup.published)}`,
+    `- Published manifest parity: ${buildStatusText(result.publishedManifest.pass)}`,
     `- Render app URL: ${result.appUrl ?? '-'}`,
     `- Ready for release publish: ${buildStatusText(result.readyForReleasePublish)}`,
     `- Ready for Render live verify: ${buildStatusText(result.readyForRenderLiveVerify)}`,
+    '',
+    '## Published Manifest',
+    '',
+    `- Checked: ${buildStatusText(result.publishedManifest.checked)}`,
+    `- URL: ${result.publishedManifest.url}`,
+    `- HTTP status: ${result.publishedManifest.status ?? '-'}`,
+    `- Release ID: ${result.publishedManifest.releaseId ?? '-'}`,
+    `- Error: ${result.publishedManifest.error ?? '-'}`,
+    '',
+    '| Status | District | Local handoff hash | Published hash | Error |',
+    '| --- | --- | --- | --- | --- |',
+    ...(result.publishedManifest.districts.length > 0
+      ? result.publishedManifest.districts.map(
+          (district) =>
+            `| ${district.pass ? 'PASS' : 'FAIL'} | ${district.districtId} | ${district.expectedDatasetHash} | ${district.publishedDatasetHash ?? '-'} | ${district.error ?? ''} |`,
+        )
+      : ['| - | - | - | - | - |']),
     '',
     '## Commands',
     '',

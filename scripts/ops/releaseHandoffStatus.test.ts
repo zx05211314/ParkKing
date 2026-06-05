@@ -21,6 +21,7 @@ const writeStatusInputs = async (
     releaseId?: string
     tag?: string
     createAssetFiles?: boolean
+    expectedDatasets?: Array<{ districtId: string; datasetHash: string }>
   } = {},
 ) => {
   const handoffJsonPath = path.join(base, 'handoff.json')
@@ -49,6 +50,12 @@ const writeStatusInputs = async (
         `https://github.com/zx05211314/ParkKing/releases/download/${tag}/park-king-data_${releaseId}.zip`,
       manifestUrl:
         `https://github.com/zx05211314/ParkKing/releases/download/${tag}/release_manifest_${releaseId}.json`,
+      expectedDatasets: options.expectedDatasets ?? [
+        {
+          districtId: 'xinyi',
+          datasetHash: 'hash-xinyi',
+        },
+      ],
       releaseAssetPaths: [zipPath, manifestPath],
     }),
     writeJson(readinessJsonPath, {
@@ -60,6 +67,40 @@ const writeStatusInputs = async (
 
 const fetchResponse = (response: Response): typeof fetch =>
   (async () => response) as typeof fetch
+
+const publishedReleaseFetch = (params: {
+  releaseId?: string
+  districts?: Array<{ districtId: string; datasetHash: string }>
+} = {}): typeof fetch => {
+  const releaseId = params.releaseId ?? 'release-a'
+  const districts = params.districts ?? [
+    {
+      districtId: 'xinyi',
+      datasetHash: 'hash-xinyi',
+    },
+  ]
+  return (async (input) => {
+    const url = String(input)
+    if (url.includes('/api.github.com/repos/')) {
+      return new Response(
+        JSON.stringify({
+          html_url: 'https://github.com/zx05211314/ParkKing/releases/tag/data-release-a',
+        }),
+        { status: 200 },
+      )
+    }
+    if (url.includes('/releases/download/')) {
+      return new Response(
+        JSON.stringify({
+          releaseId,
+          districts,
+        }),
+        { status: 200 },
+      )
+    }
+    throw new Error(`Unexpected URL ${url}`)
+  }) as typeof fetch
+}
 
 describe('releaseHandoffStatus', () => {
   it('parses default paths and status options', () => {
@@ -148,23 +189,67 @@ describe('releaseHandoffStatus', () => {
         ref: 'main',
         appUrl: 'https://parkking.onrender.com',
       },
-      fetchResponse(
-        new Response(
-          JSON.stringify({
-            html_url: 'https://github.com/zx05211314/ParkKing/releases/tag/data-release-a',
-          }),
-          { status: 200 },
-        ),
-      ),
+      publishedReleaseFetch(),
     )
 
     expect(result.readyForRenderLiveVerify).toBe(true)
     expect(result.releaseLookup.published).toBe(true)
+    expect(result.publishedManifest.pass).toBe(true)
     expect(result.commands.renderLiveVerifyDryRun).toContain(
       '--app-url https://parkking.onrender.com',
     )
     expect(renderReleaseHandoffStatus(result)).toContain(
       '# Release Handoff Status: READY FOR LIVE VERIFY',
+    )
+    expect(renderReleaseHandoffStatus(result)).toContain(
+      '- Published manifest parity: yes',
+    )
+  })
+
+  it('blocks live verify when the published manifest differs from the local handoff', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'handoff-status-drift-'))
+    const paths = await writeStatusInputs(base)
+
+    const result = await buildReleaseHandoffStatus(
+      {
+        ...paths,
+        ref: 'main',
+        appUrl: 'https://parkking.onrender.com',
+      },
+      publishedReleaseFetch({
+        districts: [
+          {
+            districtId: 'xinyi',
+            datasetHash: 'published-hash-xinyi',
+          },
+        ],
+      }),
+    )
+
+    expect(result.readyForReleasePublish).toBe(true)
+    expect(result.readyForRenderLiveVerify).toBe(false)
+    expect(result.publishedManifest.pass).toBe(false)
+    expect(result.blockers.join('\n')).toContain(
+      'Published release manifest does not match local handoff',
+    )
+    expect(result.publishedManifest.districts).toEqual([
+      {
+        districtId: 'xinyi',
+        expectedDatasetHash: 'hash-xinyi',
+        publishedDatasetHash: 'published-hash-xinyi',
+        pass: false,
+        error: 'dataset hash mismatch',
+      },
+    ])
+    expect(result.nextActions).toEqual([
+      'Do not set Render env vars from this local handoff yet.',
+      'Use the handoff artifact from the successful Release Data Package workflow, or republish the local handoff assets after confirming the data source drift is intended.',
+    ])
+    expect(renderReleaseHandoffStatus(result)).toContain(
+      '# Release Handoff Status: READY FOR RELEASE PUBLISH',
+    )
+    expect(renderReleaseHandoffStatus(result)).toContain(
+      '| FAIL | xinyi | hash-xinyi | published-hash-xinyi | dataset hash mismatch |',
     )
   })
 
