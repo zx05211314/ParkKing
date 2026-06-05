@@ -211,8 +211,9 @@ npm run ops:release-data-url-smoke
 ```
 
 The release workflow runs this automatically after `ops:release-data-publish`.
-It checks the package URL with `HEAD`, fetches the manifest URL, and verifies the
-manifest `releaseId` matches the released package.
+It checks the package URL with `HEAD`, falls back to `GET` with
+`Range: bytes=0-0` when `HEAD` is rejected, fetches the manifest URL, and
+verifies the manifest `releaseId` matches the released package.
 
 After Render finishes deploying those release URLs, verify the live service
 against the handoff contract:
