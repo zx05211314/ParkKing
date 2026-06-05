@@ -20,12 +20,23 @@ const writeStatusInputs = async (
     readinessPass?: boolean
     releaseId?: string
     tag?: string
+    createAssetFiles?: boolean
   } = {},
 ) => {
   const handoffJsonPath = path.join(base, 'handoff.json')
   const readinessJsonPath = path.join(base, 'readiness.json')
   const releaseId = options.releaseId ?? 'release-a'
   const tag = options.tag ?? `data-${releaseId}`
+  const releaseDir = path.join(base, 'releases')
+  const zipPath = path.join(releaseDir, `park-king-data_${releaseId}.zip`)
+  const manifestPath = path.join(releaseDir, `release_manifest_${releaseId}.json`)
+  if (options.createAssetFiles !== false) {
+    await fs.mkdir(releaseDir, { recursive: true })
+    await Promise.all([
+      fs.writeFile(zipPath, 'zip', 'utf-8'),
+      fs.writeFile(manifestPath, '{}', 'utf-8'),
+    ])
+  }
   await Promise.all([
     writeJson(handoffJsonPath, {
       ready: options.ready ?? true,
@@ -38,12 +49,13 @@ const writeStatusInputs = async (
         `https://github.com/zx05211314/ParkKing/releases/download/${tag}/park-king-data_${releaseId}.zip`,
       manifestUrl:
         `https://github.com/zx05211314/ParkKing/releases/download/${tag}/release_manifest_${releaseId}.json`,
+      releaseAssetPaths: [zipPath, manifestPath],
     }),
     writeJson(readinessJsonPath, {
       pass: options.readinessPass ?? true,
     }),
   ])
-  return { handoffJsonPath, readinessJsonPath }
+  return { handoffJsonPath, readinessJsonPath, releaseDir, zipPath, manifestPath }
 }
 
 const fetchResponse = (response: Response): typeof fetch =>
@@ -68,6 +80,7 @@ describe('releaseHandoffStatus', () => {
     ).toMatchObject({
       handoffJsonPath: '.tmp/render-deployment-handoff.json',
       readinessJsonPath: '.tmp/release-handoff-readiness.json',
+      releaseDir: 'dist/releases',
       repository: 'owner/repo',
       ref: 'main',
       targetSha: 'abc1234def5678',
@@ -94,6 +107,7 @@ describe('releaseHandoffStatus', () => {
       published: false,
       status: 404,
     })
+    expect(result.release.localAssetsPresent).toBe(true)
     expect(result.blockers).toContain('GitHub Release data-release-a is not published yet')
     expect(result.nextActions.join('\n')).toContain(
       'npm run ops:release-data-dispatch -- --repo zx05211314/ParkKing --ref main --dry-run',
@@ -109,6 +123,7 @@ describe('releaseHandoffStatus', () => {
       '# Release Handoff Status: READY FOR RELEASE PUBLISH',
     )
     expect(renderReleaseHandoffStatus(result)).toContain('- Target SHA:')
+    expect(renderReleaseHandoffStatus(result)).toContain('- Local assets present: yes')
     expect(renderReleaseHandoffStatus(result)).toContain(
       '- Release publish: npm run ops:release-data-publish',
     )
@@ -202,6 +217,37 @@ describe('releaseHandoffStatus', () => {
     expect(renderReleaseHandoffStatus(result)).toContain(
       '# Release Handoff Status: READY FOR RELEASE PUBLISH',
     )
+  })
+
+  it('blocks release publish when local handoff assets are missing', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'handoff-status-assets-'))
+    const paths = await writeStatusInputs(base, {
+      releaseId: '20260531_abc1234',
+      tag: 'data-20260531_abc1234',
+      createAssetFiles: false,
+    })
+
+    const result = await buildReleaseHandoffStatus(
+      {
+        ...paths,
+        ref: 'main',
+        targetSha: 'abc1234ffffeeee',
+        skipReleaseLookup: true,
+      },
+      fetchResponse(new Response('', { status: 200 })),
+    )
+
+    expect(result.readyForReleasePublish).toBe(false)
+    expect(result.release.localAssetsPresent).toBe(false)
+    expect(result.blockers.join('\n')).toContain(
+      'Local handoff release assets are missing:',
+    )
+    expect(result.blockers.join('\n')).toContain(paths.zipPath)
+    expect(result.blockers.join('\n')).toContain(paths.manifestPath)
+    expect(renderReleaseHandoffStatus(result)).toContain(
+      '# Release Handoff Status: BLOCKED',
+    )
+    expect(renderReleaseHandoffStatus(result)).toContain('- Local assets present: no')
   })
 
   it('blocks release publish when local handoff is not ready', async () => {

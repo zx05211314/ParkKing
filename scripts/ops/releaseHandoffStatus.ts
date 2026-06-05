@@ -16,6 +16,7 @@ const DEFAULT_HANDOFF_JSON = '.tmp/render-deployment-handoff.json'
 const DEFAULT_READINESS_JSON = '.tmp/release-handoff-readiness.json'
 const DEFAULT_OUT_PATH = '.tmp/release-handoff-status.md'
 const DEFAULT_JSON_OUT_PATH = '.tmp/release-handoff-status.json'
+const DEFAULT_RELEASE_DIR = 'dist/releases'
 const DEFAULT_TIMEOUT_MS = 15000
 
 type ReleaseLookupFetch = typeof fetch
@@ -28,6 +29,7 @@ interface GitHubReleaseResponse {
 export interface ReleaseHandoffStatusOptions {
   handoffJsonPath?: string | null
   readinessJsonPath?: string | null
+  releaseDir?: string | null
   repository?: string | null
   ref?: string | null
   targetSha?: string | null
@@ -72,6 +74,8 @@ export interface ReleaseHandoffStatusResult {
     tag: string
     packageUrl: string
     manifestUrl: string
+    localAssetPaths: string[]
+    localAssetsPresent: boolean
   }
   releaseLookup: ReleaseHandoffReleaseLookup
   commands: ReleaseHandoffStatusCommands
@@ -99,6 +103,7 @@ export const parseReleaseHandoffStatusArgs = (
   readinessJsonPath:
     getArgValue(argv, '--readiness-json', '--readinessJson') ??
     DEFAULT_READINESS_JSON,
+  releaseDir: getArgValue(argv, '--release-dir', '--releaseDir') ?? DEFAULT_RELEASE_DIR,
   repository: getArgValue(argv, '--repo', '--repository'),
   ref: getArgValue(argv, '--ref'),
   targetSha: getArgValue(argv, '--target-sha', '--targetSha'),
@@ -131,6 +136,38 @@ const requireString = (value: unknown, label: string) => {
     throw new Error(`${label} is required`)
   }
   return value
+}
+
+const localAssetPathsForHandoff = (
+  handoff: RenderDeploymentHandoffResult,
+  releaseId: string,
+  releaseDir: string,
+) => {
+  const assetPaths = Array.isArray(handoff.releaseAssetPaths)
+    ? handoff.releaseAssetPaths.filter(
+        (assetPath): assetPath is string =>
+          typeof assetPath === 'string' && assetPath.trim() !== '',
+      )
+    : []
+  if (assetPaths.length > 0) {
+    return assetPaths
+  }
+  return [
+    path.join(releaseDir, `park-king-data_${releaseId}.zip`),
+    path.join(releaseDir, `release_manifest_${releaseId}.json`),
+  ]
+}
+
+const localFileExists = async (filePath: string) => {
+  try {
+    const stat = await fs.stat(filePath)
+    return stat.isFile()
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return false
+    }
+    throw error
+  }
 }
 
 const resolveRepository = (
@@ -296,6 +333,7 @@ export const buildReleaseHandoffStatus = async (
 ): Promise<ReleaseHandoffStatusResult> => {
   const handoffPath = options.handoffJsonPath ?? DEFAULT_HANDOFF_JSON
   const readinessPath = options.readinessJsonPath ?? DEFAULT_READINESS_JSON
+  const releaseDir = options.releaseDir ?? DEFAULT_RELEASE_DIR
   const [handoff, readiness] = await Promise.all([
     readJsonFile<RenderDeploymentHandoffResult>(handoffPath),
     readOptionalJsonFile<ReleaseHandoffReadinessResult>(readinessPath),
@@ -308,6 +346,16 @@ export const buildReleaseHandoffStatus = async (
   const tag = requireString(handoff.release?.tag, 'handoff.release.tag')
   const packageUrl = requireString(handoff.packageUrl, 'handoff.packageUrl')
   const manifestUrl = requireString(handoff.manifestUrl, 'handoff.manifestUrl')
+  const localAssetPaths = localAssetPathsForHandoff(handoff, releaseId, releaseDir)
+  const missingLocalAssets = (
+    await Promise.all(
+      localAssetPaths.map(async (assetPath) => ({
+        assetPath,
+        exists: await localFileExists(assetPath),
+      })),
+    )
+  ).filter((asset) => !asset.exists)
+  const localAssetsPresent = missingLocalAssets.length === 0
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const releaseLookup = await lookupGitHubRelease(
     {
@@ -334,6 +382,13 @@ export const buildReleaseHandoffStatus = async (
 
   if (!handoffReady) {
     blockers.push('Local Render deployment handoff is not READY')
+  }
+  if (!localAssetsPresent) {
+    blockers.push(
+      `Local handoff release assets are missing: ${missingLocalAssets
+        .map((asset) => asset.assetPath)
+        .join(', ')}`,
+    )
   }
   if (releaseSuffix && targetSha && !targetSha.toLowerCase().startsWith(releaseSuffix)) {
     blockers.push(
@@ -407,6 +462,8 @@ export const buildReleaseHandoffStatus = async (
       tag,
       packageUrl,
       manifestUrl,
+      localAssetPaths,
+      localAssetsPresent,
     },
     releaseLookup,
     commands,
@@ -437,6 +494,8 @@ export const renderReleaseHandoffStatus = (
     `- Release tag: ${result.release.tag}`,
     `- Package URL: ${result.release.packageUrl}`,
     `- Manifest URL: ${result.release.manifestUrl}`,
+    `- Local assets present: ${buildStatusText(result.release.localAssetsPresent)}`,
+    `- Local assets: ${result.release.localAssetPaths.join(', ') || '-'}`,
     '',
     '## Status',
     '',
@@ -503,6 +562,7 @@ const run = async () => {
         'Options:',
         '  --handoff-json <path>       Defaults to .tmp/render-deployment-handoff.json',
         '  --readiness-json <path>     Defaults to .tmp/release-handoff-readiness.json',
+        '  --release-dir <path>        Defaults to dist/releases when handoff lacks asset paths',
         '  --repo <owner/name>         Defaults to GITHUB_REPOSITORY or handoff JSON repository',
         '  --ref <branch>              Defaults to GITHUB_REF_NAME, current branch, or main',
         '  --target-sha <sha>          Override git rev-parse <ref> for stale handoff checks',
