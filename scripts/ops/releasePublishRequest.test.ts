@@ -140,9 +140,24 @@ describe('releasePublishRequest', () => {
     expect(result.commands.exactLocalPublish).toBe(
       'npm run ops:release-data-publish-handoff -- --ref main',
     )
+    expect(result.manualPublish).toMatchObject({
+      githubNewReleaseUrl: 'https://github.com/owner/repo/releases/new',
+      expectedReleaseUrl:
+        'https://github.com/owner/repo/releases/tag/data-20260531_abc1234',
+      releaseTag: 'data-20260531_abc1234',
+      releaseTitle: 'ParkKing data 20260531_abc1234',
+      assetDirectory: path.resolve(path.dirname(fixture.zipPath)),
+      uploadAssetPaths: [
+        path.resolve(fixture.zipPath),
+        path.resolve(fixture.manifestPath),
+      ],
+    })
     const rendered = renderReleasePublishRequest(result)
     expect(rendered).toContain('# Release Publish Request: READY_FOR_RELEASE_PUBLISH')
     expect(rendered).toContain('## Exact Local Publish')
+    expect(rendered).toContain('## Manual GitHub UI Publish')
+    expect(rendered).toContain('https://github.com/owner/repo/releases/new')
+    expect(rendered).toContain('Tag: data-20260531_abc1234')
     expect(rendered).toContain('PARKKING_RELEASE_PACKAGE_URL=')
   })
 
@@ -220,7 +235,11 @@ describe('releasePublishRequest', () => {
     )
     const parsed = JSON.parse(await fs.readFile(jsonOutPath, 'utf-8')) as {
       state?: string
+      manualPublish?: {
+        releaseTag?: string
+      }
     }
     expect(parsed.state).toBe('ready_for_release_publish')
+    expect(parsed.manualPublish?.releaseTag).toBe('data-20260531_abc1234')
   })
 })

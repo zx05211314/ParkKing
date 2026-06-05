@@ -61,6 +61,15 @@ export interface ReleasePublishRequestAsset {
   expectedUrl: string
 }
 
+export interface ReleasePublishRequestManualPublish {
+  githubNewReleaseUrl: string
+  expectedReleaseUrl: string
+  releaseTag: string
+  releaseTitle: string
+  assetDirectory: string | null
+  uploadAssetPaths: string[]
+}
+
 export interface ReleasePublishRequestCommands {
   refreshHandoff: string
   status: string
@@ -86,6 +95,7 @@ export interface ReleasePublishRequestResult {
   publishPlan: PublishReleaseDataFromHandoffPlan | null
   environment: ReleasePublishRequestEnvironment
   assets: ReleasePublishRequestAsset[]
+  manualPublish: ReleasePublishRequestManualPublish
   commands: ReleasePublishRequestCommands
   blockers: string[]
   externalRequirements: string[]
@@ -192,6 +202,24 @@ const hashFile = async (filePath: string) => {
 
 const assetUrlForName = (status: ReleaseHandoffStatusResult, name: string) =>
   name.endsWith('.zip') ? status.release.packageUrl : status.release.manifestUrl
+
+const githubUrl = (repository: string, pathPart: string) =>
+  `https://github.com/${repository}/${pathPart}`
+
+const buildManualPublish = (
+  status: ReleaseHandoffStatusResult,
+  assets: ReleasePublishRequestAsset[],
+): ReleasePublishRequestManualPublish => ({
+  githubNewReleaseUrl: githubUrl(status.repository, 'releases/new'),
+  expectedReleaseUrl: githubUrl(
+    status.repository,
+    `releases/tag/${encodeURIComponent(status.release.tag)}`,
+  ),
+  releaseTag: status.release.tag,
+  releaseTitle: `ParkKing data ${status.release.releaseId}`,
+  assetDirectory: assets[0] ? path.dirname(assets[0].path) : null,
+  uploadAssetPaths: assets.map((asset) => asset.path),
+})
 
 const buildAssets = async (
   status: ReleaseHandoffStatusResult,
@@ -319,6 +347,7 @@ export const buildReleasePublishRequest = async (
   }
 
   const assets = await buildAssets(status, publishPlan)
+  const manualPublish = buildManualPublish(status, assets)
   const commands = buildCommands(status)
   const externalRequirements = buildExternalRequirements(status, environment)
 
@@ -328,6 +357,7 @@ export const buildReleasePublishRequest = async (
     publishPlan,
     environment,
     assets,
+    manualPublish,
     commands,
     blockers,
     externalRequirements,
@@ -377,6 +407,20 @@ export const renderReleasePublishRequest = (
     '| Asset | Bytes | SHA-256 | Local path | Expected URL |',
     '| --- | ---: | --- | --- | --- |',
     ...formatAssetRows(result.assets),
+    '',
+    '## Manual GitHub UI Publish',
+    '',
+    `- Open: ${result.manualPublish.githubNewReleaseUrl}`,
+    `- Tag: ${result.manualPublish.releaseTag}`,
+    `- Title: ${result.manualPublish.releaseTitle}`,
+    `- Upload asset directory: ${result.manualPublish.assetDirectory ?? '-'}`,
+    ...(result.manualPublish.uploadAssetPaths.length > 0
+      ? result.manualPublish.uploadAssetPaths.map(
+          (assetPath) => `- Upload file: ${assetPath}`,
+        )
+      : ['- Upload file: none']),
+    `- Expected release page after publish: ${result.manualPublish.expectedReleaseUrl}`,
+    '- After publishing, run the URL smoke commands below before assigning Render env vars.',
     '',
     '## Environment',
     '',
