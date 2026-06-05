@@ -170,6 +170,11 @@ describe('p3ReleaseReadiness', () => {
 
     expect(result.pass).toBe(true)
     expect(result.blockers).toEqual([])
+    expect(runners.runDistrictReadinessMatrix).toHaveBeenCalledWith(
+      expect.objectContaining({
+        answerCasesGlob: 'configs/prod/*.answer-cases.json',
+      }),
+    )
     expect(runners.runSmokeGeneratedPacks).toHaveBeenCalledWith(
       expect.objectContaining({
         answerCasesDir: 'configs/prod',

@@ -73,6 +73,9 @@ describe('districtReadinessMatrix', () => {
         'data/generated',
         '--review-root',
         '.tmp',
+        '--answer-cases-glob',
+        'configs/prod/*.answer-cases.json',
+        '--allow-answer-case-review-fallback',
         '--registry',
         'public/data/generated/registry.json',
         '--summary',
@@ -84,6 +87,8 @@ describe('districtReadinessMatrix', () => {
       publicRoot: 'public/data/generated',
       dryRunRoot: 'data/generated',
       reviewRoot: '.tmp',
+      answerCasesGlob: 'configs/prod/*.answer-cases.json',
+      allowAnswerCaseReviewFallback: true,
       registryPath: 'public/data/generated/registry.json',
       summaryPath: '.tmp/summary.md',
       json: true,
@@ -209,6 +214,68 @@ describe('districtReadinessMatrix', () => {
     expect(daan?.blockers).toContain('publish gate warn: BASELINE_MISSING')
     expect(renderDistrictReadinessMatrix(result)).toContain(
       'District readiness matrix: WARN',
+    )
+  })
+
+  it('can use committed answer cases as a tag-release review fallback', async () => {
+    const root = await makeTempRoot()
+    const publicRoot = path.join(root, 'public', 'data', 'generated')
+    const reviewRoot = path.join(root, 'empty-review-root')
+    const answerCasesGlob = path
+      .join(root, 'configs', 'prod', '*.answer-cases.json')
+      .replace(/\\/g, '/')
+    await writeConfig(root, 'xinyi')
+    await writeMeta(publicRoot, 'xinyi', {
+      parkingSpaces: 3,
+      signOverrides: 2,
+      inferredCandidates: 4,
+    })
+    await writeJson(path.join(publicRoot, 'registry.json'), {
+      districts: [{ districtId: 'xinyi' }],
+    })
+    const casesPath = path.join(root, 'configs', 'prod', 'xinyi.answer-cases.json')
+    await writeJson(casesPath, {
+      schemaVersion: 1,
+      districtId: 'xinyi',
+      datasetHash: 'stale-reviewed-hash',
+      cases: [
+        {
+          id: 'case-1',
+          lng: 121.56,
+          lat: 25.03,
+          expectedKind: 'PARK',
+        },
+      ],
+    })
+
+    const strict = await runDistrictReadinessMatrix({
+      configGlob: path.join(root, 'configs', 'prod', '*.json'),
+      publicRoot,
+      reviewRoot,
+      answerCasesGlob,
+    })
+    expect(strict.entries[0]).toMatchObject({
+      reviewStatus: 'missing',
+      blockers: ['review missing'],
+    })
+
+    const fallback = await runDistrictReadinessMatrix({
+      configGlob: path.join(root, 'configs', 'prod', '*.json'),
+      publicRoot,
+      reviewRoot,
+      answerCasesGlob,
+      allowAnswerCaseReviewFallback: true,
+    })
+
+    expect(fallback.entries[0]).toMatchObject({
+      reviewStatus: 'pass',
+      reviewedRows: 1,
+      validReviewedRows: 1,
+      pendingReviewRows: 0,
+      blockers: [],
+    })
+    expect(fallback.entries[0]?.reviewPath?.replace(/\\/g, '/')).toBe(
+      path.resolve(casesPath).replace(/\\/g, '/'),
     )
   })
 })

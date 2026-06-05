@@ -19,6 +19,7 @@ describe('releaseDataWorkflowInputs', () => {
       releaseAllowWarn: 'true',
       releaseAllowBaselineAdopt: 'true',
       releaseAllowReviewedCaseHashMismatch: 'true',
+      releaseAllowAnswerCaseReviewFallback: 'true',
       releaseOverrideReason:
         'Tag-triggered release uses reviewed UI, P3, deploy, and URL-smoke gates after production ingest.',
       releaseTagInput: 'data-20260605140713_21e282f',
@@ -42,6 +43,7 @@ describe('releaseDataWorkflowInputs', () => {
       releaseAllowWarn: 'false',
       releaseAllowBaselineAdopt: 'false',
       releaseAllowReviewedCaseHashMismatch: 'false',
+      releaseAllowAnswerCaseReviewFallback: 'false',
       releaseOverrideReason: 'manual override',
       releaseTagInput: 'data-manual',
       releaseIdInput: 'manual',
@@ -66,6 +68,9 @@ describe('releaseDataWorkflowInputs', () => {
     )
     await expect(fs.readFile(envPath, 'utf-8')).resolves.toContain(
       'PARKKING_ALLOW_REVIEWED_CASE_HASH_MISMATCH=true',
+    )
+    await expect(fs.readFile(envPath, 'utf-8')).resolves.toContain(
+      'PARKKING_ALLOW_ANSWER_CASE_REVIEW_FALLBACK=true',
     )
   })
 })

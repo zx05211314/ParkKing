@@ -13,6 +13,7 @@ export interface ReleaseDataWorkflowInputs {
   releaseAllowWarn: string
   releaseAllowBaselineAdopt: string
   releaseAllowReviewedCaseHashMismatch: string
+  releaseAllowAnswerCaseReviewFallback: string
   releaseOverrideReason: string
   releaseTagInput: string
   releaseIdInput: string
@@ -51,6 +52,7 @@ export const resolveReleaseDataWorkflowInputs = (
       : normalizeBooleanText(env.PARKKING_INPUT_ALLOW_WARN),
     releaseAllowBaselineAdopt: isDataTagPush ? 'true' : 'false',
     releaseAllowReviewedCaseHashMismatch: isDataTagPush ? 'true' : 'false',
+    releaseAllowAnswerCaseReviewFallback: isDataTagPush ? 'true' : 'false',
     releaseOverrideReason: isDataTagPush
       ? TAG_TRIGGER_ALLOW_WARN_OVERRIDE_REASON
       : normalizeText(env.PARKKING_INPUT_OVERRIDE_REASON),
@@ -65,6 +67,7 @@ const githubEnvLines = (inputs: ReleaseDataWorkflowInputs) => [
   `RELEASE_ALLOW_WARN=${inputs.releaseAllowWarn}`,
   `PARKKING_ALLOW_BASELINE_ADOPT=${inputs.releaseAllowBaselineAdopt}`,
   `PARKKING_ALLOW_REVIEWED_CASE_HASH_MISMATCH=${inputs.releaseAllowReviewedCaseHashMismatch}`,
+  `PARKKING_ALLOW_ANSWER_CASE_REVIEW_FALLBACK=${inputs.releaseAllowAnswerCaseReviewFallback}`,
   `RELEASE_OVERRIDE_REASON=${inputs.releaseOverrideReason}`,
   `PARKKING_RELEASE_TAG_INPUT=${inputs.releaseTagInput}`,
   `PARKKING_RELEASE_ID_INPUT=${inputs.releaseIdInput}`,

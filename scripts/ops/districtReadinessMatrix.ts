@@ -3,6 +3,8 @@ import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import fg from 'fast-glob'
 import { buildQaReviewSummary } from './qaReviewSummaryState'
+import { resolveAnswerCaseReviewFallbackAllowance } from './answerCaseReviewFallback'
+import { DEFAULT_REVIEWED_ANSWER_CASES_GLOB } from './reviewedDistrictDiscovery'
 
 const DEFAULT_CONFIG_GLOB = 'configs/prod/*.json'
 const DEFAULT_PUBLIC_ROOT = 'public/data/generated'
@@ -32,6 +34,11 @@ interface DatasetCounts {
   inferredCandidates: number | null
 }
 
+interface AnswerCaseReviewFallback {
+  path: string
+  reviewedRows: number
+}
+
 export interface DistrictReadinessEntry {
   districtId: string
   districtName: string
@@ -59,6 +66,8 @@ export interface DistrictReadinessMatrixOptions {
   publicRoot?: string
   dryRunRoot?: string
   reviewRoot?: string
+  answerCasesGlob?: string
+  allowAnswerCaseReviewFallback?: boolean
   registryPath?: string | null
   summaryPath?: string
   json?: boolean
@@ -96,6 +105,18 @@ export const parseDistrictReadinessMatrixArgs = (
   dryRunRoot:
     getArgValue(argv, '--dry-run-root', '--dryRunRoot') ?? DEFAULT_DRY_RUN_ROOT,
   reviewRoot: getArgValue(argv, '--review-root', '--reviewRoot') ?? DEFAULT_REVIEW_ROOT,
+  answerCasesGlob:
+    getArgValue(
+      argv,
+      '--answer-cases',
+      '--answer-cases-glob',
+      '--answerCasesGlob',
+    ) ?? undefined,
+  allowAnswerCaseReviewFallback: argv.includes(
+    '--allow-answer-case-review-fallback',
+  )
+    ? true
+    : undefined,
   registryPath:
     getArgValue(argv, '--registry', '--registry-path', '--registryPath') ??
     undefined,
@@ -254,6 +275,36 @@ const summarizeReview = async (reviewPath: string | null) => {
   }
 }
 
+const readAnswerCaseReviewFallbacks = async (answerCasesGlob: string) => {
+  const files = await fg(answerCasesGlob.replace(/\\/g, '/'), {
+    absolute: true,
+    onlyFiles: true,
+    dot: false,
+  })
+  const fallbacks = new Map<string, AnswerCaseReviewFallback>()
+  for (const file of files) {
+    const parsed = await readJsonIfExists(file)
+    const districtId =
+      getString(parsed, 'districtId') ??
+      path.basename(file, '.answer-cases.json')
+    const cases = Array.isArray(parsed?.cases) ? parsed.cases : []
+    if (districtId && cases.length > 0) {
+      fallbacks.set(districtId, {
+        path: file,
+        reviewedRows: cases.length,
+      })
+    }
+  }
+  return fallbacks
+}
+
+const answerCaseFallbackReview = (fallback: AnswerCaseReviewFallback) => ({
+  reviewStatus: 'pass' as ReviewStatus,
+  reviewedRows: fallback.reviewedRows,
+  validReviewedRows: fallback.reviewedRows,
+  pendingReviewRows: 0,
+})
+
 const readPublishGateEntries = async (paths: string[]) => {
   const entries = new Map<
     string,
@@ -351,6 +402,7 @@ const buildEntry = async (params: {
     string,
     { status: PublishGateStatus; warnCodes: string[]; failCodes: string[] }
   >
+  answerCaseReviewFallbacks: Map<string, AnswerCaseReviewFallback>
 }) => {
   const {
     config,
@@ -360,6 +412,7 @@ const buildEntry = async (params: {
     registryIds,
     publicPublishGateEntries,
     dryRunPublishGateEntries,
+    answerCaseReviewFallbacks,
   } = params
   const publicMetaPath = path.resolve(publicRoot, config.districtId, 'dataset_meta.json')
   const dryRunMetaPath = path.resolve(dryRunRoot, config.districtId, 'dataset_meta.json')
@@ -388,9 +441,16 @@ const buildEntry = async (params: {
     signOverrides: getCount(meta, 'signOverridesCount', 'signOverrides'),
     inferredCandidates: getCount(meta, 'inferredCandidatesCount', 'inferredCandidates'),
   }
-  const reviewPath = await findReviewPath(reviewRoot, config.districtId)
+  const reviewCsvPath = await findReviewPath(reviewRoot, config.districtId)
+  const answerCaseReviewFallback =
+    answerCaseReviewFallbacks.get(config.districtId) ?? null
+  const reviewPath = reviewCsvPath ?? answerCaseReviewFallback?.path ?? null
   const nextReviewPath = path.resolve(reviewRoot, `${config.districtId}-next-review.csv`)
-  const review = await summarizeReview(reviewPath)
+  const review = reviewCsvPath
+    ? await summarizeReview(reviewCsvPath)
+    : answerCaseReviewFallback
+      ? answerCaseFallbackReview(answerCaseReviewFallback)
+      : await summarizeReview(null)
   const primaryPublishGateEntries =
     primaryDatasetSource === 'public'
       ? publicPublishGateEntries
@@ -451,6 +511,14 @@ export const runDistrictReadinessMatrix = async (
   )
   const configs = await readConfigs(configGlob)
   const registry = await readRegistryDistrictIds(registryPath)
+  const allowAnswerCaseReviewFallback = resolveAnswerCaseReviewFallbackAllowance(
+    options.allowAnswerCaseReviewFallback,
+  )
+  const answerCaseReviewFallbacks = allowAnswerCaseReviewFallback
+    ? await readAnswerCaseReviewFallbacks(
+        options.answerCasesGlob ?? DEFAULT_REVIEWED_ANSWER_CASES_GLOB,
+      )
+    : new Map<string, AnswerCaseReviewFallback>()
   const publicPublishGateEntries = await readPublishGateEntries([
     path.join(publicRoot, '_ops', 'publish_gate_summary.json'),
   ])
@@ -467,6 +535,7 @@ export const runDistrictReadinessMatrix = async (
         registryIds: registry.districtIds,
         publicPublishGateEntries,
         dryRunPublishGateEntries,
+        answerCaseReviewFallbacks,
       }),
     ),
   )
