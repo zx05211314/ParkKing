@@ -116,6 +116,7 @@ describe('releasePublishRequest', () => {
     const result = await buildReleasePublishRequest(
       {
         ...fixture,
+        repository: 'owner/repo',
         ref: 'main',
         targetSha: 'abc1234ffff',
         appUrl: 'https://parkking.onrender.com',
@@ -168,6 +169,7 @@ describe('releasePublishRequest', () => {
     const result = await buildReleasePublishRequest(
       {
         ...fixture,
+        repository: 'owner/repo',
         ref: 'main',
         targetSha: 'abc1234ffff',
         appUrl: 'https://parkking.onrender.com',
@@ -199,6 +201,7 @@ describe('releasePublishRequest', () => {
     const result = await buildReleasePublishRequest(
       {
         ...fixture,
+        repository: 'owner/repo',
         ref: 'main',
         targetSha: 'def5678ffff',
         skipReleaseLookup: true,
@@ -221,6 +224,7 @@ describe('releasePublishRequest', () => {
     const result = await buildReleasePublishRequest(
       {
         ...fixture,
+        repository: 'owner/repo',
         ref: 'main',
         targetSha: 'abc1234ffff',
       },
