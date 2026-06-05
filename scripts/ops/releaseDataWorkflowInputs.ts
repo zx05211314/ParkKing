@@ -11,6 +11,7 @@ const TAG_TRIGGER_ALLOW_WARN_OVERRIDE_REASON =
 export interface ReleaseDataWorkflowInputs {
   releaseConfigsGlob: string
   releaseAllowWarn: string
+  releaseAllowBaselineAdopt: string
   releaseOverrideReason: string
   releaseTagInput: string
   releaseIdInput: string
@@ -47,6 +48,7 @@ export const resolveReleaseDataWorkflowInputs = (
     releaseAllowWarn: isDataTagPush
       ? 'true'
       : normalizeBooleanText(env.PARKKING_INPUT_ALLOW_WARN),
+    releaseAllowBaselineAdopt: isDataTagPush ? 'true' : 'false',
     releaseOverrideReason: isDataTagPush
       ? TAG_TRIGGER_ALLOW_WARN_OVERRIDE_REASON
       : normalizeText(env.PARKKING_INPUT_OVERRIDE_REASON),
@@ -59,6 +61,7 @@ export const resolveReleaseDataWorkflowInputs = (
 const githubEnvLines = (inputs: ReleaseDataWorkflowInputs) => [
   `RELEASE_CONFIGS_GLOB=${inputs.releaseConfigsGlob}`,
   `RELEASE_ALLOW_WARN=${inputs.releaseAllowWarn}`,
+  `PARKKING_ALLOW_BASELINE_ADOPT=${inputs.releaseAllowBaselineAdopt}`,
   `RELEASE_OVERRIDE_REASON=${inputs.releaseOverrideReason}`,
   `PARKKING_RELEASE_TAG_INPUT=${inputs.releaseTagInput}`,
   `PARKKING_RELEASE_ID_INPUT=${inputs.releaseIdInput}`,

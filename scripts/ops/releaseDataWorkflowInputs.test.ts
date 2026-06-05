@@ -1,5 +1,11 @@
+import * as fs from 'node:fs/promises'
+import * as path from 'node:path'
+import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
-import { resolveReleaseDataWorkflowInputs } from './releaseDataWorkflowInputs'
+import {
+  resolveReleaseDataWorkflowInputs,
+  writeReleaseDataWorkflowEnv,
+} from './releaseDataWorkflowInputs'
 
 describe('releaseDataWorkflowInputs', () => {
   it('derives release id from data tag push events', () => {
@@ -11,6 +17,7 @@ describe('releaseDataWorkflowInputs', () => {
     ).toMatchObject({
       releaseConfigsGlob: 'configs/prod/*.json',
       releaseAllowWarn: 'true',
+      releaseAllowBaselineAdopt: 'true',
       releaseOverrideReason:
         'Tag-triggered release uses reviewed UI, P3, deploy, and URL-smoke gates after production ingest.',
       releaseTagInput: 'data-20260605140713_21e282f',
@@ -32,10 +39,28 @@ describe('releaseDataWorkflowInputs', () => {
     ).toMatchObject({
       releaseConfigsGlob: 'configs/dev/*.json',
       releaseAllowWarn: 'false',
+      releaseAllowBaselineAdopt: 'false',
       releaseOverrideReason: 'manual override',
       releaseTagInput: 'data-manual',
       releaseIdInput: 'manual',
       releaseLatest: 'true',
     })
+  })
+
+  it('exports baseline adopt env for tag-triggered releases', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'release-inputs-'))
+    const envPath = path.join(base, 'github-env')
+
+    await writeReleaseDataWorkflowEnv(
+      resolveReleaseDataWorkflowInputs({
+        PARKKING_WORKFLOW_EVENT_NAME: 'push',
+        PARKKING_WORKFLOW_REF_NAME: 'data-20260605140713_21e282f',
+      }),
+      envPath,
+    )
+
+    await expect(fs.readFile(envPath, 'utf-8')).resolves.toContain(
+      'PARKKING_ALLOW_BASELINE_ADOPT=true',
+    )
   })
 })

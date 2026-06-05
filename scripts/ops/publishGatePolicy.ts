@@ -22,6 +22,14 @@ const NON_ADOPTABLE_DIFF_FAIL_CODES = new Set([
   'DIFF_BBOX_COLLAPSE',
 ])
 
+const ADOPTABLE_BASELINE_FAIL_CODES = new Set([
+  'COUNT_DELTA',
+  'TIER_DELTA',
+  'REASON_CODE_DELTA',
+  'REASON_CODE_NEW',
+  'REASON_CODE_COVERAGE_DROP',
+])
+
 export const isOverrideStatus = (value: string) => {
   return value === 'LEGAL' || value === 'ILLEGAL' || value === 'UNCLEAR'
 }
@@ -57,8 +65,11 @@ export const isAdoptableDiffFail = (warning: GateWarning) => {
   if (warning.severity !== 'FAIL') {
     return false
   }
-  if (typeof warning.code !== 'string' || !warning.code.startsWith('DIFF_')) {
+  if (typeof warning.code !== 'string') {
     return false
   }
-  return !NON_ADOPTABLE_DIFF_FAIL_CODES.has(warning.code)
+  if (warning.code.startsWith('DIFF_')) {
+    return !NON_ADOPTABLE_DIFF_FAIL_CODES.has(warning.code)
+  }
+  return ADOPTABLE_BASELINE_FAIL_CODES.has(warning.code)
 }

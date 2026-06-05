@@ -11,6 +11,7 @@ describe('publishGateBaselineAdoptWarnings', () => {
         districtId: 'xinyi',
         warnings: [
           { severity: 'FAIL', code: 'DIFF_SEGMENT_COUNT_DELTA', message: 'adoptable' },
+          { severity: 'FAIL', code: 'TIER_DELTA', message: 'adoptable metric' },
           { severity: 'FAIL', code: 'DIFF_SEGMENTS_ZERO', message: 'hard diff fail' },
           { severity: 'WARN', code: 'COUNT_DELTA', message: 'warn' },
         ],
@@ -19,9 +20,10 @@ describe('publishGateBaselineAdoptWarnings', () => {
 
     const result = splitPublishGateAdoptableFails(matches)
 
-    expect(result.adoptableDiffFails).toHaveLength(1)
+    expect(result.adoptableDiffFails).toHaveLength(2)
     expect(result.nonAdoptableFails).toHaveLength(1)
     expect(result.adoptableDiffFails[0]?.warning.code).toBe('DIFF_SEGMENT_COUNT_DELTA')
+    expect(result.adoptableDiffFails[1]?.warning.code).toBe('TIER_DELTA')
     expect(result.nonAdoptableFails[0]?.warning.code).toBe('DIFF_SEGMENTS_ZERO')
   })
 })
