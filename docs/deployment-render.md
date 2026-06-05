@@ -133,6 +133,20 @@ Release tag is already published, and prints the dry-run/dispatch commands for
 `PARKKING_RENDER_APP_URL` to render the final live verification command with a
 real Render service URL.
 
+When credentials are not available in the local environment, generate a single
+handoff request for the human/operator who will publish the release and deploy
+Render:
+
+```powershell
+npm run ops:release-publish-request -- --ref main --app-url https://<service>.onrender.com
+```
+
+This writes `.tmp/release-publish-request.md` and
+`.tmp/release-publish-request.json` with the target SHA, exact local
+zip/manifest paths, asset byte counts and SHA-256 checksums, token/CLI
+availability, exact publish commands, Render environment variables, and final
+verification commands. It does not publish assets or call Render.
+
 The deploy readiness gate installs the latest `dist/releases` zip/manifest pair into
 `.tmp/deploy-readiness/public/data/generated`, checks that built static data in
 `dist/data/generated` has the same reviewed district hashes, runs reviewed pack
