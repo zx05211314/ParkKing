@@ -131,7 +131,7 @@ describe('releasePublishRequest', () => {
       'GitHub Release data-20260531_abc1234 is not published yet',
     )
     expect(result.externalRequirements).toContain(
-      'Provide GH_TOKEN/GITHUB_TOKEN with contents:write, install/authenticate gh, or run the GitHub Actions workflow from the GitHub UI.',
+      'Provide GH_TOKEN/GITHUB_TOKEN with contents:write, install/authenticate gh, push the matching data tag, or run the GitHub Actions workflow from the GitHub UI.',
     )
     expect(result.assets).toHaveLength(2)
     expect(result.assets[0]).toMatchObject({
@@ -157,6 +157,10 @@ describe('releasePublishRequest', () => {
     expect(rendered).toContain('# Release Publish Request: READY_FOR_RELEASE_PUBLISH')
     expect(rendered).toContain('## Exact Local Publish')
     expect(rendered).toContain('## Manual GitHub UI Publish')
+    expect(rendered).toContain('## Tag Push Publish Alternative')
+    expect(rendered).toContain(
+      'git tag data-20260531_abc1234 main; git push origin data-20260531_abc1234',
+    )
     expect(rendered).toContain('https://github.com/owner/repo/releases/new')
     expect(rendered).toContain('Tag: data-20260531_abc1234')
     expect(rendered).toContain('PARKKING_RELEASE_PACKAGE_URL=')

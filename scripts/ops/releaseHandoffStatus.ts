@@ -53,6 +53,7 @@ export interface ReleaseHandoffStatusCommands {
   localHandoff: string
   releaseDispatchDryRun: string
   releaseDispatch: string
+  releaseTagPush: string
   releasePublishEnv: string[]
   releasePublish: string
   releasePublishFromHandoff: string
@@ -305,6 +306,7 @@ const buildCommands = (params: {
     localHandoff: 'npm run ops:release-handoff-readiness',
     releaseDispatchDryRun: `npm run ops:release-data-dispatch -- --repo ${params.repository} --ref ${params.ref} --dry-run`,
     releaseDispatch: `npm run ops:release-data-dispatch -- --repo ${params.repository} --ref ${params.ref}`,
+    releaseTagPush: `git tag ${quoteCommandValue(params.tag)} ${quoteCommandValue(params.ref)}; git push origin ${quoteCommandValue(params.tag)}`,
     releasePublishEnv: [
       `$env:GITHUB_REPOSITORY="${params.repository}"`,
       '$env:GH_TOKEN="<token with contents:write>"',
@@ -433,6 +435,7 @@ export const buildReleaseHandoffStatus = async (
       : releaseLookup.published !== true
         ? [
             'Publish GitHub Release assets with GitHub Actions -> Release Data Package.',
+            `Or push the release tag to run Release Data Package without local tokens: ${commands.releaseTagPush}`,
             `Preview dispatch payload: ${commands.releaseDispatchDryRun}`,
             `Dispatch with token: ${commands.releaseDispatch}`,
             `Or publish current local handoff assets with token: ${commands.releasePublishFromHandoff}`,
@@ -511,6 +514,7 @@ export const renderReleaseHandoffStatus = (
     `- Local handoff: ${result.commands.localHandoff}`,
     `- Release dispatch dry-run: ${result.commands.releaseDispatchDryRun}`,
     `- Release dispatch: ${result.commands.releaseDispatch}`,
+    `- Release tag push: ${result.commands.releaseTagPush}`,
     ...result.commands.releasePublishEnv.map(
       (command) => `- Release publish env: ${command}`,
     ),

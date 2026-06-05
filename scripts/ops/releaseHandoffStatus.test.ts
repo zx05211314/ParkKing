@@ -115,6 +115,9 @@ describe('releaseHandoffStatus', () => {
     expect(result.nextActions.join('\n')).toContain(
       'npm run ops:release-data-publish-handoff -- --ref main',
     )
+    expect(result.nextActions.join('\n')).toContain(
+      'git tag data-release-a main; git push origin data-release-a',
+    )
     expect(result.commands.releasePublishEnv).toContain(
       '$env:GITHUB_REPOSITORY="zx05211314/ParkKing"',
     )
@@ -129,6 +132,9 @@ describe('releaseHandoffStatus', () => {
     )
     expect(renderReleaseHandoffStatus(result)).toContain(
       '- Release publish from handoff: npm run ops:release-data-publish-handoff -- --ref main',
+    )
+    expect(renderReleaseHandoffStatus(result)).toContain(
+      '- Release tag push: git tag data-release-a main; git push origin data-release-a',
     )
   })
 

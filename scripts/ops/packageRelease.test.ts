@@ -205,6 +205,42 @@ describe('packageRelease', () => {
     expect(output).toContain('- Total bytes: 1234')
   })
 
+  it('uses an explicit release id when provided', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'release-explicit-id-'))
+    const baseDir = path.join(base, 'public', 'data', 'generated')
+    await fs.mkdir(path.join(baseDir, 'xinyi'), { recursive: true })
+    const registryPath = path.join(baseDir, 'registry.json')
+    await fs.writeFile(
+      registryPath,
+      JSON.stringify({
+        districts: [
+          {
+            districtId: 'xinyi',
+            latest: { datasetHash: 'hash-a', publishedAt: '2026-02-04T00:00:00Z' },
+          },
+        ],
+      }),
+      'utf-8',
+    )
+    await fs.writeFile(path.join(baseDir, 'xinyi', 'red_yellow.geojson'), '{}', 'utf-8')
+
+    const result = await packageRelease({
+      outDir: path.join(base, 'releases'),
+      registryPath,
+      includeGlob: `${baseDir.replace(/\\/g, '/')}/**/*.geojson`,
+      districtIds: ['xinyi'],
+      releaseId: '20260605140713_21e282f',
+    })
+
+    expect(result.releaseId).toBe('20260605140713_21e282f')
+    expect(path.basename(result.zipPath)).toBe(
+      'park-king-data_20260605140713_21e282f.zip',
+    )
+    expect(path.basename(result.manifestPath)).toBe(
+      'release_manifest_20260605140713_21e282f.json',
+    )
+  })
+
   it('discovers reviewed districts when reviewed release packaging is requested', async () => {
     const base = await fs.mkdtemp(path.join(tmpdir(), 'release-reviewed-'))
     await fs.writeFile(path.join(base, 'zhongshan.answer-cases.json'), '{}')

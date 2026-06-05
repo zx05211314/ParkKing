@@ -77,6 +77,7 @@ export interface ReleasePublishRequestCommands {
   exactLocalPublish: string
   workflowDispatchDryRun: string
   workflowDispatch: string
+  releaseTagPush: string
   urlSmokeEnv: string[]
   urlSmoke: string
   renderEnv: string[]
@@ -177,6 +178,7 @@ const buildCommands = (
     exactLocalPublish: `npm run ops:release-data-publish-handoff -- --ref ${status.ref}`,
     workflowDispatchDryRun: status.commands.releaseDispatchDryRun,
     workflowDispatch: status.commands.releaseDispatch,
+    releaseTagPush: status.commands.releaseTagPush,
     urlSmokeEnv: [
       `$env:GITHUB_REPOSITORY="${status.repository}"`,
       `$env:PARKKING_RELEASE_ID="${status.release.releaseId}"`,
@@ -264,7 +266,7 @@ const buildExternalRequirements = (
   const requirements: string[] = []
   if (status.releaseLookup.published !== true) {
     requirements.push(
-      `Publish GitHub Release ${status.release.tag} with the local handoff assets or run the Release Data Package workflow.`,
+      `Publish GitHub Release ${status.release.tag} with the local handoff assets, push the matching data tag, or run the Release Data Package workflow.`,
     )
     if (
       !environment.ghTokenPresent &&
@@ -272,7 +274,7 @@ const buildExternalRequirements = (
       !environment.ghCliAvailable
     ) {
       requirements.push(
-        'Provide GH_TOKEN/GITHUB_TOKEN with contents:write, install/authenticate gh, or run the GitHub Actions workflow from the GitHub UI.',
+        'Provide GH_TOKEN/GITHUB_TOKEN with contents:write, install/authenticate gh, push the matching data tag, or run the GitHub Actions workflow from the GitHub UI.',
       )
     }
   }
@@ -448,6 +450,12 @@ export const renderReleasePublishRequest = (
       result.commands.workflowDispatchDryRun,
       result.commands.workflowDispatch,
     ]),
+    '',
+    '## Tag Push Publish Alternative',
+    '',
+    'This pushes the existing handoff tag so GitHub Actions publishes assets with the same release ID.',
+    '',
+    ...commandBlock([result.commands.releaseTagPush]),
     '',
     '## URL Smoke After Publish',
     '',

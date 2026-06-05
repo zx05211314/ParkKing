@@ -18,6 +18,8 @@ describe('parsePackageReleaseArgs', () => {
         '--reviewed',
         '--answer-cases',
         'configs/prod/*.answer-cases.json',
+        '--release-id',
+        '20260605140713_21e282f',
       ]),
     ).toEqual({
       outDir: 'dist/releases',
@@ -26,6 +28,7 @@ describe('parsePackageReleaseArgs', () => {
       districtIds: ['xinyi', 'daan'],
       reviewed: true,
       answerCasesGlob: 'configs/prod/*.answer-cases.json',
+      releaseId: '20260605140713_21e282f',
     })
   })
 
@@ -37,6 +40,7 @@ describe('parsePackageReleaseArgs', () => {
       districtIds: [],
       reviewed: false,
       answerCasesGlob: null,
+      releaseId: null,
     })
   })
 })

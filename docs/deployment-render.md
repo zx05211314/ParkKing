@@ -30,6 +30,17 @@ $env:GH_TOKEN="<token with Actions workflow dispatch access>"
 npm run ops:release-data-dispatch -- --repo zx05211314/ParkKing --ref main
 ```
 
+If local tokens and the Actions UI are unavailable, the same workflow also runs
+on pushed `data-*` tags. For a prepared local handoff, push the exact release tag
+shown by `ops:release-handoff-status`; the workflow derives
+`PARKKING_RELEASE_ID_INPUT` from `data-<release-id>` so the published
+zip/manifest filenames match the handoff URLs:
+
+```powershell
+git tag data-<release-id> main
+git push origin data-<release-id>
+```
+
 That workflow fetches production sources, ingests reviewed packs, builds the UI,
 runs the bundle budget, runs reviewed answer UI smokes in LIST and MAP modes,
 passes P3 release readiness and deploy readiness, then publishes the package and
@@ -135,8 +146,10 @@ This reads `.tmp/render-deployment-handoff.json` and
 `.tmp/release-handoff-readiness.json`, checks that copied local release assets
 still exist, checks whether the expected GitHub Release tag is already
 published, and prints the dry-run/dispatch commands for `Release Data Package`
-and `Render Live Verify`. Pass `--app-url` or set `PARKKING_RENDER_APP_URL` to
-render the final live verification command with a real Render service URL.
+and `Render Live Verify`, plus the `git tag ...; git push origin ...` fallback
+that publishes the same release ID through the tag-triggered release workflow.
+Pass `--app-url` or set `PARKKING_RENDER_APP_URL` to render the final live
+verification command with a real Render service URL.
 
 When credentials are not available in the local environment, generate a single
 handoff request for the human/operator who will publish the release and deploy
