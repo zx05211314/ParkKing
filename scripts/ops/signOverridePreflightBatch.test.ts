@@ -68,6 +68,7 @@ describe('signOverridePreflightBatch', () => {
     const root = await makeTempRoot()
     await fs.writeFile(path.join(root, 'xinyi.json'), '{}')
     await fs.writeFile(path.join(root, 'daan.json'), '{}')
+    await fs.writeFile(path.join(root, 'xinyi.answer-cases.json'), '{}')
 
     await expect(
       resolveSignOverridePreflightConfigPaths(

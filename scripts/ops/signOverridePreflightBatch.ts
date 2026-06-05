@@ -66,7 +66,9 @@ export const resolveSignOverridePreflightConfigPaths = async (
       dot: false,
       absolute: false,
     })
-  ).sort((a, b) => a.localeCompare(b))
+  )
+    .filter((configPath) => !configPath.endsWith('.answer-cases.json'))
+    .sort((a, b) => a.localeCompare(b))
 
 const outputPathForConfig = (params: {
   configPath: string
