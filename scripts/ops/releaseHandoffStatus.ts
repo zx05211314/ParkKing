@@ -573,6 +573,11 @@ export const buildReleaseHandoffStatus = async (
   const blockers: string[] = []
   const warnings: string[] = []
   const releaseSuffix = releaseShaSuffix(releaseId)
+  const releaseTargetMismatch = Boolean(
+    releaseSuffix &&
+      targetSha &&
+      !targetSha.toLowerCase().startsWith(releaseSuffix),
+  )
 
   if (!handoffReady) {
     blockers.push('Local Render deployment handoff is not READY')
@@ -587,10 +592,16 @@ export const buildReleaseHandoffStatus = async (
       blockers.push(message)
     }
   }
-  if (releaseSuffix && targetSha && !targetSha.toLowerCase().startsWith(releaseSuffix)) {
-    blockers.push(
-      `Local handoff release ID ${releaseId} does not match ${ref} target SHA ${targetSha}`,
-    )
+  if (releaseTargetMismatch) {
+    const message =
+      `Local handoff release ID ${releaseId} does not match ${ref} target SHA ${targetSha}`
+    if (releaseLookup.published === true && publishedManifest.pass === true) {
+      warnings.push(
+        `${message}; local republish is blocked, but remote live verify is unaffected because the published manifest matches`,
+      )
+    } else {
+      blockers.push(message)
+    }
   }
   if (releaseSuffix && !targetSha) {
     warnings.push(
@@ -647,6 +658,7 @@ export const buildReleaseHandoffStatus = async (
     handoffReady &&
     readinessPass !== false &&
     localAssetsPresent &&
+    !releaseTargetMismatch &&
     !hasBlockingLocalGate
   const readyForRenderLiveVerify =
     handoffReady &&
