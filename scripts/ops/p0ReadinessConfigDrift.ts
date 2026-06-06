@@ -33,6 +33,9 @@ interface SourceFileDrift {
 
 const normalizeSourcePath = (value: string) => path.normalize(value).toLowerCase()
 
+const sourceIdentity = (sourceFile: SourceFileMeta) =>
+  sourceFile.sourceKey?.toLowerCase() ?? normalizeSourcePath(sourceFile.path)
+
 const formatHashMismatch = (
   label: string,
   left: string,
@@ -43,7 +46,7 @@ const formatHashMismatch = (
 const toSourceFileMap = (sourceFiles: SourceFileMeta[]) => {
   const entries = new Map<string, SourceFileMeta>()
   sourceFiles.forEach((sourceFile) => {
-    entries.set(normalizeSourcePath(sourceFile.path), sourceFile)
+    entries.set(sourceIdentity(sourceFile), sourceFile)
   })
   return entries
 }
@@ -64,10 +67,12 @@ export const compareRuntimeSourceFiles = (
       missing.push(runtimeFile.path)
       return
     }
-    if (
-      currentFile.size !== runtimeFile.size ||
-      Math.round(currentFile.mtimeMs) !== Math.round(runtimeFile.mtimeMs)
-    ) {
+    const contentChanged =
+      currentFile.contentHash && runtimeFile.contentHash
+        ? currentFile.contentHash !== runtimeFile.contentHash
+        : currentFile.size !== runtimeFile.size ||
+          Math.round(currentFile.mtimeMs) !== Math.round(runtimeFile.mtimeMs)
+    if (contentChanged) {
       changed.push(runtimeFile.path)
     }
   })

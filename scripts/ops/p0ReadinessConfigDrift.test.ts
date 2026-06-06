@@ -76,4 +76,32 @@ describe('p0ReadinessConfigDrift', () => {
       changed: [],
     })
   })
+
+  it('matches cross-platform source paths by stable key and content hash', () => {
+    const contentHash = 'stable-source-hash'
+    expect(
+      compareRuntimeSourceFiles(
+        [
+          {
+            ...sourceFile,
+            sourceKey: 'parking_spaces',
+            contentHash,
+          },
+        ],
+        [
+          {
+            ...sourceFile,
+            path: '/home/runner/work/ParkKing/data/sources/parking_spaces.shp',
+            mtimeMs: sourceFile.mtimeMs + 10_000,
+            sourceKey: 'parking_spaces',
+            contentHash,
+          },
+        ],
+      ),
+    ).toEqual({
+      missing: [],
+      extra: [],
+      changed: [],
+    })
+  })
 })

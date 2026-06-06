@@ -81,6 +81,8 @@ export interface SourceFileMeta {
   path: string
   mtimeMs: number
   size: number
+  sourceKey?: string
+  contentHash?: string
 }
 
 export interface ResolvedConfig {
