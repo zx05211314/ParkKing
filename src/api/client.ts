@@ -18,8 +18,32 @@ export const normalizeOptionalText = (value: unknown) => {
 }
 
 export const readViteEnv = (): ViteEnvLike => {
-  const meta = import.meta as { env?: ViteEnvLike }
-  return meta.env ?? {}
+  // Vite only replaces statically analyzable import.meta.env property reads.
+  return {
+    VITE_GEOCODER_COUNTRY_CODES: import.meta.env.VITE_GEOCODER_COUNTRY_CODES,
+    VITE_GEOCODER_FALLBACK_URL: import.meta.env.VITE_GEOCODER_FALLBACK_URL,
+    VITE_GEOCODER_LIMIT: import.meta.env.VITE_GEOCODER_LIMIT,
+    VITE_GEOCODER_URL: import.meta.env.VITE_GEOCODER_URL,
+    VITE_ISSUE_REPORTS_URL: import.meta.env.VITE_ISSUE_REPORTS_URL,
+    VITE_MAP_ATTRIBUTION: import.meta.env.VITE_MAP_ATTRIBUTION,
+    VITE_MAP_RASTER_MAX_ZOOM: import.meta.env.VITE_MAP_RASTER_MAX_ZOOM,
+    VITE_MAP_RASTER_TILE_SIZE: import.meta.env.VITE_MAP_RASTER_TILE_SIZE,
+    VITE_MAP_RASTER_URL: import.meta.env.VITE_MAP_RASTER_URL,
+    VITE_MAP_STYLE_URL: import.meta.env.VITE_MAP_STYLE_URL,
+    VITE_PARKING_ANSWER_URL: import.meta.env.VITE_PARKING_ANSWER_URL,
+    VITE_REPORTS_URL: import.meta.env.VITE_REPORTS_URL,
+    VITE_ROUTING_FALLBACK_URL: import.meta.env.VITE_ROUTING_FALLBACK_URL,
+    VITE_ROUTING_URL: import.meta.env.VITE_ROUTING_URL,
+    VITE_SAVED_PLANS_URL: import.meta.env.VITE_SAVED_PLANS_URL,
+    VITE_SYNC_BASE_URL: import.meta.env.VITE_SYNC_BASE_URL,
+    VITE_SYNC_BOOTSTRAP_PATH: import.meta.env.VITE_SYNC_BOOTSTRAP_PATH,
+    VITE_SYNC_ISSUES_PATH: import.meta.env.VITE_SYNC_ISSUES_PATH,
+    VITE_SYNC_READINESS_PATH: import.meta.env.VITE_SYNC_READINESS_PATH,
+    VITE_SYNC_REPORTS_PATH: import.meta.env.VITE_SYNC_REPORTS_PATH,
+    VITE_SYNC_SAVED_PLANS_PATH: import.meta.env.VITE_SYNC_SAVED_PLANS_PATH,
+    VITE_SYNC_SCOPE: import.meta.env.VITE_SYNC_SCOPE,
+    VITE_SYNC_STATUS_PATH: import.meta.env.VITE_SYNC_STATUS_PATH,
+  }
 }
 
 export const resolveLocalhostProxyEndpoint = (proxyPath: string) => {
