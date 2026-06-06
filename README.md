@@ -411,6 +411,7 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   `npm run build`
   `npm run ops:smoke-ui-parking-answers:preview -- --cases configs/prod/xinyi.answer-cases.json --district xinyi --timeout-ms 25000`
   Use the non-preview `ops:smoke-ui-parking-answers` command only when an app is already reachable at `--app-url` (default `http://127.0.0.1:4173`); otherwise use `:preview` so the smoke starts Vite preview itself.
+  Per-case waits are bounded by `--timeout-ms`; the single-district suite defaults to twice that budget, while `ops:smoke-reviewed-ui-packs` shares three times that budget across all districts. Override either with `--suite-timeout-ms`. Use `--no-dataset-hash-check` only for deliberate fixture tests where runtime dataset metadata is unavailable.
 - Production MAP-mode reviewed-answer smoke check after `npm run build`; this confirms a reviewed pinned answer renders correctly in the map/list shared-link mode:
   `npm run ops:smoke-ui-parking-answers-map:preview -- --cases configs/prod/xinyi.answer-cases.json --district xinyi --limit 1 --timeout-ms 25000`
 - Production MAP-mode UI smoke check after `npm run build`; this confirms the shared-link MAP route renders the map panel, legend, dataset counts, and a real MapLibre canvas:

@@ -19,6 +19,7 @@ export interface SmokeReviewedUiPacksOptions extends SmokeGeneratedPacksOptions 
   appUrl?: string
   chromePath?: string
   timeoutMs?: number
+  suiteTimeoutMs?: number
   startPreview?: boolean
   limit?: number
   view?: SmokeUiParkingAnswerView
@@ -161,6 +162,10 @@ export const parseSmokeReviewedUiPacksArgs = (
       getArgValue(argv, '--timeout-ms', '--timeoutMs'),
       'timeout-ms',
     ) ?? DEFAULT_TIMEOUT_MS,
+  suiteTimeoutMs: parsePositiveInteger(
+    getArgValue(argv, '--suite-timeout-ms', '--suiteTimeoutMs'),
+    'suite-timeout-ms',
+  ),
   startPreview: !hasFlag(argv, '--no-start-preview', '--noStartPreview'),
   limit: parsePositiveInteger(getArgValue(argv, '--limit'), 'limit'),
   view: parseSmokeReviewedUiPacksView(getArgValue(argv, '--view')),
@@ -200,6 +205,11 @@ const defaultRunners: SmokeReviewedUiPacksRunners = {
   runSmokeUiParkingAnswers: runUiParkingAnswers,
 }
 
+export const resolveSmokeReviewedUiPacksSuiteTimeoutMs = (
+  timeoutMs: number,
+  suiteTimeoutMs?: number,
+) => suiteTimeoutMs ?? timeoutMs * 3
+
 export const resolveSmokeReviewedUiPacksSummaryPath = (
   options: Pick<SmokeReviewedUiPacksOptions, 'summaryPath'>,
   env: NodeJS.ProcessEnv = process.env,
@@ -227,6 +237,13 @@ export const runSmokeReviewedUiPacks = async (
     await resolveSmokeReviewedUiPacksRequiredReviewedDistricts(options),
   )
   const requireGenerated = options.requireGenerated ?? true
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const suiteDeadline =
+    Date.now() +
+    resolveSmokeReviewedUiPacksSuiteTimeoutMs(
+      timeoutMs,
+      options.suiteTimeoutMs,
+    )
   const errors: string[] = []
   let datasetDirs: string[] = []
 
@@ -256,20 +273,28 @@ export const runSmokeReviewedUiPacks = async (
     }
 
     if (reviewedCasesFound) {
-      try {
-        summary = await runners.runSmokeUiParkingAnswers({
-          appUrl: options.appUrl,
-          casesPath,
-          district: districtId,
-          chromePath: options.chromePath,
-          timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-          startPreview: options.startPreview ?? true,
-          limit: options.limit,
-          view: options.view,
-          allowMismatchedCaseHash,
-        })
-      } catch (error) {
-        packErrors.push(error instanceof Error ? error.message : String(error))
+      const remainingSuiteMs = suiteDeadline - Date.now()
+      if (remainingSuiteMs <= 0) {
+        packErrors.push(
+          `Reviewed UI pack suite timeout reached before district ${districtId}.`,
+        )
+      } else {
+        try {
+          summary = await runners.runSmokeUiParkingAnswers({
+            appUrl: options.appUrl,
+            casesPath,
+            district: districtId,
+            chromePath: options.chromePath,
+            timeoutMs,
+            suiteTimeoutMs: remainingSuiteMs,
+            startPreview: options.startPreview ?? true,
+            limit: options.limit,
+            view: options.view,
+            allowMismatchedCaseHash,
+          })
+        } catch (error) {
+          packErrors.push(error instanceof Error ? error.message : String(error))
+        }
       }
     }
 
