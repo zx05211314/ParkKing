@@ -25,8 +25,15 @@ export type SegmentEvaluationStatus =
 const WORKER_EVALUATION_TIMEOUT_MS = 30_000
 const MAX_SYNC_FALLBACK_SEGMENTS = 2_000
 const MAIN_THREAD_DEGRADED_BATCH_SIZE = 500
+const MAIN_THREAD_ZONE_AWARE_BATCH_SIZE = 100
 
-export const shouldUseMainThreadDegradedEvaluation = ({
+export type WorkerEvaluationMode =
+  | 'disabled'
+  | 'base-only'
+  | 'zone-aware'
+  | 'chunked-zone-aware'
+
+export const resolveWorkerEvaluationMode = ({
   useWorker,
   segmentCount,
   zoneCount,
@@ -34,7 +41,25 @@ export const shouldUseMainThreadDegradedEvaluation = ({
   useWorker: boolean
   segmentCount: number
   zoneCount: number
-}) => useWorker && zoneCount > 0 && segmentCount > MAX_SYNC_FALLBACK_SEGMENTS
+}): WorkerEvaluationMode => {
+  if (!useWorker || segmentCount === 0) {
+    return 'disabled'
+  }
+  if (zoneCount === 0) {
+    return 'base-only'
+  }
+  return segmentCount > MAX_SYNC_FALLBACK_SEGMENTS
+    ? 'chunked-zone-aware'
+    : 'zone-aware'
+}
+
+export const shouldUseWorkerEvaluationTimeout = (
+  evaluationStatus: SegmentEvaluationStatus,
+  workerEvaluationMode: WorkerEvaluationMode,
+) =>
+  evaluationStatus === 'working' &&
+  (workerEvaluationMode === 'base-only' ||
+    workerEvaluationMode === 'zone-aware')
 
 interface UseSegmentEvaluationStateOptions {
   segments: Segment[]
@@ -70,14 +95,18 @@ export const useSegmentEvaluationState = ({
   const [clipCacheStats, setClipCacheStats] = useState<ClipCacheStats | null>(null)
   const [evaluatedSegments, setEvaluatedSegments] = useState<EvaluatedSegment[]>([])
   const workerClientRef = useRef<EvaluationWorkerClient | null>(null)
-  const useMainThreadDegradedEvaluation = shouldUseMainThreadDegradedEvaluation({
+  const workerEvaluationMode = resolveWorkerEvaluationMode({
     useWorker,
     segmentCount: segments.length,
     zoneCount: zones.length,
   })
 
   useEffect(() => {
-    if (!useMainThreadDegradedEvaluation || segments.length === 0) {
+    if (
+      workerEvaluationMode !== 'chunked-zone-aware' ||
+      !zoneIndex ||
+      segments.length === 0
+    ) {
       return
     }
 
@@ -88,7 +117,10 @@ export const useSegmentEvaluationState = ({
     let timer: ReturnType<typeof setTimeout> | null = null
     const nextSegments: EvaluatedSegment[] = []
     let index = 0
-    const evaluator = import('../domain/rules/evaluateSegment')
+    const evaluator = Promise.all([
+      import('../domain/rules/evaluateSegment'),
+      import('../domain/geometry/clipCache'),
+    ])
 
     queueMicrotask(() => {
       setEvaluationStatus('working')
@@ -101,16 +133,18 @@ export const useSegmentEvaluationState = ({
       }
 
       const end = Math.min(
-        index + MAIN_THREAD_DEGRADED_BATCH_SIZE,
+        index + MAIN_THREAD_ZONE_AWARE_BATCH_SIZE,
         segments.length,
       )
       void evaluator
-        .then(({ evaluateSegment }) => {
+        .then(([{ evaluateSegmentWithZones }, { getClipCacheStats }]) => {
           if (cancelled) {
             return
           }
           for (; index < end; index += 1) {
-            nextSegments.push(evaluateSegment(segments[index], nowHHMM))
+            nextSegments.push(
+              ...evaluateSegmentWithZones(segments[index], nowHHMM, zoneIndex),
+            )
           }
 
           if (index < segments.length) {
@@ -118,13 +152,9 @@ export const useSegmentEvaluationState = ({
             return
           }
 
-          queueMicrotask(() => {
-            if (cancelled) {
-              return
-            }
-            setEvaluatedSegments(nextSegments)
-            setEvaluationStatus('degraded')
-          })
+          setEvaluatedSegments(nextSegments)
+          setClipCacheStats(getClipCacheStats())
+          setEvaluationStatus('ready')
         })
         .catch(() => {
           if (!cancelled) {
@@ -141,13 +171,12 @@ export const useSegmentEvaluationState = ({
         clearTimeout(timer)
       }
     }
-  }, [nowHHMM, segments, useMainThreadDegradedEvaluation])
+  }, [nowHHMM, segments, workerEvaluationMode, zoneIndex])
 
   useEffect(() => {
     if (
-      !useWorker ||
-      useMainThreadDegradedEvaluation ||
-      segments.length === 0
+      workerEvaluationMode === 'disabled' ||
+      workerEvaluationMode === 'chunked-zone-aware'
     ) {
       return
     }
@@ -177,27 +206,27 @@ export const useSegmentEvaluationState = ({
     queueMicrotask(() => {
       setEvaluationStatus('working')
     })
-    const degradedEvaluationOnly =
-      zones.length > 0 && segments.length > MAX_SYNC_FALLBACK_SEGMENTS
-
     workerClientRef.current.init({
       segments,
-      zones: degradedEvaluationOnly ? [] : zones,
+      zones: workerEvaluationMode === 'zone-aware' ? zones : [],
       datasetHash,
       zoneParamsVersion: ZONE_PARAMS_VERSION,
-      degradedEvaluationOnly,
+      degradedEvaluationOnly: false,
     })
   }, [
     datasetHash,
     nowHHMMRef,
     segments,
-    useMainThreadDegradedEvaluation,
     useWorker,
+    workerEvaluationMode,
     zones,
   ])
 
   useEffect(() => {
-    if (!useWorker || useMainThreadDegradedEvaluation) {
+    if (
+      workerEvaluationMode === 'disabled' ||
+      workerEvaluationMode === 'chunked-zone-aware'
+    ) {
       return
     }
     const client = workerClientRef.current
@@ -208,10 +237,15 @@ export const useSegmentEvaluationState = ({
       setEvaluationStatus('working')
     })
     client.evaluate(nowHHMM)
-  }, [nowHHMM, useMainThreadDegradedEvaluation, useWorker])
+  }, [nowHHMM, workerEvaluationMode])
 
   useEffect(() => {
-    if (evaluationStatus !== 'working') {
+    if (
+      !shouldUseWorkerEvaluationTimeout(
+        evaluationStatus,
+        workerEvaluationMode,
+      )
+    ) {
       return
     }
 
@@ -224,7 +258,7 @@ export const useSegmentEvaluationState = ({
     return () => {
       clearTimeout(timeout)
     }
-  }, [evaluationStatus])
+  }, [evaluationStatus, workerEvaluationMode])
 
   useEffect(() => {
     if (useWorker && evaluationStatus !== 'error') {
@@ -240,11 +274,50 @@ export const useSegmentEvaluationState = ({
     }
 
     if (useWorker && segments.length > MAX_SYNC_FALLBACK_SEGMENTS) {
-      queueMicrotask(() => {
-        setEvaluatedSegments([])
-        setClipCacheStats(null)
-      })
-      return
+      let cancelled = false
+      let timer: ReturnType<typeof setTimeout> | null = null
+      const nextSegments: EvaluatedSegment[] = []
+      let index = 0
+      const evaluator = import('../domain/rules/evaluateSegment')
+
+      const evaluateBatch = () => {
+        if (cancelled) {
+          return
+        }
+        const end = Math.min(
+          index + MAIN_THREAD_DEGRADED_BATCH_SIZE,
+          segments.length,
+        )
+        void evaluator
+          .then(({ evaluateSegment }) => {
+            if (cancelled) {
+              return
+            }
+            for (; index < end; index += 1) {
+              nextSegments.push(evaluateSegment(segments[index], nowHHMM))
+            }
+            if (index < segments.length) {
+              timer = setTimeout(evaluateBatch, 0)
+              return
+            }
+            setEvaluatedSegments(nextSegments)
+            setClipCacheStats(null)
+            setEvaluationStatus('degraded')
+          })
+          .catch(() => {
+            if (!cancelled) {
+              setEvaluationStatus('error')
+            }
+          })
+      }
+
+      timer = setTimeout(evaluateBatch, 0)
+      return () => {
+        cancelled = true
+        if (timer) {
+          clearTimeout(timer)
+        }
+      }
     }
 
     let cancelled = false

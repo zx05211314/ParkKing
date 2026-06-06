@@ -45,6 +45,7 @@ export interface SmokeUiMapViewSummary {
   expectedSegmentsCount: number | null
   expectedParkingSpacesCount: number | null
   datasetStatusReady: boolean
+  evaluationStatusReady: boolean
   reportedSegmentsCount: number | null
   reportedParkingSpacesCount: number | null
   mapSegmentCount: number
@@ -63,6 +64,7 @@ interface SmokeUiMapViewDomState {
   canvasWidth: number
   canvasHeight: number
   datasetStatusReady: boolean
+  evaluationStatusReady: boolean
   reportedSegmentsCount: number | null
   reportedParkingSpacesCount: number | null
   mapSegmentCount: number
@@ -218,6 +220,7 @@ const getMapViewDomState = async (
         canvasWidth: Math.round(canvasRect ? canvasRect.width : 0),
         canvasHeight: Math.round(canvasRect ? canvasRect.height : 0),
         datasetStatusReady: /Status:\\s*ready/i.test(bodyText),
+        evaluationStatusReady: /Eval:\\s*ready/i.test(bodyText),
         reportedSegmentsCount: parseCount('Segments'),
         reportedParkingSpacesCount: parseCount('Parking spaces'),
         mapSegmentCount: parseDataCount('data-segment-count'),
@@ -240,6 +243,7 @@ const getMapViewDomState = async (
       canvasWidth: 0,
       canvasHeight: 0,
       datasetStatusReady: false,
+      evaluationStatusReady: false,
       reportedSegmentsCount: null,
       reportedParkingSpacesCount: null,
       mapSegmentCount: 0,
@@ -258,6 +262,13 @@ const isCountReady = (actual: number | null, expected: number | null) =>
   expected === null ? actual !== null && actual > 0 : actual === expected
 
 const isPositiveCount = (actual: number | null) => actual !== null && actual > 0
+
+const isEvaluatedSegmentCountReady = (
+  actual: number,
+  expectedSourceCount: number | null,
+) =>
+  actual > 0 &&
+  (expectedSourceCount === null || actual >= expectedSourceCount)
 
 const buildSummary = (params: {
   appUrl: string
@@ -280,12 +291,13 @@ const buildSummary = (params: {
     params.state.canvasWidth > 0 &&
     params.state.canvasHeight > 0 &&
     params.state.datasetStatusReady &&
+    params.state.evaluationStatusReady &&
     isPositiveCount(params.state.reportedSegmentsCount) &&
     isCountReady(
       params.state.reportedParkingSpacesCount,
       params.expectedCounts.expectedParkingSpacesCount,
     ) &&
-    isCountReady(
+    isEvaluatedSegmentCountReady(
       params.state.mapSegmentCount,
       params.expectedCounts.expectedSegmentsCount,
     ) &&
@@ -305,6 +317,7 @@ const buildSummary = (params: {
   expectedSegmentsCount: params.expectedCounts.expectedSegmentsCount,
   expectedParkingSpacesCount: params.expectedCounts.expectedParkingSpacesCount,
   datasetStatusReady: params.state.datasetStatusReady,
+  evaluationStatusReady: params.state.evaluationStatusReady,
   reportedSegmentsCount: params.state.reportedSegmentsCount,
   reportedParkingSpacesCount: params.state.reportedParkingSpacesCount,
   mapSegmentCount: params.state.mapSegmentCount,
@@ -340,6 +353,7 @@ export const waitForSmokeUiMapView = async (params: {
     canvasWidth: 0,
     canvasHeight: 0,
     datasetStatusReady: false,
+    evaluationStatusReady: false,
     reportedSegmentsCount: null,
     reportedParkingSpacesCount: null,
     mapSegmentCount: 0,
@@ -405,6 +419,9 @@ export const validateSmokeUiMapViewSummary = (
   if (!summary.datasetStatusReady) {
     errors.push('dataset status did not reach ready')
   }
+  if (!summary.evaluationStatusReady) {
+    errors.push('segment evaluation did not reach ready')
+  }
   if (!isPositiveCount(summary.reportedSegmentsCount)) {
     errors.push(
       `reported segment count ${summary.reportedSegmentsCount ?? 'missing'} is not positive`,
@@ -420,9 +437,14 @@ export const validateSmokeUiMapViewSummary = (
       `reported parking-space count ${summary.reportedParkingSpacesCount ?? 'missing'} does not match expected ${summary.expectedParkingSpacesCount ?? '>0'}`,
     )
   }
-  if (!isCountReady(summary.mapSegmentCount, summary.expectedSegmentsCount)) {
+  if (
+    !isEvaluatedSegmentCountReady(
+      summary.mapSegmentCount,
+      summary.expectedSegmentsCount,
+    )
+  ) {
     errors.push(
-      `map segment count ${summary.mapSegmentCount} does not match expected ${summary.expectedSegmentsCount ?? '>0'}`,
+      `map segment count ${summary.mapSegmentCount} is below expected source count ${summary.expectedSegmentsCount ?? '>0'}`,
     )
   }
   if (
@@ -453,7 +475,8 @@ export const renderSmokeUiMapViewSummary = (
     `Map root: ${summary.hasMapRoot ? `${summary.rootWidth}x${summary.rootHeight}` : 'missing'}`,
     `MapLibre canvas: ${summary.hasCanvas ? `${summary.canvasWidth}x${summary.canvasHeight}` : 'missing'}`,
     `Dataset ready: ${summary.datasetStatusReady ? 'yes' : 'no'}`,
-    `Segments: reported ${summary.reportedSegmentsCount ?? 'missing'}, map ${summary.mapSegmentCount}, map expected ${summary.expectedSegmentsCount ?? '>0'}`,
+    `Evaluation ready: ${summary.evaluationStatusReady ? 'yes' : 'no'}`,
+    `Segments: reported ${summary.reportedSegmentsCount ?? 'missing'}, evaluated/map ${summary.mapSegmentCount}, source minimum ${summary.expectedSegmentsCount ?? '>0'}`,
     `Parking spaces: reported ${summary.reportedParkingSpacesCount ?? 'missing'}, map ${summary.mapParkingSpaceCount}, expected ${summary.expectedParkingSpacesCount ?? '>0'}`,
     `Fallback: ${summary.hasFallback ? 'visible' : 'not visible'}`,
     `Skeleton: ${summary.hasSkeleton ? 'visible' : 'not visible'}`,

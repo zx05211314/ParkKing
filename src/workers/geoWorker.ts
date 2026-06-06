@@ -15,7 +15,6 @@ let cachedHash = 'local'
 let cachedParamsVersion = 'default'
 let zoneIndex: ZoneIndex | null = null
 let degradedEvaluationOnly = false
-const MAX_ZONE_AWARE_WORKER_SEGMENTS = 2_000
 
 const evaluateAll = (nowHHMM: string): EvaluatedSegment[] => {
   return cachedSegments.flatMap((segment) =>
@@ -39,9 +38,7 @@ self.onmessage = (event: MessageEvent) => {
     cachedHash = initPayload.datasetHash || 'local'
     cachedParamsVersion = initPayload.zoneParamsVersion || 'default'
     resetClipCacheStats()
-    degradedEvaluationOnly =
-      initPayload.degradedEvaluationOnly ??
-      (cachedZones.length > 0 && cachedSegments.length > MAX_ZONE_AWARE_WORKER_SEGMENTS)
+    degradedEvaluationOnly = initPayload.degradedEvaluationOnly === true
     zoneIndex = cachedZones.length && !degradedEvaluationOnly
       ? getZoneIndex(cachedZones, cachedHash, cachedParamsVersion)
       : null
