@@ -4,12 +4,14 @@ import {
   fetchJson,
   getApiErrorMessage,
   normalizeOptionalText,
+  readViteEnv,
   resolveLocalhostProxyEndpoint,
 } from './client'
 
 describe('api client helpers', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllEnvs()
     const globalRef = globalThis as Record<string, unknown>
     if ('window' in globalRef) {
       delete globalRef.window
@@ -20,6 +22,18 @@ describe('api client helpers', () => {
     expect(normalizeOptionalText('  /api/test  ')).toBe('/api/test')
     expect(normalizeOptionalText('')).toBeNull()
     expect(normalizeOptionalText(null)).toBeNull()
+  })
+
+  it('reads explicitly mapped Vite environment values', () => {
+    vi.stubEnv('VITE_SYNC_BASE_URL', '/api/sync-test')
+    vi.stubEnv('VITE_PARKING_ANSWER_URL', '/api/parking-answer-test')
+
+    expect(readViteEnv()).toEqual(
+      expect.objectContaining({
+        VITE_SYNC_BASE_URL: '/api/sync-test',
+        VITE_PARKING_ANSWER_URL: '/api/parking-answer-test',
+      }),
+    )
   })
 
   it('resolves localhost proxy endpoints only on localhost hosts', () => {
