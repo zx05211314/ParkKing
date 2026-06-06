@@ -251,11 +251,11 @@ const buildState = (
   status: ReleaseHandoffStatusResult,
   blockers: string[],
 ): ReleasePublishRequestResult['state'] => {
-  if (blockers.length > 0 || !status.readyForReleasePublish) {
-    return 'blocked'
-  }
   if (status.readyForRenderLiveVerify) {
     return 'ready_for_render_live_verify'
+  }
+  if (blockers.length > 0 || !status.readyForReleasePublish) {
+    return 'blocked'
   }
   if (status.releaseLookup.published === true) {
     return 'release_published_needs_render'
@@ -340,21 +340,23 @@ export const buildReleasePublishRequest = async (
   const blockers = [...localBlockersFromStatus(status)]
   const warnings = [...status.warnings]
 
-  try {
-    publishPlan = await buildPublishPlan(options, status)
-    blockers.push(
-      ...publishPlan.blockers.filter(
-        (blocker) =>
-          !blockers.includes(blocker) &&
-          !blocker.startsWith('Missing GH_TOKEN or GITHUB_TOKEN'),
-      ),
-    )
-  } catch (error) {
-    blockers.push(
-      `Could not build exact handoff publish plan: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    )
+  if (status.release.localAssetsPresent) {
+    try {
+      publishPlan = await buildPublishPlan(options, status)
+      blockers.push(
+        ...publishPlan.blockers.filter(
+          (blocker) =>
+            !blockers.includes(blocker) &&
+            !blocker.startsWith('Missing GH_TOKEN or GITHUB_TOKEN'),
+        ),
+      )
+    } catch (error) {
+      blockers.push(
+        `Could not build exact handoff publish plan: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      )
+    }
   }
 
   const assets = await buildAssets(status, publishPlan)

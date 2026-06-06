@@ -25,7 +25,10 @@ const writeJson = async (filePath: string, value: unknown) => {
   await fs.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf-8')
 }
 
-const writeHandoffFixture = async (base: string) => {
+const writeHandoffFixture = async (
+  base: string,
+  options: { createAssetFiles?: boolean } = {},
+) => {
   const releaseId = '20260531_abc1234'
   const tag = `data-${releaseId}`
   const releaseDir = path.join(base, 'releases')
@@ -34,13 +37,15 @@ const writeHandoffFixture = async (base: string) => {
   const handoffJsonPath = path.join(base, 'handoff.json')
   const readinessJsonPath = path.join(base, 'readiness.json')
   const readinessMarkdownPath = path.join(base, 'readiness.md')
-  await fs.mkdir(releaseDir, { recursive: true })
-  await fs.writeFile(zipPath, 'zip', 'utf-8')
-  await fs.writeFile(
-    manifestPath,
-    JSON.stringify({ releaseId, districts: [{ districtId: 'xinyi', datasetHash: 'hash' }] }),
-    'utf-8',
-  )
+  if (options.createAssetFiles !== false) {
+    await fs.mkdir(releaseDir, { recursive: true })
+    await fs.writeFile(zipPath, 'zip', 'utf-8')
+    await fs.writeFile(
+      manifestPath,
+      JSON.stringify({ releaseId, districts: [{ districtId: 'xinyi', datasetHash: 'hash' }] }),
+      'utf-8',
+    )
+  }
   await Promise.all([
     writeJson(handoffJsonPath, {
       ready: true,
@@ -215,6 +220,34 @@ describe('releasePublishRequest', () => {
     )
     expect(renderReleasePublishRequest(result)).toContain(
       'npm run ops:render-deployment-verify -- --app-url https://parkking.onrender.com',
+    )
+  })
+
+  it('reports ready for remote live verify when local release assets are unavailable', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'release-publish-remote-'))
+    const fixture = await writeHandoffFixture(base, {
+      createAssetFiles: false,
+    })
+
+    const result = await buildReleasePublishRequest(
+      {
+        ...fixture,
+        repository: 'owner/repo',
+        ref: 'main',
+        targetSha: 'abc1234ffff',
+        appUrl: 'https://parkking.onrender.com',
+      },
+      publishedReleaseFetch(),
+      noToolsEnvironment,
+    )
+
+    expect(result.state).toBe('ready_for_render_live_verify')
+    expect(result.status.readyForReleasePublish).toBe(false)
+    expect(result.status.readyForRenderLiveVerify).toBe(true)
+    expect(result.assets).toEqual([])
+    expect(result.blockers).toEqual([])
+    expect(result.warnings.join('\n')).toContain(
+      'local republish is unavailable, but remote live verify is unaffected',
     )
   })
 

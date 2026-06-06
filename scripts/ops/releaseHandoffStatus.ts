@@ -578,11 +578,14 @@ export const buildReleaseHandoffStatus = async (
     blockers.push('Local Render deployment handoff is not READY')
   }
   if (!localAssetsPresent) {
-    blockers.push(
-      `Local handoff release assets are missing: ${missingLocalAssets
-        .map((asset) => asset.assetPath)
-        .join(', ')}`,
-    )
+    const message = `Local handoff release assets are missing: ${missingLocalAssets
+      .map((asset) => asset.assetPath)
+      .join(', ')}`
+    if (releaseLookup.published === true && publishedManifest.pass === true) {
+      warnings.push(`${message}; local republish is unavailable, but remote live verify is unaffected`)
+    } else {
+      blockers.push(message)
+    }
   }
   if (releaseSuffix && targetSha && !targetSha.toLowerCase().startsWith(releaseSuffix)) {
     blockers.push(
@@ -634,15 +637,31 @@ export const buildReleaseHandoffStatus = async (
       !blocker.startsWith('GitHub Release ') &&
       !blocker.startsWith('Published release manifest '),
   )
+  const hasBlockingHandoffGate = blockers.some(
+    (blocker) =>
+      !blocker.startsWith('GitHub Release ') &&
+      !blocker.startsWith('Published release manifest ') &&
+      !blocker.startsWith('Local handoff release assets are missing:'),
+  )
   const readyForReleasePublish =
-    handoffReady && readinessPass !== false && !hasBlockingLocalGate
+    handoffReady &&
+    readinessPass !== false &&
+    localAssetsPresent &&
+    !hasBlockingLocalGate
   const readyForRenderLiveVerify =
-    readyForReleasePublish &&
+    handoffReady &&
+    readinessPass !== false &&
+    !hasBlockingHandoffGate &&
     releaseLookup.published === true &&
     publishedManifest.pass === true &&
     Boolean(appUrl)
   const nextActions =
-    !readyForReleasePublish
+    readyForRenderLiveVerify
+      ? [
+          `Preview Render live verify: ${commands.renderLiveVerifyDryRun}`,
+          `Dispatch Render live verify with token: ${commands.renderLiveVerify}`,
+        ]
+      : !handoffReady || readinessPass === false || hasBlockingHandoffGate
       ? [`Run local handoff gate: ${commands.localHandoff}`]
       : releaseLookup.published !== true
         ? [
@@ -663,10 +682,7 @@ export const buildReleaseHandoffStatus = async (
               'Set Render env vars from the handoff and deploy Render.',
               'Set PARKKING_RENDER_APP_URL or pass --app-url for live verification.',
             ]
-          : [
-              `Preview Render live verify: ${commands.renderLiveVerifyDryRun}`,
-              `Dispatch Render live verify with token: ${commands.renderLiveVerify}`,
-            ]
+          : [`Run local handoff gate: ${commands.localHandoff}`]
 
   return {
     readyForReleasePublish,
