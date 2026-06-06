@@ -10,6 +10,7 @@ export interface BrowserEnvBundleCheckOptions {
 
 export interface BrowserEnvBundleCheckResult {
   entryFiles: string[]
+  bundleFiles: string[]
 }
 
 export const parseModuleEntrySources = (html: string) =>
@@ -42,11 +43,19 @@ export const assertBrowserEnvBundle = async ({
     throw new Error(`No local module entry scripts found in ${absoluteDistDir}.`)
   }
 
+  const assetsDir = path.join(absoluteDistDir, 'assets')
+  const assetEntries = await fs.readdir(assetsDir, { withFileTypes: true })
+  const bundleFiles = assetEntries
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.js'))
+    .map((entry) => path.join(assetsDir, entry.name))
+
   const unresolvedEntries: string[] = []
-  for (const entryFile of entryFiles) {
-    const content = await fs.readFile(entryFile, 'utf-8')
+  for (const bundleFile of bundleFiles) {
+    const content = await fs.readFile(bundleFile, 'utf-8')
     if (content.includes(UNRESOLVED_VITE_ENV)) {
-      unresolvedEntries.push(path.relative(absoluteDistDir, entryFile).replace(/\\/g, '/'))
+      unresolvedEntries.push(
+        path.relative(absoluteDistDir, bundleFile).replace(/\\/g, '/'),
+      )
     }
   }
 
@@ -62,12 +71,15 @@ export const assertBrowserEnvBundle = async ({
 
   return {
     entryFiles,
+    bundleFiles,
   }
 }
 
 const run = async () => {
   const result = await assertBrowserEnvBundle()
-  console.log(`Browser env bundle contract: PASS (${result.entryFiles.length} entry file(s))`)
+  console.log(
+    `Browser env bundle contract: PASS (${result.bundleFiles.length} JS bundle(s))`,
+  )
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

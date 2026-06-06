@@ -20,6 +20,8 @@ export const normalizeOptionalText = (value: unknown) => {
 export const readViteEnv = (): ViteEnvLike => {
   // Vite only replaces statically analyzable import.meta.env property reads.
   return {
+    VITE_DATA_BASE_URL: import.meta.env.VITE_DATA_BASE_URL,
+    VITE_DATASET_DIR: import.meta.env.VITE_DATASET_DIR,
     VITE_GEOCODER_COUNTRY_CODES: import.meta.env.VITE_GEOCODER_COUNTRY_CODES,
     VITE_GEOCODER_FALLBACK_URL: import.meta.env.VITE_GEOCODER_FALLBACK_URL,
     VITE_GEOCODER_LIMIT: import.meta.env.VITE_GEOCODER_LIMIT,
@@ -43,6 +45,7 @@ export const readViteEnv = (): ViteEnvLike => {
     VITE_SYNC_SAVED_PLANS_PATH: import.meta.env.VITE_SYNC_SAVED_PLANS_PATH,
     VITE_SYNC_SCOPE: import.meta.env.VITE_SYNC_SCOPE,
     VITE_SYNC_STATUS_PATH: import.meta.env.VITE_SYNC_STATUS_PATH,
+    VITE_VERIFY_HASHES: import.meta.env.VITE_VERIFY_HASHES,
   }
 }
 

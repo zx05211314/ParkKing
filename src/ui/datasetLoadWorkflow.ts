@@ -1,4 +1,5 @@
 import { getDatasetBaseDir } from '../data/datasetResolver'
+import { readViteEnv } from '../api/client'
 import {
   validateFileSet,
   validateMeta,
@@ -46,7 +47,9 @@ export interface LoadedDatasetState {
   datasetLoadResult: DatasetLoadResult
 }
 
-export const shouldVerifyDatasetHashes = (env?: Record<string, string>) =>
+export const shouldVerifyDatasetHashes = (
+  env?: Record<string, string | undefined>,
+) =>
   env?.VITE_VERIFY_HASHES === '1'
 
 export const loadDatasetRegistryState = async (
@@ -66,7 +69,7 @@ export const loadDatasetRegistryState = async (
 
 export const loadDatasetState = async (
   datasetId: string,
-  env = (import.meta as { env?: Record<string, string> }).env,
+  env = readViteEnv(),
 ): Promise<LoadedDatasetState> => {
   const fileCheck = await validateFileSet(datasetId)
   if (!fileCheck.valid) {

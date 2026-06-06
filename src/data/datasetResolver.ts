@@ -1,3 +1,5 @@
+import { readViteEnv } from '../api/client'
+
 const isBrowser = () =>
   typeof window !== 'undefined' && typeof window.document !== 'undefined'
 
@@ -8,13 +10,11 @@ const getRuntimeEnv = (): RuntimeEnv | null =>
     ?.env ?? null
 
 const getViteDatasetDir = () => {
-  const viteEnv = (import.meta as { env?: Record<string, string> }).env
-  return viteEnv?.VITE_DATASET_DIR ?? null
+  return readViteEnv().VITE_DATASET_DIR ?? null
 }
 
 const getViteDataBaseUrl = () => {
-  const viteEnv = (import.meta as { env?: Record<string, string> }).env
-  const value = viteEnv?.VITE_DATA_BASE_URL
+  const value = readViteEnv().VITE_DATA_BASE_URL
   if (!value) {
     return null
   }

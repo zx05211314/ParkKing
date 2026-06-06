@@ -1,11 +1,10 @@
 import type { StyleSpecification } from 'maplibre-gl'
+import { readViteEnv, type ViteEnvLike } from '../api/client'
 
 const DEFAULT_RASTER_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
 const DEFAULT_RASTER_ATTRIBUTION = '&copy; OpenStreetMap contributors'
 const DEFAULT_RASTER_MAX_ZOOM = 19
 const DEFAULT_RASTER_TILE_SIZE = 256
-
-type ViteEnvLike = Record<string, string | undefined>
 
 export interface StyleUrlBasemapConfig {
   kind: 'style-url'
@@ -36,12 +35,9 @@ const parsePositiveInteger = (value: string | undefined, fallback: number) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
 }
 
-const getViteEnv = (): ViteEnvLike => {
-  const meta = import.meta as { env?: ViteEnvLike }
-  return meta.env ?? {}
-}
-
-export const resolveBasemapConfig = (env: ViteEnvLike = getViteEnv()): BasemapConfig => {
+export const resolveBasemapConfig = (
+  env: ViteEnvLike = readViteEnv(),
+): BasemapConfig => {
   const styleUrl = normalizeText(env.VITE_MAP_STYLE_URL)
   if (styleUrl) {
     return {

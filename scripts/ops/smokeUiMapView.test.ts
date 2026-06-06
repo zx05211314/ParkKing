@@ -25,6 +25,7 @@ const passingSummary: SmokeUiMapViewSummary = {
   expectedSegmentsCount: 11248,
   expectedParkingSpacesCount: 23091,
   datasetStatusReady: true,
+  evaluationStatusReady: true,
   reportedSegmentsCount: 11248,
   reportedParkingSpacesCount: 23091,
   mapSegmentCount: 11248,
@@ -111,6 +112,7 @@ describe('smokeUiMapView', () => {
         canvasWidth: 0,
         canvasHeight: 0,
         datasetStatusReady: false,
+        evaluationStatusReady: false,
         reportedSegmentsCount: null,
         reportedParkingSpacesCount: null,
         mapSegmentCount: 0,
@@ -122,12 +124,22 @@ describe('smokeUiMapView', () => {
       'map root was not rendered',
       'MapLibre canvas was not mounted',
       'dataset status did not reach ready',
+      'segment evaluation did not reach ready',
       'reported segment count missing is not positive',
       'reported parking-space count missing does not match expected 23091',
-      'map segment count 0 does not match expected 11248',
+      'map segment count 0 is below expected source count 11248',
       'map parking-space count 0 does not match expected 23091',
       'map fallback is visible',
     ])
+  })
+
+  it('accepts zone-aware map segment counts above the source count', () => {
+    expect(
+      validateSmokeUiMapViewSummary({
+        ...passingSummary,
+        mapSegmentCount: 15_553,
+      }),
+    ).toEqual([])
   })
 
   it('renders a concise map smoke summary', () => {
@@ -138,7 +150,7 @@ describe('smokeUiMapView', () => {
       'MapLibre canvas: 1000x640',
     )
     expect(renderSmokeUiMapViewSummary(passingSummary)).toContain(
-      'Segments: reported 11248, map 11248, map expected 11248',
+      'Segments: reported 11248, evaluated/map 11248, source minimum 11248',
     )
   })
 })

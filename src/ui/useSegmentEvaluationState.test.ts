@@ -1,41 +1,66 @@
 import { describe, expect, it } from 'vitest'
-import { shouldUseMainThreadDegradedEvaluation } from './useSegmentEvaluationState'
+import {
+  resolveWorkerEvaluationMode,
+  shouldUseWorkerEvaluationTimeout,
+} from './useSegmentEvaluationState'
 
-describe('shouldUseMainThreadDegradedEvaluation', () => {
-  it('uses degraded main-thread evaluation for large zone-aware browser datasets', () => {
+describe('resolveWorkerEvaluationMode', () => {
+  it('uses chunked zone-aware evaluation for large zoned datasets', () => {
     expect(
-      shouldUseMainThreadDegradedEvaluation({
+      resolveWorkerEvaluationMode({
         useWorker: true,
-        segmentCount: 2_001,
-        zoneCount: 1,
+        segmentCount: 20_000,
+        zoneCount: 3_000,
       }),
-    ).toBe(true)
+    ).toBe('chunked-zone-aware')
   })
 
-  it('keeps the worker path for small, zoned datasets', () => {
+  it('keeps small zoned datasets on the worker path', () => {
     expect(
-      shouldUseMainThreadDegradedEvaluation({
+      resolveWorkerEvaluationMode({
         useWorker: true,
         segmentCount: 2_000,
         zoneCount: 1,
       }),
-    ).toBe(false)
+    ).toBe('zone-aware')
   })
 
-  it('does not force degraded evaluation when zones or workers are disabled', () => {
+  it('uses base-only worker evaluation when no zones exist', () => {
     expect(
-      shouldUseMainThreadDegradedEvaluation({
+      resolveWorkerEvaluationMode({
         useWorker: true,
-        segmentCount: 2_001,
+        segmentCount: 2_000,
         zoneCount: 0,
       }),
-    ).toBe(false)
+    ).toBe('base-only')
+  })
+
+  it('disables worker evaluation when workers or segments are unavailable', () => {
     expect(
-      shouldUseMainThreadDegradedEvaluation({
+      resolveWorkerEvaluationMode({
         useWorker: false,
         segmentCount: 2_001,
         zoneCount: 1,
       }),
+    ).toBe('disabled')
+    expect(
+      resolveWorkerEvaluationMode({
+        useWorker: true,
+        segmentCount: 0,
+        zoneCount: 1,
+      }),
+    ).toBe('disabled')
+  })
+})
+
+describe('shouldUseWorkerEvaluationTimeout', () => {
+  it('only times out active worker evaluation modes', () => {
+    expect(shouldUseWorkerEvaluationTimeout('working', 'base-only')).toBe(true)
+    expect(shouldUseWorkerEvaluationTimeout('working', 'zone-aware')).toBe(true)
+    expect(
+      shouldUseWorkerEvaluationTimeout('working', 'chunked-zone-aware'),
     ).toBe(false)
+    expect(shouldUseWorkerEvaluationTimeout('working', 'disabled')).toBe(false)
+    expect(shouldUseWorkerEvaluationTimeout('ready', 'zone-aware')).toBe(false)
   })
 })

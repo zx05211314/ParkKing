@@ -1,4 +1,5 @@
 import { getDatasetBaseDir, getDatasetRootDir } from '../data/datasetResolver'
+import { readViteEnv } from '../api/client'
 import {
   validateRegistryEntry,
   verifyMetaSha256,
@@ -29,9 +30,7 @@ export const loadDatasetRegistryOptions = async (
         districts?: RegistryEntry[]
       }
       const entries = payload.districts ?? []
-      const verifyHashes =
-        (import.meta as { env?: Record<string, string> }).env?.VITE_VERIFY_HASHES ===
-        '1'
+      const verifyHashes = readViteEnv().VITE_VERIFY_HASHES === '1'
       const validEntries: typeof entries = []
       for (const entry of entries) {
         const validation = validateRegistryEntry(entry)
