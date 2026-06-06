@@ -7,6 +7,7 @@ import {
   findLatestReleasePackage,
   parseValidateReleasePackageArgs,
   renderValidateReleasePackageResult,
+  resolveReleasePackagePaths,
   resolveValidateReleasePackageDistrictIds,
   validateReleasePackage,
   writeValidateReleasePackageOutputs,
@@ -158,6 +159,30 @@ describe('validateReleasePackage', () => {
     expect(latest.zipPath).toBe(release.zipPath)
     expect(latest.manifestPath).toBe(release.manifestPath)
     expect(latest.releaseId).toBe(release.releaseId)
+  })
+
+  it('uses manifest content when downloaded filenames omit the release ID', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'validate-release-generic-'))
+    const zipPath = path.join(base, 'park-king-data.zip')
+    const manifestPath = path.join(base, 'release_manifest.json')
+    await fs.writeFile(zipPath, 'fixture')
+    await fs.writeFile(
+      manifestPath,
+      JSON.stringify({ releaseId: 'release-from-manifest', files: [] }),
+      'utf-8',
+    )
+
+    await expect(
+      resolveReleasePackagePaths({
+        zipPath,
+        manifestPath,
+        districtIds: [],
+      }),
+    ).resolves.toEqual({
+      releaseId: 'release-from-manifest',
+      zipPath,
+      manifestPath,
+    })
   })
 
   it('discovers reviewed districts when reviewed validation is requested', async () => {

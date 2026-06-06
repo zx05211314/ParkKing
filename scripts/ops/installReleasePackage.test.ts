@@ -101,6 +101,30 @@ describe('installReleasePackage', () => {
     ).resolves.toContain('xinyi')
   })
 
+  it('installs downloaded assets whose temporary filenames omit the release ID', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'install-release-generic-'))
+    const release = await createReleaseZip(base)
+    const zipPath = path.join(base, 'download', 'park-king-data.zip')
+    const manifestPath = path.join(base, 'download', 'release_manifest.json')
+    const outRoot = path.join(base, 'public', 'data', 'generated')
+    await fs.mkdir(path.dirname(zipPath), { recursive: true })
+    await fs.copyFile(release.zipPath, zipPath)
+    await fs.copyFile(release.manifestPath, manifestPath)
+
+    const result = await installReleasePackage({
+      zipPath,
+      manifestPath,
+      outRoot,
+      requireManifest: true,
+    })
+
+    expect(result.manifestValidation).toMatchObject({
+      pass: true,
+      releaseId: 'test',
+    })
+    expect(result.registryDistrictIds).toEqual(['xinyi'])
+  })
+
   it('rejects unsafe zip entry paths before extraction', () => {
     expect(() => normalizeZipEntryPath('../evil.txt')).toThrow(
       'Unsafe release package entry path',

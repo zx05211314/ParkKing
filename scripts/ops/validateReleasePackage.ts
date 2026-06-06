@@ -107,6 +107,16 @@ const getReleaseIdFromPath = (filePath: string, pattern: RegExp) => {
   return match?.[1] ?? null
 }
 
+const getReleaseIdFromManifest = async (manifestPath: string | null) => {
+  if (!manifestPath) {
+    return null
+  }
+  const manifest = await readJsonFile<Partial<ReleaseManifest>>(manifestPath)
+  return typeof manifest.releaseId === 'string' && manifest.releaseId.trim()
+    ? manifest.releaseId.trim()
+    : null
+}
+
 export const findLatestReleasePackage = async (
   outDir = DEFAULT_RELEASE_OUT_DIR,
 ): Promise<ReleasePackagePaths> => {
@@ -162,10 +172,13 @@ export const resolveReleasePackagePaths = async (
   const manifestPath = args.manifestPath ? path.resolve(args.manifestPath) : null
   const releaseId =
     (zipPath ? getReleaseIdFromPath(zipPath, RELEASE_ZIP_RE) : null) ??
-    (manifestPath ? getReleaseIdFromPath(manifestPath, RELEASE_MANIFEST_RE) : null)
+    (manifestPath ? getReleaseIdFromPath(manifestPath, RELEASE_MANIFEST_RE) : null) ??
+    (await getReleaseIdFromManifest(manifestPath))
 
   if (!releaseId) {
-    throw new Error('Could not infer release ID from release zip or manifest path')
+    throw new Error(
+      'Could not infer release ID from release zip path, manifest path, or manifest content',
+    )
   }
 
   const baseDir = path.dirname(zipPath ?? manifestPath ?? process.cwd())
