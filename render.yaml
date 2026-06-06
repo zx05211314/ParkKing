@@ -3,7 +3,7 @@ services:
     name: parkking
     runtime: node
     plan: free
-    buildCommand: npm ci && npm run ops:install-release-package -- --require-manifest && npm run build
+    buildCommand: npm ci --include=dev && npm run ops:install-release-package -- --require-manifest && npm run build
     startCommand: npm start
     healthCheckPath: /api/parking-answer/ready
     envVars:
