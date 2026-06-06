@@ -237,6 +237,44 @@ describe('createParkingAnswerServiceMiddleware', () => {
     expect(service.answer).not.toHaveBeenCalled()
   })
 
+  it('checks only the GeoJSON envelope for large release-validated files', async () => {
+    const { root } = await createDatasetDir()
+    const largeFeatureCollection = `{"type":"FeatureCollection","features":[${' '.repeat(
+      2 * 1024 * 1024,
+    )}]}`
+    await fs.writeFile(
+      path.join(root, 'xinyi', 'parking_spaces.geojson'),
+      largeFeatureCollection,
+      'utf-8',
+    )
+    const service: ParkingAnswerService = {
+      answer: vi.fn(),
+    }
+    const middleware = createParkingAnswerServiceMiddleware(
+      service,
+      {
+        ...config,
+        districtDatasetRoot: root,
+      },
+      config.path,
+    )
+    const res = createMockResponse()
+
+    await middleware(
+      {
+        method: 'GET',
+        url: '/api/parking-answer/ready',
+      } as never,
+      res.response as never,
+    )
+
+    expect(res.response.statusCode).toBe(200)
+    expect(JSON.parse(res.body())).toMatchObject({
+      status: 'ok',
+      districts: [{ district: 'xinyi', ready: true }],
+    })
+  })
+
   it('returns 400 when coordinates are missing', async () => {
     const service: ParkingAnswerService = {
       answer: vi.fn(),

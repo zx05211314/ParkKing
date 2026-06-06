@@ -1,4 +1,4 @@
-import { access, readFile } from 'node:fs/promises'
+import { access, open, readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { PARKING_ANSWER_SCHEMA_VERSION } from './parkingAnswerServiceDefaults'
 import type {
@@ -43,15 +43,56 @@ const getNumber = (record: Record<string, unknown>, key: string) =>
     ? record[key]
     : undefined
 
-const isValidRequiredDatasetFile = (fileName: string, parsed: unknown) => {
-  if (fileName === 'dataset_meta.json') {
-    return isRecord(parsed)
+const isValidDatasetMetadata = (parsed: unknown) => {
+  return isRecord(parsed)
+}
+
+const isValidGeoJsonEnvelope = async (filePath: string) => {
+  const handle = await open(filePath, 'r')
+  try {
+    const stat = await handle.stat()
+    if (!stat.isFile() || stat.size === 0) {
+      return false
+    }
+
+    // Release manifests validate full file checksums during the build. Runtime
+    // readiness only verifies the top-level GeoJSON envelope to avoid parsing
+    // tens of megabytes on every platform health check.
+    const sampleSize = Math.min(4096, stat.size)
+    const prefixBuffer = Buffer.alloc(sampleSize)
+    const suffixBuffer = Buffer.alloc(sampleSize)
+    const prefixRead = await handle.read(prefixBuffer, 0, sampleSize, 0)
+    const suffixRead = await handle.read(
+      suffixBuffer,
+      0,
+      sampleSize,
+      Math.max(0, stat.size - sampleSize),
+    )
+    const prefix = prefixBuffer.toString('utf-8', 0, prefixRead.bytesRead)
+    const suffix = suffixBuffer
+      .toString('utf-8', 0, suffixRead.bytesRead)
+      .trimEnd()
+
+    return (
+      /"type"\s*:\s*"FeatureCollection"/.test(prefix) &&
+      /"features"\s*:\s*\[/.test(prefix) &&
+      suffix.endsWith('}')
+    )
+  } finally {
+    await handle.close()
   }
-  return (
-    isRecord(parsed) &&
-    parsed.type === 'FeatureCollection' &&
-    Array.isArray(parsed.features)
-  )
+}
+
+const isValidRequiredDatasetFile = async (
+  fileName: string,
+  filePath: string,
+) => {
+  if (fileName === 'dataset_meta.json') {
+    return isValidDatasetMetadata(
+      JSON.parse(await readFile(filePath, 'utf-8')) as unknown,
+    )
+  }
+  return await isValidGeoJsonEnvelope(filePath)
 }
 
 const inspectRequiredFiles = async (datasetDir: string) => {
@@ -66,8 +107,7 @@ const inspectRequiredFiles = async (datasetDir: string) => {
       continue
     }
     try {
-      const parsed = JSON.parse(await readFile(filePath, 'utf-8')) as unknown
-      if (!isValidRequiredDatasetFile(fileName, parsed)) {
+      if (!(await isValidRequiredDatasetFile(fileName, filePath))) {
         invalid.push(fileName)
       }
     } catch {
