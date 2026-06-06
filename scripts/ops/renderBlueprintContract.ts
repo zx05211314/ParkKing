@@ -37,7 +37,7 @@ const REQUIRED_SERVICE_FIELDS: Array<{
   {
     key: 'buildCommand',
     expected:
-      'npm ci && npm run ops:install-release-package -- --require-manifest && npm run build',
+      'npm ci --include=dev && npm run ops:install-release-package -- --require-manifest && npm run build',
   },
   { key: 'startCommand', expected: 'npm start' },
   { key: 'healthCheckPath', expected: '/api/parking-answer/ready' },

@@ -105,8 +105,12 @@ PARKKING_RELEASE_DOWNLOAD_AUTH_HEADER=<complete Authorization header>
 The blueprint runs:
 
 ```text
-npm ci && npm run ops:install-release-package -- --require-manifest && npm run build
+npm ci --include=dev && npm run ops:install-release-package -- --require-manifest && npm run build
 ```
+
+`--include=dev` is required because Render builds with `NODE_ENV=production`,
+while the release installer and frontend build use build-time dependencies such
+as `fast-glob`, TypeScript, and Vite.
 
 The build fails if either URL is missing, if checksums do not match the manifest,
 or if the installed generated data does not contain a usable registry and

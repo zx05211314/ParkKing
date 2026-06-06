@@ -23,7 +23,7 @@ services:
   - type: web
     name: "parkking"
     runtime: node
-    buildCommand: npm ci && npm run ops:install-release-package -- --require-manifest && npm run build
+    buildCommand: npm ci --include=dev && npm run ops:install-release-package -- --require-manifest && npm run build
     startCommand: npm start
     healthCheckPath: /api/parking-answer/ready
     envVars:
@@ -72,7 +72,7 @@ services:
     const service = parseRenderBlueprint(
       content
         .replace(
-          'buildCommand: npm ci && npm run ops:install-release-package -- --require-manifest && npm run build',
+          'buildCommand: npm ci --include=dev && npm run ops:install-release-package -- --require-manifest && npm run build',
           'buildCommand: npm ci && npm run build',
         )
         .replace(
@@ -85,7 +85,7 @@ services:
 
     expect(result.pass).toBe(false)
     expect(result.errors.join('\n')).toContain(
-      'buildCommand must be "npm ci && npm run ops:install-release-package -- --require-manifest && npm run build"',
+      'buildCommand must be "npm ci --include=dev && npm run ops:install-release-package -- --require-manifest && npm run build"',
     )
     expect(result.errors.join('\n')).toContain(
       'healthCheckPath must be "/api/parking-answer/ready"',
