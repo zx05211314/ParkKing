@@ -341,6 +341,33 @@ describe('releaseHandoffStatus', () => {
     expect(renderReleaseHandoffStatus(result)).toContain('- Local assets present: no')
   })
 
+  it('allows remote live verify without local assets when the published manifest matches', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'handoff-status-remote-'))
+    const paths = await writeStatusInputs(base, {
+      createAssetFiles: false,
+    })
+
+    const result = await buildReleaseHandoffStatus(
+      {
+        ...paths,
+        ref: 'main',
+        appUrl: 'https://parkking.onrender.com',
+      },
+      publishedReleaseFetch(),
+    )
+
+    expect(result.readyForReleasePublish).toBe(false)
+    expect(result.readyForRenderLiveVerify).toBe(true)
+    expect(result.release.localAssetsPresent).toBe(false)
+    expect(result.blockers).toEqual([])
+    expect(result.warnings.join('\n')).toContain(
+      'local republish is unavailable, but remote live verify is unaffected',
+    )
+    expect(renderReleaseHandoffStatus(result)).toContain(
+      '# Release Handoff Status: READY FOR LIVE VERIFY',
+    )
+  })
+
   it('blocks release publish when local handoff is not ready', async () => {
     const base = await fs.mkdtemp(path.join(tmpdir(), 'handoff-status-blocked-'))
     const paths = await writeStatusInputs(base, { ready: false })
