@@ -54,6 +54,12 @@ describe('release workflow contracts', () => {
     ])
     expect(workflow).toContain('.tmp/release-handoff-readiness.md')
     expect(workflow).toContain('.tmp/release-handoff-readiness.json')
+    expect(workflow).toContain(
+      "PARKKING_RELEASE_DOWNLOAD_TOKEN: ${{ github.event.repository.private && github.token || '' }}",
+    )
+    expect(workflow).not.toContain(
+      'PARKKING_RELEASE_DOWNLOAD_TOKEN: ${{ github.token }}',
+    )
   })
 
   it('keeps Publish Packs guarded by reviewed UI smokes before release gates', async () => {
