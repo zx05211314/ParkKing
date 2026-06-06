@@ -22,6 +22,7 @@ export interface SmokeUiParkingAnswersOptions {
   chromePath?: string
   cdpPort?: number
   timeoutMs?: number
+  suiteTimeoutMs?: number
   limit?: number
   filter?: string | null
   startPreview?: boolean
@@ -201,6 +202,11 @@ export const parseSmokeUiParkingAnswersArgs = (
   timeoutMs:
     parsePositiveIntegerArg(argv, '--timeout-ms', '--timeoutMs') ??
     DEFAULT_TIMEOUT_MS,
+  suiteTimeoutMs: parsePositiveIntegerArg(
+    argv,
+    '--suite-timeout-ms',
+    '--suiteTimeoutMs',
+  ),
   limit: parsePositiveIntegerArg(argv, '--limit'),
   filter: hasFlag(argv, '--no-filter')
     ? null
@@ -302,6 +308,22 @@ export const validateSmokeUiDatasetHash = (params: {
   }
   return null
 }
+
+export const resolveSmokeUiDatasetHashError = (params: {
+  datasetMetaUrl: string | null | undefined
+  caseDatasetHash: string | null
+  runtimeDatasetHash: string | null
+  allowUnpinnedCases?: boolean
+  allowMismatchedCaseHash?: boolean
+}) =>
+  params.datasetMetaUrl === null
+    ? null
+    : validateSmokeUiDatasetHash({
+        caseDatasetHash: params.caseDatasetHash,
+        runtimeDatasetHash: params.runtimeDatasetHash,
+        allowUnpinnedCases: params.allowUnpinnedCases,
+        allowMismatchedCaseHash: params.allowMismatchedCaseHash,
+      })
 
 export const buildSmokeUiParkingAnswerExpectations = (params: {
   appUrl: string
@@ -677,6 +699,20 @@ export const waitForRequiredText = async (params: {
   return { pass: false, missingText }
 }
 
+export const resolveSmokeUiSuiteTimeoutMs = (
+  timeoutMs: number,
+  suiteTimeoutMs?: number,
+) => suiteTimeoutMs ?? timeoutMs * 2
+
+export const shouldRetrySmokeUiCase = (params: {
+  attempt: number
+  requiredText: string[]
+  missingText: string[]
+}) =>
+  params.attempt === 0 &&
+  params.requiredText.length > 0 &&
+  params.missingText.length === params.requiredText.length
+
 export const isSafeSmokeProfileDir = (profileDir: string) => {
   const resolvedProfile = path.resolve(profileDir)
   const resolvedTemp = path.resolve(os.tmpdir())
@@ -815,13 +851,19 @@ export const stopPreview = async (launchedPreview: LaunchedPreview | null) => {
 
 export const validateSmokeUiParkingAnswersSummary = (
   summary: SmokeUiParkingAnswersSummary,
-) =>
-  summary.results
+) => [
+  ...(summary.results.length < summary.caseCount
+    ? [
+        `UI parking answer smoke stopped after ${summary.results.length}/${summary.caseCount} cases because the suite timeout or page-load retry budget was exhausted.`,
+      ]
+    : []),
+  ...summary.results
     .filter((result) => !result.pass)
     .map(
       (result) =>
         `answer case ${result.id} missing UI text: ${result.missingText.join('; ')}`,
-    )
+    ),
+]
 
 export const renderSmokeUiParkingAnswersSummary = (
   summary: SmokeUiParkingAnswersSummary,
@@ -847,6 +889,10 @@ export const runSmokeUiParkingAnswers = async (
   let appUrl = options.appUrl ?? DEFAULT_APP_URL
   const casesPath = options.casesPath ?? DEFAULT_CASES_PATH
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const suiteTimeoutMs = resolveSmokeUiSuiteTimeoutMs(
+    timeoutMs,
+    options.suiteTimeoutMs,
+  )
   const filter = options.filter === undefined ? DEFAULT_FILTER : options.filter
   const view = options.view ?? DEFAULT_VIEW
   const caseFile = await loadSmokeExactParkingAnswerCases(casesPath)
@@ -880,7 +926,8 @@ export const runSmokeUiParkingAnswers = async (
             options.datasetMetaUrl ??
               buildSmokeUiDatasetMetaUrl({ appUrl, district }),
           )
-    const hashError = validateSmokeUiDatasetHash({
+    const hashError = resolveSmokeUiDatasetHashError({
+      datasetMetaUrl: options.datasetMetaUrl,
       caseDatasetHash,
       runtimeDatasetHash,
       allowUnpinnedCases: options.allowUnpinnedCases,
@@ -907,14 +954,41 @@ export const runSmokeUiParkingAnswers = async (
     await client.send('Runtime.enable')
 
     const results: SmokeUiParkingAnswerCaseResult[] = []
+    const suiteDeadline = Date.now() + suiteTimeoutMs
     for (const expectation of expectations) {
-      await client.send('Page.navigate', { url: expectation.url })
-      const outcome = await waitForRequiredText({
-        client,
-        requiredText: expectation.requiredText,
-        timeoutMs,
-      })
+      let outcome: Awaited<ReturnType<typeof waitForRequiredText>> | null = null
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const remainingSuiteMs = suiteDeadline - Date.now()
+        if (remainingSuiteMs <= 0) {
+          break
+        }
+        await client.send('Page.navigate', { url: expectation.url })
+        outcome = await waitForRequiredText({
+          client,
+          requiredText: expectation.requiredText,
+          timeoutMs: Math.min(timeoutMs, remainingSuiteMs),
+        })
+        if (
+          outcome.pass ||
+          !shouldRetrySmokeUiCase({
+            attempt,
+            requiredText: expectation.requiredText,
+            missingText: outcome.missingText,
+          })
+        ) {
+          break
+        }
+      }
+      if (!outcome) {
+        break
+      }
       results.push({ ...expectation, ...outcome })
+      if (
+        !outcome.pass &&
+        outcome.missingText.length === expectation.requiredText.length
+      ) {
+        break
+      }
     }
 
     const summary: SmokeUiParkingAnswersSummary = {
@@ -924,7 +998,7 @@ export const runSmokeUiParkingAnswers = async (
       view,
       caseDatasetHash,
       runtimeDatasetHash,
-      caseCount: results.length,
+      caseCount: expectations.length,
       passCount: results.filter((result) => result.pass).length,
       results,
     }

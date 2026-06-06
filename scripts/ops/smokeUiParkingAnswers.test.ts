@@ -14,6 +14,9 @@ import {
   parseSmokeUiParkingAnswersArgs,
   removeSmokeProfileDir,
   renderSmokeUiParkingAnswersSummary,
+  resolveSmokeUiDatasetHashError,
+  resolveSmokeUiSuiteTimeoutMs,
+  shouldRetrySmokeUiCase,
   validateSmokeUiDatasetHash,
   validateSmokeUiParkingAnswersSummary,
 } from './smokeUiParkingAnswers'
@@ -53,6 +56,8 @@ describe('smokeUiParkingAnswers', () => {
         '9333',
         '--timeout-ms',
         '5000',
+        '--suite-timeout-ms',
+        '9000',
         '--limit',
         '2',
         '--filter',
@@ -66,6 +71,7 @@ describe('smokeUiParkingAnswers', () => {
       chromePath: 'C:\\Chrome\\chrome.exe',
       cdpPort: 9333,
       timeoutMs: 5000,
+      suiteTimeoutMs: 9000,
       limit: 2,
       filter: '__none__',
       startPreview: false,
@@ -74,6 +80,32 @@ describe('smokeUiParkingAnswers', () => {
       allowUnpinnedCases: false,
       allowMismatchedCaseHash: undefined,
     })
+  })
+
+  it('bounds suite duration and only retries fully missing pages once', () => {
+    expect(resolveSmokeUiSuiteTimeoutMs(5000)).toBe(10000)
+    expect(resolveSmokeUiSuiteTimeoutMs(5000, 12000)).toBe(12000)
+    expect(
+      shouldRetrySmokeUiCase({
+        attempt: 0,
+        requiredText: ['one', 'two'],
+        missingText: ['one', 'two'],
+      }),
+    ).toBe(true)
+    expect(
+      shouldRetrySmokeUiCase({
+        attempt: 1,
+        requiredText: ['one', 'two'],
+        missingText: ['one', 'two'],
+      }),
+    ).toBe(false)
+    expect(
+      shouldRetrySmokeUiCase({
+        attempt: 0,
+        requiredText: ['one', 'two'],
+        missingText: ['two'],
+      }),
+    ).toBe(false)
   })
 
   it('parses self-managed preview mode', () => {
@@ -133,6 +165,13 @@ describe('smokeUiParkingAnswers', () => {
         '--allow-mismatched-case-hash',
       ]).allowMismatchedCaseHash,
     ).toBe(true)
+    expect(
+      resolveSmokeUiDatasetHashError({
+        datasetMetaUrl: null,
+        caseDatasetHash: 'hash-1',
+        runtimeDatasetHash: null,
+      }),
+    ).toBeNull()
   })
 
   it('builds share URLs for reviewed parking answer cases', () => {
@@ -326,6 +365,34 @@ describe('smokeUiParkingAnswers', () => {
     ])
     expect(renderSmokeUiParkingAnswersSummary(summary)).toContain(
       'CASE xinyi-reviewed-legal-seg-8953-part-2: FAIL missing "Pinned location answer"',
+    )
+  })
+
+  it('reports when a suite deadline stops remaining answer cases', () => {
+    const summary = {
+      appUrl: 'http://127.0.0.1:4173',
+      casesPath: 'configs/prod/xinyi.answer-cases.json',
+      district: 'xinyi',
+      view: 'LIST' as const,
+      caseDatasetHash: 'hash-1',
+      runtimeDatasetHash: 'hash-1',
+      caseCount: 2,
+      passCount: 1,
+      results: [
+        {
+          ...buildSmokeUiParkingAnswerExpectations({
+            appUrl: 'http://127.0.0.1:4173',
+            district: 'xinyi',
+            answerCase,
+          }),
+          pass: true,
+          missingText: [],
+        },
+      ],
+    }
+
+    expect(validateSmokeUiParkingAnswersSummary(summary)).toContain(
+      'UI parking answer smoke stopped after 1/2 cases because the suite timeout or page-load retry budget was exhausted.',
     )
   })
 

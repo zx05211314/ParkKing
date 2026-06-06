@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import {
   parseSmokeReviewedUiPacksArgs,
   renderSmokeReviewedUiPacksResult,
+  resolveSmokeReviewedUiPacksSuiteTimeoutMs,
   resolveSmokeReviewedUiPacksSummaryPath,
   runSmokeReviewedUiPacks,
   type SmokeReviewedUiPacksRunners,
@@ -95,6 +96,8 @@ describe('smokeReviewedUiPacks', () => {
         'C:\\Chrome\\chrome.exe',
         '--timeout-ms',
         '5000',
+        '--suite-timeout-ms',
+        '12000',
         '--limit',
         '2',
         '--view',
@@ -115,11 +118,17 @@ describe('smokeReviewedUiPacks', () => {
       appUrl: 'http://127.0.0.1:4173',
       chromePath: 'C:\\Chrome\\chrome.exe',
       timeoutMs: 5000,
+      suiteTimeoutMs: 12000,
       startPreview: false,
       limit: 2,
       view: 'MAP',
       allowMismatchedCaseHash: true,
     })
+  })
+
+  it('bounds the full multi-district suite by default', () => {
+    expect(resolveSmokeReviewedUiPacksSuiteTimeoutMs(5000)).toBe(15000)
+    expect(resolveSmokeReviewedUiPacksSuiteTimeoutMs(5000, 15000)).toBe(15000)
   })
 
   it('uses GITHUB_STEP_SUMMARY when no summary path is passed', () => {
