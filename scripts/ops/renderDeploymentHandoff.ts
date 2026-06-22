@@ -7,6 +7,10 @@ import {
   resolveReleaseDataMetadata,
   type ReleaseDataMetadata,
 } from './releaseDataWorkflow'
+import {
+  buildRenderDeploymentEnv,
+  renderEnvAssignments,
+} from './renderDeploymentEnv'
 
 const DEFAULT_P3_READINESS_JSON = '.tmp/p3-release-readiness.json'
 const DEFAULT_DEPLOY_READINESS_JSON = '.tmp/deploy-readiness.json'
@@ -353,15 +357,12 @@ export const buildRenderDeploymentHandoff = async (
     installedFileCount: toNumberOrNull(deploy.install?.result?.fileCount),
     releaseAssetPaths,
     blockers,
-    renderEnv: {
-      PARKKING_RELEASE_PACKAGE_URL: urls.packageUrl,
-      PARKKING_RELEASE_MANIFEST_URL: urls.manifestUrl,
-    },
+    renderEnv: buildRenderDeploymentEnv(urls),
     externalSteps: [
       'Merge or deploy the branch that contains the release workflow and render.yaml changes.',
       'Run GitHub Actions -> Release Data Package with configsGlob=configs/prod/*.json.',
       `If publishing the local assets listed above manually, use release tag ${release.tag}. If using the workflow, leave tag blank unless you intentionally need a custom tag, then use the package and manifest URLs printed by that workflow run.`,
-      'Set Render environment variables from the published workflow summary or matching handoff artifact, plus a download token/header if the repository is private.',
+      'Set Render environment variables exactly as listed in this handoff or the published workflow summary, plus a download token/header if the repository is private.',
       'Deploy the Render Blueprint.',
       `Run npm run ops:render-live-verify-dispatch -- --repo ${repository} --ref main --app-url <Render service URL> --manifest-url ${urls.manifestUrl} --dry-run, then rerun without --dry-run when GH_TOKEN/GITHUB_TOKEN is set; or use GitHub Actions -> Render Live Verify with useGithubToken=true only for private GitHub Release assets and skipSyncIssueRoundtrip=false unless the live environment intentionally rejects sync smoke writes.`,
       `Or run npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl} locally; require PASS before treating the deploy as live.`,
@@ -399,7 +400,7 @@ export const renderRenderDeploymentHandoff = (
     '## Render Environment',
     '',
     '```text',
-    ...Object.entries(result.renderEnv).map(([key, value]) => `${key}=${value}`),
+    ...renderEnvAssignments(result.renderEnv),
     '```',
     '',
     '## GitHub Release Asset URLs',

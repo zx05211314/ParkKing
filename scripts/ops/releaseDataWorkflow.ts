@@ -2,6 +2,10 @@ import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
+import {
+  buildRenderDeploymentEnv,
+  renderEnvAssignments,
+} from './renderDeploymentEnv'
 
 const DEFAULT_READINESS_JSON = '.tmp/p3-release-readiness.json'
 const DEFAULT_READINESS_MD = '.tmp/p3-release-readiness.md'
@@ -719,24 +723,25 @@ export const renderReleaseDataAssetUrlSmokeResult = (
 export const buildReleaseDataSummaryLines = (urls: {
   packageUrl: string
   manifestUrl: string
-}) => [
-  '## Render release data URLs',
-  '',
-  `- PARKKING_RELEASE_PACKAGE_URL=${urls.packageUrl}`,
-  `- PARKKING_RELEASE_MANIFEST_URL=${urls.manifestUrl}`,
-  '',
-  '## Live deploy verification',
-  '',
-  `GitHub Actions: Render Live Verify with appUrl=<Render service URL>, manifestUrl=${urls.manifestUrl}, useGithubToken=true only for private GitHub Release assets, skipSyncIssueRoundtrip=false unless the live environment intentionally rejects sync smoke writes.`,
-  `Local: \`npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl}\``,
-]
+}) => {
+  const renderEnv = renderEnvAssignments(buildRenderDeploymentEnv(urls))
+  return [
+    '## Render environment',
+    '',
+    ...renderEnv.map((line) => `- ${line}`),
+    '',
+    '## Live deploy verification',
+    '',
+    `GitHub Actions: Render Live Verify with appUrl=<Render service URL>, manifestUrl=${urls.manifestUrl}, useGithubToken=true only for private GitHub Release assets, skipSyncIssueRoundtrip=false unless the live environment intentionally rejects sync smoke writes.`,
+    `Local: \`npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl}\``,
+  ]
+}
 
 export const buildReleaseDataConsoleLines = (urls: {
   packageUrl: string
   manifestUrl: string
 }) => [
-  `PARKKING_RELEASE_PACKAGE_URL=${urls.packageUrl}`,
-  `PARKKING_RELEASE_MANIFEST_URL=${urls.manifestUrl}`,
+  ...renderEnvAssignments(buildRenderDeploymentEnv(urls)),
   `VERIFY_RENDER_DEPLOY_WORKFLOW_INPUTS=appUrl=<Render service URL> manifestUrl=${urls.manifestUrl} useGithubToken=<true for private release assets, false for public assets> skipSyncIssueRoundtrip=false`,
   `VERIFY_RENDER_DEPLOY_LOCAL=npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl}`,
 ]

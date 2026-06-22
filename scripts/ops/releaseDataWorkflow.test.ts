@@ -73,6 +73,12 @@ describe('releaseDataWorkflow', () => {
     }).join('\n')
 
     expect(lines).toContain('Render Live Verify')
+    expect(lines).toContain('PARKKING_RELEASE_PACKAGE_URL=https://example.test/data.zip')
+    expect(lines).toContain(
+      'PARKKING_SYNC_CORS_ORIGINS=https://parkking.onrender.com',
+    )
+    expect(lines).toContain('PARKKING_GEOCODER_REQUEST_TIMEOUT_MS=5000')
+    expect(lines).toContain('PARKKING_ROUTING_REQUEST_TIMEOUT_MS=8000')
     expect(lines).toContain(
       'manifestUrl=https://example.test/release_manifest.json',
     )
@@ -90,6 +96,12 @@ describe('releaseDataWorkflow', () => {
     expect(lines).toContain(
       'VERIFY_RENDER_DEPLOY_WORKFLOW_INPUTS=appUrl=<Render service URL>',
     )
+    expect(lines).toContain('PARKKING_RELEASE_PACKAGE_URL=https://example.test/data.zip')
+    expect(lines).toContain(
+      'PARKKING_SYNC_CORS_ORIGINS=https://parkking.onrender.com',
+    )
+    expect(lines).toContain('PARKKING_GEOCODER_REQUEST_TIMEOUT_MS=5000')
+    expect(lines).toContain('PARKKING_ROUTING_REQUEST_TIMEOUT_MS=8000')
     expect(lines).toContain(
       'manifestUrl=https://example.test/release_manifest.json',
     )

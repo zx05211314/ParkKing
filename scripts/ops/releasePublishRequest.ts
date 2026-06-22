@@ -17,6 +17,11 @@ import {
   buildPublishReleaseDataFromHandoffPlan,
   type PublishReleaseDataFromHandoffPlan,
 } from './publishReleaseDataFromHandoff'
+import {
+  REQUIRED_RENDER_RUNTIME_ENV,
+  buildRenderDeploymentEnv,
+  renderEnvAssignments,
+} from './renderDeploymentEnv'
 
 const DEFAULT_HANDOFF_JSON = '.tmp/render-deployment-handoff.json'
 const DEFAULT_READINESS_JSON = '.tmp/release-handoff-readiness.json'
@@ -189,10 +194,12 @@ const buildCommands = (
       `$env:PARKKING_RELEASE_TAG="${status.release.tag}"`,
     ],
     urlSmoke: 'npm run ops:release-data-url-smoke',
-    renderEnv: [
-      `PARKKING_RELEASE_PACKAGE_URL=${status.release.packageUrl}`,
-      `PARKKING_RELEASE_MANIFEST_URL=${status.release.manifestUrl}`,
-    ],
+    renderEnv: renderEnvAssignments(
+      buildRenderDeploymentEnv({
+        packageUrl: status.release.packageUrl,
+        manifestUrl: status.release.manifestUrl,
+      }),
+    ),
     renderLiveVerifyDryRun: status.commands.renderLiveVerifyDryRun,
     renderLiveVerify: status.commands.renderLiveVerify,
     localRenderVerify: `npm run ops:render-deployment-verify -- --app-url ${quoteCommandValue(
@@ -288,7 +295,9 @@ const buildExternalRequirements = (
     )
   }
   requirements.push(
-    'Set Render PARKKING_RELEASE_PACKAGE_URL and PARKKING_RELEASE_MANIFEST_URL to the published release asset URLs.',
+    `Set Render environment from the Render Environment block, including published release asset URLs and runtime hardening values (${Object.keys(
+      REQUIRED_RENDER_RUNTIME_ENV,
+    ).join(', ')}).`,
   )
   requirements.push('Deploy the Render Blueprint after release assets are reachable.')
   if (!status.appUrl) {
