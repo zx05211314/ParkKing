@@ -274,6 +274,9 @@ probes the live same-origin geocode, route, sync, and parking-answer
 health/ready endpoints, verifies geocoder/routing readiness exposes positive
 upstream request timeouts, runs a sync issue-report roundtrip, and verifies sync
 CORS rejects an untrusted browser origin instead of returning wildcard access.
+When sync CORS or proxy timeout checks fail, the generated markdown and JSON
+reports include a runtime remediation block with the exact Render env vars,
+redeploy steps, and follow-up verify command.
 If you are
 verifying from the same machine that generated the handoff, the command can use
 `.tmp/render-deployment-handoff.json` instead of `--manifest-url`.
