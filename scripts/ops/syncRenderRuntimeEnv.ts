@@ -1,3 +1,5 @@
+import * as fs from 'node:fs/promises'
+import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   REQUIRED_RENDER_RUNTIME_ENV,
@@ -21,6 +23,8 @@ export interface RenderRuntimeEnvSyncOptions {
   deployMode: RenderDeployMode
   tokenEnv: string
   token: string | null
+  outPath: string | null
+  jsonOutPath: string | null
 }
 
 export interface RenderRuntimeEnvUpdateResult {
@@ -115,6 +119,8 @@ export const parseRenderRuntimeEnvSyncArgs = (
     deployMode: parseDeployMode(getArgValue(argv, '--deploy-mode', '--deployMode')),
     tokenEnv,
     token: resolveToken(env, tokenEnv),
+    outPath: getArgValue(argv, '--out'),
+    jsonOutPath: getArgValue(argv, '--json-out', '--jsonOut'),
   }
 }
 
@@ -333,6 +339,22 @@ export const renderRenderRuntimeEnvSyncResult = (
   '',
 ].join('\n')
 
+export const writeRenderRuntimeEnvSyncOutputs = async (
+  result: RenderRuntimeEnvSyncResult,
+  options: Pick<RenderRuntimeEnvSyncOptions, 'outPath' | 'jsonOutPath'>,
+) => {
+  if (options.outPath) {
+    const resolved = path.resolve(options.outPath)
+    await fs.mkdir(path.dirname(resolved), { recursive: true })
+    await fs.writeFile(resolved, renderRenderRuntimeEnvSyncResult(result), 'utf-8')
+  }
+  if (options.jsonOutPath) {
+    const resolved = path.resolve(options.jsonOutPath)
+    await fs.mkdir(path.dirname(resolved), { recursive: true })
+    await fs.writeFile(resolved, `${JSON.stringify(result, null, 2)}\n`, 'utf-8')
+  }
+}
+
 const run = async () => {
   const argv = process.argv.slice(2)
   if (hasFlag(argv, '--help')) {
@@ -347,12 +369,15 @@ const run = async () => {
         '  --deploy                        Trigger a deploy after successful env updates',
         '  --deploy-mode <mode>            build_and_deploy or deploy_only; defaults to build_and_deploy',
         '  --token-env <name>              Defaults to RENDER_API_KEY, with RENDER_TOKEN fallback',
+        '  --out <path>                    Optional markdown report path',
+        '  --json-out <path>               Optional JSON report path',
       ].join('\n'),
     )
     return
   }
   const options = parseRenderRuntimeEnvSyncArgs(argv)
   const result = await syncRenderRuntimeEnv(options)
+  await writeRenderRuntimeEnvSyncOutputs(result, options)
   console.log(renderRenderRuntimeEnvSyncResult(result))
   if (!result.pass) {
     process.exit(1)
