@@ -32,6 +32,7 @@ const createConfig = (
   },
   fallback: null,
   cacheTtlMs: 60_000,
+  requestTimeoutMs: 8_000,
   cacheFile: '.tmp/routing-cache.json',
   userAgent: 'parkking-test',
   path: '/api/route',

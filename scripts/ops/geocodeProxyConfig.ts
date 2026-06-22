@@ -5,6 +5,7 @@ import {
   DEFAULT_PROXY_LIMIT,
   DEFAULT_PROXY_PATH,
   DEFAULT_PROXY_PORT,
+  DEFAULT_REQUEST_TIMEOUT_MS,
   DEFAULT_USER_AGENT,
 } from './geocodeProxyDefaults'
 import {
@@ -22,6 +23,7 @@ export {
   DEFAULT_PROXY_LIMIT,
   DEFAULT_PROXY_PATH,
   DEFAULT_PROXY_PORT,
+  DEFAULT_REQUEST_TIMEOUT_MS,
   DEFAULT_USER_AGENT,
 } from './geocodeProxyDefaults'
 export {
@@ -55,6 +57,10 @@ export const resolveGeocodeProxyConfig = (
     cacheTtlMs: parsePositiveInteger(
       env.PARKKING_GEOCODER_CACHE_TTL_MS,
       DEFAULT_CACHE_TTL_MS,
+    ),
+    requestTimeoutMs: parsePositiveInteger(
+      env.PARKKING_GEOCODER_REQUEST_TIMEOUT_MS,
+      DEFAULT_REQUEST_TIMEOUT_MS,
     ),
     cacheFile: resolveCompat(cwd, env.PARKKING_GEOCODER_CACHE_FILE ?? DEFAULT_CACHE_FILE),
     userAgent: normalizeGeocodeText(env.PARKKING_GEOCODER_USER_AGENT) ?? DEFAULT_USER_AGENT,

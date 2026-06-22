@@ -32,6 +32,7 @@ describe('requestGeocodeResults', () => {
           fallback: null,
           limit: 5,
           cacheTtlMs: 60000,
+          requestTimeoutMs: 5000,
           cacheFile: 'cache.json',
           userAgent: 'ParkKing test',
           path: '/api/geocode',
@@ -43,5 +44,6 @@ describe('requestGeocodeResults', () => {
       results: [],
       sawSuccessfulResponse: true,
     })
+    expect(fetchImpl.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal)
   })
 })

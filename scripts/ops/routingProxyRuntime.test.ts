@@ -11,6 +11,7 @@ describe('routingProxyRuntime', () => {
       primary: { endpoint: 'https://route.example.com' },
       fallback: { endpoint: 'https://route-backup.example.com' },
       cacheTtlMs: 60000,
+      requestTimeoutMs: 8000,
       cacheFile: join(tempRoot, 'cache.json'),
       userAgent: 'ParkKing test',
       path: '/api/route',

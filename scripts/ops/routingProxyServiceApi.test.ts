@@ -7,6 +7,7 @@ const config: RoutingProxyConfig = {
   primary: { endpoint: 'https://route.example.com' },
   fallback: null,
   cacheTtlMs: 60000,
+  requestTimeoutMs: 8000,
   cacheFile: 'cache.json',
   userAgent: 'ParkKing test',
   path: '/api/route',

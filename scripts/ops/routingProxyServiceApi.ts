@@ -35,6 +35,7 @@ export const createRoutingProxyServiceApi = (
       request,
       runtime.fetchImpl,
       config.userAgent,
+      config.requestTimeoutMs,
     )
     cache.entries[cacheKey] = {
       cachedAtMs: runtime.now(),
@@ -58,6 +59,7 @@ export const createRoutingProxyServiceApi = (
       request,
       runtime.fetchImpl,
       config.userAgent,
+      config.requestTimeoutMs,
     )
     cache.entries[cacheKey] = {
       cachedAtMs: runtime.now(),

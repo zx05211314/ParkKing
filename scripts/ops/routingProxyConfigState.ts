@@ -4,6 +4,7 @@ import {
   DEFAULT_PRIMARY_URL,
   DEFAULT_PROXY_PATH,
   DEFAULT_PROXY_PORT,
+  DEFAULT_REQUEST_TIMEOUT_MS,
   DEFAULT_USER_AGENT,
 } from './routingProxyDefaults'
 import {
@@ -34,6 +35,10 @@ export const resolveRoutingProxyConfig = (
     cacheTtlMs: parsePositiveInteger(
       env.PARKKING_ROUTING_CACHE_TTL_MS,
       DEFAULT_CACHE_TTL_MS,
+    ),
+    requestTimeoutMs: parsePositiveInteger(
+      env.PARKKING_ROUTING_REQUEST_TIMEOUT_MS,
+      DEFAULT_REQUEST_TIMEOUT_MS,
     ),
     cacheFile: resolveCompat(cwd, env.PARKKING_ROUTING_CACHE_FILE ?? DEFAULT_CACHE_FILE),
     userAgent: normalizeRoutingText(env.PARKKING_ROUTING_USER_AGENT) ?? DEFAULT_USER_AGENT,

@@ -13,6 +13,7 @@ export interface GeocodeProxyHealthResponse {
   limit: number | null
   cacheFile: string | null
   cacheTtlMs: number | null
+  requestTimeoutMs: number | null
   issues: string[]
 }
 
@@ -53,6 +54,9 @@ export const buildGeocodeProxyReadinessIssues = (
   if (!Number.isFinite(config.cacheTtlMs) || config.cacheTtlMs <= 0) {
     issues.push('cache TTL must be positive')
   }
+  if (!Number.isFinite(config.requestTimeoutMs) || config.requestTimeoutMs <= 0) {
+    issues.push('request timeout must be positive')
+  }
   if (!config.cacheFile.trim()) {
     issues.push('cache file is empty')
   }
@@ -76,5 +80,6 @@ export const buildGeocodeProxyHealth = (
   limit: config?.limit ?? null,
   cacheFile: config?.cacheFile ?? null,
   cacheTtlMs: config?.cacheTtlMs ?? null,
+  requestTimeoutMs: config?.requestTimeoutMs ?? null,
   issues,
 })

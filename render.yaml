@@ -81,6 +81,8 @@ services:
         value: "5"
       - key: PARKKING_GEOCODER_CACHE_TTL_MS
         value: "21600000"
+      - key: PARKKING_GEOCODER_REQUEST_TIMEOUT_MS
+        value: "5000"
       - key: PARKKING_GEOCODER_CACHE_FILE
         value: .tmp/geocoder-cache.json
       - key: PARKKING_GEOCODER_USER_AGENT
@@ -91,6 +93,8 @@ services:
         value: https://router.project-osrm.org
       - key: PARKKING_ROUTING_CACHE_TTL_MS
         value: "1800000"
+      - key: PARKKING_ROUTING_REQUEST_TIMEOUT_MS
+        value: "8000"
       - key: PARKKING_ROUTING_CACHE_FILE
         value: .tmp/route-cache.json
       - key: PARKKING_ROUTING_USER_AGENT

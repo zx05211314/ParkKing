@@ -16,6 +16,7 @@ describe('createGeocodeProxyRuntime', () => {
       fallback: null,
       limit: 5,
       cacheTtlMs: 60000,
+      requestTimeoutMs: 5000,
       cacheFile,
       userAgent: 'ParkKing test',
       path: '/api/geocode',

@@ -34,6 +34,7 @@ const createConfig = (
   fallback: null,
   limit: 5,
   cacheTtlMs: 60_000,
+  requestTimeoutMs: 5_000,
   cacheFile: '.tmp/geocode-cache.json',
   userAgent: 'parkking-test',
   path: '/api/geocode',

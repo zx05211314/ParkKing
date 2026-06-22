@@ -26,6 +26,7 @@ describe('requestRoutingPath', () => {
         },
         fetchImpl,
         'ParkKing test',
+        8000,
       ),
     ).resolves.toEqual({
       destination: [121.565, 25.034],
@@ -37,5 +38,6 @@ describe('requestRoutingPath', () => {
 
     expect(fetchImpl).toHaveBeenCalledTimes(2)
     expect(fetchImpl.mock.calls[1][0]).toContain('fallback.example.com')
+    expect(fetchImpl.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal)
   })
 })

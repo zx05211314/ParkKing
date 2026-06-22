@@ -11,6 +11,7 @@ export interface RoutingProxyHealthResponse {
   fallbackEndpoint: string | null
   cacheFile: string | null
   cacheTtlMs: number | null
+  requestTimeoutMs: number | null
   issues: string[]
 }
 
@@ -48,6 +49,9 @@ export const buildRoutingProxyReadinessIssues = (
   if (!Number.isFinite(config.cacheTtlMs) || config.cacheTtlMs <= 0) {
     issues.push('cache TTL must be positive')
   }
+  if (!Number.isFinite(config.requestTimeoutMs) || config.requestTimeoutMs <= 0) {
+    issues.push('request timeout must be positive')
+  }
   if (!config.cacheFile.trim()) {
     issues.push('cache file is empty')
   }
@@ -69,5 +73,6 @@ export const buildRoutingProxyHealth = (
   fallbackEndpoint: config?.fallback?.endpoint ?? null,
   cacheFile: config?.cacheFile ?? null,
   cacheTtlMs: config?.cacheTtlMs ?? null,
+  requestTimeoutMs: config?.requestTimeoutMs ?? null,
   issues,
 })

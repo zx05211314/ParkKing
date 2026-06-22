@@ -24,6 +24,7 @@ describe('geocodeProxyRequestKeys', () => {
           },
           limit: 5,
           cacheTtlMs: 60000,
+          requestTimeoutMs: 5000,
           cacheFile: 'cache.json',
           userAgent: 'ParkKing test',
           path: '/api/geocode',
