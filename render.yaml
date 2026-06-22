@@ -118,7 +118,7 @@ services:
       - key: PARKKING_SYNC_MAX_ISSUE_REPORTS
         value: "1000"
       - key: PARKKING_SYNC_CORS_ORIGINS
-        value: "*"
+        value: https://parkking.onrender.com
       - key: PARKKING_SYNC_WRITE_RATE_LIMIT_WINDOW_MS
         value: "60000"
       - key: PARKKING_SYNC_WRITE_RATE_LIMIT_MAX

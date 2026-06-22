@@ -1,6 +1,6 @@
 # Park King
 
-Curb intelligence prototype. The ingest pipeline builds district datasets and publishes packs for the app.
+Reviewed curb-parking intelligence app. The ingest pipeline builds district datasets and publishes packs for the app.
 
 ## Quickstart
 
@@ -179,7 +179,7 @@ Sync service env vars:
 - `PARKKING_SYNC_DEFAULT_SCOPE`: fallback scope used when the request does not include a `scope` query param.
 - `PARKKING_SYNC_MAX_BODY_BYTES`: max JSON request body accepted by saved-plan, report, and issue-report write endpoints. Defaults to `1048576`; oversized requests return HTTP 413.
 - `PARKKING_SYNC_MAX_ISSUE_REPORTS`: max synced issue reports retained per scope. Defaults to `1000`; older reports are trimmed on new issue-report writes.
-- `PARKKING_SYNC_CORS_ORIGINS`: comma-separated browser origins allowed to call the sync service. Defaults to `*`; set this to your app origin in production.
+- `PARKKING_SYNC_CORS_ORIGINS`: comma-separated browser origins allowed to call the sync service. Defaults to `*` for local/standalone use. Production deployments must set explicit app origins; the checked-in Render blueprint uses `https://parkking.onrender.com`.
 - `PARKKING_SYNC_WRITE_RATE_LIMIT_WINDOW_MS`: fixed-window rate-limit duration for saved-plan, report, and issue-report writes. Defaults to `60000`.
 - `PARKKING_SYNC_WRITE_RATE_LIMIT_MAX`: max writes per client, route, and scope within the rate-limit window. Defaults to `120`; excess writes return HTTP 429 with `Retry-After`.
 
@@ -470,7 +470,7 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   This reads the release manifest dataset-hash contract, fetches `/api/parking-answer/ready`, and fails if the live service is missing a reviewed district, reports it as not ready, or serves a dataset hash different from the released package. It also probes the live same-origin geocode, route, sync, and parking-answer health/ready endpoints and runs a sync issue-report roundtrip. The same check is available as the manual `Render Live Verify` GitHub Actions workflow by passing the Render app URL and published manifest URL; enable `useGithubToken` only for private GitHub Release asset URLs from this repository, and leave `skipSyncIssueRoundtrip` false unless the live environment intentionally rejects sync smoke writes. When verifying locally from the same checkout that generated the handoff, the command can use `.tmp/render-deployment-handoff.json` instead of `--manifest-url`.
 - Render Blueprint contract check:
   `npm run ops:render-blueprint-check`
-  This fails if `render.yaml` loses the release package install build step, same-origin parking-answer health check, or required Render environment variables. CI, publish, and release-data workflows run the same check before release/deploy gates.
+  This fails if `render.yaml` loses the release package install build step, same-origin parking-answer health check, required Render environment variables, or the explicit non-wildcard sync CORS origin. CI, publish, and release-data workflows run the same check before release/deploy gates.
 - Registry-scoped UI smoke check for reviewed generated packs:
   `npm run ops:smoke-reviewed-ui-packs -- --root public/data/generated --registry public/data/generated/registry.json --reviewed --timeout-ms 25000`
   Add `--view MAP --limit 1` when you want the same reviewed-pack discovery path to exercise map/list mode instead of list mode:
