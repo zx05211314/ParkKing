@@ -8,6 +8,10 @@ import {
   type SmokeApiServiceId,
   type SmokeApiServicesSummary,
 } from './smokeApiServices'
+import {
+  REQUIRED_RENDER_RUNTIME_ENV,
+  renderEnvAssignments,
+} from './renderDeploymentEnv'
 
 const DEFAULT_HANDOFF_JSON = '.tmp/render-deployment-handoff.json'
 const DEFAULT_TIMEOUT_MS = 15_000
@@ -53,6 +57,7 @@ export interface RenderDeploymentVerifyResult {
   apiServices?: SmokeApiServicesSummary | null
   syncCors?: RenderDeploymentVerifySyncCorsResult | null
   proxyRuntime?: RenderDeploymentVerifyProxyRuntimeResult[] | null
+  remediation: RenderDeploymentVerifyRemediation | null
   errors: string[]
 }
 
@@ -75,6 +80,13 @@ export interface RenderDeploymentVerifyProxyRuntimeResult {
   errors: string[]
 }
 
+export interface RenderDeploymentVerifyRemediation {
+  reasons: string[]
+  requiredRenderEnv: Record<string, string>
+  steps: string[]
+  verifyCommand: string
+}
+
 interface FetchJsonResult {
   status: number
   payload: unknown
@@ -82,6 +94,7 @@ interface FetchJsonResult {
 
 interface ExpectedDatasetContract {
   contractSource: string
+  verifyArgName: '--handoff-json' | '--manifest' | '--manifest-url'
   releaseId: string | null
   releaseTag: string | null
   expectedDatasets: RenderDeploymentHandoffDataset[]
@@ -308,6 +321,7 @@ const loadExpectedDatasetContract = async (
     const expectedDatasets = parsed ? getExpectedDatasetsFromManifest(parsed) : []
     return {
       contractSource: source,
+      verifyArgName: manifestPath ? '--manifest' : '--manifest-url',
       releaseId: getString(parsed, 'releaseId'),
       releaseTag: null,
       expectedDatasets,
@@ -324,6 +338,7 @@ const loadExpectedDatasetContract = async (
   const expectedDatasets = getExpectedDatasets(handoff)
   return {
     contractSource: handoffJsonPath,
+    verifyArgName: '--handoff-json',
     releaseId: getString(release, 'releaseId'),
     releaseTag: getString(release, 'tag'),
     expectedDatasets,
@@ -477,6 +492,61 @@ export const verifyRenderSyncCors = async (params: {
   }
 }
 
+const quoteCommandArg = (value: string) =>
+  /^[A-Za-z0-9_/:.?=&%#@+-]+$/.test(value)
+    ? value
+    : `"${value.replace(/`/g, '``').replace(/"/g, '`"')}"`
+
+const buildRenderDeploymentVerifyCommand = (params: {
+  appUrl: string
+  contract: ExpectedDatasetContract
+}) =>
+  `npm run ops:render-deployment-verify -- --app-url ${quoteCommandArg(
+    params.appUrl,
+  )} ${params.contract.verifyArgName} ${quoteCommandArg(params.contract.contractSource)}`
+
+const buildRuntimeRemediation = (params: {
+  appUrl: string
+  contract: ExpectedDatasetContract
+  syncCors: RenderDeploymentVerifySyncCorsResult | null
+  proxyRuntime: RenderDeploymentVerifyProxyRuntimeResult[] | null
+}): RenderDeploymentVerifyRemediation | null => {
+  const reasons: string[] = []
+  if (params.syncCors && !params.syncCors.pass) {
+    reasons.push(
+      `Sync CORS rejected-origin check failed at ${params.syncCors.url}; set PARKKING_SYNC_CORS_ORIGINS to the deployed app origin instead of wildcard.`,
+    )
+  }
+  const proxyTimeoutFailures =
+    params.proxyRuntime?.filter(
+      (entry) =>
+        !entry.pass &&
+        entry.errors.some((error) =>
+          error.includes('requestTimeoutMs must be present and positive'),
+        ),
+    ) ?? []
+  if (proxyTimeoutFailures.length > 0) {
+    reasons.push(
+      `Proxy readiness is missing positive requestTimeoutMs for ${proxyTimeoutFailures
+        .map((entry) => entry.service)
+        .join(', ')}; set the geocoder/routing timeout env vars and redeploy.`,
+    )
+  }
+  if (reasons.length === 0) {
+    return null
+  }
+  return {
+    reasons,
+    requiredRenderEnv: { ...REQUIRED_RENDER_RUNTIME_ENV },
+    steps: [
+      'Set the required Render environment variables listed in this report on the parkking service.',
+      'Redeploy the Render service after saving the environment changes.',
+      'Rerun the verification command and require PASS before treating production as hardened.',
+    ],
+    verifyCommand: buildRenderDeploymentVerifyCommand(params),
+  }
+}
+
 export const verifyRenderDeployment = async (
   options: RenderDeploymentVerifyOptions = {},
 ): Promise<RenderDeploymentVerifyResult> => {
@@ -606,13 +676,21 @@ export const verifyRenderDeployment = async (
     }
   }
 
+  const pass =
+    errors.length === 0 &&
+    districts.every((district) => district.pass) &&
+    (apiServices?.failed ?? 0) === 0 &&
+    (syncCors?.pass ?? true) &&
+    (proxyRuntime?.every((result) => result.pass) ?? true)
+  const remediation = buildRuntimeRemediation({
+    appUrl,
+    contract,
+    syncCors,
+    proxyRuntime,
+  })
+
   return {
-    pass:
-      errors.length === 0 &&
-      districts.every((district) => district.pass) &&
-      (apiServices?.failed ?? 0) === 0 &&
-      (syncCors?.pass ?? true) &&
-      (proxyRuntime?.every((result) => result.pass) ?? true),
+    pass,
     appUrl,
     readinessUrl,
     contractSource: contract.contractSource,
@@ -626,6 +704,7 @@ export const verifyRenderDeployment = async (
     apiServices,
     syncCors,
     proxyRuntime,
+    remediation,
     errors,
   }
 }
@@ -685,6 +764,30 @@ export const renderRenderDeploymentVerify = (
             (entry) =>
               `| ${entry.pass ? 'PASS' : 'FAIL'} | ${entry.service} | ${entry.url} | ${entry.status} | ${entry.serviceStatus ?? '-'} | ${entry.requestTimeoutMs ?? '-'} | ${entry.errors.join('; ')} |`,
           ),
+        ]
+      : []),
+    ...(result.remediation
+      ? [
+          '',
+          '## Runtime Remediation',
+          '',
+          'Reasons:',
+          ...result.remediation.reasons.map((reason) => `- ${reason}`),
+          '',
+          'Required Render environment:',
+          '',
+          '```text',
+          ...renderEnvAssignments(result.remediation.requiredRenderEnv),
+          '```',
+          '',
+          'Steps:',
+          ...result.remediation.steps.map((step, index) => `${index + 1}. ${step}`),
+          '',
+          'Verification:',
+          '',
+          '```powershell',
+          result.remediation.verifyCommand,
+          '```',
         ]
       : []),
     '',

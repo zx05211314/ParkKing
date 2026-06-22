@@ -197,6 +197,7 @@ describe('renderDeploymentVerify', () => {
 
       expect(result.pass).toBe(true)
       expect(result.apiServices).toMatchObject({ failed: 0 })
+      expect(result.remediation).toBeNull()
       expect(result.syncCors).toMatchObject({ pass: true, status: 403 })
       expect(result.proxyRuntime).toEqual([
         expect.objectContaining({
@@ -346,6 +347,17 @@ describe('renderDeploymentVerify', () => {
         allowOrigin: '*',
       })
       expect(result.errors.join('\n')).toContain('sync CORS smoke failed')
+      expect(result.remediation).toMatchObject({
+        requiredRenderEnv: {
+          PARKKING_SYNC_CORS_ORIGINS: 'https://parkking.onrender.com',
+        },
+      })
+      expect(result.remediation?.verifyCommand).toContain('--handoff-json')
+      const rendered = renderRenderDeploymentVerify(result)
+      expect(rendered).toContain('## Runtime Remediation')
+      expect(rendered).toContain(
+        'PARKKING_SYNC_CORS_ORIGINS=https://parkking.onrender.com',
+      )
     } finally {
       await server.close()
     }
@@ -394,6 +406,14 @@ describe('renderDeploymentVerify', () => {
       expect(result.errors.join('\n')).toContain(
         'proxy runtime config smoke failed',
       )
+      expect(result.remediation?.requiredRenderEnv).toMatchObject({
+        PARKKING_GEOCODER_REQUEST_TIMEOUT_MS: '5000',
+        PARKKING_ROUTING_REQUEST_TIMEOUT_MS: '8000',
+      })
+      const rendered = renderRenderDeploymentVerify(result)
+      expect(rendered).toContain('## Runtime Remediation')
+      expect(rendered).toContain('PARKKING_GEOCODER_REQUEST_TIMEOUT_MS=5000')
+      expect(rendered).toContain('PARKKING_ROUTING_REQUEST_TIMEOUT_MS=8000')
     } finally {
       await server.close()
     }
@@ -512,6 +532,7 @@ describe('renderDeploymentVerify', () => {
           },
         ],
         unexpectedDistricts: [],
+        remediation: null,
         errors: [],
       },
       { outPath, jsonOutPath },
