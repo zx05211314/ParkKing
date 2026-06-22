@@ -34,6 +34,7 @@ export const requestGeocodeResults = async (
             Accept: 'application/json',
             'User-Agent': config.userAgent,
           },
+          signal: AbortSignal.timeout(config.requestTimeoutMs),
         },
       )
 

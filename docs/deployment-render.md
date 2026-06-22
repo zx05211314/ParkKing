@@ -132,6 +132,10 @@ Vite copies `/data/generated` into `dist` for browser-side static data reads.
   (`https://parkking.onrender.com` in the checked-in blueprint). Update it to
   the exact Render/custom-domain origin before deploying a different public
   host; do not use `*` for production because sync exposes write endpoints.
+- Upstream proxy timeouts: `PARKKING_GEOCODER_REQUEST_TIMEOUT_MS=5000` and
+  `PARKKING_ROUTING_REQUEST_TIMEOUT_MS=8000` bound each public-provider request
+  before retry/fallback, so a slow Nominatim/OSRM response cannot hold the
+  same-origin API indefinitely.
 
 ## Local Deploy Smoke
 
@@ -280,8 +284,9 @@ npm run ops:render-blueprint-check
 This fails if `render.yaml` no longer installs the release package before
 building, no longer uses `/api/parking-answer/ready` as the health check, loses
 required same-origin API / release-data environment variables, or leaves sync
-CORS open to `*`. CI, publish, and release-data workflows run this gate
-automatically.
+CORS open to `*`. It also verifies production geocoder/routing upstream request
+timeouts stay explicitly configured. CI, publish, and release-data workflows run
+this gate automatically.
 
 Run `ops:p3-release-readiness` after `npm run build` because Vite cleans `dist`
 before building and would otherwise remove `dist/releases`.

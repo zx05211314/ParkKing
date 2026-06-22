@@ -8,6 +8,7 @@ const config = {
   primary: { endpoint: 'https://primary.example.com' },
   fallback: { endpoint: 'https://fallback.example.com' },
   cacheTtlMs: 60_000,
+  requestTimeoutMs: 8_000,
   cacheFile: 'cache.json',
   userAgent: 'ParkKing test',
   path: '/api/route',

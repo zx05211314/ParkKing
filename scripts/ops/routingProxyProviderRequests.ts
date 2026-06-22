@@ -20,11 +20,13 @@ export const requestRoutingMatrix = async (
   request: RoutingProxyRequest,
   fetchImpl: FetchLike,
   userAgent: string,
+  requestTimeoutMs: number,
 ) =>
   requestFromRoutingProviders({
     providers,
     fetchImpl,
     userAgent,
+    requestTimeoutMs,
     buildUrl: (provider) => buildMatrixUpstreamUrl(provider, request),
     normalize: (_status, payload) =>
       normalizeOsrmTablePayload(payload, request.destinations),
@@ -35,11 +37,13 @@ export const requestRoutingPath = async (
   request: RoutingPathRequest,
   fetchImpl: FetchLike,
   userAgent: string,
+  requestTimeoutMs: number,
 ): Promise<RoutingPathEntry> =>
   requestFromRoutingProviders({
     providers,
     fetchImpl,
     userAgent,
+    requestTimeoutMs,
     buildUrl: (provider) => buildRouteUpstreamUrl(provider, request),
     normalize: (_status, payload) =>
       normalizeOsrmRoutePayload(payload, request.destination),

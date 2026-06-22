@@ -10,6 +10,7 @@ export interface GeocodeProxyConfig {
   fallback: GeocodeProxyProviderConfig | null
   limit: number
   cacheTtlMs: number
+  requestTimeoutMs: number
   cacheFile: string
   userAgent: string
   path: string

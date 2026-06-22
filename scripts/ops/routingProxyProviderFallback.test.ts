@@ -19,6 +19,7 @@ describe('routingProxyProviderFallback', () => {
         ],
         fetchImpl,
         userAgent: 'ParkKing test',
+        requestTimeoutMs: 8000,
         buildUrl: (provider) => `${provider.endpoint}/table`,
         normalize: (_status, payload) =>
           (payload as { ok?: boolean; value?: number }).ok
@@ -45,6 +46,7 @@ describe('routingProxyProviderFallback', () => {
         ],
         fetchImpl,
         userAgent: 'ParkKing test',
+        requestTimeoutMs: 8000,
         buildUrl: (provider) => `${provider.endpoint}/table`,
         normalize: () => null,
       }),

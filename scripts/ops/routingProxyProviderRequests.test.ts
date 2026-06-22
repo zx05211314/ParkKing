@@ -26,6 +26,7 @@ describe('requestRoutingMatrix', () => {
         },
         fetchImpl,
         'ParkKing test',
+        8000,
       ),
     ).resolves.toEqual([
       {
@@ -38,5 +39,6 @@ describe('requestRoutingMatrix', () => {
 
     expect(fetchImpl).toHaveBeenCalledTimes(2)
     expect(fetchImpl.mock.calls[1][0]).toContain('fallback.example.com')
+    expect(fetchImpl.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal)
   })
 })

@@ -9,6 +9,7 @@ export interface RoutingProxyConfig {
   primary: RoutingProxyProviderConfig
   fallback: RoutingProxyProviderConfig | null
   cacheTtlMs: number
+  requestTimeoutMs: number
   cacheFile: string
   userAgent: string
   path: string

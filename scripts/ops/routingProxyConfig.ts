@@ -4,6 +4,7 @@ export {
   DEFAULT_PRIMARY_URL,
   DEFAULT_PROXY_PATH,
   DEFAULT_PROXY_PORT,
+  DEFAULT_REQUEST_TIMEOUT_MS,
   DEFAULT_USER_AGENT,
 } from './routingProxyDefaults'
 export {

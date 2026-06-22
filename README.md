@@ -50,6 +50,7 @@ PARKKING_GEOCODER_FALLBACK_URL=
 PARKKING_GEOCODER_COUNTRY_CODES=tw
 PARKKING_GEOCODER_LIMIT=5
 PARKKING_GEOCODER_CACHE_TTL_MS=21600000
+PARKKING_GEOCODER_REQUEST_TIMEOUT_MS=5000
 PARKKING_GEOCODER_CACHE_FILE=.tmp/geocoder-cache.json
 PARKKING_GEOCODER_USER_AGENT=ParkKing/1.0 (+local-dev)
 PARKKING_GEOCODER_PORT=8787
@@ -58,6 +59,7 @@ PARKKING_GEOCODER_PATH=/api/geocode
 PARKKING_ROUTING_PRIMARY_URL=https://router.project-osrm.org
 PARKKING_ROUTING_FALLBACK_URL=
 PARKKING_ROUTING_CACHE_TTL_MS=1800000
+PARKKING_ROUTING_REQUEST_TIMEOUT_MS=8000
 PARKKING_ROUTING_CACHE_FILE=.tmp/route-cache.json
 PARKKING_ROUTING_USER_AGENT=ParkKing/1.0 (+local-dev)
 PARKKING_ROUTING_PORT=8788
@@ -140,6 +142,7 @@ Geocoder proxy env vars:
 - `PARKKING_GEOCODER_COUNTRY_CODES`: server-side comma-separated ISO country code filter.
 - `PARKKING_GEOCODER_LIMIT`: max upstream result count per request.
 - `PARKKING_GEOCODER_CACHE_TTL_MS`: cache TTL in milliseconds for positive and empty results.
+- `PARKKING_GEOCODER_REQUEST_TIMEOUT_MS`: max time for each upstream geocoder request before the proxy aborts and tries the next attempt/provider.
 - `PARKKING_GEOCODER_CACHE_FILE`: file-backed cache path for proxy responses.
 - `PARKKING_GEOCODER_USER_AGENT`: user agent sent to upstream geocoder providers.
 - `PARKKING_GEOCODER_PORT`: standalone proxy port.
@@ -149,6 +152,7 @@ Routing proxy env vars:
 - `PARKKING_ROUTING_PRIMARY_URL`: upstream OSRM-compatible base URL used by the proxy.
 - `PARKKING_ROUTING_FALLBACK_URL`: optional backup upstream endpoint used when the primary is unavailable.
 - `PARKKING_ROUTING_CACHE_TTL_MS`: cache TTL in milliseconds for route summaries.
+- `PARKKING_ROUTING_REQUEST_TIMEOUT_MS`: max time for each upstream routing request before the proxy aborts and tries the fallback provider.
 - `PARKKING_ROUTING_CACHE_FILE`: file-backed cache path for route summary responses.
 - `PARKKING_ROUTING_USER_AGENT`: user agent sent to upstream routing providers.
 - `PARKKING_ROUTING_PORT`: standalone proxy port.
@@ -210,8 +214,9 @@ Current geocoder strategy:
 4. Proxy searches the primary provider inside the active district bounds when bounds exist.
 5. Proxy retries the same provider without district bounds if the bounded search returns nothing.
 6. Proxy retries the same bounded/unbounded sequence against `PARKKING_GEOCODER_FALLBACK_URL` when configured.
-7. Responses are cached on disk, including empty result sets.
-8. If network geocoding still fails, the UI keeps local road/segment text filtering active.
+7. Each upstream geocoder request is bounded by `PARKKING_GEOCODER_REQUEST_TIMEOUT_MS`.
+8. Responses are cached on disk, including empty result sets.
+9. If network geocoding still fails, the UI keeps local road/segment text filtering active.
 
 Current routing strategy:
 1. Browser sends route summary requests to `/api/route` or the configured routing endpoint.
@@ -219,8 +224,9 @@ Current routing strategy:
 3. Direct external routing endpoints skip the ParkKing readiness probe.
 4. Proxy forwards those requests to the primary OSRM-compatible upstream with `table` lookups for walking and driving.
 5. Proxy retries the same request against `PARKKING_ROUTING_FALLBACK_URL` when configured.
-6. Responses are cached on disk per origin, destination set, and profile.
-7. If live routing fails, the UI falls back to heuristic walk distance and keeps external `Go there` links active.
+6. Each upstream routing request is bounded by `PARKKING_ROUTING_REQUEST_TIMEOUT_MS`.
+7. Responses are cached on disk per origin, destination set, and profile.
+8. If live routing fails, the UI falls back to heuristic walk distance and keeps external `Go there` links active.
 
 Current parking answer strategy:
 1. Browser pinned-location answers first call `/api/parking-answer` or `VITE_PARKING_ANSWER_URL`.

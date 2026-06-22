@@ -13,12 +13,14 @@ export const requestFromRoutingProviders = async <T>({
   providers,
   fetchImpl,
   userAgent,
+  requestTimeoutMs,
   buildUrl,
   normalize,
 }: {
   providers: RoutingProxyProviderConfig[]
   fetchImpl: FetchLike
   userAgent: string
+  requestTimeoutMs: number
   buildUrl: (provider: RoutingProxyProviderConfig) => string
   normalize: (status: number, payload: unknown) => T | null
 }) => {
@@ -31,6 +33,7 @@ export const requestFromRoutingProviders = async <T>({
           Accept: 'application/json',
           'User-Agent': userAgent,
         },
+        signal: AbortSignal.timeout(requestTimeoutMs),
       })
       const payload = await readRoutingResponseJson(response)
       const normalized = normalize(response.status, payload)
