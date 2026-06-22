@@ -19,7 +19,7 @@ const writeJson = async (filePath: string, value: unknown) => {
 const startJsonServer = async (
   parkingReadyPayload: unknown,
   parkingReadyStatus = 200,
-  options: { failApiPaths?: string[] } = {},
+  options: { failApiPaths?: string[]; allowUntrustedSyncCors?: boolean } = {},
 ) => {
   const issues: unknown[] = []
   const failApiPaths = new Set(options.failApiPaths ?? [])
@@ -68,6 +68,20 @@ const startJsonServer = async (
       sendJson(response, 201, { issue: body.issue, revision: issues.length })
       return
     }
+    if (url.pathname === '/api/sync/issues' && request.method === 'OPTIONS') {
+      response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS')
+      response.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+      if (options.allowUntrustedSyncCors) {
+        response.setHeader('Access-Control-Allow-Origin', '*')
+        response.statusCode = 204
+        response.end()
+        return
+      }
+      sendJson(response, 403, {
+        error: 'Origin is not allowed by sync service CORS policy.',
+      })
+      return
+    }
     if (url.pathname === '/api/sync/issues' && request.method === 'GET') {
       sendJson(response, 200, { issues, revision: issues.length })
       return
@@ -104,6 +118,7 @@ describe('renderDeploymentVerify', () => {
         '--api-services',
         'geocode,routing',
         '--skip-sync-issue-roundtrip',
+        '--skip-sync-cors-check',
         '--out',
         '.tmp/verify.md',
         '--json-out',
@@ -117,6 +132,7 @@ describe('renderDeploymentVerify', () => {
       skipApiServices: true,
       apiServices: ['geocode', 'routing'],
       syncIssueRoundtrip: false,
+      syncCorsCheck: false,
       outPath: '.tmp/verify.md',
       jsonOutPath: '.tmp/verify.json',
     })
@@ -169,10 +185,12 @@ describe('renderDeploymentVerify', () => {
 
       expect(result.pass).toBe(true)
       expect(result.apiServices).toMatchObject({ failed: 0 })
+      expect(result.syncCors).toMatchObject({ pass: true, status: 403 })
       expect(renderRenderDeploymentVerify(result)).toContain(
         '# Render Deployment Verify: PASS',
       )
       expect(renderRenderDeploymentVerify(result)).toContain('Mounted API Services')
+      expect(renderRenderDeploymentVerify(result)).toContain('## Sync CORS')
     } finally {
       await server.close()
     }
@@ -256,6 +274,53 @@ describe('renderDeploymentVerify', () => {
       expect(result.pass).toBe(false)
       expect(result.apiServices?.failed).toBe(1)
       expect(result.errors.join('\n')).toContain('mounted API service smoke failed')
+    } finally {
+      await server.close()
+    }
+  })
+
+  it('fails when live sync CORS allows an untrusted origin', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'render-verify-cors-fail-'))
+    const handoffPath = path.join(base, 'handoff.json')
+    await writeJson(handoffPath, {
+      ready: true,
+      expectedDatasets: [
+        {
+          districtId: 'xinyi',
+          datasetHash: 'hash-xinyi',
+        },
+      ],
+    })
+    const server = await startJsonServer(
+      {
+        status: 'ok',
+        districts: [
+          {
+            district: 'xinyi',
+            ready: true,
+            datasetHash: 'hash-xinyi',
+            latestDatasetHash: 'hash-xinyi',
+          },
+        ],
+      },
+      200,
+      { allowUntrustedSyncCors: true },
+    )
+
+    try {
+      const result = await verifyRenderDeployment({
+        appUrl: server.baseUrl,
+        handoffJsonPath: handoffPath,
+        timeoutMs: 1000,
+      })
+
+      expect(result.pass).toBe(false)
+      expect(result.syncCors).toMatchObject({
+        pass: false,
+        status: 204,
+        allowOrigin: '*',
+      })
+      expect(result.errors.join('\n')).toContain('sync CORS smoke failed')
     } finally {
       await server.close()
     }
