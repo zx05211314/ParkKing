@@ -19,7 +19,11 @@ const writeJson = async (filePath: string, value: unknown) => {
 const startJsonServer = async (
   parkingReadyPayload: unknown,
   parkingReadyStatus = 200,
-  options: { failApiPaths?: string[]; allowUntrustedSyncCors?: boolean } = {},
+  options: {
+    failApiPaths?: string[]
+    allowUntrustedSyncCors?: boolean
+    omitProxyTimeouts?: boolean
+  } = {},
 ) => {
   const issues: unknown[] = []
   const failApiPaths = new Set(options.failApiPaths ?? [])
@@ -42,16 +46,24 @@ const startJsonServer = async (
       sendJson(response, parkingReadyStatus, parkingReadyPayload)
       return
     }
+    if (['/api/geocode/health', '/api/geocode/ready'].includes(url.pathname)) {
+      sendJson(response, 200, {
+        status: 'ok',
+        ...(options.omitProxyTimeouts ? {} : { requestTimeoutMs: 5000 }),
+      })
+      return
+    }
+    if (['/api/route/health', '/api/route/ready'].includes(url.pathname)) {
+      sendJson(response, 200, {
+        status: 'ok',
+        ...(options.omitProxyTimeouts ? {} : { requestTimeoutMs: 8000 }),
+      })
+      return
+    }
     if (
-      [
-        '/api/geocode/health',
-        '/api/geocode/ready',
-        '/api/route/health',
-        '/api/route/ready',
-        '/api/sync/health',
-        '/api/sync/ready',
-        '/api/parking-answer/health',
-      ].includes(url.pathname)
+      ['/api/sync/health', '/api/sync/ready', '/api/parking-answer/health'].includes(
+        url.pathname,
+      )
     ) {
       sendJson(response, 200, { status: 'ok' })
       return
@@ -186,11 +198,24 @@ describe('renderDeploymentVerify', () => {
       expect(result.pass).toBe(true)
       expect(result.apiServices).toMatchObject({ failed: 0 })
       expect(result.syncCors).toMatchObject({ pass: true, status: 403 })
+      expect(result.proxyRuntime).toEqual([
+        expect.objectContaining({
+          service: 'geocode',
+          pass: true,
+          requestTimeoutMs: 5000,
+        }),
+        expect.objectContaining({
+          service: 'routing',
+          pass: true,
+          requestTimeoutMs: 8000,
+        }),
+      ])
       expect(renderRenderDeploymentVerify(result)).toContain(
         '# Render Deployment Verify: PASS',
       )
       expect(renderRenderDeploymentVerify(result)).toContain('Mounted API Services')
       expect(renderRenderDeploymentVerify(result)).toContain('## Sync CORS')
+      expect(renderRenderDeploymentVerify(result)).toContain('## Proxy Runtime Config')
     } finally {
       await server.close()
     }
@@ -321,6 +346,54 @@ describe('renderDeploymentVerify', () => {
         allowOrigin: '*',
       })
       expect(result.errors.join('\n')).toContain('sync CORS smoke failed')
+    } finally {
+      await server.close()
+    }
+  })
+
+  it('fails when live proxy readiness omits request timeouts', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'render-verify-timeout-fail-'))
+    const handoffPath = path.join(base, 'handoff.json')
+    await writeJson(handoffPath, {
+      ready: true,
+      expectedDatasets: [
+        {
+          districtId: 'xinyi',
+          datasetHash: 'hash-xinyi',
+        },
+      ],
+    })
+    const server = await startJsonServer(
+      {
+        status: 'ok',
+        districts: [
+          {
+            district: 'xinyi',
+            ready: true,
+            datasetHash: 'hash-xinyi',
+            latestDatasetHash: 'hash-xinyi',
+          },
+        ],
+      },
+      200,
+      { omitProxyTimeouts: true },
+    )
+
+    try {
+      const result = await verifyRenderDeployment({
+        appUrl: server.baseUrl,
+        handoffJsonPath: handoffPath,
+        timeoutMs: 1000,
+      })
+
+      expect(result.pass).toBe(false)
+      expect(result.proxyRuntime?.map((entry) => entry.pass)).toEqual([
+        false,
+        false,
+      ])
+      expect(result.errors.join('\n')).toContain(
+        'proxy runtime config smoke failed',
+      )
     } finally {
       await server.close()
     }
