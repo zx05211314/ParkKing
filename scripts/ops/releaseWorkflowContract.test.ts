@@ -95,6 +95,15 @@ describe('release workflow contracts', () => {
     expect(workflow).toContain(
       "run: npm run ops:render-deployment-verify -- ${{ inputs.skipSyncIssueRoundtrip && '--skip-sync-issue-roundtrip' || '' }}",
     )
+    expect(workflow).toMatch(
+      /- name: Summarize verification\s+if: always\(\)\s+run: npm run ops:append-workflow-summary -- --append-file \.tmp\/render-deployment-verify\.md/,
+    )
+    expect(workflow).toMatch(
+      /- name: Upload verification artifacts\s+if: always\(\)\s+uses: actions\/upload-artifact@v4/,
+    )
+    expect(workflow).toContain('name: render-live-verify')
+    expect(workflow).toContain('.tmp/render-deployment-verify.md')
+    expect(workflow).toContain('.tmp/render-deployment-verify.json')
     expect(workflow).not.toContain('--skip-api-services')
   })
 
