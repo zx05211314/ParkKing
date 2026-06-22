@@ -120,6 +120,15 @@ describe('renderDeploymentHandoff', () => {
     expect(result.packageUrl).toBe(
       'https://github.com/owner/repo/releases/download/data-20260529_abcd123/park-king-data_20260529_abcd123.zip',
     )
+    expect(result.renderEnv).toMatchObject({
+      PARKKING_RELEASE_PACKAGE_URL:
+        'https://github.com/owner/repo/releases/download/data-20260529_abcd123/park-king-data_20260529_abcd123.zip',
+      PARKKING_RELEASE_MANIFEST_URL:
+        'https://github.com/owner/repo/releases/download/data-20260529_abcd123/release_manifest_20260529_abcd123.json',
+      PARKKING_SYNC_CORS_ORIGINS: 'https://parkking.onrender.com',
+      PARKKING_GEOCODER_REQUEST_TIMEOUT_MS: '5000',
+      PARKKING_ROUTING_REQUEST_TIMEOUT_MS: '8000',
+    })
     expect(result.releaseAssetPaths).toEqual([
       path.join(handoffAssetDir, '20260529_abcd123', 'park-king-data_20260529_abcd123.zip'),
       path.join(handoffAssetDir, '20260529_abcd123', 'release_manifest_20260529_abcd123.json'),
@@ -153,6 +162,9 @@ describe('renderDeploymentHandoff', () => {
     )
     expect(result.externalSteps.join('\n')).toContain(
       'use the package and manifest URLs printed by that workflow run',
+    )
+    expect(result.externalSteps.join('\n')).toContain(
+      'Set Render environment variables exactly as listed',
     )
     expect(result.externalSteps.join('\n')).toContain(
       '--manifest-url https://github.com/owner/repo/releases/download/data-20260529_abcd123/release_manifest_20260529_abcd123.json',

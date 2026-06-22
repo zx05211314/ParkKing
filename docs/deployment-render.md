@@ -204,8 +204,10 @@ npm run ops:render-deployment-handoff
 
 This writes `.tmp/render-deployment-handoff.md` and
 `.tmp/render-deployment-handoff.json` with the expected GitHub Release asset
-URLs and exact `PARKKING_RELEASE_PACKAGE_URL` /
-`PARKKING_RELEASE_MANIFEST_URL` values. The handoff also copies the local
+URLs and exact Render env values, including `PARKKING_RELEASE_PACKAGE_URL`,
+`PARKKING_RELEASE_MANIFEST_URL`, `PARKKING_SYNC_CORS_ORIGINS`,
+`PARKKING_GEOCODER_REQUEST_TIMEOUT_MS`, and
+`PARKKING_ROUTING_REQUEST_TIMEOUT_MS`. The handoff also copies the local
 zip/manifest into `.tmp/release-handoff-assets/<release-id>/` and stores those
 copied paths in `releaseAssetPaths` for local publishing. The JSON and markdown
 also include the expected per-district dataset hashes that the live Render

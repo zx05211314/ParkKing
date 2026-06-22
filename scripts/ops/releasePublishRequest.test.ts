@@ -192,6 +192,14 @@ describe('releasePublishRequest', () => {
     expect(rendered).toContain('https://github.com/owner/repo/releases/new')
     expect(rendered).toContain('Tag: data-20260531_abc1234')
     expect(rendered).toContain('PARKKING_RELEASE_PACKAGE_URL=')
+    expect(rendered).toContain(
+      'PARKKING_SYNC_CORS_ORIGINS=https://parkking.onrender.com',
+    )
+    expect(rendered).toContain('PARKKING_GEOCODER_REQUEST_TIMEOUT_MS=5000')
+    expect(rendered).toContain('PARKKING_ROUTING_REQUEST_TIMEOUT_MS=8000')
+    expect(result.externalRequirements.join('\n')).toContain(
+      'Set Render environment from the Render Environment block',
+    )
   })
 
   it('reports ready for Render live verify when release assets are already published', async () => {
