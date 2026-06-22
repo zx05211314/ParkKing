@@ -355,6 +355,7 @@ describe('renderDeploymentVerify', () => {
       expect(result.remediation?.verifyCommand).toContain('--handoff-json')
       const rendered = renderRenderDeploymentVerify(result)
       expect(rendered).toContain('## Runtime Remediation')
+      expect(rendered).toContain('npm run ops:render-runtime-env-sync')
       expect(rendered).toContain(
         'PARKKING_SYNC_CORS_ORIGINS=https://parkking.onrender.com',
       )

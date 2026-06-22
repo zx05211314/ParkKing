@@ -540,6 +540,7 @@ const buildRuntimeRemediation = (params: {
     requiredRenderEnv: { ...REQUIRED_RENDER_RUNTIME_ENV },
     steps: [
       'Set the required Render environment variables listed in this report on the parkking service.',
+      'If Render API credentials are available, run npm run ops:render-runtime-env-sync -- --service-id <Render service ID> --execute --deploy.',
       'Redeploy the Render service after saving the environment changes.',
       'Rerun the verification command and require PASS before treating production as hardened.',
     ],

@@ -277,6 +277,19 @@ CORS rejects an untrusted browser origin instead of returning wildcard access.
 When sync CORS or proxy timeout checks fail, the generated markdown and JSON
 reports include a runtime remediation block with the exact Render env vars,
 redeploy steps, and follow-up verify command.
+If you have a Render API key and service ID, you can apply those runtime env
+vars from the CLI instead of the dashboard:
+
+```powershell
+npm run ops:render-runtime-env-sync -- --service-id <Render service ID>
+$env:RENDER_API_KEY="<Render API key>"
+npm run ops:render-runtime-env-sync -- --service-id <Render service ID> --execute --deploy
+```
+
+The sync command updates only `PARKKING_SYNC_CORS_ORIGINS`,
+`PARKKING_GEOCODER_REQUEST_TIMEOUT_MS`, and
+`PARKKING_ROUTING_REQUEST_TIMEOUT_MS` directly on the service, then triggers a
+Render deploy when `--deploy` is present.
 If you are
 verifying from the same machine that generated the handoff, the command can use
 `.tmp/render-deployment-handoff.json` instead of `--manifest-url`.
