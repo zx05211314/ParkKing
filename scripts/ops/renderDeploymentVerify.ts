@@ -52,6 +52,7 @@ export interface RenderDeploymentVerifyResult {
   unexpectedDistricts: string[]
   apiServices?: SmokeApiServicesSummary | null
   syncCors?: RenderDeploymentVerifySyncCorsResult | null
+  proxyRuntime?: RenderDeploymentVerifyProxyRuntimeResult[] | null
   errors: string[]
 }
 
@@ -61,6 +62,16 @@ export interface RenderDeploymentVerifySyncCorsResult {
   untrustedOrigin: string
   status: number
   allowOrigin: string | null
+  errors: string[]
+}
+
+export interface RenderDeploymentVerifyProxyRuntimeResult {
+  service: Extract<SmokeApiServiceId, 'geocode' | 'routing'>
+  pass: boolean
+  url: string
+  status: number
+  serviceStatus: string | null
+  requestTimeoutMs: number | null
   errors: string[]
 }
 
@@ -355,8 +366,66 @@ const parseReadyDistricts = (payload: unknown) => {
 export const buildRenderReadinessUrl = (appUrl: string) =>
   new URL('/api/parking-answer/ready', `${appUrl}/`).toString()
 
+export const buildRenderProxyReadyUrl = (
+  appUrl: string,
+  service: Extract<SmokeApiServiceId, 'geocode' | 'routing'>,
+) =>
+  new URL(service === 'geocode' ? '/api/geocode/ready' : '/api/route/ready', `${appUrl}/`).toString()
+
 export const buildRenderSyncIssuesUrl = (appUrl: string) =>
   new URL('/api/sync/issues', `${appUrl}/`).toString()
+
+const getNumber = (record: Record<string, unknown> | null, key: string) =>
+  typeof record?.[key] === 'number' ? record[key] : null
+
+export const verifyRenderProxyRuntimeConfig = async (params: {
+  appUrl: string
+  timeoutMs: number
+  services?: Array<Extract<SmokeApiServiceId, 'geocode' | 'routing'>>
+}): Promise<RenderDeploymentVerifyProxyRuntimeResult[]> => {
+  const services = params.services ?? ['geocode', 'routing']
+  const results: RenderDeploymentVerifyProxyRuntimeResult[] = []
+  for (const service of services) {
+    const url = buildRenderProxyReadyUrl(params.appUrl, service)
+    try {
+      const response = await fetchJsonWithTimeout(url, params.timeoutMs)
+      const payload = toRecord(response.payload)
+      const serviceStatus = getString(payload, 'status')
+      const requestTimeoutMs = getNumber(payload, 'requestTimeoutMs')
+      const errors = [
+        ...(response.status === 200
+          ? []
+          : [`expected HTTP 200, got ${response.status}`]),
+        ...(serviceStatus === 'ok'
+          ? []
+          : [`expected status ok, got ${serviceStatus ?? 'missing'}`]),
+        ...(requestTimeoutMs !== null && requestTimeoutMs > 0
+          ? []
+          : ['requestTimeoutMs must be present and positive']),
+      ]
+      results.push({
+        service,
+        pass: errors.length === 0,
+        url,
+        status: response.status,
+        serviceStatus,
+        requestTimeoutMs,
+        errors,
+      })
+    } catch (error) {
+      results.push({
+        service,
+        pass: false,
+        url,
+        status: 0,
+        serviceStatus: null,
+        requestTimeoutMs: null,
+        errors: [error instanceof Error ? error.message : String(error)],
+      })
+    }
+  }
+  return results
+}
 
 export const verifyRenderSyncCors = async (params: {
   appUrl: string
@@ -488,6 +557,7 @@ export const verifyRenderDeployment = async (
   let syncCors: RenderDeploymentVerifySyncCorsResult | null = null
   const selectedApiServices = options.apiServices ?? undefined
   const syncSelected = selectedApiServices?.includes('sync') ?? true
+  let proxyRuntime: RenderDeploymentVerifyProxyRuntimeResult[] | null = null
   if (!options.skipApiServices) {
     try {
       const shouldRunSyncIssueRoundtrip =
@@ -516,6 +586,24 @@ export const verifyRenderDeployment = async (
         )
       }
     }
+    const proxyRuntimeServices = (['geocode', 'routing'] as const).filter(
+      (service) => selectedApiServices?.includes(service) ?? true,
+    )
+    if (proxyRuntimeServices.length > 0) {
+      proxyRuntime = await verifyRenderProxyRuntimeConfig({
+        appUrl,
+        timeoutMs,
+        services: proxyRuntimeServices,
+      })
+      const failures = proxyRuntime.filter((result) => !result.pass)
+      if (failures.length > 0) {
+        errors.push(
+          `proxy runtime config smoke failed: ${failures
+            .map((result) => `${result.service}: ${result.errors.join('; ')}`)
+            .join(' | ')}`,
+        )
+      }
+    }
   }
 
   return {
@@ -523,7 +611,8 @@ export const verifyRenderDeployment = async (
       errors.length === 0 &&
       districts.every((district) => district.pass) &&
       (apiServices?.failed ?? 0) === 0 &&
-      (syncCors?.pass ?? true),
+      (syncCors?.pass ?? true) &&
+      (proxyRuntime?.every((result) => result.pass) ?? true),
     appUrl,
     readinessUrl,
     contractSource: contract.contractSource,
@@ -536,6 +625,7 @@ export const verifyRenderDeployment = async (
     unexpectedDistricts,
     apiServices,
     syncCors,
+    proxyRuntime,
     errors,
   }
 }
@@ -582,6 +672,19 @@ export const renderRenderDeploymentVerify = (
           `- HTTP status: ${result.syncCors.status}`,
           `- Access-Control-Allow-Origin: ${result.syncCors.allowOrigin ?? '-'}`,
           `- Errors: ${result.syncCors.errors.join('; ') || 'none'}`,
+        ]
+      : []),
+    ...(result.proxyRuntime && result.proxyRuntime.length > 0
+      ? [
+          '',
+          '## Proxy Runtime Config',
+          '',
+          '| Status | Service | URL | HTTP | Service status | Request timeout | Error |',
+          '| --- | --- | --- | --- | --- | --- | --- |',
+          ...result.proxyRuntime.map(
+            (entry) =>
+              `| ${entry.pass ? 'PASS' : 'FAIL'} | ${entry.service} | ${entry.url} | ${entry.status} | ${entry.serviceStatus ?? '-'} | ${entry.requestTimeoutMs ?? '-'} | ${entry.errors.join('; ')} |`,
+          ),
         ]
       : []),
     '',
