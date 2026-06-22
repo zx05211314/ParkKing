@@ -23,6 +23,7 @@ export interface RenderDeploymentVerifyOptions {
   skipApiServices?: boolean | null
   apiServices?: SmokeApiServiceId[] | null
   syncIssueRoundtrip?: boolean | null
+  syncCorsCheck?: boolean | null
   outPath?: string | null
   jsonOutPath?: string | null
 }
@@ -50,6 +51,16 @@ export interface RenderDeploymentVerifyResult {
   districts: RenderDeploymentVerifyDistrict[]
   unexpectedDistricts: string[]
   apiServices?: SmokeApiServicesSummary | null
+  syncCors?: RenderDeploymentVerifySyncCorsResult | null
+  errors: string[]
+}
+
+export interface RenderDeploymentVerifySyncCorsResult {
+  pass: boolean
+  url: string
+  untrustedOrigin: string
+  status: number
+  allowOrigin: string | null
   errors: string[]
 }
 
@@ -146,6 +157,7 @@ export const parseRenderDeploymentVerifyArgs = (
   apiServices: parseApiServices(getArgValue(argv, '--api-services', '--apiServices')),
   syncIssueRoundtrip:
     !hasFlag(argv, '--skip-sync-issue-roundtrip', '--skipSyncIssueRoundtrip'),
+  syncCorsCheck: !hasFlag(argv, '--skip-sync-cors-check', '--skipSyncCorsCheck'),
   outPath: getArgValue(argv, '--out'),
   jsonOutPath: getArgValue(argv, '--json-out', '--jsonOut'),
 })
@@ -343,6 +355,59 @@ const parseReadyDistricts = (payload: unknown) => {
 export const buildRenderReadinessUrl = (appUrl: string) =>
   new URL('/api/parking-answer/ready', `${appUrl}/`).toString()
 
+export const buildRenderSyncIssuesUrl = (appUrl: string) =>
+  new URL('/api/sync/issues', `${appUrl}/`).toString()
+
+export const verifyRenderSyncCors = async (params: {
+  appUrl: string
+  timeoutMs: number
+  untrustedOrigin?: string
+}): Promise<RenderDeploymentVerifySyncCorsResult> => {
+  const url = buildRenderSyncIssuesUrl(params.appUrl)
+  const untrustedOrigin = params.untrustedOrigin ?? 'https://evil.example'
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), params.timeoutMs)
+  try {
+    const response = await fetch(url, {
+      method: 'OPTIONS',
+      headers: {
+        origin: untrustedOrigin,
+        'access-control-request-method': 'POST',
+        'access-control-request-headers': 'Content-Type',
+      },
+      signal: controller.signal,
+    })
+    const allowOrigin = response.headers.get('access-control-allow-origin')
+    const errors = [
+      ...(response.status === 403
+        ? []
+        : [`expected HTTP 403 for untrusted Origin, got ${response.status}`]),
+      ...(allowOrigin === null
+        ? []
+        : [`expected no Access-Control-Allow-Origin, got ${allowOrigin}`]),
+    ]
+    return {
+      pass: errors.length === 0,
+      url,
+      untrustedOrigin,
+      status: response.status,
+      allowOrigin,
+      errors,
+    }
+  } catch (error) {
+    return {
+      pass: false,
+      url,
+      untrustedOrigin,
+      status: 0,
+      allowOrigin: null,
+      errors: [error instanceof Error ? error.message : String(error)],
+    }
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 export const verifyRenderDeployment = async (
   options: RenderDeploymentVerifyOptions = {},
 ): Promise<RenderDeploymentVerifyResult> => {
@@ -420,12 +485,14 @@ export const verifyRenderDeployment = async (
     .filter((districtId) => !expectedDistrictIds.has(districtId))
     .sort()
   let apiServices: SmokeApiServicesSummary | null = null
+  let syncCors: RenderDeploymentVerifySyncCorsResult | null = null
+  const selectedApiServices = options.apiServices ?? undefined
+  const syncSelected = selectedApiServices?.includes('sync') ?? true
   if (!options.skipApiServices) {
     try {
-      const selectedApiServices = options.apiServices ?? undefined
       const shouldRunSyncIssueRoundtrip =
         (options.syncIssueRoundtrip ?? true) &&
-        (selectedApiServices?.includes('sync') ?? true)
+        syncSelected
       apiServices = await runSmokeApiServices({
         baseUrl: appUrl,
         services: selectedApiServices,
@@ -441,13 +508,22 @@ export const verifyRenderDeployment = async (
         `mounted API service smoke failed: ${error instanceof Error ? error.message : String(error)}`,
       )
     }
+    if ((options.syncCorsCheck ?? true) && syncSelected) {
+      syncCors = await verifyRenderSyncCors({ appUrl, timeoutMs })
+      if (!syncCors.pass) {
+        errors.push(
+          `sync CORS smoke failed: ${syncCors.errors.join('; ')}`,
+        )
+      }
+    }
   }
 
   return {
     pass:
       errors.length === 0 &&
       districts.every((district) => district.pass) &&
-      (apiServices?.failed ?? 0) === 0,
+      (apiServices?.failed ?? 0) === 0 &&
+      (syncCors?.pass ?? true),
     appUrl,
     readinessUrl,
     contractSource: contract.contractSource,
@@ -459,6 +535,7 @@ export const verifyRenderDeployment = async (
     districts,
     unexpectedDistricts,
     apiServices,
+    syncCors,
     errors,
   }
 }
@@ -492,6 +569,19 @@ export const renderRenderDeploymentVerify = (
           '## Mounted API Services',
           '',
           renderSmokeApiServicesSummary(result.apiServices),
+        ]
+      : []),
+    ...(result.syncCors
+      ? [
+          '',
+          '## Sync CORS',
+          '',
+          `- Status: ${result.syncCors.pass ? 'PASS' : 'FAIL'}`,
+          `- URL: ${result.syncCors.url}`,
+          `- Untrusted origin: ${result.syncCors.untrustedOrigin}`,
+          `- HTTP status: ${result.syncCors.status}`,
+          `- Access-Control-Allow-Origin: ${result.syncCors.allowOrigin ?? '-'}`,
+          `- Errors: ${result.syncCors.errors.join('; ') || 'none'}`,
         ]
       : []),
     '',

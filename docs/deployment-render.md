@@ -265,7 +265,9 @@ This reads the release manifest dataset-hash contract, fetches
 `/api/parking-answer/ready`, and fails if any reviewed district is missing, not
 ready, or serving a dataset hash different from the released package. It also
 probes the live same-origin geocode, route, sync, and parking-answer
-health/ready endpoints and runs a sync issue-report roundtrip. If you are
+health/ready endpoints, runs a sync issue-report roundtrip, and verifies sync
+CORS rejects an untrusted browser origin instead of returning wildcard access.
+If you are
 verifying from the same machine that generated the handoff, the command can use
 `.tmp/render-deployment-handoff.json` instead of `--manifest-url`.
 
