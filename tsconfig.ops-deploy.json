@@ -48,6 +48,8 @@
     "scripts/ops/renderDeploymentHandoff.test.ts",
     "scripts/ops/renderDeploymentVerify.ts",
     "scripts/ops/renderDeploymentVerify.test.ts",
+    "scripts/ops/syncRenderRuntimeEnv.ts",
+    "scripts/ops/syncRenderRuntimeEnv.test.ts",
     "scripts/ops/smokeAppServer.ts",
     "scripts/ops/smokeAppServer.test.ts",
     "scripts/ops/smokeExactParkingAnswers.ts",
