@@ -107,6 +107,27 @@ describe('release workflow contracts', () => {
     expect(workflow).not.toContain('--skip-api-services')
   })
 
+  it('keeps Render Runtime Env Sync wired to Render API credentials and artifacts', async () => {
+    const workflow = await readWorkflow('render_runtime_env_sync.yml')
+
+    expectWorkflowInputs(workflow, ['serviceId', 'deploy', 'deployMode'])
+    expect(workflow).toContain('RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}')
+    expect(workflow).toContain('npm run ops:render-runtime-env-sync')
+    expect(workflow).toContain('--service-id "${{ inputs.serviceId }}"')
+    expect(workflow).toContain('--execute')
+    expect(workflow).toContain("${{ inputs.deploy && '--deploy' || '' }}")
+    expect(workflow).toContain('--deploy-mode "${{ inputs.deployMode }}"')
+    expect(workflow).toMatch(
+      /- name: Summarize sync\s+if: always\(\)\s+run: npm run ops:append-workflow-summary -- --append-file \.tmp\/render-runtime-env-sync\.md/,
+    )
+    expect(workflow).toMatch(
+      /- name: Upload sync artifact\s+if: always\(\)\s+uses: actions\/upload-artifact@v4/,
+    )
+    expect(workflow).toContain('name: render-runtime-env-sync')
+    expect(workflow).toContain('.tmp/render-runtime-env-sync.md')
+    expect(workflow).toContain('.tmp/render-runtime-env-sync.json')
+  })
+
   it('keeps Release Data Package dispatch helper aligned with workflow inputs', async () => {
     const [workflow, packageJson] = await Promise.all([
       readWorkflow('release_data.yml'),

@@ -1,8 +1,12 @@
+import * as fs from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   parseRenderRuntimeEnvSyncArgs,
   renderRenderRuntimeEnvSyncResult,
   syncRenderRuntimeEnv,
+  writeRenderRuntimeEnvSyncOutputs,
 } from './syncRenderRuntimeEnv'
 
 const env = {
@@ -135,6 +139,24 @@ describe('syncRenderRuntimeEnv', () => {
     expect(calls.some((url) => url.endsWith('/deploys'))).toBe(false)
     expect(result.errors.join('\n')).toContain(
       'PARKKING_GEOCODER_REQUEST_TIMEOUT_MS: bad request',
+    )
+  })
+
+  it('writes markdown and JSON reports', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'render-env-sync-'))
+    const outPath = path.join(base, 'sync.md')
+    const jsonOutPath = path.join(base, 'sync.json')
+    const result = await syncRenderRuntimeEnv(
+      parseRenderRuntimeEnvSyncArgs(['--service-id', 'srv-test'], env),
+    )
+
+    await writeRenderRuntimeEnvSyncOutputs(result, { outPath, jsonOutPath })
+
+    await expect(fs.readFile(outPath, 'utf-8')).resolves.toContain(
+      '# Render Runtime Env Sync: PASS',
+    )
+    await expect(fs.readFile(jsonOutPath, 'utf-8')).resolves.toContain(
+      '"serviceId": "srv-test"',
     )
   })
 })
