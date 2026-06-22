@@ -15,6 +15,7 @@ describe('renderBlueprintContract', () => {
     expect(result.checkedEnvVars).toContain('NODE_VERSION')
     expect(result.checkedEnvVars).toContain('PARKKING_RELEASE_PACKAGE_URL')
     expect(result.checkedEnvVars).toContain('PARKKING_PARKING_ANSWER_DATASET_ROOT')
+    expect(result.checkedEnvVars).toContain('PARKKING_SYNC_CORS_ORIGINS')
   })
 
   it('parses quoted and unquoted service and env values', () => {
@@ -64,6 +65,23 @@ services:
     expect(result.pass).toBe(false)
     expect(result.errors).toContain(
       'PARKKING_RELEASE_PACKAGE_URL must be declared with sync: false',
+    )
+  })
+
+  it('fails when production sync CORS allows every origin', async () => {
+    const content = await fs.readFile('render.yaml', 'utf-8')
+    const service = parseRenderBlueprint(
+      content.replace(
+        /- key: PARKKING_SYNC_CORS_ORIGINS\s+value: .+/,
+        '- key: PARKKING_SYNC_CORS_ORIGINS\n        value: "*"',
+      ),
+    )
+
+    const result = validateRenderBlueprintContract(service)
+
+    expect(result.pass).toBe(false)
+    expect(result.errors).toContain(
+      'PARKKING_SYNC_CORS_ORIGINS must not include wildcard "*" in production',
     )
   })
 

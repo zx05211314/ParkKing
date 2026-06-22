@@ -49,7 +49,7 @@ export const AppHeaderPanels = ({
     <header className="app-header">
       <div className="app-title-block">
         <div className="app-title">Park King</div>
-        <div className="app-subtitle">MVP-3 curb intelligence prototype</div>
+        <div className="app-subtitle">Reviewed curb parking intelligence</div>
       </div>
       <div className="header-controls">
         <PrimaryControlsPanel {...primaryControlsProps} />

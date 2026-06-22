@@ -77,6 +77,8 @@ const REQUIRED_SYNC_FALSE = [
   'PARKKING_RELEASE_DOWNLOAD_AUTH_HEADER',
 ]
 
+const REQUIRED_NON_WILDCARD_ENV_VALUES = ['PARKKING_SYNC_CORS_ORIGINS']
+
 const getArgValue = (argv: string[], ...flags: string[]) => {
   for (const flag of flags) {
     const index = argv.indexOf(flag)
@@ -219,6 +221,21 @@ export const validateRenderBlueprintContract = (
     }
   }
 
+  for (const key of REQUIRED_NON_WILDCARD_ENV_VALUES) {
+    const actual = envMap.get(key)?.value
+    if (!actual) {
+      errors.push(`${key} must be declared with an explicit production value`)
+      continue
+    }
+    const values = actual
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean)
+    if (values.length === 0 || values.includes('*')) {
+      errors.push(`${key} must not include wildcard "*" in production`)
+    }
+  }
+
   return {
     pass: errors.length === 0,
     filePath,
@@ -226,6 +243,7 @@ export const validateRenderBlueprintContract = (
     checkedEnvVars: [
       ...Object.keys(REQUIRED_ENV_VALUES),
       ...REQUIRED_SYNC_FALSE,
+      ...REQUIRED_NON_WILDCARD_ENV_VALUES,
     ].sort(),
     errors,
   }
