@@ -123,18 +123,16 @@ describe('release workflow contracts', () => {
     expect(workflow).toContain('Release Data Package')
     expect(workflow).toContain("startsWith(github.event.workflow_run.head_branch, 'data-')")
     expect(workflow).toContain('RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}')
-    expect(workflow).toContain('- name: Resolve sync inputs')
-    expect(workflow).toContain('RELEASE_TAG: ${{ github.event.workflow_run.head_branch }}')
-    expect(workflow).toContain('release_id="${release_tag#data-}"')
-    expect(workflow).toContain('SYNC_PACKAGE_URL=$package_url')
-    expect(workflow).toContain('SYNC_MANIFEST_URL=$manifest_url')
-    expect(workflow).toContain('npm run ops:render-runtime-env-sync')
-    expect(workflow).toContain('--service-id "$SYNC_SERVICE_ID"')
-    expect(workflow).toContain('--service-name "$SYNC_SERVICE_NAME"')
-    expect(workflow).toContain('--package-url "$SYNC_PACKAGE_URL"')
-    expect(workflow).toContain('--manifest-url "$SYNC_MANIFEST_URL"')
-    expect(workflow).toContain('$SYNC_EXECUTE_FLAG $SYNC_DEPLOY_FLAG')
-    expect(workflow).toContain('--deploy-mode "$SYNC_DEPLOY_MODE"')
+    expect(workflow).toContain(
+      'PARKKING_WORKFLOW_EVENT_NAME: ${{ github.event_name }}',
+    )
+    expect(workflow).toContain(
+      'PARKKING_WORKFLOW_RUN_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}',
+    )
+    expect(workflow).toContain(
+      'PARKKING_INPUT_SERVICE_ID: ${{ github.event.inputs.serviceId }}',
+    )
+    expect(workflow).toContain('npm run ops:render-runtime-env-sync-workflow')
     expect(workflow).toMatch(
       /- name: Summarize sync\s+if: always\(\)\s+run: npm run ops:append-workflow-summary -- --append-file \.tmp\/render-runtime-env-sync\.md/,
     )
@@ -233,6 +231,9 @@ describe('release workflow contracts', () => {
 
     expect(packageJson.scripts?.['ops:render-runtime-env-sync-dispatch']).toBe(
       'tsx scripts/ops/dispatchRenderRuntimeEnvSyncWorkflow.ts',
+    )
+    expect(packageJson.scripts?.['ops:render-runtime-env-sync-workflow']).toBe(
+      'tsx scripts/ops/renderRuntimeEnvSyncWorkflow.ts',
     )
     expectWorkflowInputs(workflow, [
       'serviceId',

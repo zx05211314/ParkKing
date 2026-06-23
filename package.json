@@ -139,6 +139,7 @@
     "ops:render-deployment-verify": "tsx scripts/ops/renderDeploymentVerify.ts --out .tmp/render-deployment-verify.md --json-out .tmp/render-deployment-verify.json",
     "ops:render-runtime-env-sync": "tsx scripts/ops/syncRenderRuntimeEnv.ts",
     "ops:render-dashboard-env-packet": "tsx scripts/ops/renderDashboardEnvPacket.ts",
+    "ops:render-runtime-env-sync-workflow": "tsx scripts/ops/renderRuntimeEnvSyncWorkflow.ts",
     "ops:render-runtime-env-sync-dispatch": "tsx scripts/ops/dispatchRenderRuntimeEnvSyncWorkflow.ts",
     "ops:render-live-verify-dispatch": "tsx scripts/ops/dispatchRenderLiveVerifyWorkflow.ts",
     "ops:production-rollout-status-dispatch": "tsx scripts/ops/dispatchProductionRolloutStatusWorkflow.ts",

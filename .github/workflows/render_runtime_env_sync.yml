@@ -56,58 +56,19 @@ jobs:
           cache: 'npm'
       - name: Install
         run: npm ci
-      - name: Resolve sync inputs
-        shell: bash
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          RELEASE_TAG: ${{ github.event.workflow_run.head_branch }}
-          INPUT_SERVICE_ID: ${{ github.event.inputs.serviceId }}
-          INPUT_SERVICE_NAME: ${{ github.event.inputs.serviceName }}
-          INPUT_PACKAGE_URL: ${{ github.event.inputs.packageUrl }}
-          INPUT_MANIFEST_URL: ${{ github.event.inputs.manifestUrl }}
-          INPUT_EXECUTE: ${{ github.event.inputs.execute }}
-          INPUT_DEPLOY: ${{ github.event.inputs.deploy }}
-          INPUT_DEPLOY_MODE: ${{ github.event.inputs.deployMode }}
-        run: |
-          service_id="${INPUT_SERVICE_ID:-}"
-          service_name="${INPUT_SERVICE_NAME:-parkking}"
-          package_url="${INPUT_PACKAGE_URL:-}"
-          manifest_url="${INPUT_MANIFEST_URL:-}"
-          deploy_mode="${INPUT_DEPLOY_MODE:-build_and_deploy}"
-          execute_flag=""
-          deploy_flag=""
-
-          if [ "${INPUT_EXECUTE:-false}" = "true" ]; then
-            execute_flag="--execute"
-          fi
-          if [ "${INPUT_DEPLOY:-false}" = "true" ]; then
-            deploy_flag="--deploy"
-          fi
-
-          if [ "$EVENT_NAME" = "workflow_run" ]; then
-            release_tag="$RELEASE_TAG"
-            release_id="${release_tag#data-}"
-            service_name="parkking"
-            package_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${release_tag}/park-king-data_${release_id}.zip"
-            manifest_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${release_tag}/release_manifest_${release_id}.json"
-            execute_flag="--execute"
-            deploy_flag="--deploy"
-            deploy_mode="build_and_deploy"
-          fi
-
-          {
-            echo "SYNC_SERVICE_ID=$service_id"
-            echo "SYNC_SERVICE_NAME=$service_name"
-            echo "SYNC_PACKAGE_URL=$package_url"
-            echo "SYNC_MANIFEST_URL=$manifest_url"
-            echo "SYNC_EXECUTE_FLAG=$execute_flag"
-            echo "SYNC_DEPLOY_FLAG=$deploy_flag"
-            echo "SYNC_DEPLOY_MODE=$deploy_mode"
-          } >> "$GITHUB_ENV"
       - name: Sync Render runtime env
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-        run: npm run ops:render-runtime-env-sync -- --service-id "$SYNC_SERVICE_ID" --service-name "$SYNC_SERVICE_NAME" --package-url "$SYNC_PACKAGE_URL" --manifest-url "$SYNC_MANIFEST_URL" $SYNC_EXECUTE_FLAG $SYNC_DEPLOY_FLAG --deploy-mode "$SYNC_DEPLOY_MODE" --out .tmp/render-runtime-env-sync.md --json-out .tmp/render-runtime-env-sync.json
+          PARKKING_WORKFLOW_EVENT_NAME: ${{ github.event_name }}
+          PARKKING_WORKFLOW_RUN_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          PARKKING_INPUT_SERVICE_ID: ${{ github.event.inputs.serviceId }}
+          PARKKING_INPUT_SERVICE_NAME: ${{ github.event.inputs.serviceName }}
+          PARKKING_INPUT_PACKAGE_URL: ${{ github.event.inputs.packageUrl }}
+          PARKKING_INPUT_MANIFEST_URL: ${{ github.event.inputs.manifestUrl }}
+          PARKKING_INPUT_EXECUTE: ${{ github.event.inputs.execute }}
+          PARKKING_INPUT_DEPLOY: ${{ github.event.inputs.deploy }}
+          PARKKING_INPUT_DEPLOY_MODE: ${{ github.event.inputs.deployMode }}
+        run: npm run ops:render-runtime-env-sync-workflow
       - name: Summarize sync
         if: always()
         run: npm run ops:append-workflow-summary -- --append-file .tmp/render-runtime-env-sync.md
