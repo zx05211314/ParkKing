@@ -343,7 +343,7 @@ const normalizeExpectedDatasets = (handoff: RenderDeploymentHandoffResult) =>
         .map((entry) => {
           const record =
             entry !== null && typeof entry === 'object' && !Array.isArray(entry)
-              ? (entry as Record<string, unknown>)
+              ? (entry as unknown as Record<string, unknown>)
               : null
           return typeof record?.districtId === 'string' &&
             typeof record.datasetHash === 'string'
