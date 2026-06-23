@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  buildRenderDeploymentEnv,
   REQUIRED_RENDER_RUNTIME_ENV,
   renderEnvAssignments,
 } from './renderDeploymentEnv'
@@ -24,6 +25,9 @@ export interface RenderRuntimeEnvSyncOptions {
   deployMode: RenderDeployMode
   tokenEnv: string
   token: string | null
+  handoffJsonPath: string | null
+  packageUrl: string | null
+  manifestUrl: string | null
   outPath: string | null
   jsonOutPath: string | null
 }
@@ -55,6 +59,9 @@ export interface RenderRuntimeEnvSyncResult {
   deploy: boolean
   tokenEnv: string
   tokenPresent: boolean
+  envSource: 'runtime' | 'handoff' | 'urls'
+  releasePackageUrl: string | null
+  releaseManifestUrl: string | null
   requiredEnv: Record<string, string>
   updates: RenderRuntimeEnvUpdateResult[]
   deployResult: RenderRuntimeDeployResult | null
@@ -87,6 +94,19 @@ const toRecord = (value: unknown): Record<string, unknown> | null =>
 const getString = (record: Record<string, unknown> | null, key: string) =>
   typeof record?.[key] === 'string' ? record[key] : null
 
+const normalizeOptionalString = (value: string | null | undefined) =>
+  value?.trim() || null
+
+const firstNonEmpty = (...values: Array<string | null | undefined>) => {
+  for (const value of values) {
+    const normalized = normalizeOptionalString(value)
+    if (normalized) {
+      return normalized
+    }
+  }
+  return null
+}
+
 const normalizeApiBaseUrl = (value: string | null | undefined) => {
   const raw = value?.trim() || DEFAULT_RENDER_API_URL
   const url = new URL(raw)
@@ -110,6 +130,13 @@ const parseDeployMode = (value: string | null): RenderDeployMode => {
 
 const resolveToken = (env: NodeJS.ProcessEnv, tokenEnv: string) =>
   env[tokenEnv]?.trim() || (tokenEnv === DEFAULT_TOKEN_ENV ? env[FALLBACK_TOKEN_ENV]?.trim() : '') || null
+
+const validateHttpUrl = (value: string, label: string) => {
+  const url = new URL(value)
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    throw new Error(`${label} must be http(s): ${value}`)
+  }
+}
 
 export const parseRenderRuntimeEnvSyncArgs = (
   argv: string[],
@@ -140,8 +167,75 @@ export const parseRenderRuntimeEnvSyncArgs = (
     deployMode: parseDeployMode(getArgValue(argv, '--deploy-mode', '--deployMode')),
     tokenEnv,
     token: resolveToken(env, tokenEnv),
+    handoffJsonPath: normalizeOptionalString(
+      getArgValue(argv, '--handoff-json', '--handoffJson'),
+    ),
+    packageUrl: firstNonEmpty(
+      getArgValue(argv, '--package-url', '--packageUrl'),
+      env.PARKKING_RELEASE_PACKAGE_URL,
+    ),
+    manifestUrl: firstNonEmpty(
+      getArgValue(argv, '--manifest-url', '--manifestUrl'),
+      env.PARKKING_RELEASE_MANIFEST_URL,
+    ),
     outPath: getArgValue(argv, '--out'),
     jsonOutPath: getArgValue(argv, '--json-out', '--jsonOut'),
+  }
+}
+
+const readHandoffReleaseUrls = async (handoffJsonPath: string) => {
+  const parsed = toRecord(
+    JSON.parse(await fs.readFile(handoffJsonPath, 'utf-8')) as unknown,
+  )
+  return {
+    packageUrl: getString(parsed, 'packageUrl'),
+    manifestUrl: getString(parsed, 'manifestUrl'),
+  }
+}
+
+const resolveRequiredRenderEnv = async (options: RenderRuntimeEnvSyncOptions) => {
+  let packageUrl = options.packageUrl
+  let manifestUrl = options.manifestUrl
+  let envSource: RenderRuntimeEnvSyncResult['envSource'] = packageUrl || manifestUrl ? 'urls' : 'runtime'
+  const errors: string[] = []
+
+  if (options.handoffJsonPath) {
+    try {
+      const handoff = await readHandoffReleaseUrls(options.handoffJsonPath)
+      packageUrl = packageUrl ?? handoff.packageUrl
+      manifestUrl = manifestUrl ?? handoff.manifestUrl
+      envSource = packageUrl || manifestUrl ? 'handoff' : 'runtime'
+    } catch (error) {
+      errors.push(
+        `Could not read release URLs from ${options.handoffJsonPath}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      )
+    }
+  }
+
+  if ((packageUrl && !manifestUrl) || (!packageUrl && manifestUrl)) {
+    errors.push(
+      'Both release package and manifest URLs are required. Pass --package-url and --manifest-url, or pass --handoff-json with packageUrl and manifestUrl.',
+    )
+  }
+
+  if (packageUrl) {
+    validateHttpUrl(packageUrl, 'package-url')
+  }
+  if (manifestUrl) {
+    validateHttpUrl(manifestUrl, 'manifest-url')
+  }
+
+  return {
+    envSource,
+    packageUrl: packageUrl && manifestUrl ? packageUrl : null,
+    manifestUrl: packageUrl && manifestUrl ? manifestUrl : null,
+    requiredEnv:
+      packageUrl && manifestUrl
+        ? buildRenderDeploymentEnv({ packageUrl, manifestUrl })
+        : { ...REQUIRED_RENDER_RUNTIME_ENV },
+    errors,
   }
 }
 
@@ -349,14 +443,15 @@ export const syncRenderRuntimeEnv = async (
   options: RenderRuntimeEnvSyncOptions,
   fetchImpl: FetchImpl = fetch,
 ): Promise<RenderRuntimeEnvSyncResult> => {
+  const envPlan = await resolveRequiredRenderEnv(options)
   const resolved = await resolveRenderServiceId(options, fetchImpl)
   const resolvedOptions = {
     ...options,
     serviceId: resolved.serviceId,
   }
   const updates: RenderRuntimeEnvUpdateResult[] = []
-  if (resolved.errors.length === 0) {
-    for (const [key, value] of Object.entries(REQUIRED_RENDER_RUNTIME_ENV)) {
+  if (envPlan.errors.length === 0 && resolved.errors.length === 0) {
+    for (const [key, value] of Object.entries(envPlan.requiredEnv)) {
       updates.push(await updateEnvVar(resolvedOptions, key, value, fetchImpl))
     }
   }
@@ -369,6 +464,7 @@ export const syncRenderRuntimeEnv = async (
       ? await triggerDeploy(resolvedOptions, fetchImpl)
       : null
   const errors = [
+    ...envPlan.errors,
     ...resolved.errors,
     ...updateErrors,
     ...(deployResult && !deployResult.pass
@@ -384,7 +480,10 @@ export const syncRenderRuntimeEnv = async (
     deploy: options.deploy,
     tokenEnv: options.tokenEnv,
     tokenPresent: Boolean(options.token),
-    requiredEnv: { ...REQUIRED_RENDER_RUNTIME_ENV },
+    envSource: envPlan.envSource,
+    releasePackageUrl: envPlan.packageUrl,
+    releaseManifestUrl: envPlan.manifestUrl,
+    requiredEnv: envPlan.requiredEnv,
     updates,
     deployResult,
     errors,
@@ -402,6 +501,9 @@ export const renderRenderRuntimeEnvSyncResult = (
   `- Deploy after env sync: ${result.deploy}`,
   `- Token env: ${result.tokenEnv}`,
   `- Token present: ${result.tokenPresent}`,
+  `- Env source: ${result.envSource}`,
+  `- Release package URL: ${result.releasePackageUrl ?? '-'}`,
+  `- Release manifest URL: ${result.releaseManifestUrl ?? '-'}`,
   '',
   '## Required Render Environment',
   '',
@@ -466,6 +568,9 @@ const run = async () => {
         '  --service-id <id>               Defaults to PARKKING_RENDER_SERVICE_ID or RENDER_SERVICE_ID',
         '  --service-name <name>           Resolve service id from Render API; defaults to PARKKING_RENDER_SERVICE_NAME or RENDER_SERVICE_NAME',
         '  --api-url <url>                 Defaults to https://api.render.com/v1',
+        '  --handoff-json <path>           Reads packageUrl and manifestUrl from a render deployment handoff',
+        '  --package-url <url>             Release package URL to sync alongside runtime env',
+        '  --manifest-url <url>            Release manifest URL to sync alongside runtime env',
         '  --execute                       Actually update Render env vars; default is dry-run',
         '  --deploy                        Trigger a deploy after successful env updates',
         '  --deploy-mode <mode>            build_and_deploy or deploy_only; defaults to build_and_deploy',

@@ -289,23 +289,28 @@ vars from the CLI instead of the dashboard:
 ```powershell
 $env:RENDER_API_KEY="<Render API key>"
 npm run ops:render-runtime-env-sync -- --service-name parkking
+npm run ops:render-runtime-env-sync -- --service-name parkking --handoff-json .tmp/render-deployment-handoff.json
 npm run ops:render-runtime-env-sync -- --service-name parkking --execute --deploy
+npm run ops:render-runtime-env-sync -- --service-name parkking --handoff-json .tmp/render-deployment-handoff.json --execute --deploy
 ```
 
-The sync command updates only `PARKKING_SYNC_CORS_ORIGINS`,
+The sync command updates `PARKKING_SYNC_CORS_ORIGINS`,
 `PARKKING_GEOCODER_REQUEST_TIMEOUT_MS`, and
 `PARKKING_ROUTING_REQUEST_TIMEOUT_MS` directly on the service, then triggers a
-Render deploy when `--deploy` is present. Pass `--service-id <Render service ID>`
-when you already know the id. The same operation is available from GitHub
-Actions -> Render Runtime Env Sync when the repository has a `RENDER_API_KEY`
-secret. The workflow is dry-run by default; set `execute=true` only when you are
-ready to change Render. To dispatch that workflow from a tokenized CLI instead
-of the Actions UI:
+Render deploy when `--deploy` is present. Add `--handoff-json
+.tmp/render-deployment-handoff.json` to also sync
+`PARKKING_RELEASE_PACKAGE_URL` and `PARKKING_RELEASE_MANIFEST_URL` from the
+reviewed release handoff, or pass `--package-url` and `--manifest-url`
+explicitly. Pass `--service-id <Render service ID>` when you already know the
+id. The same operation is available from GitHub Actions -> Render Runtime Env
+Sync when the repository has a `RENDER_API_KEY` secret. The workflow is dry-run
+by default; set `execute=true` only when you are ready to change Render. To
+dispatch that workflow from a tokenized CLI instead of the Actions UI:
 
 ```powershell
-npm run ops:render-runtime-env-sync-dispatch -- --repo <owner/repo> --ref main --dry-run
+npm run ops:render-runtime-env-sync-dispatch -- --repo <owner/repo> --ref main --handoff-json .tmp/render-deployment-handoff.json --dry-run
 $env:GH_TOKEN="<token with workflow dispatch access>"
-npm run ops:render-runtime-env-sync-dispatch -- --repo <owner/repo> --ref main --execute
+npm run ops:render-runtime-env-sync-dispatch -- --repo <owner/repo> --ref main --handoff-json .tmp/render-deployment-handoff.json --execute
 ```
 
 If you are

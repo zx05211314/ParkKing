@@ -1,3 +1,6 @@
+import * as fs from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import * as path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import {
   buildRenderRuntimeEnvSyncDispatchRequest,
@@ -13,6 +16,9 @@ const baseOptions: RenderRuntimeEnvSyncDispatchOptions = {
   workflow: 'render_runtime_env_sync.yml',
   serviceId: '',
   serviceName: 'parkking',
+  handoffJsonPath: '',
+  packageUrl: '',
+  manifestUrl: '',
   execute: false,
   deploy: true,
   deployMode: 'build_and_deploy',
@@ -31,6 +37,8 @@ describe('dispatch render runtime env sync workflow', () => {
         inputs: {
           serviceId: '',
           serviceName: 'parkking',
+          packageUrl: '',
+          manifestUrl: '',
           execute: 'false',
           deploy: 'true',
           deployMode: 'build_and_deploy',
@@ -56,6 +64,9 @@ describe('dispatch render runtime env sync workflow', () => {
       repo: 'zx05211314/ParkKing',
       ref: 'main',
       serviceName: 'parkking',
+      handoffJsonPath: '',
+      packageUrl: '',
+      manifestUrl: '',
       execute: false,
       deploy: true,
       deployMode: 'build_and_deploy',
@@ -76,6 +87,10 @@ describe('dispatch render runtime env sync workflow', () => {
       'srv-test',
       '--service-name',
       'parkking-prod',
+      '--package-url',
+      'https://example.test/data.zip',
+      '--manifest-url',
+      'https://example.test/manifest.json',
       '--deploy=false',
       '--execute',
       '--deploy-mode',
@@ -86,9 +101,46 @@ describe('dispatch render runtime env sync workflow', () => {
     expect(options).toMatchObject({
       serviceId: 'srv-test',
       serviceName: 'parkking-prod',
+      handoffJsonPath: '',
+      packageUrl: 'https://example.test/data.zip',
+      manifestUrl: 'https://example.test/manifest.json',
       execute: true,
       deploy: false,
       deployMode: 'deploy_only',
+    })
+  })
+
+  it('reads release URLs from handoff JSON for workflow inputs', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'render-env-dispatch-'))
+    const handoffPath = path.join(base, 'handoff.json')
+    await fs.writeFile(
+      handoffPath,
+      `${JSON.stringify({
+        packageUrl: 'https://example.test/data.zip',
+        manifestUrl: 'https://example.test/manifest.json',
+      })}\n`,
+      'utf-8',
+    )
+
+    const options = resolveRenderRuntimeEnvSyncDispatchOptions([
+      '--repo',
+      'zx05211314/ParkKing',
+      '--ref',
+      'main',
+      '--handoff-json',
+      handoffPath,
+      '--dry-run',
+    ])
+    const request = buildRenderRuntimeEnvSyncDispatchRequest(options)
+
+    expect(options).toMatchObject({
+      handoffJsonPath: handoffPath,
+      packageUrl: 'https://example.test/data.zip',
+      manifestUrl: 'https://example.test/manifest.json',
+    })
+    expect(request.payload.inputs).toMatchObject({
+      packageUrl: 'https://example.test/data.zip',
+      manifestUrl: 'https://example.test/manifest.json',
     })
   })
 

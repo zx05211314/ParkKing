@@ -24,6 +24,9 @@ describe('syncRenderRuntimeEnv', () => {
       deployMode: 'build_and_deploy',
       tokenEnv: 'RENDER_API_KEY',
       token: 'token',
+      handoffJsonPath: null,
+      packageUrl: null,
+      manifestUrl: null,
     })
   })
 
@@ -47,6 +50,52 @@ describe('syncRenderRuntimeEnv', () => {
     ])
     expect(renderRenderRuntimeEnvSyncResult(result)).toContain(
       'PARKKING_SYNC_CORS_ORIGINS=https://parkking.onrender.com',
+    )
+    expect(renderRenderRuntimeEnvSyncResult(result)).toContain('- Env source: runtime')
+  })
+
+  it('plans release package and runtime env updates from handoff JSON', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'render-env-sync-handoff-'))
+    const handoffPath = path.join(base, 'handoff.json')
+    await fs.writeFile(
+      handoffPath,
+      `${JSON.stringify(
+        {
+          packageUrl: 'https://example.test/park-king-data_release-a.zip',
+          manifestUrl: 'https://example.test/release_manifest_release-a.json',
+        },
+        null,
+        2,
+      )}\n`,
+      'utf-8',
+    )
+    const calls: string[] = []
+    const result = await syncRenderRuntimeEnv(
+      parseRenderRuntimeEnvSyncArgs(
+        ['--service-id', 'srv-test', '--handoff-json', handoffPath],
+        env,
+      ),
+      (async (input) => {
+        calls.push(String(input))
+        return new Response('{}', { status: 200 })
+      }) as typeof fetch,
+    )
+
+    expect(result.pass).toBe(true)
+    expect(result.envSource).toBe('handoff')
+    expect(result.releasePackageUrl).toBe(
+      'https://example.test/park-king-data_release-a.zip',
+    )
+    expect(calls).toEqual([])
+    expect(result.updates.map((update) => update.key)).toEqual([
+      'PARKKING_RELEASE_PACKAGE_URL',
+      'PARKKING_RELEASE_MANIFEST_URL',
+      'PARKKING_SYNC_CORS_ORIGINS',
+      'PARKKING_GEOCODER_REQUEST_TIMEOUT_MS',
+      'PARKKING_ROUTING_REQUEST_TIMEOUT_MS',
+    ])
+    expect(renderRenderRuntimeEnvSyncResult(result)).toContain(
+      'PARKKING_RELEASE_PACKAGE_URL=https://example.test/park-king-data_release-a.zip',
     )
   })
 
