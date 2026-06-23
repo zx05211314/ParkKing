@@ -265,6 +265,9 @@ describe('release workflow contracts', () => {
     expect(packageJson.scripts?.['ops:production-rollout-status']).toBe(
       'tsx scripts/ops/productionRolloutStatus.ts',
     )
+    expect(packageJson.scripts?.['ops:render-dashboard-env-packet']).toBe(
+      'tsx scripts/ops/renderDashboardEnvPacket.ts',
+    )
     expect(packageJson.scripts?.['ops:release-data-publish-handoff']).toBe(
       'tsx scripts/ops/publishReleaseDataFromHandoff.ts',
     )

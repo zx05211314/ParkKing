@@ -50,6 +50,8 @@
     "scripts/ops/releaseWorkflowContract.test.ts",
     "scripts/ops/renderBlueprintContract.ts",
     "scripts/ops/renderBlueprintContract.test.ts",
+    "scripts/ops/renderDashboardEnvPacket.ts",
+    "scripts/ops/renderDashboardEnvPacket.test.ts",
     "scripts/ops/renderDeploymentHandoff.ts",
     "scripts/ops/renderDeploymentHandoff.test.ts",
     "scripts/ops/renderDeploymentVerify.ts",
