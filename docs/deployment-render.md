@@ -326,6 +326,20 @@ npm run ops:render-runtime-env-sync -- --service-id "<Render service ID>" --exec
 npm run ops:render-runtime-env-sync -- --service-id "<Render service ID>" --handoff-json .tmp/render-deployment-handoff.json --execute --deploy
 ```
 
+If no Render API key or service ID is available, generate the same values as a
+dashboard-ready packet:
+
+```powershell
+npm run ops:render-dashboard-env-packet -- --app-url https://<service>.onrender.com
+npm run ops:render-dashboard-env-packet -- --app-url https://<service>.onrender.com --manifest-url <PARKKING_RELEASE_MANIFEST_URL> --package-url <PARKKING_RELEASE_PACKAGE_URL>
+```
+
+The packet writes `.tmp/render-dashboard-env-packet.md` and
+`.tmp/render-dashboard-env-packet.json` with exact key/value rows, a PowerShell
+export preview, a manual deploy checklist, and the follow-up live verification
+commands. It defaults to `.tmp/production-rollout-handoff.json` when present,
+then `.tmp/render-deployment-handoff.json`.
+
 The sync command updates `PARKKING_SYNC_CORS_ORIGINS`,
 `PARKKING_GEOCODER_REQUEST_TIMEOUT_MS`, and
 `PARKKING_ROUTING_REQUEST_TIMEOUT_MS` directly on the service, then triggers a
