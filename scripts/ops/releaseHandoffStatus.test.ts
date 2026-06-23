@@ -198,6 +198,13 @@ describe('releaseHandoffStatus', () => {
     expect(result.commands.renderLiveVerifyDryRun).toContain(
       '--app-url https://parkking.onrender.com',
     )
+    expect(result.commands.renderEnvSyncServiceIdDryRun).toContain(
+      'npm run ops:render-runtime-env-sync -- --service-id <render-service-id> --handoff-json',
+    )
+    expect(result.commands.renderEnvSyncServiceIdApply).toContain(
+      '--service-id <render-service-id>',
+    )
+    expect(result.commands.renderEnvSyncServiceIdApply).toContain('--execute --deploy')
     expect(result.commands.renderEnvSyncDryRun).toContain(
       'npm run ops:render-runtime-env-sync -- --service-name parkking --handoff-json',
     )
@@ -205,7 +212,13 @@ describe('releaseHandoffStatus', () => {
     expect(result.commands.renderEnvSyncDispatchDryRun).toContain(
       'ops:render-runtime-env-sync-dispatch',
     )
-    expect(result.nextActions[0]).toContain('Preview Render env sync from handoff')
+    expect(result.nextActions[0]).toContain(
+      'Preview Render env sync from handoff with a known service ID',
+    )
+    expect(result.nextActions[0]).toContain('--service-id <render-service-id>')
+    expect(result.nextActions.join('\n')).toContain(
+      'use service-name resolution when RENDER_API_KEY is available',
+    )
     expect(result.nextActions.join('\n')).toContain(
       'Dispatch Render live verify with token',
     )
@@ -214,6 +227,9 @@ describe('releaseHandoffStatus', () => {
     )
     expect(renderReleaseHandoffStatus(result)).toContain(
       '- Render env sync dry-run: npm run ops:render-runtime-env-sync',
+    )
+    expect(renderReleaseHandoffStatus(result)).toContain(
+      '- Render env sync service-id dry-run: npm run ops:render-runtime-env-sync -- --service-id <render-service-id>',
     )
     expect(renderReleaseHandoffStatus(result)).toContain(
       '- Published manifest parity: yes',
