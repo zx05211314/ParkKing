@@ -41,6 +41,8 @@
     "scripts/ops/p1ReleaseReadiness.test.ts",
     "scripts/ops/p3ReleaseReadiness.ts",
     "scripts/ops/p3ReleaseReadiness.test.ts",
+    "scripts/ops/productionRolloutStatus.ts",
+    "scripts/ops/productionRolloutStatus.test.ts",
     "scripts/ops/releaseDataWorkflow.ts",
     "scripts/ops/releaseDataWorkflow.test.ts",
     "scripts/ops/releaseWorkflowContract.test.ts",

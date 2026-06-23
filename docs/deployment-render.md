@@ -184,6 +184,21 @@ commands, Render environment variables, Render env sync
 service-id/service-name/workflow commands, and final verification commands. It
 does not publish assets or call Render.
 
+For a single operator-facing rollout decision report, run:
+
+```powershell
+npm run ops:production-rollout-status -- --ref main --app-url https://<service>.onrender.com
+npm run ops:production-rollout-status -- --ref main --app-url https://<service>.onrender.com --check-live
+```
+
+The first command reports release/handoff readiness, local credential
+availability, Render env sync commands, and the next action without touching the
+live service. `--check-live` also runs Render deployment verification and changes
+the state from `READY_FOR_LIVE_VERIFY` to either `LIVE_VERIFIED` or
+`NEEDS_RENDER_ENV_SYNC`. Add `--require-live-pass` only in gates that should
+fail unless production already matches the release package and runtime hardening
+checks.
+
 The deploy readiness gate installs the latest `dist/releases` zip/manifest pair into
 `.tmp/deploy-readiness/public/data/generated`, checks that built static data in
 `dist/data/generated` has the same reviewed district hashes, runs reviewed pack
