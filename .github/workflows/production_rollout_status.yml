@@ -45,9 +45,12 @@ jobs:
         run: npm ci
       - name: Build production rollout status
         run: npm run ops:production-rollout-status -- --ref "${{ github.ref_name }}" --app-url "${{ inputs.appUrl }}" --manifest-url "${{ inputs.manifestUrl }}" --package-url "${{ inputs.packageUrl }}" ${{ inputs.checkLive && '--check-live' || '' }} ${{ inputs.requireLivePass && '--require-live-pass' || '' }} ${{ inputs.skipReleaseLookup && '--skip-release-lookup' || '' }} --out .tmp/production-rollout-status.md --json-out .tmp/production-rollout-status.json
+      - name: Build Render dashboard env packet
+        if: always()
+        run: npm run ops:render-dashboard-env-packet -- --app-url "${{ inputs.appUrl }}" --handoff-json .tmp/production-rollout-handoff.json --out .tmp/render-dashboard-env-packet.md --json-out .tmp/render-dashboard-env-packet.json
       - name: Summarize rollout status
         if: always()
-        run: npm run ops:append-workflow-summary -- --append-file .tmp/production-rollout-status.md
+        run: npm run ops:append-workflow-summary -- --append-file .tmp/production-rollout-status.md --append-file .tmp/render-dashboard-env-packet.md
       - name: Upload rollout status artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -57,4 +60,6 @@ jobs:
             .tmp/production-rollout-status.md
             .tmp/production-rollout-status.json
             .tmp/production-rollout-handoff.json
+            .tmp/render-dashboard-env-packet.md
+            .tmp/render-dashboard-env-packet.json
           if-no-files-found: warn
