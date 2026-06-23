@@ -85,6 +85,18 @@ const validateHttpUrl = (value: string, label: string) => {
   }
 }
 
+const isPlaceholderReleaseUrl = (value: string | null) =>
+  value !== null && /(^|\/)owner\/repo(\/|$)/.test(value)
+
+const placeholderReleaseUrlErrors = (urls: HandoffReleaseUrls) => [
+  ...(isPlaceholderReleaseUrl(urls.packageUrl)
+    ? ['PARKKING_RELEASE_PACKAGE_URL still contains placeholder owner/repo']
+    : []),
+  ...(isPlaceholderReleaseUrl(urls.manifestUrl)
+    ? ['PARKKING_RELEASE_MANIFEST_URL still contains placeholder owner/repo']
+    : []),
+]
+
 const originFromAppUrl = (appUrl: string | null) => {
   if (!appUrl) {
     return null
@@ -121,12 +133,22 @@ export const parseRenderDashboardEnvPacketArgs = (
 })
 
 const resolveDefaultHandoffPath = async () => {
+  let fallback: string | null = null
   for (const candidate of DEFAULT_HANDOFF_CANDIDATES) {
-    if (await fileExists(candidate)) {
+    if (!(await fileExists(candidate))) {
+      continue
+    }
+    fallback = fallback ?? candidate
+    try {
+      const urls = await readHandoffReleaseUrls(candidate)
+      if (placeholderReleaseUrlErrors(urls).length === 0) {
+        return candidate
+      }
+    } catch {
       return candidate
     }
   }
-  return null
+  return fallback
 }
 
 const readHandoffReleaseUrls = async (
@@ -171,6 +193,7 @@ const resolveReleaseUrls = async (
   if (handoffJsonPath) {
     try {
       const handoff = await readHandoffReleaseUrls(handoffJsonPath)
+      errors.push(...placeholderReleaseUrlErrors(handoff))
       usedHandoff = Boolean(
         (!packageUrl && handoff.packageUrl) || (!manifestUrl && handoff.manifestUrl),
       )
@@ -201,6 +224,12 @@ const resolveReleaseUrls = async (
   if (manifestUrl) {
     validateHttpUrl(manifestUrl, '--manifest-url')
   }
+  errors.push(
+    ...placeholderReleaseUrlErrors({
+      packageUrl: packageUrl ?? null,
+      manifestUrl: manifestUrl ?? null,
+    }),
+  )
 
   const envSource: RenderDashboardEnvPacketResult['envSource'] =
     hasReleaseUrlInputs ? 'urls' : usedHandoff ? 'handoff' : 'runtime'
