@@ -105,6 +105,8 @@ describe('productionRolloutStatus', () => {
         'main',
         '--app-url',
         'https://parkking.onrender.com',
+        '--manifest-url',
+        'https://github.com/owner/repo/releases/download/data-20260531_abc1234/release_manifest_20260531_abc1234.json',
         '--check-live',
         '--require-live-pass',
       ]),
@@ -113,6 +115,8 @@ describe('productionRolloutStatus', () => {
       readinessJsonPath: '.tmp/release-handoff-readiness.json',
       ref: 'main',
       appUrl: 'https://parkking.onrender.com',
+      manifestUrl:
+        'https://github.com/owner/repo/releases/download/data-20260531_abc1234/release_manifest_20260531_abc1234.json',
       checkLive: true,
       requireLivePass: true,
       outPath: '.tmp/production-rollout-status.md',
@@ -140,6 +144,36 @@ describe('productionRolloutStatus', () => {
     expect(rendered).toContain('# Production Rollout Status: READY_FOR_LIVE_VERIFY')
     expect(rendered).toContain('Rollout status with live check')
     expect(rendered).toContain('--check-live')
+  })
+
+  it('can synthesize rollout handoff from a published manifest URL', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'production-rollout-manifest-'))
+    const fixture = await writeRolloutFixture(base)
+    const manifestUrl =
+      `https://github.com/owner/repo/releases/download/${fixture.tag}/release_manifest_${fixture.releaseId}.json`
+
+    const result = await buildProductionRolloutStatus(
+      {
+        readinessJsonPath: fixture.readinessJsonPath,
+        ref: 'main',
+        targetSha: 'abc1234ffff',
+        appUrl: 'https://parkking.onrender.com',
+        manifestUrl,
+      },
+      publishedReleaseFetch(),
+      noCredentialsEnvironment,
+    )
+
+    expect(result.state).toBe('ready_for_live_verify')
+    expect(result.releaseRequest.status.release.packageUrl).toBe(
+      `https://github.com/owner/repo/releases/download/${fixture.tag}/park-king-data_${fixture.releaseId}.zip`,
+    )
+    expect(result.commands.renderEnvSyncServiceIdDryRun).toContain(
+      '--handoff-json .tmp/production-rollout-handoff.json',
+    )
+    await expect(
+      fs.readFile(path.resolve('.tmp/production-rollout-handoff.json'), 'utf-8'),
+    ).resolves.toContain(fixture.releaseId)
   })
 
   it('reports live verify failure when live check lacks an app URL', async () => {

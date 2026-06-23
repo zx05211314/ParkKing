@@ -139,6 +139,37 @@ describe('release workflow contracts', () => {
     expect(workflow).toContain('.tmp/render-runtime-env-sync.json')
   })
 
+  it('keeps Production Rollout Status wired to release manifest inputs and artifacts', async () => {
+    const workflow = await readWorkflow('production_rollout_status.yml')
+
+    expectWorkflowInputs(workflow, [
+      'appUrl',
+      'manifestUrl',
+      'packageUrl',
+      'checkLive',
+      'requireLivePass',
+      'skipReleaseLookup',
+    ])
+    expect(workflow).toContain('npm run ops:production-rollout-status')
+    expect(workflow).toContain('--app-url "${{ inputs.appUrl }}"')
+    expect(workflow).toContain('--manifest-url "${{ inputs.manifestUrl }}"')
+    expect(workflow).toContain('--package-url "${{ inputs.packageUrl }}"')
+    expect(workflow).toContain("${{ inputs.checkLive && '--check-live' || '' }}")
+    expect(workflow).toContain(
+      "${{ inputs.requireLivePass && '--require-live-pass' || '' }}",
+    )
+    expect(workflow).toContain(
+      "${{ inputs.skipReleaseLookup && '--skip-release-lookup' || '' }}",
+    )
+    expect(workflow).toMatch(
+      /- name: Summarize rollout status\s+if: always\(\)\s+run: npm run ops:append-workflow-summary -- --append-file \.tmp\/production-rollout-status\.md/,
+    )
+    expect(workflow).toContain('name: production-rollout-status')
+    expect(workflow).toContain('.tmp/production-rollout-status.md')
+    expect(workflow).toContain('.tmp/production-rollout-status.json')
+    expect(workflow).toContain('.tmp/production-rollout-handoff.json')
+  })
+
   it('keeps Release Data Package dispatch helper aligned with workflow inputs', async () => {
     const [workflow, packageJson] = await Promise.all([
       readWorkflow('release_data.yml'),

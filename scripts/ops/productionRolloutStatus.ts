@@ -34,6 +34,8 @@ export type ProductionRolloutState =
 
 export interface ProductionRolloutStatusOptions {
   handoffJsonPath?: string | null
+  packageUrl?: string | null
+  manifestUrl?: string | null
   readinessJsonPath?: string | null
   repository?: string | null
   ref?: string | null
@@ -106,6 +108,11 @@ export const parseProductionRolloutStatusArgs = (
 ): ProductionRolloutStatusOptions => ({
   handoffJsonPath:
     getArgValue(argv, '--handoff-json', '--handoffJson') ?? DEFAULT_HANDOFF_JSON,
+  packageUrl: getArgValue(argv, '--package-url', '--packageUrl'),
+  manifestUrl:
+    getArgValue(argv, '--manifest-url', '--manifestUrl') ??
+    process.env.PARKKING_RELEASE_MANIFEST_URL ??
+    null,
   readinessJsonPath:
     getArgValue(argv, '--readiness-json', '--readinessJson') ??
     DEFAULT_READINESS_JSON,
@@ -130,6 +137,134 @@ export const parseProductionRolloutStatusArgs = (
 
 const quoteCommandValue = (value: string) =>
   /\s/.test(value) ? `"${value.replaceAll('"', '\\"')}"` : value
+
+const toRecord = (value: unknown): Record<string, unknown> | null =>
+  value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
+
+const getString = (record: Record<string, unknown> | null, key: string) =>
+  typeof record?.[key] === 'string' ? record[key] : null
+
+const parseManifestDatasets = (manifest: Record<string, unknown>) => {
+  const districts = manifest.districts
+  if (!Array.isArray(districts)) {
+    return []
+  }
+  return districts.flatMap((entry) => {
+    const record = toRecord(entry)
+    const districtId = getString(record, 'districtId')
+    const datasetHash = getString(record, 'datasetHash')
+    return districtId && datasetHash ? [{ districtId, datasetHash }] : []
+  })
+}
+
+const githubReleaseFromManifestUrl = (manifestUrl: string) => {
+  try {
+    const url = new URL(manifestUrl)
+    const match = /^\/([^/]+)\/([^/]+)\/releases\/download\/([^/]+)\//.exec(
+      url.pathname,
+    )
+    return match
+      ? {
+          repository: `${match[1]}/${match[2]}`,
+          tag: decodeURIComponent(match[3] ?? ''),
+        }
+      : null
+  } catch {
+    return null
+  }
+}
+
+const inferPackageUrl = (manifestUrl: string, releaseId: string) => {
+  try {
+    const url = new URL(manifestUrl)
+    const replaced = url.pathname.replace(
+      /\/release_manifest_[^/]+\.json$/,
+      `/park-king-data_${releaseId}.zip`,
+    )
+    if (replaced === url.pathname) {
+      return null
+    }
+    url.pathname = replaced
+    return url.toString()
+  } catch {
+    return null
+  }
+}
+
+const writeSynthesizedHandoffFromManifest = async (params: {
+  manifestUrl: string
+  packageUrl: string | null | undefined
+  repository: string | null | undefined
+  timeoutMs: number
+  fetchImpl: FetchImpl
+}) => {
+  const response = await params.fetchImpl(params.manifestUrl, {
+    signal: AbortSignal.timeout(params.timeoutMs),
+  })
+  if (!response.ok) {
+    throw new Error(
+      `Could not fetch release manifest ${params.manifestUrl}: HTTP ${response.status}`,
+    )
+  }
+  const manifest = toRecord(await response.json())
+  if (!manifest) {
+    throw new Error(`Release manifest ${params.manifestUrl} is not an object`)
+  }
+  const releaseId = getString(manifest, 'releaseId')
+  if (!releaseId) {
+    throw new Error(`Release manifest ${params.manifestUrl} is missing releaseId`)
+  }
+  const release = githubReleaseFromManifestUrl(params.manifestUrl)
+  const packageUrl = params.packageUrl || inferPackageUrl(params.manifestUrl, releaseId)
+  if (!packageUrl) {
+    throw new Error(
+      'Could not infer package URL from manifest URL. Pass --package-url.',
+    )
+  }
+  const expectedDatasets = parseManifestDatasets(manifest)
+  if (expectedDatasets.length === 0) {
+    throw new Error(`Release manifest ${params.manifestUrl} has no district hashes`)
+  }
+  const handoffJsonPath = '.tmp/production-rollout-handoff.json'
+  await fs.mkdir(path.dirname(path.resolve(handoffJsonPath)), { recursive: true })
+  await fs.writeFile(
+    handoffJsonPath,
+    `${JSON.stringify(
+      {
+        ready: true,
+        repository: params.repository ?? release?.repository,
+        release: {
+          releaseId,
+          tag: release?.tag ?? `data-${releaseId}`,
+        },
+        packageUrl,
+        manifestUrl: params.manifestUrl,
+        expectedDatasets,
+        releaseAssetPaths: [],
+      },
+      null,
+      2,
+    )}\n`,
+    'utf-8',
+  )
+  return handoffJsonPath
+}
+
+const resolveHandoffJsonPath = async (
+  options: ProductionRolloutStatusOptions,
+  fetchImpl: FetchImpl,
+) =>
+  options.manifestUrl
+    ? await writeSynthesizedHandoffFromManifest({
+        manifestUrl: options.manifestUrl,
+        packageUrl: options.packageUrl,
+        repository: options.repository,
+        timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        fetchImpl,
+      })
+    : options.handoffJsonPath ?? DEFAULT_HANDOFF_JSON
 
 const credentialSummary = (
   environment: ReleasePublishRequestEnvironment,
@@ -273,8 +408,9 @@ export const buildProductionRolloutStatus = async (
   fetchImpl: FetchImpl = fetch,
   environment: ReleasePublishRequestEnvironment = detectReleasePublishRequestEnvironment(),
 ): Promise<ProductionRolloutStatusResult> => {
+  const handoffJsonPath = await resolveHandoffJsonPath(options, fetchImpl)
   const requestOptions: ReleasePublishRequestOptions = {
-    handoffJsonPath: options.handoffJsonPath ?? DEFAULT_HANDOFF_JSON,
+    handoffJsonPath,
     readinessJsonPath: options.readinessJsonPath ?? DEFAULT_READINESS_JSON,
     repository: options.repository,
     ref: options.ref,
@@ -291,14 +427,14 @@ export const buildProductionRolloutStatus = async (
   const liveVerify = await runLiveVerify({
     ...options,
     appUrl: releaseRequest.status.appUrl,
-    handoffJsonPath: options.handoffJsonPath ?? DEFAULT_HANDOFF_JSON,
+    handoffJsonPath,
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
   })
   const credentials = credentialSummary(environment)
   const state = buildState(releaseRequest, liveVerify)
   const commands = buildCommands(releaseRequest, {
     ...options,
-    handoffJsonPath: options.handoffJsonPath ?? DEFAULT_HANDOFF_JSON,
+    handoffJsonPath,
   })
   const blockers = [
     ...releaseRequest.blockers,
@@ -428,6 +564,8 @@ const run = async () => {
         '',
         'Options:',
         '  --handoff-json <path>       Defaults to .tmp/render-deployment-handoff.json',
+        '  --manifest-url <url>        Published release manifest URL; writes a temporary handoff JSON for this run',
+        '  --package-url <url>         Release package URL when it cannot be inferred from --manifest-url',
         '  --readiness-json <path>     Defaults to .tmp/release-handoff-readiness.json',
         '  --repo <owner/name>         Overrides repository for release status lookup',
         '  --ref <branch>              Defaults to current status resolver',

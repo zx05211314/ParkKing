@@ -189,6 +189,7 @@ For a single operator-facing rollout decision report, run:
 ```powershell
 npm run ops:production-rollout-status -- --ref main --app-url https://<service>.onrender.com
 npm run ops:production-rollout-status -- --ref main --app-url https://<service>.onrender.com --check-live
+npm run ops:production-rollout-status -- --ref main --app-url https://<service>.onrender.com --manifest-url <PARKKING_RELEASE_MANIFEST_URL> --check-live
 ```
 
 The first command reports release/handoff readiness, local credential
@@ -197,7 +198,10 @@ live service. `--check-live` also runs Render deployment verification and change
 the state from `READY_FOR_LIVE_VERIFY` to either `LIVE_VERIFIED` or
 `NEEDS_RENDER_ENV_SYNC`. Add `--require-live-pass` only in gates that should
 fail unless production already matches the release package and runtime hardening
-checks.
+checks. In environments that do not have `.tmp/render-deployment-handoff.json`,
+pass `--manifest-url`; the package URL is inferred for standard release asset
+filenames, or can be supplied explicitly with `--package-url`. The same report
+is available as the manual GitHub Actions workflow `Production Rollout Status`.
 
 The deploy readiness gate installs the latest `dist/releases` zip/manifest pair into
 `.tmp/deploy-readiness/public/data/generated`, checks that built static data in

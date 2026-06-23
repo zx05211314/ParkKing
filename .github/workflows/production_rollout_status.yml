@@ -1,0 +1,60 @@
+name: Production Rollout Status
+
+on:
+  workflow_dispatch:
+    inputs:
+      appUrl:
+        description: Live Render service URL, for example https://parkking.onrender.com
+        required: true
+      manifestUrl:
+        description: Published release manifest URL
+        required: true
+      packageUrl:
+        description: Optional release package URL; inferred from manifestUrl when it uses the standard release asset name
+        required: false
+      checkLive:
+        description: Run live Render verification and classify LIVE_VERIFIED vs NEEDS_RENDER_ENV_SYNC
+        required: false
+        type: boolean
+        default: true
+      requireLivePass:
+        description: Fail the workflow unless live verification passes
+        required: false
+        type: boolean
+        default: false
+      skipReleaseLookup:
+        description: Skip GitHub Release lookup and manifest parity checks
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+      - name: Install
+        run: npm ci
+      - name: Build production rollout status
+        run: npm run ops:production-rollout-status -- --ref "${{ github.ref_name }}" --app-url "${{ inputs.appUrl }}" --manifest-url "${{ inputs.manifestUrl }}" --package-url "${{ inputs.packageUrl }}" ${{ inputs.checkLive && '--check-live' || '' }} ${{ inputs.requireLivePass && '--require-live-pass' || '' }} ${{ inputs.skipReleaseLookup && '--skip-release-lookup' || '' }} --out .tmp/production-rollout-status.md --json-out .tmp/production-rollout-status.json
+      - name: Summarize rollout status
+        if: always()
+        run: npm run ops:append-workflow-summary -- --append-file .tmp/production-rollout-status.md
+      - name: Upload rollout status artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-rollout-status
+          path: |
+            .tmp/production-rollout-status.md
+            .tmp/production-rollout-status.json
+            .tmp/production-rollout-handoff.json
+          if-no-files-found: warn
