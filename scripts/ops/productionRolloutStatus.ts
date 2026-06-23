@@ -72,6 +72,7 @@ export interface ProductionRolloutCommands {
   releaseRequest: string
   rolloutStatus: string
   rolloutStatusCheckLive: string
+  renderDashboardEnvPacket: string
   renderEnvSyncServiceIdDryRun: string
   renderEnvSyncServiceIdApply: string
   renderEnvSyncServiceNameDryRun: string
@@ -289,11 +290,13 @@ const buildCommands = (
   const handoffJsonPath = quoteCommandValue(options.handoffJsonPath ?? DEFAULT_HANDOFF_JSON)
   const appUrlArg = quoteCommandValue(appUrl)
   const rolloutBase = `npm run ops:production-rollout-status -- --ref ${quoteCommandValue(ref)} --app-url ${appUrlArg} --handoff-json ${handoffJsonPath}`
+  const dashboardPacket = `npm run ops:render-dashboard-env-packet -- --app-url ${appUrlArg} --handoff-json ${handoffJsonPath}`
   return {
     refreshHandoff: request.commands.refreshHandoff,
     releaseRequest: `npm run ops:release-publish-request -- --ref ${quoteCommandValue(ref)} --app-url ${appUrlArg}`,
     rolloutStatus: rolloutBase,
     rolloutStatusCheckLive: `${rolloutBase} --check-live`,
+    renderDashboardEnvPacket: dashboardPacket,
     renderEnvSyncServiceIdDryRun: request.commands.renderEnvSyncServiceIdDryRun,
     renderEnvSyncServiceIdApply: request.commands.renderEnvSyncServiceIdApply,
     renderEnvSyncServiceNameDryRun: request.commands.renderEnvSyncServiceNameDryRun,
@@ -396,7 +399,7 @@ const buildNextActions = (
       }`
     : credentials.canDispatchRenderSyncWorkflow
       ? `Dispatch Render env sync workflow after confirming repository RENDER_API_KEY secret exists: ${commands.renderEnvSyncDispatch}`
-      : 'Provide RENDER_API_KEY plus PARKKING_RENDER_SERVICE_ID/RENDER_SERVICE_ID, or update Render env vars through the dashboard.'
+      : `Generate the Render Dashboard env packet, then update Render env vars through the dashboard: ${commands.renderDashboardEnvPacket}`
   return [
     credentialAction,
     `After Render deploy completes, rerun live verification: ${commands.rolloutStatusCheckLive}`,
@@ -521,6 +524,7 @@ export const renderProductionRolloutStatus = (
     '',
     `- Rollout status: ${result.commands.rolloutStatus}`,
     `- Rollout status with live check: ${result.commands.rolloutStatusCheckLive}`,
+    `- Render dashboard env packet: ${result.commands.renderDashboardEnvPacket}`,
     `- Render env sync dry-run: ${result.commands.renderEnvSyncServiceIdDryRun}`,
     `- Render env sync apply: ${result.commands.renderEnvSyncServiceIdApply}`,
     `- Render env sync workflow dispatch: ${result.commands.renderEnvSyncDispatch}`,
