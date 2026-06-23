@@ -80,6 +80,10 @@ export interface ReleaseHandoffStatusCommands {
   releasePublishEnv: string[]
   releasePublish: string
   releasePublishFromHandoff: string
+  renderEnvSyncDryRun: string
+  renderEnvSyncApply: string
+  renderEnvSyncDispatchDryRun: string
+  renderEnvSyncDispatch: string
   renderLiveVerifyDryRun: string
   renderLiveVerify: string
 }
@@ -479,9 +483,11 @@ const buildCommands = (params: {
   releaseId: string
   tag: string
   manifestUrl: string
+  handoffJsonPath: string
   appUrl: string | null
 }): ReleaseHandoffStatusCommands => {
   const appUrl = params.appUrl ?? '<Render service URL>'
+  const handoffJsonPath = quoteCommandValue(params.handoffJsonPath)
   return {
     localHandoff: 'npm run ops:release-handoff-readiness',
     releaseDispatchDryRun: `npm run ops:release-data-dispatch -- --repo ${params.repository} --ref ${params.ref} --dry-run`,
@@ -496,6 +502,10 @@ const buildCommands = (params: {
     ],
     releasePublish: 'npm run ops:release-data-publish',
     releasePublishFromHandoff: `npm run ops:release-data-publish-handoff -- --ref ${params.ref}`,
+    renderEnvSyncDryRun: `npm run ops:render-runtime-env-sync -- --service-name parkking --handoff-json ${handoffJsonPath}`,
+    renderEnvSyncApply: `npm run ops:render-runtime-env-sync -- --service-name parkking --handoff-json ${handoffJsonPath} --execute --deploy`,
+    renderEnvSyncDispatchDryRun: `npm run ops:render-runtime-env-sync-dispatch -- --repo ${params.repository} --ref ${params.ref} --handoff-json ${handoffJsonPath} --dry-run`,
+    renderEnvSyncDispatch: `npm run ops:render-runtime-env-sync-dispatch -- --repo ${params.repository} --ref ${params.ref} --handoff-json ${handoffJsonPath} --execute`,
     renderLiveVerifyDryRun: `npm run ops:render-live-verify-dispatch -- --repo ${params.repository} --ref ${params.ref} --app-url ${quoteCommandValue(appUrl)} --manifest-url ${params.manifestUrl} --dry-run`,
     renderLiveVerify: `npm run ops:render-live-verify-dispatch -- --repo ${params.repository} --ref ${params.ref} --app-url ${quoteCommandValue(appUrl)} --manifest-url ${params.manifestUrl}`,
   }
@@ -568,6 +578,7 @@ export const buildReleaseHandoffStatus = async (
     releaseId,
     tag,
     manifestUrl,
+    handoffJsonPath: handoffPath,
     appUrl,
   })
   const blockers: string[] = []
@@ -670,6 +681,10 @@ export const buildReleaseHandoffStatus = async (
   const nextActions =
     readyForRenderLiveVerify
       ? [
+          `Preview Render env sync from handoff: ${commands.renderEnvSyncDryRun}`,
+          `Apply Render env sync and deploy: ${commands.renderEnvSyncApply}`,
+          `Or preview Render env sync workflow dispatch: ${commands.renderEnvSyncDispatchDryRun}`,
+          `Or dispatch Render env sync workflow with token: ${commands.renderEnvSyncDispatch}`,
           `Preview Render live verify: ${commands.renderLiveVerifyDryRun}`,
           `Dispatch Render live verify with token: ${commands.renderLiveVerify}`,
         ]
@@ -784,6 +799,10 @@ export const renderReleaseHandoffStatus = (
     ),
     `- Release publish: ${result.commands.releasePublish}`,
     `- Release publish from handoff: ${result.commands.releasePublishFromHandoff}`,
+    `- Render env sync dry-run: ${result.commands.renderEnvSyncDryRun}`,
+    `- Render env sync apply: ${result.commands.renderEnvSyncApply}`,
+    `- Render env sync dispatch dry-run: ${result.commands.renderEnvSyncDispatchDryRun}`,
+    `- Render env sync dispatch: ${result.commands.renderEnvSyncDispatch}`,
     `- Render live verify dry-run: ${result.commands.renderLiveVerifyDryRun}`,
     `- Render live verify: ${result.commands.renderLiveVerify}`,
     '',
