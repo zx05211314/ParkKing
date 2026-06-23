@@ -16,7 +16,8 @@ type FetchImpl = typeof fetch
 export type RenderDeployMode = 'build_and_deploy' | 'deploy_only'
 
 export interface RenderRuntimeEnvSyncOptions {
-  serviceId: string
+  serviceId: string | null
+  serviceName: string | null
   apiBaseUrl: string
   execute: boolean
   deploy: boolean
@@ -48,7 +49,8 @@ export interface RenderRuntimeDeployResult {
 
 export interface RenderRuntimeEnvSyncResult {
   pass: boolean
-  serviceId: string
+  serviceId: string | null
+  serviceName: string | null
   execute: boolean
   deploy: boolean
   tokenEnv: string
@@ -57,6 +59,11 @@ export interface RenderRuntimeEnvSyncResult {
   updates: RenderRuntimeEnvUpdateResult[]
   deployResult: RenderRuntimeDeployResult | null
   errors: string[]
+}
+
+interface RenderServiceSummary {
+  id: string
+  name: string
 }
 
 const getArgValue = (argv: string[], ...flags: string[]) => {
@@ -71,6 +78,14 @@ const getArgValue = (argv: string[], ...flags: string[]) => {
 
 const hasFlag = (argv: string[], ...flags: string[]) =>
   flags.some((flag) => argv.includes(flag))
+
+const toRecord = (value: unknown): Record<string, unknown> | null =>
+  value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
+
+const getString = (record: Record<string, unknown> | null, key: string) =>
+  typeof record?.[key] === 'string' ? record[key] : null
 
 const normalizeApiBaseUrl = (value: string | null | undefined) => {
   const raw = value?.trim() || DEFAULT_RENDER_API_URL
@@ -104,15 +119,21 @@ export const parseRenderRuntimeEnvSyncArgs = (
     getArgValue(argv, '--service-id', '--serviceId') ??
     env.PARKKING_RENDER_SERVICE_ID ??
     env.RENDER_SERVICE_ID ??
-    ''
-  if (!serviceId.trim()) {
+    null
+  const serviceName =
+    getArgValue(argv, '--service-name', '--serviceName') ??
+    env.PARKKING_RENDER_SERVICE_NAME ??
+    env.RENDER_SERVICE_NAME ??
+    null
+  if (!serviceId?.trim() && !serviceName?.trim()) {
     throw new Error(
-      'Missing Render service id. Pass --service-id or set PARKKING_RENDER_SERVICE_ID.',
+      'Missing Render service id or name. Pass --service-id, --service-name, PARKKING_RENDER_SERVICE_ID, or PARKKING_RENDER_SERVICE_NAME.',
     )
   }
   const tokenEnv = getArgValue(argv, '--token-env', '--tokenEnv') ?? DEFAULT_TOKEN_ENV
   return {
-    serviceId: serviceId.trim(),
+    serviceId: serviceId?.trim() || null,
+    serviceName: serviceName?.trim() || null,
     apiBaseUrl: normalizeApiBaseUrl(getArgValue(argv, '--api-url', '--apiUrl')),
     execute: hasFlag(argv, '--execute'),
     deploy: hasFlag(argv, '--deploy'),
@@ -126,11 +147,14 @@ export const parseRenderRuntimeEnvSyncArgs = (
 
 const buildEnvUpdateUrl = (options: RenderRuntimeEnvSyncOptions, key: string) =>
   `${options.apiBaseUrl}/services/${encodeURIComponent(
-    options.serviceId,
+    options.serviceId ?? '',
   )}/env-vars/${encodeURIComponent(key)}`
 
 const buildDeployUrl = (options: RenderRuntimeEnvSyncOptions) =>
-  `${options.apiBaseUrl}/services/${encodeURIComponent(options.serviceId)}/deploys`
+  `${options.apiBaseUrl}/services/${encodeURIComponent(options.serviceId ?? '')}/deploys`
+
+const buildListServicesUrl = (options: RenderRuntimeEnvSyncOptions) =>
+  `${options.apiBaseUrl}/services?limit=100`
 
 const renderApiHeaders = (token: string) => ({
   accept: 'application/json',
@@ -142,6 +166,70 @@ const renderApiHeaders = (token: string) => ({
 const readResponseError = async (response: Response) => {
   const text = await response.text().catch(() => '')
   return text.trim() || `HTTP ${response.status}`
+}
+
+const extractRenderServices = (payload: unknown): RenderServiceSummary[] => {
+  const entries = Array.isArray(payload) ? payload : []
+  return entries
+    .map((entry) => {
+      const record = toRecord(entry)
+      const service = toRecord(record?.service) ?? record
+      const id = getString(service, 'id')
+      const name = getString(service, 'name')
+      return id && name ? { id, name } : null
+    })
+    .filter((service): service is RenderServiceSummary => service !== null)
+}
+
+const resolveRenderServiceId = async (
+  options: RenderRuntimeEnvSyncOptions,
+  fetchImpl: FetchImpl,
+) => {
+  if (options.serviceId) {
+    return { serviceId: options.serviceId, errors: [] as string[] }
+  }
+  if (!options.serviceName) {
+    return {
+      serviceId: null,
+      errors: ['Missing Render service id or service name'],
+    }
+  }
+  if (!options.token) {
+    return {
+      serviceId: null,
+      errors: [`Missing ${options.tokenEnv} to resolve Render service name ${options.serviceName}`],
+    }
+  }
+
+  const response = await fetchImpl(buildListServicesUrl(options), {
+    method: 'GET',
+    headers: renderApiHeaders(options.token),
+  })
+  if (!response.ok) {
+    return {
+      serviceId: null,
+      errors: [`Could not list Render services: ${await readResponseError(response)}`],
+    }
+  }
+  const services = extractRenderServices(await response.json())
+  const matches = services.filter((service) => service.name === options.serviceName)
+  if (matches.length === 0) {
+    return {
+      serviceId: null,
+      errors: [`No Render service named ${options.serviceName} was found`],
+    }
+  }
+  if (matches.length > 1) {
+    return {
+      serviceId: null,
+      errors: [
+        `Multiple Render services named ${options.serviceName} were found: ${matches
+          .map((service) => service.id)
+          .join(', ')}`,
+      ],
+    }
+  }
+  return { serviceId: matches[0]?.id ?? null, errors: [] as string[] }
 }
 
 const updateEnvVar = async (
@@ -261,17 +349,27 @@ export const syncRenderRuntimeEnv = async (
   options: RenderRuntimeEnvSyncOptions,
   fetchImpl: FetchImpl = fetch,
 ): Promise<RenderRuntimeEnvSyncResult> => {
+  const resolved = await resolveRenderServiceId(options, fetchImpl)
+  const resolvedOptions = {
+    ...options,
+    serviceId: resolved.serviceId,
+  }
   const updates: RenderRuntimeEnvUpdateResult[] = []
-  for (const [key, value] of Object.entries(REQUIRED_RENDER_RUNTIME_ENV)) {
-    updates.push(await updateEnvVar(options, key, value, fetchImpl))
+  if (resolved.errors.length === 0) {
+    for (const [key, value] of Object.entries(REQUIRED_RENDER_RUNTIME_ENV)) {
+      updates.push(await updateEnvVar(resolvedOptions, key, value, fetchImpl))
+    }
   }
 
   const updateErrors = updates
     .filter((update) => !update.pass)
     .map((update) => `${update.key}: ${update.error ?? 'failed'}`)
   const deployResult =
-    updateErrors.length === 0 ? await triggerDeploy(options, fetchImpl) : null
+    resolved.errors.length === 0 && updateErrors.length === 0
+      ? await triggerDeploy(resolvedOptions, fetchImpl)
+      : null
   const errors = [
+    ...resolved.errors,
     ...updateErrors,
     ...(deployResult && !deployResult.pass
       ? [`deploy: ${deployResult.error ?? 'failed'}`]
@@ -280,7 +378,8 @@ export const syncRenderRuntimeEnv = async (
 
   return {
     pass: errors.length === 0,
-    serviceId: options.serviceId,
+    serviceId: resolved.serviceId,
+    serviceName: options.serviceName,
     execute: options.execute,
     deploy: options.deploy,
     tokenEnv: options.tokenEnv,
@@ -297,7 +396,8 @@ export const renderRenderRuntimeEnvSyncResult = (
 ) => [
   `# Render Runtime Env Sync: ${result.pass ? 'PASS' : 'FAIL'}`,
   '',
-  `- Service ID: ${result.serviceId}`,
+  `- Service ID: ${result.serviceId ?? '-'}`,
+  `- Service name: ${result.serviceName ?? '-'}`,
   `- Mode: ${result.execute ? 'execute' : 'dry-run'}`,
   `- Deploy after env sync: ${result.deploy}`,
   `- Token env: ${result.tokenEnv}`,
@@ -360,10 +460,11 @@ const run = async () => {
   if (hasFlag(argv, '--help')) {
     console.log(
       [
-        'Usage: tsx scripts/ops/syncRenderRuntimeEnv.ts --service-id <Render service id> [options]',
+        'Usage: tsx scripts/ops/syncRenderRuntimeEnv.ts (--service-id <id> | --service-name <name>) [options]',
         '',
         'Options:',
         '  --service-id <id>               Defaults to PARKKING_RENDER_SERVICE_ID or RENDER_SERVICE_ID',
+        '  --service-name <name>           Resolve service id from Render API; defaults to PARKKING_RENDER_SERVICE_NAME or RENDER_SERVICE_NAME',
         '  --api-url <url>                 Defaults to https://api.render.com/v1',
         '  --execute                       Actually update Render env vars; default is dry-run',
         '  --deploy                        Trigger a deploy after successful env updates',

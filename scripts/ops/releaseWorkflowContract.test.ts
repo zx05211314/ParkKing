@@ -110,10 +110,11 @@ describe('release workflow contracts', () => {
   it('keeps Render Runtime Env Sync wired to Render API credentials and artifacts', async () => {
     const workflow = await readWorkflow('render_runtime_env_sync.yml')
 
-    expectWorkflowInputs(workflow, ['serviceId', 'deploy', 'deployMode'])
+    expectWorkflowInputs(workflow, ['serviceId', 'serviceName', 'deploy', 'deployMode'])
     expect(workflow).toContain('RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}')
     expect(workflow).toContain('npm run ops:render-runtime-env-sync')
     expect(workflow).toContain('--service-id "${{ inputs.serviceId }}"')
+    expect(workflow).toContain('--service-name "${{ inputs.serviceName }}"')
     expect(workflow).toContain('--execute')
     expect(workflow).toContain("${{ inputs.deploy && '--deploy' || '' }}")
     expect(workflow).toContain('--deploy-mode "${{ inputs.deployMode }}"')

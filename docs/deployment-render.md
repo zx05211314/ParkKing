@@ -281,17 +281,18 @@ If you have a Render API key and service ID, you can apply those runtime env
 vars from the CLI instead of the dashboard:
 
 ```powershell
-npm run ops:render-runtime-env-sync -- --service-id <Render service ID>
 $env:RENDER_API_KEY="<Render API key>"
-npm run ops:render-runtime-env-sync -- --service-id <Render service ID> --execute --deploy
+npm run ops:render-runtime-env-sync -- --service-name parkking
+npm run ops:render-runtime-env-sync -- --service-name parkking --execute --deploy
 ```
 
 The sync command updates only `PARKKING_SYNC_CORS_ORIGINS`,
 `PARKKING_GEOCODER_REQUEST_TIMEOUT_MS`, and
 `PARKKING_ROUTING_REQUEST_TIMEOUT_MS` directly on the service, then triggers a
-Render deploy when `--deploy` is present. The same operation is available from
-GitHub Actions -> Render Runtime Env Sync when the repository has a
-`RENDER_API_KEY` secret.
+Render deploy when `--deploy` is present. Pass `--service-id <Render service ID>`
+when you already know the id. The same operation is available from GitHub
+Actions -> Render Runtime Env Sync when the repository has a `RENDER_API_KEY`
+secret.
 If you are
 verifying from the same machine that generated the handoff, the command can use
 `.tmp/render-deployment-handoff.json` instead of `--manifest-url`.
