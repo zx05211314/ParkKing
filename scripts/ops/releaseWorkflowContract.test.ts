@@ -113,6 +113,8 @@ describe('release workflow contracts', () => {
     expectWorkflowInputs(workflow, [
       'serviceId',
       'serviceName',
+      'packageUrl',
+      'manifestUrl',
       'execute',
       'deploy',
       'deployMode',
@@ -121,6 +123,8 @@ describe('release workflow contracts', () => {
     expect(workflow).toContain('npm run ops:render-runtime-env-sync')
     expect(workflow).toContain('--service-id "${{ inputs.serviceId }}"')
     expect(workflow).toContain('--service-name "${{ inputs.serviceName }}"')
+    expect(workflow).toContain('--package-url "${{ inputs.packageUrl }}"')
+    expect(workflow).toContain('--manifest-url "${{ inputs.manifestUrl }}"')
     expect(workflow).toContain("${{ inputs.execute && '--execute' || '' }}")
     expect(workflow).toContain("${{ inputs.deploy && '--deploy' || '' }}")
     expect(workflow).toContain('--deploy-mode "${{ inputs.deployMode }}"')
@@ -188,7 +192,15 @@ describe('release workflow contracts', () => {
     expect(packageJson.scripts?.['ops:render-runtime-env-sync-dispatch']).toBe(
       'tsx scripts/ops/dispatchRenderRuntimeEnvSyncWorkflow.ts',
     )
-    expectWorkflowInputs(workflow, ['serviceId', 'serviceName', 'deploy', 'deployMode'])
+    expectWorkflowInputs(workflow, [
+      'serviceId',
+      'serviceName',
+      'packageUrl',
+      'manifestUrl',
+      'execute',
+      'deploy',
+      'deployMode',
+    ])
   })
 
   it('keeps local release handoff runner available for sequential gating', async () => {

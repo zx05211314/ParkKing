@@ -1,3 +1,4 @@
+import * as fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import {
   buildWorkflowDispatchRequest,
@@ -25,6 +26,9 @@ export interface RenderRuntimeEnvSyncDispatchOptions {
   workflow: string
   serviceId: string
   serviceName: string
+  handoffJsonPath: string
+  packageUrl: string
+  manifestUrl: string
   execute: boolean
   deploy: boolean
   deployMode: RenderDeployMode
@@ -35,6 +39,8 @@ export interface RenderRuntimeEnvSyncDispatchOptions {
 type RenderRuntimeEnvSyncDispatchInputs = WorkflowDispatchInputs & {
   serviceId: string
   serviceName: string
+  packageUrl: string
+  manifestUrl: string
   execute: string
   deploy: string
   deployMode: string
@@ -56,6 +62,22 @@ const parseDeployMode = (value: string | null): RenderDeployMode => {
   throw new Error('--deploy-mode must be build_and_deploy or deploy_only')
 }
 
+const toRecord = (value: unknown): Record<string, unknown> | null =>
+  value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
+
+const getString = (record: Record<string, unknown> | null, key: string) =>
+  typeof record?.[key] === 'string' ? record[key] : null
+
+const readHandoffReleaseUrls = (handoffJsonPath: string) => {
+  const parsed = toRecord(JSON.parse(fs.readFileSync(handoffJsonPath, 'utf-8')) as unknown)
+  return {
+    packageUrl: getString(parsed, 'packageUrl') ?? '',
+    manifestUrl: getString(parsed, 'manifestUrl') ?? '',
+  }
+}
+
 export const resolveRenderRuntimeEnvSyncDispatchOptions = (
   argv: string[],
 ): RenderRuntimeEnvSyncDispatchOptions => {
@@ -73,6 +95,8 @@ export const resolveRenderRuntimeEnvSyncDispatchOptions = (
   if (!ref) {
     throw new Error('Missing --ref and unable to resolve current git branch')
   }
+  const handoffJsonPath = getArgValue(argv, '--handoff-json', '--handoffJson') ?? ''
+  const handoffUrls = handoffJsonPath ? readHandoffReleaseUrls(handoffJsonPath) : null
 
   return {
     repo,
@@ -88,6 +112,17 @@ export const resolveRenderRuntimeEnvSyncDispatchOptions = (
       process.env.PARKKING_RENDER_SERVICE_NAME ??
       process.env.RENDER_SERVICE_NAME ??
       DEFAULT_SERVICE_NAME,
+    handoffJsonPath,
+    packageUrl:
+      getArgValue(argv, '--package-url', '--packageUrl') ??
+      process.env.PARKKING_RELEASE_PACKAGE_URL ??
+      handoffUrls?.packageUrl ??
+      '',
+    manifestUrl:
+      getArgValue(argv, '--manifest-url', '--manifestUrl') ??
+      process.env.PARKKING_RELEASE_MANIFEST_URL ??
+      handoffUrls?.manifestUrl ??
+      '',
     execute: parseBooleanArg(argv, '--execute', false),
     deploy: parseBooleanArg(argv, '--deploy', true),
     deployMode: parseDeployMode(getArgValue(argv, '--deploy-mode', '--deployMode')),
@@ -101,6 +136,8 @@ const buildRenderRuntimeEnvSyncDispatchInputs = (
 ): RenderRuntimeEnvSyncDispatchInputs => ({
   serviceId: options.serviceId,
   serviceName: options.serviceName,
+  packageUrl: options.packageUrl,
+  manifestUrl: options.manifestUrl,
   execute: String(options.execute),
   deploy: String(options.deploy),
   deployMode: options.deployMode,
@@ -127,6 +164,9 @@ export const renderRenderRuntimeEnvSyncDispatchPlan = (
   `- Workflow: ${options.workflow}`,
   `- Service ID: ${options.serviceId || '-'}`,
   `- Service name: ${options.serviceName || '-'}`,
+  `- Handoff JSON: ${options.handoffJsonPath || '-'}`,
+  `- Release package URL: ${options.packageUrl || '-'}`,
+  `- Release manifest URL: ${options.manifestUrl || '-'}`,
   `- Execute Render API changes: ${options.execute}`,
   `- Deploy after env sync: ${options.deploy}`,
   `- Deploy mode: ${options.deployMode}`,
@@ -169,6 +209,9 @@ const run = async () => {
         '  --ref <branch>                      Defaults to GITHUB_REF_NAME or current git branch',
         '  --service-id <id>                   Optional Render service ID',
         '  --service-name <name>               Defaults to parkking',
+        '  --handoff-json <path>               Reads packageUrl and manifestUrl into workflow inputs',
+        '  --package-url <url>                 Optional release package URL workflow input',
+        '  --manifest-url <url>                Optional release manifest URL workflow input',
         '  --execute [true|false]              Workflow input; defaults to false',
         '  --deploy [true|false]               Workflow input; defaults to true',
         '  --deploy-mode <mode>                build_and_deploy or deploy_only; defaults to build_and_deploy',
