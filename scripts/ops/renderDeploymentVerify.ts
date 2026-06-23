@@ -541,7 +541,7 @@ const buildRuntimeRemediation = (params: {
     steps: [
       'Set the required Render environment variables listed in this report on the parkking service.',
       'If Render API credentials are available, run npm run ops:render-runtime-env-sync -- --service-name parkking --execute --deploy.',
-      'Alternatively, run GitHub Actions -> Render Runtime Env Sync after configuring the repository RENDER_API_KEY secret, or dispatch it with npm run ops:render-runtime-env-sync-dispatch -- --repo <owner/repo> --ref main.',
+      'Alternatively, run GitHub Actions -> Render Runtime Env Sync after configuring the repository RENDER_API_KEY secret, or dispatch it with npm run ops:render-runtime-env-sync-dispatch -- --repo <owner/repo> --ref main --execute.',
       'Redeploy the Render service after saving the environment changes.',
       'Rerun the verification command and require PASS before treating production as hardened.',
     ],

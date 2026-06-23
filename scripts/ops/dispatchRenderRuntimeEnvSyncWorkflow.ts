@@ -25,6 +25,7 @@ export interface RenderRuntimeEnvSyncDispatchOptions {
   workflow: string
   serviceId: string
   serviceName: string
+  execute: boolean
   deploy: boolean
   deployMode: RenderDeployMode
   dryRun: boolean
@@ -34,6 +35,7 @@ export interface RenderRuntimeEnvSyncDispatchOptions {
 type RenderRuntimeEnvSyncDispatchInputs = WorkflowDispatchInputs & {
   serviceId: string
   serviceName: string
+  execute: string
   deploy: string
   deployMode: string
 }
@@ -86,6 +88,7 @@ export const resolveRenderRuntimeEnvSyncDispatchOptions = (
       process.env.PARKKING_RENDER_SERVICE_NAME ??
       process.env.RENDER_SERVICE_NAME ??
       DEFAULT_SERVICE_NAME,
+    execute: parseBooleanArg(argv, '--execute', false),
     deploy: parseBooleanArg(argv, '--deploy', true),
     deployMode: parseDeployMode(getArgValue(argv, '--deploy-mode', '--deployMode')),
     dryRun: hasFlag(argv, '--dry-run'),
@@ -98,6 +101,7 @@ const buildRenderRuntimeEnvSyncDispatchInputs = (
 ): RenderRuntimeEnvSyncDispatchInputs => ({
   serviceId: options.serviceId,
   serviceName: options.serviceName,
+  execute: String(options.execute),
   deploy: String(options.deploy),
   deployMode: options.deployMode,
 })
@@ -123,6 +127,7 @@ export const renderRenderRuntimeEnvSyncDispatchPlan = (
   `- Workflow: ${options.workflow}`,
   `- Service ID: ${options.serviceId || '-'}`,
   `- Service name: ${options.serviceName || '-'}`,
+  `- Execute Render API changes: ${options.execute}`,
   `- Deploy after env sync: ${options.deploy}`,
   `- Deploy mode: ${options.deployMode}`,
   `- Endpoint: POST ${request.url}`,
@@ -164,6 +169,7 @@ const run = async () => {
         '  --ref <branch>                      Defaults to GITHUB_REF_NAME or current git branch',
         '  --service-id <id>                   Optional Render service ID',
         '  --service-name <name>               Defaults to parkking',
+        '  --execute [true|false]              Workflow input; defaults to false',
         '  --deploy [true|false]               Workflow input; defaults to true',
         '  --deploy-mode <mode>                build_and_deploy or deploy_only; defaults to build_and_deploy',
         '  --workflow <file>                   Defaults to render_runtime_env_sync.yml',
