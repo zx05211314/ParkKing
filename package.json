@@ -140,6 +140,7 @@
     "ops:render-runtime-env-sync": "tsx scripts/ops/syncRenderRuntimeEnv.ts",
     "ops:render-runtime-env-sync-dispatch": "tsx scripts/ops/dispatchRenderRuntimeEnvSyncWorkflow.ts",
     "ops:render-live-verify-dispatch": "tsx scripts/ops/dispatchRenderLiveVerifyWorkflow.ts",
+    "ops:production-rollout-status-dispatch": "tsx scripts/ops/dispatchProductionRolloutStatusWorkflow.ts",
     "ops:render-blueprint-check": "tsx scripts/ops/renderBlueprintContract.ts",
     "ops:validate-release-package:xinyi": "tsx scripts/ops/validateReleasePackage.ts --district xinyi",
     "ops:validate-release-package:reviewed": "tsx scripts/ops/validateReleasePackage.ts --reviewed",

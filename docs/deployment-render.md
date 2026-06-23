@@ -201,7 +201,14 @@ fail unless production already matches the release package and runtime hardening
 checks. In environments that do not have `.tmp/render-deployment-handoff.json`,
 pass `--manifest-url`; the package URL is inferred for standard release asset
 filenames, or can be supplied explicitly with `--package-url`. The same report
-is available as the manual GitHub Actions workflow `Production Rollout Status`.
+is available as the manual GitHub Actions workflow `Production Rollout Status`,
+or can be dispatched from a tokenized CLI:
+
+```powershell
+npm run ops:production-rollout-status-dispatch -- --repo <owner/repo> --ref main --app-url https://<service>.onrender.com --manifest-url <PARKKING_RELEASE_MANIFEST_URL> --dry-run
+$env:GH_TOKEN="<token with workflow dispatch access>"
+npm run ops:production-rollout-status-dispatch -- --repo <owner/repo> --ref main --app-url https://<service>.onrender.com --manifest-url <PARKKING_RELEASE_MANIFEST_URL>
+```
 
 The deploy readiness gate installs the latest `dist/releases` zip/manifest pair into
 `.tmp/deploy-readiness/public/data/generated`, checks that built static data in

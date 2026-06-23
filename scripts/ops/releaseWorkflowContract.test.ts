@@ -234,6 +234,25 @@ describe('release workflow contracts', () => {
     ])
   })
 
+  it('keeps Production Rollout Status dispatch helper aligned with workflow inputs', async () => {
+    const [workflow, packageJson] = await Promise.all([
+      readWorkflow('production_rollout_status.yml'),
+      readPackageJson(),
+    ])
+
+    expect(packageJson.scripts?.['ops:production-rollout-status-dispatch']).toBe(
+      'tsx scripts/ops/dispatchProductionRolloutStatusWorkflow.ts',
+    )
+    expectWorkflowInputs(workflow, [
+      'appUrl',
+      'manifestUrl',
+      'packageUrl',
+      'checkLive',
+      'requireLivePass',
+      'skipReleaseLookup',
+    ])
+  })
+
   it('keeps local release handoff runner available for sequential gating', async () => {
     const packageJson = await readPackageJson()
 
