@@ -80,6 +80,8 @@ export interface ReleaseHandoffStatusCommands {
   releasePublishEnv: string[]
   releasePublish: string
   releasePublishFromHandoff: string
+  renderEnvSyncServiceIdDryRun: string
+  renderEnvSyncServiceIdApply: string
   renderEnvSyncDryRun: string
   renderEnvSyncApply: string
   renderEnvSyncDispatchDryRun: string
@@ -488,6 +490,7 @@ const buildCommands = (params: {
 }): ReleaseHandoffStatusCommands => {
   const appUrl = params.appUrl ?? '<Render service URL>'
   const handoffJsonPath = quoteCommandValue(params.handoffJsonPath)
+  const serviceId = '<render-service-id>'
   return {
     localHandoff: 'npm run ops:release-handoff-readiness',
     releaseDispatchDryRun: `npm run ops:release-data-dispatch -- --repo ${params.repository} --ref ${params.ref} --dry-run`,
@@ -502,6 +505,8 @@ const buildCommands = (params: {
     ],
     releasePublish: 'npm run ops:release-data-publish',
     releasePublishFromHandoff: `npm run ops:release-data-publish-handoff -- --ref ${params.ref}`,
+    renderEnvSyncServiceIdDryRun: `npm run ops:render-runtime-env-sync -- --service-id ${serviceId} --handoff-json ${handoffJsonPath}`,
+    renderEnvSyncServiceIdApply: `npm run ops:render-runtime-env-sync -- --service-id ${serviceId} --handoff-json ${handoffJsonPath} --execute --deploy`,
     renderEnvSyncDryRun: `npm run ops:render-runtime-env-sync -- --service-name parkking --handoff-json ${handoffJsonPath}`,
     renderEnvSyncApply: `npm run ops:render-runtime-env-sync -- --service-name parkking --handoff-json ${handoffJsonPath} --execute --deploy`,
     renderEnvSyncDispatchDryRun: `npm run ops:render-runtime-env-sync-dispatch -- --repo ${params.repository} --ref ${params.ref} --handoff-json ${handoffJsonPath} --dry-run`,
@@ -681,8 +686,10 @@ export const buildReleaseHandoffStatus = async (
   const nextActions =
     readyForRenderLiveVerify
       ? [
-          `Preview Render env sync from handoff: ${commands.renderEnvSyncDryRun}`,
-          `Apply Render env sync and deploy: ${commands.renderEnvSyncApply}`,
+          `Preview Render env sync from handoff with a known service ID: ${commands.renderEnvSyncServiceIdDryRun}`,
+          `Apply Render env sync and deploy with a known service ID: ${commands.renderEnvSyncServiceIdApply}`,
+          `Or use service-name resolution when RENDER_API_KEY is available: ${commands.renderEnvSyncDryRun}`,
+          `Or apply via service-name resolution when RENDER_API_KEY is available: ${commands.renderEnvSyncApply}`,
           `Or preview Render env sync workflow dispatch: ${commands.renderEnvSyncDispatchDryRun}`,
           `Or dispatch Render env sync workflow with token: ${commands.renderEnvSyncDispatch}`,
           `Preview Render live verify: ${commands.renderLiveVerifyDryRun}`,
@@ -799,6 +806,8 @@ export const renderReleaseHandoffStatus = (
     ),
     `- Release publish: ${result.commands.releasePublish}`,
     `- Release publish from handoff: ${result.commands.releasePublishFromHandoff}`,
+    `- Render env sync service-id dry-run: ${result.commands.renderEnvSyncServiceIdDryRun}`,
+    `- Render env sync service-id apply: ${result.commands.renderEnvSyncServiceIdApply}`,
     `- Render env sync dry-run: ${result.commands.renderEnvSyncDryRun}`,
     `- Render env sync apply: ${result.commands.renderEnvSyncApply}`,
     `- Render env sync dispatch dry-run: ${result.commands.renderEnvSyncDispatchDryRun}`,

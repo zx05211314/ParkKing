@@ -379,6 +379,7 @@ describe('renderDeploymentVerify', () => {
       const rendered = renderRenderDeploymentVerify(result)
       expect(rendered).toContain('## Runtime Remediation')
       expect(rendered).toContain('npm run ops:render-runtime-env-sync')
+      expect(rendered).toContain('--service-id <render-service-id>')
       expect(rendered).toContain('--service-name parkking')
       expect(rendered).toContain('GitHub Actions -> Render Runtime Env Sync')
       expect(rendered).toContain('ops:render-runtime-env-sync-dispatch')

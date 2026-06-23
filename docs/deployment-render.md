@@ -283,15 +283,20 @@ fallback `public/data/generated`, a stale release package, or an old build.
 When sync CORS or proxy timeout checks fail, the generated markdown and JSON
 reports include a runtime remediation block with the exact Render env vars,
 redeploy steps, and follow-up verify command.
-If you have a Render API key and service ID, you can apply those runtime env
-vars from the CLI instead of the dashboard:
+If you know the Render service ID, you can preview the runtime and release env
+plan from the CLI without a Render token:
+
+```powershell
+npm run ops:render-runtime-env-sync -- --service-id <render-service-id>
+npm run ops:render-runtime-env-sync -- --service-id <render-service-id> --handoff-json .tmp/render-deployment-handoff.json
+```
+
+Set a Render API key only when you are ready to apply the env vars and deploy:
 
 ```powershell
 $env:RENDER_API_KEY="<Render API key>"
-npm run ops:render-runtime-env-sync -- --service-name parkking
-npm run ops:render-runtime-env-sync -- --service-name parkking --handoff-json .tmp/render-deployment-handoff.json
-npm run ops:render-runtime-env-sync -- --service-name parkking --execute --deploy
-npm run ops:render-runtime-env-sync -- --service-name parkking --handoff-json .tmp/render-deployment-handoff.json --execute --deploy
+npm run ops:render-runtime-env-sync -- --service-id <render-service-id> --execute --deploy
+npm run ops:render-runtime-env-sync -- --service-id <render-service-id> --handoff-json .tmp/render-deployment-handoff.json --execute --deploy
 ```
 
 The sync command updates `PARKKING_SYNC_CORS_ORIGINS`,
@@ -301,10 +306,11 @@ Render deploy when `--deploy` is present. Add `--handoff-json
 .tmp/render-deployment-handoff.json` to also sync
 `PARKKING_RELEASE_PACKAGE_URL` and `PARKKING_RELEASE_MANIFEST_URL` from the
 reviewed release handoff, or pass `--package-url` and `--manifest-url`
-explicitly. Pass `--service-id <Render service ID>` when you already know the
-id. The same operation is available from GitHub Actions -> Render Runtime Env
-Sync when the repository has a `RENDER_API_KEY` secret. The workflow is dry-run
-by default; set `execute=true` only when you are ready to change Render. To
+explicitly. Use `--service-name parkking` only when `RENDER_API_KEY` is set and
+you need the tool to resolve the service ID through the Render API. The same
+operation is available from GitHub Actions -> Render Runtime Env Sync when the
+repository has a `RENDER_API_KEY` secret. The workflow is dry-run by default;
+set `execute=true` only when you are ready to change Render. To
 dispatch that workflow from a tokenized CLI instead of the Actions UI:
 
 ```powershell
