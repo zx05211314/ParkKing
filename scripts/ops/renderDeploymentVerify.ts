@@ -547,7 +547,7 @@ const buildRuntimeRemediation = (params: {
     requiredRenderEnv: { ...REQUIRED_RENDER_RUNTIME_ENV },
     steps: [
       'Set the required Render environment variables listed in this report on the parkking service.',
-      'If you know the Render service ID, preview with npm run ops:render-runtime-env-sync -- --service-id <render-service-id>, then set RENDER_API_KEY and apply with npm run ops:render-runtime-env-sync -- --service-id <render-service-id> --execute --deploy. Add --handoff-json .tmp/render-deployment-handoff.json when release package URLs also need to be synced from the local handoff.',
+      'If you know the Render service ID, preview with npm run ops:render-runtime-env-sync -- --service-id "<Render service ID>", then set RENDER_API_KEY and apply with npm run ops:render-runtime-env-sync -- --service-id "<Render service ID>" --execute --deploy. Add --handoff-json .tmp/render-deployment-handoff.json when release package URLs also need to be synced from the local handoff.',
       'If only the Render service name is known, set RENDER_API_KEY and use npm run ops:render-runtime-env-sync -- --service-name parkking --execute --deploy so the service ID can be resolved through the Render API.',
       'Alternatively, run GitHub Actions -> Render Runtime Env Sync after configuring the repository RENDER_API_KEY secret, or dispatch it with npm run ops:render-runtime-env-sync-dispatch -- --repo <owner/repo> --ref main --execute.',
       'Redeploy the Render service after saving the environment changes.',
@@ -598,7 +598,7 @@ const buildReleasePackageRemediation = (params: {
     },
     steps: [
       'Set PARKKING_RELEASE_PACKAGE_URL and PARKKING_RELEASE_MANIFEST_URL on the Render service to the release package that produced this verification contract.',
-      'If this checkout has the handoff JSON and you know the Render service ID, preview with npm run ops:render-runtime-env-sync -- --service-id <render-service-id> --handoff-json .tmp/render-deployment-handoff.json, then set RENDER_API_KEY and apply with npm run ops:render-runtime-env-sync -- --service-id <render-service-id> --handoff-json .tmp/render-deployment-handoff.json --execute --deploy.',
+      'If this checkout has the handoff JSON and you know the Render service ID, preview with npm run ops:render-runtime-env-sync -- --service-id "<Render service ID>" --handoff-json .tmp/render-deployment-handoff.json, then set RENDER_API_KEY and apply with npm run ops:render-runtime-env-sync -- --service-id "<Render service ID>" --handoff-json .tmp/render-deployment-handoff.json --execute --deploy.',
       'If only the Render service name is known, set RENDER_API_KEY and use npm run ops:render-runtime-env-sync -- --service-name parkking --handoff-json .tmp/render-deployment-handoff.json --execute --deploy so the service ID can be resolved through the Render API.',
       'Redeploy with a full build; the build log must show npm run ops:install-release-package -- --require-manifest completing before npm run build.',
       'If those env vars are already set, trigger a fresh build/deploy instead of only restarting the service so dist/data/generated is rebuilt from the release package.',

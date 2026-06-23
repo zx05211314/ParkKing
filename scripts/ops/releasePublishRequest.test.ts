@@ -199,7 +199,7 @@ describe('releasePublishRequest', () => {
     expect(rendered).toContain('PARKKING_GEOCODER_REQUEST_TIMEOUT_MS=5000')
     expect(rendered).toContain('PARKKING_ROUTING_REQUEST_TIMEOUT_MS=8000')
     expect(rendered).toContain('## Render Env Sync')
-    expect(rendered).toContain('--service-id <render-service-id>')
+    expect(rendered).toContain('--service-id "<Render service ID>"')
     expect(rendered).toContain('--service-name parkking')
     expect(rendered).toContain('ops:render-runtime-env-sync-dispatch')
     expect(rendered).toContain(
@@ -244,7 +244,7 @@ describe('releasePublishRequest', () => {
       `--handoff-json ${fixture.handoffJsonPath}`,
     )
     expect(renderReleasePublishRequest(result)).toContain(
-      'npm run ops:render-runtime-env-sync -- --service-id <render-service-id>',
+      'npm run ops:render-runtime-env-sync -- --service-id "<Render service ID>"',
     )
   })
 

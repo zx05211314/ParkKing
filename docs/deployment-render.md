@@ -288,16 +288,16 @@ If you know the Render service ID, you can preview the runtime and release env
 plan from the CLI without a Render token:
 
 ```powershell
-npm run ops:render-runtime-env-sync -- --service-id <render-service-id>
-npm run ops:render-runtime-env-sync -- --service-id <render-service-id> --handoff-json .tmp/render-deployment-handoff.json
+npm run ops:render-runtime-env-sync -- --service-id "<Render service ID>"
+npm run ops:render-runtime-env-sync -- --service-id "<Render service ID>" --handoff-json .tmp/render-deployment-handoff.json
 ```
 
 Set a Render API key only when you are ready to apply the env vars and deploy:
 
 ```powershell
 $env:RENDER_API_KEY="<Render API key>"
-npm run ops:render-runtime-env-sync -- --service-id <render-service-id> --execute --deploy
-npm run ops:render-runtime-env-sync -- --service-id <render-service-id> --handoff-json .tmp/render-deployment-handoff.json --execute --deploy
+npm run ops:render-runtime-env-sync -- --service-id "<Render service ID>" --execute --deploy
+npm run ops:render-runtime-env-sync -- --service-id "<Render service ID>" --handoff-json .tmp/render-deployment-handoff.json --execute --deploy
 ```
 
 The sync command updates `PARKKING_SYNC_CORS_ORIGINS`,

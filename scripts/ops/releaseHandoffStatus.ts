@@ -490,7 +490,7 @@ const buildCommands = (params: {
 }): ReleaseHandoffStatusCommands => {
   const appUrl = params.appUrl ?? '<Render service URL>'
   const handoffJsonPath = quoteCommandValue(params.handoffJsonPath)
-  const serviceId = '<render-service-id>'
+  const serviceId = quoteCommandValue('<Render service ID>')
   return {
     localHandoff: 'npm run ops:release-handoff-readiness',
     releaseDispatchDryRun: `npm run ops:release-data-dispatch -- --repo ${params.repository} --ref ${params.ref} --dry-run`,
