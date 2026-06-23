@@ -54,6 +54,7 @@ export interface ReleasePublishRequestEnvironment {
   githubTokenPresent: boolean
   githubRepository: string | null
   ghCliAvailable: boolean
+  renderServiceIdPresent: boolean
   renderApiKeyPresent: boolean
   renderCliAvailable: boolean
 }
@@ -86,6 +87,12 @@ export interface ReleasePublishRequestCommands {
   urlSmokeEnv: string[]
   urlSmoke: string
   renderEnv: string[]
+  renderEnvSyncServiceIdDryRun: string
+  renderEnvSyncServiceIdApply: string
+  renderEnvSyncServiceNameDryRun: string
+  renderEnvSyncServiceNameApply: string
+  renderEnvSyncDispatchDryRun: string
+  renderEnvSyncDispatch: string
   renderLiveVerifyDryRun: string
   renderLiveVerify: string
   localRenderVerify: string
@@ -157,6 +164,9 @@ export const detectReleasePublishRequestEnvironment =
     githubTokenPresent: Boolean(process.env.GITHUB_TOKEN),
     githubRepository: process.env.GITHUB_REPOSITORY ?? null,
     ghCliAvailable: commandAvailable('gh'),
+    renderServiceIdPresent: Boolean(
+      process.env.PARKKING_RENDER_SERVICE_ID || process.env.RENDER_SERVICE_ID,
+    ),
     renderApiKeyPresent: Boolean(process.env.RENDER_API_KEY),
     renderCliAvailable: commandAvailable('render'),
   })
@@ -200,6 +210,12 @@ const buildCommands = (
         manifestUrl: status.release.manifestUrl,
       }),
     ),
+    renderEnvSyncServiceIdDryRun: status.commands.renderEnvSyncServiceIdDryRun,
+    renderEnvSyncServiceIdApply: status.commands.renderEnvSyncServiceIdApply,
+    renderEnvSyncServiceNameDryRun: status.commands.renderEnvSyncDryRun,
+    renderEnvSyncServiceNameApply: status.commands.renderEnvSyncApply,
+    renderEnvSyncDispatchDryRun: status.commands.renderEnvSyncDispatchDryRun,
+    renderEnvSyncDispatch: status.commands.renderEnvSyncDispatch,
     renderLiveVerifyDryRun: status.commands.renderLiveVerifyDryRun,
     renderLiveVerify: status.commands.renderLiveVerify,
     localRenderVerify: `npm run ops:render-deployment-verify -- --app-url ${quoteCommandValue(
@@ -302,6 +318,11 @@ const buildExternalRequirements = (
   requirements.push('Deploy the Render Blueprint after release assets are reachable.')
   if (!status.appUrl) {
     requirements.push('Provide the live Render service URL for final verification.')
+  }
+  if (!environment.renderServiceIdPresent) {
+    requirements.push(
+      'Provide PARKKING_RENDER_SERVICE_ID/RENDER_SERVICE_ID for service-id env sync commands, or use RENDER_API_KEY with service-name resolution.',
+    )
   }
   if (!environment.renderApiKeyPresent && !environment.renderCliAvailable) {
     requirements.push(
@@ -455,6 +476,9 @@ export const renderReleasePublishRequest = (
     `- GITHUB_TOKEN present: ${formatBool(result.environment.githubTokenPresent)}`,
     `- GITHUB_REPOSITORY: ${result.environment.githubRepository ?? '-'}`,
     `- gh CLI available: ${formatBool(result.environment.ghCliAvailable)}`,
+    `- PARKKING_RENDER_SERVICE_ID/RENDER_SERVICE_ID present: ${formatBool(
+      result.environment.renderServiceIdPresent,
+    )}`,
     `- RENDER_API_KEY present: ${formatBool(result.environment.renderApiKeyPresent)}`,
     `- Render CLI available: ${formatBool(result.environment.renderCliAvailable)}`,
     '',
@@ -491,6 +515,24 @@ export const renderReleasePublishRequest = (
     '```text',
     ...result.commands.renderEnv,
     '```',
+    '',
+    '## Render Env Sync',
+    '',
+    'Use the service-id dry-run first when the Render service ID is known; it does not require a Render token. Applying changes requires Render API credentials, and the workflow path requires the repository `RENDER_API_KEY` secret.',
+    '',
+    ...commandBlock([
+      '# Service ID path',
+      result.commands.renderEnvSyncServiceIdDryRun,
+      '$env:RENDER_API_KEY="<Render API key>"',
+      result.commands.renderEnvSyncServiceIdApply,
+      '# Service name path; requires RENDER_API_KEY even for dry-run',
+      result.commands.renderEnvSyncServiceNameDryRun,
+      result.commands.renderEnvSyncServiceNameApply,
+      '# GitHub Actions path',
+      '$env:GH_TOKEN="<token with workflow dispatch access>"',
+      result.commands.renderEnvSyncDispatchDryRun,
+      result.commands.renderEnvSyncDispatch,
+    ]),
     '',
     '## Render Verification',
     '',
