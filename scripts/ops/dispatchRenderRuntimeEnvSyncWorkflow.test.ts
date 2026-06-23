@@ -93,9 +93,20 @@ describe('dispatch render runtime env sync workflow', () => {
   })
 
   it('requires a repository', () => {
-    expect(() =>
-      resolveRenderRuntimeEnvSyncDispatchOptions(['--ref', 'main', '--dry-run']),
-    ).toThrow('Missing --repo')
+    const originalRepository = process.env.GITHUB_REPOSITORY
+    delete process.env.GITHUB_REPOSITORY
+
+    try {
+      expect(() =>
+        resolveRenderRuntimeEnvSyncDispatchOptions(['--ref', 'main', '--dry-run']),
+      ).toThrow('Missing --repo')
+    } finally {
+      if (originalRepository === undefined) {
+        delete process.env.GITHUB_REPOSITORY
+      } else {
+        process.env.GITHUB_REPOSITORY = originalRepository
+      }
+    }
   })
 
   it('dry-runs without a GitHub token or network call', async () => {
