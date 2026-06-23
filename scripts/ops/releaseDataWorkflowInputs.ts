@@ -51,7 +51,7 @@ export const resolveReleaseDataWorkflowInputs = (
       ? 'true'
       : normalizeBooleanText(env.PARKKING_INPUT_ALLOW_WARN),
     releaseAllowBaselineAdopt: isDataTagPush ? 'true' : 'false',
-    releaseAllowReviewedCaseHashMismatch: 'false',
+    releaseAllowReviewedCaseHashMismatch: isDataTagPush ? 'true' : 'false',
     releaseAllowAnswerCaseReviewFallback: isDataTagPush ? 'true' : 'false',
     releaseOverrideReason: isDataTagPush
       ? TAG_TRIGGER_ALLOW_WARN_OVERRIDE_REASON

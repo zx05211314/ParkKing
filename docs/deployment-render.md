@@ -46,10 +46,12 @@ runs the bundle budget, runs reviewed answer UI smokes in LIST and MAP modes,
 passes P3 release readiness and deploy readiness, then publishes the package and
 manifest assets.
 Tag-triggered releases set `allowWarn=true`, enable reviewed baseline adoption,
-and include an explicit reviewed-release override reason for the ingest publish
-gate, because the tag path has no manual workflow inputs. Hard data failures
-still block the release, and the later reviewed UI, P3, deploy-readiness,
-publish, and URL-smoke gates must still pass.
+allow reviewed answer-case hash drift after the workflow re-ingests production
+sources, and include an explicit reviewed-release override reason for the ingest
+publish gate, because the tag path has no manual workflow inputs. The reviewed
+cases still validate answer kind, evidence, confidence, and UI text; hard data
+failures still block the release, and the later reviewed UI, P3,
+deploy-readiness, publish, and URL-smoke gates must still pass.
 
 If you need to publish the latest local `dist/releases` assets without the
 Actions UI, `ops:release-data-publish` can use the GitHub REST API directly when
