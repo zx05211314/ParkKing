@@ -18,7 +18,7 @@ describe('releaseDataWorkflowInputs', () => {
       releaseConfigsGlob: 'configs/prod/*.json',
       releaseAllowWarn: 'true',
       releaseAllowBaselineAdopt: 'true',
-      releaseAllowReviewedCaseHashMismatch: 'false',
+      releaseAllowReviewedCaseHashMismatch: 'true',
       releaseAllowAnswerCaseReviewFallback: 'true',
       releaseOverrideReason:
         'Tag-triggered release uses reviewed UI, P3, deploy, and URL-smoke gates after production ingest.',
@@ -67,7 +67,7 @@ describe('releaseDataWorkflowInputs', () => {
       'PARKKING_ALLOW_BASELINE_ADOPT=true',
     )
     await expect(fs.readFile(envPath, 'utf-8')).resolves.toContain(
-      'PARKKING_ALLOW_REVIEWED_CASE_HASH_MISMATCH=false',
+      'PARKKING_ALLOW_REVIEWED_CASE_HASH_MISMATCH=true',
     )
     await expect(fs.readFile(envPath, 'utf-8')).resolves.toContain(
       'PARKKING_ALLOW_ANSWER_CASE_REVIEW_FALLBACK=true',
