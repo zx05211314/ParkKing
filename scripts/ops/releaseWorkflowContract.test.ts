@@ -161,13 +161,17 @@ describe('release workflow contracts', () => {
     expect(workflow).toContain(
       "${{ inputs.skipReleaseLookup && '--skip-release-lookup' || '' }}",
     )
+    expect(workflow).toContain('npm run ops:render-dashboard-env-packet')
+    expect(workflow).toContain('--handoff-json .tmp/production-rollout-handoff.json')
     expect(workflow).toMatch(
-      /- name: Summarize rollout status\s+if: always\(\)\s+run: npm run ops:append-workflow-summary -- --append-file \.tmp\/production-rollout-status\.md/,
+      /- name: Summarize rollout status\s+if: always\(\)\s+run: npm run ops:append-workflow-summary -- --append-file \.tmp\/production-rollout-status\.md --append-file \.tmp\/render-dashboard-env-packet\.md/,
     )
     expect(workflow).toContain('name: production-rollout-status')
     expect(workflow).toContain('.tmp/production-rollout-status.md')
     expect(workflow).toContain('.tmp/production-rollout-status.json')
     expect(workflow).toContain('.tmp/production-rollout-handoff.json')
+    expect(workflow).toContain('.tmp/render-dashboard-env-packet.md')
+    expect(workflow).toContain('.tmp/render-dashboard-env-packet.json')
   })
 
   it('keeps Release Data Package dispatch helper aligned with workflow inputs', async () => {

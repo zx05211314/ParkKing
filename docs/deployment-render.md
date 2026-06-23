@@ -338,7 +338,9 @@ The packet writes `.tmp/render-dashboard-env-packet.md` and
 `.tmp/render-dashboard-env-packet.json` with exact key/value rows, a PowerShell
 export preview, a manual deploy checklist, and the follow-up live verification
 commands. It defaults to `.tmp/production-rollout-handoff.json` when present,
-then `.tmp/render-deployment-handoff.json`.
+then `.tmp/render-deployment-handoff.json`. The manual `Production Rollout
+Status` GitHub Actions workflow builds and uploads the same dashboard packet
+artifact after generating `.tmp/production-rollout-handoff.json`.
 
 The sync command updates `PARKKING_SYNC_CORS_ORIGINS`,
 `PARKKING_GEOCODER_REQUEST_TIMEOUT_MS`, and
