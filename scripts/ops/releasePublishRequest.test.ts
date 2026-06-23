@@ -16,6 +16,7 @@ const noToolsEnvironment: ReleasePublishRequestEnvironment = {
   githubTokenPresent: false,
   githubRepository: null,
   ghCliAvailable: false,
+  renderServiceIdPresent: false,
   renderApiKeyPresent: false,
   renderCliAvailable: false,
 }
@@ -197,8 +198,18 @@ describe('releasePublishRequest', () => {
     )
     expect(rendered).toContain('PARKKING_GEOCODER_REQUEST_TIMEOUT_MS=5000')
     expect(rendered).toContain('PARKKING_ROUTING_REQUEST_TIMEOUT_MS=8000')
+    expect(rendered).toContain('## Render Env Sync')
+    expect(rendered).toContain('--service-id <render-service-id>')
+    expect(rendered).toContain('--service-name parkking')
+    expect(rendered).toContain('ops:render-runtime-env-sync-dispatch')
+    expect(rendered).toContain(
+      '- PARKKING_RENDER_SERVICE_ID/RENDER_SERVICE_ID present: no',
+    )
     expect(result.externalRequirements.join('\n')).toContain(
       'Set Render environment from the Render Environment block',
+    )
+    expect(result.externalRequirements.join('\n')).toContain(
+      'Provide PARKKING_RENDER_SERVICE_ID/RENDER_SERVICE_ID',
     )
   })
 
@@ -228,6 +239,9 @@ describe('releasePublishRequest', () => {
     )
     expect(renderReleasePublishRequest(result)).toContain(
       'npm run ops:render-deployment-verify -- --app-url https://parkking.onrender.com',
+    )
+    expect(renderReleasePublishRequest(result)).toContain(
+      'npm run ops:render-runtime-env-sync -- --service-id <render-service-id>',
     )
   })
 

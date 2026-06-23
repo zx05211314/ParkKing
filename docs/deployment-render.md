@@ -180,7 +180,8 @@ This writes `.tmp/release-publish-request.md` and
 `.tmp/release-publish-request.json` with the target SHA, exact local
 zip/manifest paths, asset byte counts and SHA-256 checksums, token/CLI
 availability, a manual GitHub UI release-publish checklist, exact publish
-commands, Render environment variables, and final verification commands. It
+commands, Render environment variables, Render env sync
+service-id/service-name/workflow commands, and final verification commands. It
 does not publish assets or call Render.
 
 The deploy readiness gate installs the latest `dist/releases` zip/manifest pair into
