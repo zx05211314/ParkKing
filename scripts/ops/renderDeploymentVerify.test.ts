@@ -197,6 +197,7 @@ describe('renderDeploymentVerify', () => {
 
       expect(result.pass).toBe(true)
       expect(result.apiServices).toMatchObject({ failed: 0 })
+      expect(result.releasePackageRemediation).toBeNull()
       expect(result.remediation).toBeNull()
       expect(result.syncCors).toMatchObject({ pass: true, status: 403 })
       expect(result.proxyRuntime).toEqual([
@@ -227,6 +228,8 @@ describe('renderDeploymentVerify', () => {
     const handoffPath = path.join(base, 'handoff.json')
     await writeJson(handoffPath, {
       ready: true,
+      packageUrl: 'https://example.test/park-king-data_release-a.zip',
+      manifestUrl: 'https://example.test/release_manifest_release-a.json',
       expectedDatasets: [
         {
           districtId: 'xinyi',
@@ -256,6 +259,26 @@ describe('renderDeploymentVerify', () => {
       expect(result.pass).toBe(false)
       expect(result.districts[0]?.errors.join('\n')).toContain(
         'does not match expected hash-expected',
+      )
+      expect(result.errors.join('\n')).toContain(
+        'parking-answer dataset hash mismatch',
+      )
+      expect(result.releasePackageRemediation?.requiredRenderEnv).toMatchObject({
+        PARKKING_RELEASE_PACKAGE_URL:
+          'https://example.test/park-king-data_release-a.zip',
+        PARKKING_RELEASE_MANIFEST_URL:
+          'https://example.test/release_manifest_release-a.json',
+        PARKKING_RELEASE_REQUIRE_MANIFEST: 'true',
+        PARKKING_RELEASE_PACKAGE_OUT_ROOT: 'public/data/generated',
+      })
+      const rendered = renderRenderDeploymentVerify(result)
+      expect(rendered).toContain('## Release Package Remediation')
+      expect(rendered).toContain('fallback public/data/generated')
+      expect(rendered).toContain(
+        'npm run ops:install-release-package -- --require-manifest',
+      )
+      expect(rendered).toContain(
+        'PARKKING_RELEASE_PACKAGE_URL=https://example.test/park-king-data_release-a.zip',
       )
     } finally {
       await server.close()
@@ -537,6 +560,7 @@ describe('renderDeploymentVerify', () => {
           },
         ],
         unexpectedDistricts: [],
+        releasePackageRemediation: null,
         remediation: null,
         errors: [],
       },
