@@ -198,8 +198,22 @@ describe('releaseHandoffStatus', () => {
     expect(result.commands.renderLiveVerifyDryRun).toContain(
       '--app-url https://parkking.onrender.com',
     )
+    expect(result.commands.renderEnvSyncDryRun).toContain(
+      'npm run ops:render-runtime-env-sync -- --service-name parkking --handoff-json',
+    )
+    expect(result.commands.renderEnvSyncApply).toContain('--execute --deploy')
+    expect(result.commands.renderEnvSyncDispatchDryRun).toContain(
+      'ops:render-runtime-env-sync-dispatch',
+    )
+    expect(result.nextActions[0]).toContain('Preview Render env sync from handoff')
+    expect(result.nextActions.join('\n')).toContain(
+      'Dispatch Render live verify with token',
+    )
     expect(renderReleaseHandoffStatus(result)).toContain(
       '# Release Handoff Status: READY FOR LIVE VERIFY',
+    )
+    expect(renderReleaseHandoffStatus(result)).toContain(
+      '- Render env sync dry-run: npm run ops:render-runtime-env-sync',
     )
     expect(renderReleaseHandoffStatus(result)).toContain(
       '- Published manifest parity: yes',
