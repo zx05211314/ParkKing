@@ -274,6 +274,12 @@ probes the live same-origin geocode, route, sync, and parking-answer
 health/ready endpoints, verifies geocoder/routing readiness exposes positive
 upstream request timeouts, runs a sync issue-report roundtrip, and verifies sync
 CORS rejects an untrusted browser origin instead of returning wildcard access.
+When live dataset hashes differ from the release contract, the generated
+markdown and JSON reports include a release-package remediation block with the
+exact Render `PARKKING_RELEASE_PACKAGE_URL` and
+`PARKKING_RELEASE_MANIFEST_URL` values, full build/redeploy steps, and the
+follow-up verification command. This is the signal that Render is likely serving
+fallback `public/data/generated`, a stale release package, or an old build.
 When sync CORS or proxy timeout checks fail, the generated markdown and JSON
 reports include a runtime remediation block with the exact Render env vars,
 redeploy steps, and follow-up verify command.

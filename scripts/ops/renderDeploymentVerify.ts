@@ -57,6 +57,7 @@ export interface RenderDeploymentVerifyResult {
   apiServices?: SmokeApiServicesSummary | null
   syncCors?: RenderDeploymentVerifySyncCorsResult | null
   proxyRuntime?: RenderDeploymentVerifyProxyRuntimeResult[] | null
+  releasePackageRemediation: RenderDeploymentVerifyRemediation | null
   remediation: RenderDeploymentVerifyRemediation | null
   errors: string[]
 }
@@ -97,6 +98,8 @@ interface ExpectedDatasetContract {
   verifyArgName: '--handoff-json' | '--manifest' | '--manifest-url'
   releaseId: string | null
   releaseTag: string | null
+  releasePackageUrl: string | null
+  releaseManifestUrl: string | null
   expectedDatasets: RenderDeploymentHandoffDataset[]
   errors: string[]
 }
@@ -324,6 +327,8 @@ const loadExpectedDatasetContract = async (
       verifyArgName: manifestPath ? '--manifest' : '--manifest-url',
       releaseId: getString(parsed, 'releaseId'),
       releaseTag: null,
+      releasePackageUrl: null,
+      releaseManifestUrl: manifestUrl ?? null,
       expectedDatasets,
       errors:
         expectedDatasets.length > 0
@@ -341,6 +346,8 @@ const loadExpectedDatasetContract = async (
     verifyArgName: '--handoff-json',
     releaseId: getString(release, 'releaseId'),
     releaseTag: getString(release, 'tag'),
+    releasePackageUrl: getString(handoff, 'packageUrl'),
+    releaseManifestUrl: getString(handoff, 'manifestUrl'),
     expectedDatasets,
     errors: [
       ...(handoff.ready === true ? [] : [`${handoffJsonPath} is not marked ready`]),
@@ -549,6 +556,55 @@ const buildRuntimeRemediation = (params: {
   }
 }
 
+const buildReleasePackageRemediation = (params: {
+  appUrl: string
+  contract: ExpectedDatasetContract
+  districts: RenderDeploymentVerifyDistrict[]
+  unexpectedDistricts: string[]
+}): RenderDeploymentVerifyRemediation | null => {
+  const failedDistricts = params.districts.filter((district) => !district.pass)
+  if (failedDistricts.length === 0 && params.unexpectedDistricts.length === 0) {
+    return null
+  }
+
+  const reasons = [
+    `Live parking-answer dataset hashes do not match ${params.contract.contractSource}; Render may be serving fallback public/data/generated, a stale release package, or an old build.`,
+    ...(failedDistricts.length > 0
+      ? [
+          `Mismatched districts: ${failedDistricts
+            .map((district) => district.districtId)
+            .join(', ')}.`,
+        ]
+      : []),
+    ...(params.unexpectedDistricts.length > 0
+      ? [
+          `Unexpected live districts: ${params.unexpectedDistricts.join(', ')}.`,
+        ]
+      : []),
+  ]
+
+  return {
+    reasons,
+    requiredRenderEnv: {
+      PARKKING_RELEASE_PACKAGE_URL:
+        params.contract.releasePackageUrl ??
+        '<release package URL matching this manifest>',
+      PARKKING_RELEASE_MANIFEST_URL:
+        params.contract.releaseManifestUrl ??
+        '<published release manifest URL>',
+      PARKKING_RELEASE_REQUIRE_MANIFEST: 'true',
+      PARKKING_RELEASE_PACKAGE_OUT_ROOT: 'public/data/generated',
+    },
+    steps: [
+      'Set PARKKING_RELEASE_PACKAGE_URL and PARKKING_RELEASE_MANIFEST_URL on the Render service to the release package that produced this verification contract.',
+      'Redeploy with a full build; the build log must show npm run ops:install-release-package -- --require-manifest completing before npm run build.',
+      'If those env vars are already set, trigger a fresh build/deploy instead of only restarting the service so dist/data/generated is rebuilt from the release package.',
+      'Rerun the verification command and require district hashes to match before treating production data as current.',
+    ],
+    verifyCommand: buildRenderDeploymentVerifyCommand(params),
+  }
+}
+
 export const verifyRenderDeployment = async (
   options: RenderDeploymentVerifyOptions = {},
 ): Promise<RenderDeploymentVerifyResult> => {
@@ -625,6 +681,17 @@ export const verifyRenderDeployment = async (
     .map((district) => district.districtId)
     .filter((districtId) => !expectedDistrictIds.has(districtId))
     .sort()
+  const failedDistricts = districts.filter((district) => !district.pass)
+  if (failedDistricts.length > 0) {
+    errors.push(
+      `parking-answer dataset hash mismatch: ${failedDistricts
+        .map((district) => `${district.districtId}: ${district.errors.join('; ')}`)
+        .join(' | ')}`,
+    )
+  }
+  if (unexpectedDistricts.length > 0) {
+    errors.push(`unexpected live districts: ${unexpectedDistricts.join(', ')}`)
+  }
   let apiServices: SmokeApiServicesSummary | null = null
   let syncCors: RenderDeploymentVerifySyncCorsResult | null = null
   const selectedApiServices = options.apiServices ?? undefined
@@ -690,6 +757,12 @@ export const verifyRenderDeployment = async (
     syncCors,
     proxyRuntime,
   })
+  const releasePackageRemediation = buildReleasePackageRemediation({
+    appUrl,
+    contract,
+    districts,
+    unexpectedDistricts,
+  })
 
   return {
     pass,
@@ -706,6 +779,7 @@ export const verifyRenderDeployment = async (
     apiServices,
     syncCors,
     proxyRuntime,
+    releasePackageRemediation,
     remediation,
     errors,
   }
@@ -766,6 +840,32 @@ export const renderRenderDeploymentVerify = (
             (entry) =>
               `| ${entry.pass ? 'PASS' : 'FAIL'} | ${entry.service} | ${entry.url} | ${entry.status} | ${entry.serviceStatus ?? '-'} | ${entry.requestTimeoutMs ?? '-'} | ${entry.errors.join('; ')} |`,
           ),
+        ]
+      : []),
+    ...(result.releasePackageRemediation
+      ? [
+          '',
+          '## Release Package Remediation',
+          '',
+          'Reasons:',
+          ...result.releasePackageRemediation.reasons.map((reason) => `- ${reason}`),
+          '',
+          'Required Render environment:',
+          '',
+          '```text',
+          ...renderEnvAssignments(result.releasePackageRemediation.requiredRenderEnv),
+          '```',
+          '',
+          'Steps:',
+          ...result.releasePackageRemediation.steps.map(
+            (step, index) => `${index + 1}. ${step}`,
+          ),
+          '',
+          'Verification:',
+          '',
+          '```powershell',
+          result.releasePackageRemediation.verifyCommand,
+          '```',
         ]
       : []),
     ...(result.remediation
