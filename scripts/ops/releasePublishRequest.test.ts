@@ -241,6 +241,9 @@ describe('releasePublishRequest', () => {
       'npm run ops:render-deployment-verify -- --app-url https://parkking.onrender.com',
     )
     expect(renderReleasePublishRequest(result)).toContain(
+      `--handoff-json ${fixture.handoffJsonPath}`,
+    )
+    expect(renderReleasePublishRequest(result)).toContain(
       'npm run ops:render-runtime-env-sync -- --service-id <render-service-id>',
     )
   })

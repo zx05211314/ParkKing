@@ -188,8 +188,10 @@ const renderAppUrlOrPlaceholder = (status: ReleaseHandoffStatusResult) =>
 
 const buildCommands = (
   status: ReleaseHandoffStatusResult,
+  handoffJsonPath: string,
 ): ReleasePublishRequestCommands => {
   const appUrl = renderAppUrlOrPlaceholder(status)
+  const quotedHandoffJsonPath = quoteCommandValue(handoffJsonPath)
   return {
     refreshHandoff: 'npm run ops:release-handoff-readiness',
     status: `npm run ops:release-handoff-status -- --ref ${status.ref}`,
@@ -220,7 +222,7 @@ const buildCommands = (
     renderLiveVerify: status.commands.renderLiveVerify,
     localRenderVerify: `npm run ops:render-deployment-verify -- --app-url ${quoteCommandValue(
       appUrl,
-    )} --manifest-url ${status.release.manifestUrl}`,
+    )} --handoff-json ${quotedHandoffJsonPath}`,
   }
 }
 
@@ -391,7 +393,10 @@ export const buildReleasePublishRequest = async (
 
   const assets = await buildAssets(status, publishPlan)
   const manualPublish = buildManualPublish(status, assets)
-  const commands = buildCommands(status)
+  const commands = buildCommands(
+    status,
+    options.handoffJsonPath ?? DEFAULT_HANDOFF_JSON,
+  )
   const externalRequirements = buildExternalRequirements(status, environment)
 
   return {
