@@ -358,6 +358,14 @@ repository has a `RENDER_API_KEY` secret. The workflow is dry-run by default;
 set `execute=true` only when you are ready to change Render. To
 dispatch that workflow from a tokenized CLI instead of the Actions UI:
 
+After a successful tag-triggered `Release Data Package` run, the same Render
+Runtime Env Sync workflow also runs automatically for `data-*` tags. That path
+derives the package and manifest URLs from the published release tag, syncs the
+release/runtime env vars with `--execute --deploy`, and deploys the `parkking`
+service by name. If `RENDER_API_KEY` is not configured as a repository secret,
+the release still remains published, but this follow-up sync workflow will fail
+and the dashboard packet remains the manual fallback.
+
 ```powershell
 npm run ops:render-runtime-env-sync-dispatch -- --repo <owner/repo> --ref main --handoff-json .tmp/render-deployment-handoff.json --dry-run
 $env:GH_TOKEN="<token with workflow dispatch access>"
