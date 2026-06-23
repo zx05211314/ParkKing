@@ -85,6 +85,63 @@ describe('renderDashboardEnvPacket', () => {
     expect(result.releaseManifestUrl).toBe('https://example.test/manifest.json')
   })
 
+  it('skips a placeholder production rollout handoff when choosing defaults', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'render-env-packet-cwd-'))
+    const oldCwd = process.cwd()
+    try {
+      process.chdir(base)
+      await writeJson(path.join(base, '.tmp', 'production-rollout-handoff.json'), {
+        packageUrl:
+          'https://github.com/owner/repo/releases/download/data-1/park-king-data_1.zip',
+        manifestUrl:
+          'https://github.com/owner/repo/releases/download/data-1/release_manifest_1.json',
+      })
+      await writeJson(path.join(base, '.tmp', 'render-deployment-handoff.json'), {
+        packageUrl: 'https://github.com/zx05211314/ParkKing/releases/data.zip',
+        manifestUrl:
+          'https://github.com/zx05211314/ParkKing/releases/manifest.json',
+      })
+
+      const result = await buildRenderDashboardEnvPacket(
+        parseRenderDashboardEnvPacketArgs([
+          '--app-url',
+          'https://parkking.onrender.com',
+        ]),
+      )
+
+      expect(result.pass).toBe(true)
+      expect(result.handoffJsonPath).toBe('.tmp/render-deployment-handoff.json')
+      expect(result.releasePackageUrl).toBe(
+        'https://github.com/zx05211314/ParkKing/releases/data.zip',
+      )
+    } finally {
+      process.chdir(oldCwd)
+    }
+  })
+
+  it('fails when an explicit handoff still contains placeholder release URLs', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'render-env-packet-'))
+    const handoffPath = path.join(base, 'handoff.json')
+    await writeJson(handoffPath, {
+      packageUrl:
+        'https://github.com/owner/repo/releases/download/data-1/park-king-data_1.zip',
+      manifestUrl:
+        'https://github.com/owner/repo/releases/download/data-1/release_manifest_1.json',
+    })
+
+    const result = await buildRenderDashboardEnvPacket(
+      parseRenderDashboardEnvPacketArgs([
+        '--handoff-json',
+        handoffPath,
+        '--app-url',
+        'https://parkking.onrender.com',
+      ]),
+    )
+
+    expect(result.pass).toBe(false)
+    expect(result.errors.join('\n')).toContain('placeholder owner/repo')
+  })
+
   it('fails without release URLs unless runtime-only mode is requested', async () => {
     const result = await buildRenderDashboardEnvPacket(
       parseRenderDashboardEnvPacketArgs([
