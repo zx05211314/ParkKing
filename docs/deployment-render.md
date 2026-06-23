@@ -292,12 +292,14 @@ The sync command updates only `PARKKING_SYNC_CORS_ORIGINS`,
 Render deploy when `--deploy` is present. Pass `--service-id <Render service ID>`
 when you already know the id. The same operation is available from GitHub
 Actions -> Render Runtime Env Sync when the repository has a `RENDER_API_KEY`
-secret. To dispatch that workflow from a tokenized CLI instead of the Actions UI:
+secret. The workflow is dry-run by default; set `execute=true` only when you are
+ready to change Render. To dispatch that workflow from a tokenized CLI instead
+of the Actions UI:
 
 ```powershell
 npm run ops:render-runtime-env-sync-dispatch -- --repo <owner/repo> --ref main --dry-run
 $env:GH_TOKEN="<token with workflow dispatch access>"
-npm run ops:render-runtime-env-sync-dispatch -- --repo <owner/repo> --ref main
+npm run ops:render-runtime-env-sync-dispatch -- --repo <owner/repo> --ref main --execute
 ```
 
 If you are

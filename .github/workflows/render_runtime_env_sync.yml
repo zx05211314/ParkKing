@@ -10,6 +10,11 @@ on:
         description: Render service name to resolve when serviceId is omitted
         required: false
         default: parkking
+      execute:
+        description: Actually update Render env vars; false runs a dry-run plan
+        required: false
+        type: boolean
+        default: false
       deploy:
         description: Trigger a Render deploy after updating runtime env vars
         required: false
@@ -42,7 +47,7 @@ jobs:
       - name: Sync Render runtime env
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-        run: npm run ops:render-runtime-env-sync -- --service-id "${{ inputs.serviceId }}" --service-name "${{ inputs.serviceName }}" --execute ${{ inputs.deploy && '--deploy' || '' }} --deploy-mode "${{ inputs.deployMode }}" --out .tmp/render-runtime-env-sync.md --json-out .tmp/render-runtime-env-sync.json
+        run: npm run ops:render-runtime-env-sync -- --service-id "${{ inputs.serviceId }}" --service-name "${{ inputs.serviceName }}" ${{ inputs.execute && '--execute' || '' }} ${{ inputs.deploy && '--deploy' || '' }} --deploy-mode "${{ inputs.deployMode }}" --out .tmp/render-runtime-env-sync.md --json-out .tmp/render-runtime-env-sync.json
       - name: Summarize sync
         if: always()
         run: npm run ops:append-workflow-summary -- --append-file .tmp/render-runtime-env-sync.md

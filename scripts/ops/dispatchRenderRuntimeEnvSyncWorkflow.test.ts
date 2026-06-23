@@ -13,6 +13,7 @@ const baseOptions: RenderRuntimeEnvSyncDispatchOptions = {
   workflow: 'render_runtime_env_sync.yml',
   serviceId: '',
   serviceName: 'parkking',
+  execute: false,
   deploy: true,
   deployMode: 'build_and_deploy',
   dryRun: true,
@@ -30,6 +31,7 @@ describe('dispatch render runtime env sync workflow', () => {
         inputs: {
           serviceId: '',
           serviceName: 'parkking',
+          execute: 'false',
           deploy: 'true',
           deployMode: 'build_and_deploy',
         },
@@ -54,6 +56,7 @@ describe('dispatch render runtime env sync workflow', () => {
       repo: 'zx05211314/ParkKing',
       ref: 'main',
       serviceName: 'parkking',
+      execute: false,
       deploy: true,
       deployMode: 'build_and_deploy',
       dryRun: true,
@@ -74,6 +77,7 @@ describe('dispatch render runtime env sync workflow', () => {
       '--service-name',
       'parkking-prod',
       '--deploy=false',
+      '--execute',
       '--deploy-mode',
       'deploy_only',
       '--dry-run',
@@ -82,6 +86,7 @@ describe('dispatch render runtime env sync workflow', () => {
     expect(options).toMatchObject({
       serviceId: 'srv-test',
       serviceName: 'parkking-prod',
+      execute: true,
       deploy: false,
       deployMode: 'deploy_only',
     })
