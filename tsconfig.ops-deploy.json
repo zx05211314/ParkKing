@@ -28,6 +28,8 @@
     "scripts/ops/dispatchReleaseDataWorkflow.test.ts",
     "scripts/ops/dispatchRenderLiveVerifyWorkflow.ts",
     "scripts/ops/dispatchRenderLiveVerifyWorkflow.test.ts",
+    "scripts/ops/dispatchRenderRuntimeEnvSyncWorkflow.ts",
+    "scripts/ops/dispatchRenderRuntimeEnvSyncWorkflow.test.ts",
     "scripts/ops/githubWorkflowDispatch.ts",
     "scripts/ops/githubWorkflowDispatch.test.ts",
     "scripts/ops/installReleasePackage.ts",

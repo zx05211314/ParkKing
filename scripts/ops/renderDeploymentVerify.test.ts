@@ -358,6 +358,7 @@ describe('renderDeploymentVerify', () => {
       expect(rendered).toContain('npm run ops:render-runtime-env-sync')
       expect(rendered).toContain('--service-name parkking')
       expect(rendered).toContain('GitHub Actions -> Render Runtime Env Sync')
+      expect(rendered).toContain('ops:render-runtime-env-sync-dispatch')
       expect(rendered).toContain(
         'PARKKING_SYNC_CORS_ORIGINS=https://parkking.onrender.com',
       )

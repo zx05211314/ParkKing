@@ -137,6 +137,7 @@
     "ops:release-publish-request": "tsx scripts/ops/releasePublishRequest.ts",
     "ops:render-deployment-verify": "tsx scripts/ops/renderDeploymentVerify.ts --out .tmp/render-deployment-verify.md --json-out .tmp/render-deployment-verify.json",
     "ops:render-runtime-env-sync": "tsx scripts/ops/syncRenderRuntimeEnv.ts",
+    "ops:render-runtime-env-sync-dispatch": "tsx scripts/ops/dispatchRenderRuntimeEnvSyncWorkflow.ts",
     "ops:render-live-verify-dispatch": "tsx scripts/ops/dispatchRenderLiveVerifyWorkflow.ts",
     "ops:render-blueprint-check": "tsx scripts/ops/renderBlueprintContract.ts",
     "ops:validate-release-package:xinyi": "tsx scripts/ops/validateReleasePackage.ts --district xinyi",

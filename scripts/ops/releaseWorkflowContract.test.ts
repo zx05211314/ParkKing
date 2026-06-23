@@ -173,6 +173,18 @@ describe('release workflow contracts', () => {
     ])
   })
 
+  it('keeps Render Runtime Env Sync dispatch helper aligned with workflow inputs', async () => {
+    const [workflow, packageJson] = await Promise.all([
+      readWorkflow('render_runtime_env_sync.yml'),
+      readPackageJson(),
+    ])
+
+    expect(packageJson.scripts?.['ops:render-runtime-env-sync-dispatch']).toBe(
+      'tsx scripts/ops/dispatchRenderRuntimeEnvSyncWorkflow.ts',
+    )
+    expectWorkflowInputs(workflow, ['serviceId', 'serviceName', 'deploy', 'deployMode'])
+  })
+
   it('keeps local release handoff runner available for sequential gating', async () => {
     const packageJson = await readPackageJson()
 
