@@ -17,6 +17,7 @@ import { VALID_QA_REVIEW_STATUSES } from './qaReviewSummaryTypes'
 import { isValidReviewTimestamp } from './reviewTimestamp'
 
 const DEFAULT_REVIEW_ROOT = '.tmp'
+const DEFAULT_CONFIG_ROOT = 'configs/prod'
 const DEFAULT_PUBLISH_GATE_SUMMARY = 'data/generated/_ops/publish_gate_summary.json'
 const DEFAULT_MAX_FILES = 500
 
@@ -29,6 +30,7 @@ type IntakeStatus =
 
 export interface P0ReviewIntakeOptions {
   reviewRoot?: string
+  configRoot?: string
   districtIds?: string[]
   scanDirs?: string[]
   includeCommonDirs?: boolean
@@ -119,6 +121,8 @@ export const parseP0ReviewIntakeArgs = (
 ): P0ReviewIntakeOptions => ({
   reviewRoot:
     getArgValue(argv, '--review-root', '--reviewRoot') ?? DEFAULT_REVIEW_ROOT,
+  configRoot:
+    getArgValue(argv, '--config-root', '--configRoot') ?? DEFAULT_CONFIG_ROOT,
   districtIds: getArgValues(argv, '--district', '--district-id', '--districtId'),
   scanDirs: getArgValues(argv, '--scan-dir', '--scanDir'),
   includeCommonDirs: hasFlag(argv, '--include-common-dirs', '--includeCommonDirs'),
@@ -314,13 +318,18 @@ const resolveDistrictRows = (
 const buildValidationCommand = (params: {
   districtId: string
   filePath: string
+  configRoot: string
   bundleEntry: HumanReviewBundleEntry | undefined
 }) => {
   const inputs = params.bundleEntry?.finalizeInputs
+  const configPath =
+    inputs?.configPath ?? path.join(params.configRoot, `${params.districtId}.json`)
   const args = [
     'npm run ops:p0-validate-priority-review --',
     '--district',
     params.districtId,
+    '--config',
+    quoteArg(configPath),
     ...(inputs?.sourcePath ? ['--source', quoteArg(inputs.sourcePath)] : []),
     '--reviews',
     quoteArg(params.filePath),
@@ -365,6 +374,7 @@ const classifyCandidate = (params: {
 const summarizeCandidate = (params: {
   districtId: string
   filePath: string
+  configRoot: string
   rows: Record<string, unknown>[]
   allHeaders: string[]
   bundleEntry: HumanReviewBundleEntry | undefined
@@ -443,6 +453,7 @@ const summarizeCandidate = (params: {
         ? buildValidationCommand({
             districtId: params.districtId,
             filePath: params.filePath,
+            configRoot: params.configRoot,
             bundleEntry: params.bundleEntry,
           })
         : null,
@@ -472,6 +483,7 @@ const statusForCandidates = (
 
 const validateCandidate = async (
   candidate: P0ReviewIntakeCandidate,
+  configRoot: string,
   bundleEntry: HumanReviewBundleEntry | undefined,
   validatePriorityReview: (
     options: P0ValidatePriorityReviewOptions,
@@ -483,6 +495,8 @@ const validateCandidate = async (
   const finalizeInputs = bundleEntry?.finalizeInputs
   const validation = await validatePriorityReview({
     districtId: candidate.districtId,
+    configPath:
+      finalizeInputs?.configPath ?? path.join(configRoot, `${candidate.districtId}.json`),
     sourcePath: finalizeInputs?.sourcePath,
     reviewsPath: candidate.filePath,
     allowPublishWarn: finalizeInputs?.allowPublishWarn,
@@ -505,6 +519,7 @@ export const runP0ReviewIntake = async (
   options: P0ReviewIntakeOptions = {},
 ): Promise<P0ReviewIntakeResult> => {
   const reviewRoot = path.resolve(options.reviewRoot ?? DEFAULT_REVIEW_ROOT)
+  const configRoot = options.configRoot ?? DEFAULT_CONFIG_ROOT
   const selectedDistricts = options.districtIds ?? []
   const scanDirs = resolveScanDirs({ ...options, reviewRoot })
   const errors: string[] = []
@@ -519,6 +534,7 @@ export const runP0ReviewIntake = async (
       : options.publishGateSummaryPath
   const index = await runHumanReviewBundleIndex({
     reviewRoot,
+    configRoot,
     districtIds: selectedDistricts,
     publishGateSummaryPath,
   })
@@ -561,6 +577,7 @@ export const runP0ReviewIntake = async (
           summarizeCandidate({
             districtId,
             filePath,
+            configRoot,
             rows: districtRows,
             allHeaders: headers,
             bundleEntry: bundleByDistrict.get(districtId),
@@ -583,6 +600,7 @@ export const runP0ReviewIntake = async (
       validatedCandidates.push(
         await validateCandidate(
           candidate,
+          configRoot,
           bundleByDistrict.get(candidate.districtId),
           options.validatePriorityReview ?? runP0ValidatePriorityReview,
         ),

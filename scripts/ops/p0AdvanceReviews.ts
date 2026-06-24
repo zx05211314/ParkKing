@@ -39,6 +39,7 @@ import type {
 } from './p0FinalizeReviewTypes'
 
 const DEFAULT_REVIEW_ROOT = '.tmp'
+const DEFAULT_CONFIG_ROOT = 'configs/prod'
 const DEFAULT_OUT_DIR = '.tmp/human-review-packages'
 const DEFAULT_PUBLISH_GATE_SUMMARY = 'data/generated/_ops/publish_gate_summary.json'
 
@@ -50,6 +51,7 @@ type AdvanceStatus =
 
 export interface P0AdvanceReviewsOptions {
   reviewRoot?: string
+  configRoot?: string
   districtIds?: string[]
   all?: boolean
   outDir?: string
@@ -102,6 +104,7 @@ export interface P0AdvanceReviewsResult {
   status: AdvanceStatus
   mode: 'dry-run' | 'execute'
   reviewRoot: string
+  configRoot: string
   outDir: string
   selectedDistricts: string[]
   entries: P0AdvanceReviewEntry[]
@@ -148,6 +151,8 @@ export const parseP0AdvanceReviewsArgs = (
 ): P0AdvanceReviewsOptions => ({
   reviewRoot:
     getArgValue(argv, '--review-root', '--reviewRoot') ?? DEFAULT_REVIEW_ROOT,
+  configRoot:
+    getArgValue(argv, '--config-root', '--configRoot') ?? DEFAULT_CONFIG_ROOT,
   districtIds: getArgValues(argv, '--district', '--district-id', '--districtId'),
   all: hasFlag(argv, '--all'),
   outDir: getArgValue(argv, '--out-dir', '--outDir') ?? DEFAULT_OUT_DIR,
@@ -290,6 +295,7 @@ export const runP0AdvanceReviews = async (
   options: P0AdvanceReviewsOptions = {},
 ): Promise<P0AdvanceReviewsResult> => {
   const reviewRoot = path.resolve(options.reviewRoot ?? DEFAULT_REVIEW_ROOT)
+  const configRoot = options.configRoot ?? DEFAULT_CONFIG_ROOT
   const outDir = path.resolve(options.outDir ?? DEFAULT_OUT_DIR)
   const districtIds = options.districtIds ?? []
   const selectedDistricts = options.all ? ['*'] : districtIds
@@ -305,6 +311,7 @@ export const runP0AdvanceReviews = async (
       : options.publishGateSummaryPath
   const index = await runHumanReviewBundleIndex({
     reviewRoot,
+    configRoot,
     districtIds: options.all ? [] : districtIds,
     publishGateSummaryPath,
     requireReadyToFinalize: options.requireReadyToFinalize,
@@ -331,6 +338,7 @@ export const runP0AdvanceReviews = async (
   if (options.reviewIntake && selectedDistricts.length > 0) {
     reviewIntakeResult = await (options.reviewIntakeScanner ?? runP0ReviewIntake)({
       reviewRoot,
+      configRoot,
       districtIds: options.all ? index.entries.map((entry) => entry.districtId) : districtIds,
       scanDirs: options.reviewIntakeScanDirs,
       includeCommonDirs: options.includeCommonDirs,
@@ -393,6 +401,7 @@ export const runP0AdvanceReviews = async (
       reviewRoot,
       districtIds: reviewEntriesToPackage.map((entry) => entry.districtId),
       outDir,
+      configRoot,
       publishGateSummaryPath,
       now: options.now,
     })
@@ -405,6 +414,7 @@ export const runP0AdvanceReviews = async (
     finalizeResult = await (options.finalizeReadyReviews ?? runP0FinalizeReadyReviews)({
       reviewRoot,
       districtIds: finalizeEntries.map((entry) => entry.districtId),
+      configRoot,
       publishGateSummaryPath,
       execute: options.execute,
       finalize: options.finalize,
@@ -467,6 +477,7 @@ export const runP0AdvanceReviews = async (
     status,
     mode: options.execute ? 'execute' : 'dry-run',
     reviewRoot,
+    configRoot,
     outDir,
     selectedDistricts,
     entries,
@@ -489,6 +500,7 @@ export const renderP0AdvanceReviews = (result: P0AdvanceReviewsResult) => {
     `P0 advance reviews: ${statusLabel(result)}`,
     `Mode: ${result.mode}`,
     `Review root: ${result.reviewRoot}`,
+    `Config root: ${result.configRoot}`,
     `Output dir: ${result.outDir}`,
     `Selected districts: ${result.selectedDistricts.join(', ') || 'none'}`,
     '',

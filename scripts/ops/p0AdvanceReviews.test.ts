@@ -108,6 +108,8 @@ describe('p0AdvanceReviews', () => {
         'p0AdvanceReviews',
         '--review-root',
         '.tmp',
+        '--config-root',
+        'configs/expansion',
         '--district',
         'daan,zhongshan',
         '--out-dir',
@@ -134,6 +136,7 @@ describe('p0AdvanceReviews', () => {
       ]),
     ).toEqual({
       reviewRoot: '.tmp',
+      configRoot: 'configs/expansion',
       districtIds: ['daan', 'zhongshan'],
       all: false,
       outDir: '.tmp/reviews',
@@ -161,6 +164,7 @@ describe('p0AdvanceReviews', () => {
 
     const result = await runP0AdvanceReviews({
       reviewRoot: root,
+      configRoot: 'configs/expansion',
       outDir,
       districtIds: ['daan'],
       publishGateSummaryPath: null,
@@ -169,6 +173,10 @@ describe('p0AdvanceReviews', () => {
 
     expect(result.pass).toBe(true)
     expect(result.status).toBe('action-required')
+    expect(result.configRoot).toBe('configs/expansion')
+    expect(result.index.entries[0]?.finalizeInputs.configPath.replace(/\\/g, '/')).toBe(
+      'configs/expansion/daan.json',
+    )
     expect(result.entries).toEqual([
       {
         districtId: 'daan',
@@ -182,6 +190,7 @@ describe('p0AdvanceReviews', () => {
     expect(result.reviewIntakeResult).toBeNull()
     expect(result.finalizeResult).toBeNull()
     expect(renderP0AdvanceReviews(result)).toContain('P0 advance reviews: ACTION-REQUIRED')
+    expect(renderP0AdvanceReviews(result)).toContain('Config root: configs/expansion')
   })
 
   it('can include returned-review intake in the advance report', async () => {
@@ -200,6 +209,7 @@ describe('p0AdvanceReviews', () => {
 
     const result = await runP0AdvanceReviews({
       reviewRoot: root,
+      configRoot: 'configs/expansion',
       outDir,
       districtIds: ['daan'],
       publishGateSummaryPath: null,
@@ -213,6 +223,9 @@ describe('p0AdvanceReviews', () => {
     expect(result.reviewIntakeResult?.candidates[0]?.validationCommand).toContain(
       'npm run ops:p0-validate-priority-review -- --district daan',
     )
+    expect(
+      result.reviewIntakeResult?.candidates[0]?.validationCommand?.replace(/\\/g, '/'),
+    ).toContain('--config "configs/expansion/daan.json"')
     expect(renderP0AdvanceReviews(result)).toContain('## Review Intake')
   })
 
