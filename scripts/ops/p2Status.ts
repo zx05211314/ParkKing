@@ -105,6 +105,9 @@ const DEFAULT_PUBLISH_GATE_SUMMARY_PATH = path.join(
 )
 const DEFAULT_REVIEW_ROOT = '.tmp'
 const DEFAULT_TIMEOUT_MS = 25_000
+const SONGSHAN_CANDIDATE_CONFIG_GLOB =
+  'configs/prod/xinyi.json,configs/expansion/songshan.json'
+const SONGSHAN_CANDIDATE_CONFIG_ROOT = 'configs/expansion'
 
 const defaultRunners: P2StatusRunners = {
   runP2ExpansionReadiness,
@@ -441,6 +444,20 @@ const matchesDefaultP2ShortcutScope = (inputs: P2StatusInputs) =>
     (districtId, index) => districtId === DEFAULT_EXPANSION_DISTRICTS[index],
   )
 
+const matchesSongshanP2ShortcutScope = (inputs: P2StatusInputs) =>
+  inputs.currentDistrictId === DEFAULT_CURRENT_DISTRICT &&
+  inputs.root === DEFAULT_ROOT &&
+  inputs.dryRunRoot === DEFAULT_DRY_RUN_ROOT &&
+  inputs.registryPath === DEFAULT_REGISTRY_PATH &&
+  inputs.configGlob === SONGSHAN_CANDIDATE_CONFIG_GLOB &&
+  inputs.configRoot === SONGSHAN_CANDIDATE_CONFIG_ROOT &&
+  inputs.reviewRoot === DEFAULT_REVIEW_ROOT &&
+  inputs.publishGateSummaryPath === DEFAULT_PUBLISH_GATE_SUMMARY_PATH &&
+  inputs.timeoutMs === DEFAULT_TIMEOUT_MS &&
+  inputs.skipP1 &&
+  inputs.expansionDistrictIds.length === 1 &&
+  inputs.expansionDistrictIds[0] === 'songshan'
+
 const publishGateCommandArgs = (inputs: P2StatusInputs) =>
   inputs.publishGateSummaryPath === null
     ? ['--no-publish-gate-summary']
@@ -517,10 +534,15 @@ const publishReviewedExpansionCommands = (result: P2StatusResult) => {
   return districts.flatMap((districtId) => [
     ...(result.inputs.configRoot === DEFAULT_CONFIG_ROOT
       ? []
-      : [
-          `- npm run ops:p2-promote-expansion -- --district ${quoteCommandArg(districtId)}`,
-          `- npm run ops:p2-promote-expansion -- --district ${quoteCommandArg(districtId)} --execute`,
-        ]),
+      : matchesSongshanP2ShortcutScope(result.inputs) && districtId === 'songshan'
+        ? [
+            '- npm run ops:p2-songshan-promote',
+            '- npm run ops:p2-songshan-promote:execute',
+          ]
+        : [
+            `- npm run ops:p2-promote-expansion -- --district ${quoteCommandArg(districtId)}`,
+            `- npm run ops:p2-promote-expansion -- --district ${quoteCommandArg(districtId)} --execute`,
+          ]),
     `- npm run ops:check-inputs -- --config configs/prod/${districtId}.json`,
     `- npm run ingest:all -- --configs "configs/prod/${districtId}.json" --allowWarn --override "${districtId} reviewed expansion promotion"`,
     `- npm run ops:p2-expansion-readiness -- --current-district ${quoteCommandArg(result.inputs.currentDistrictId)} --expansion-district ${quoteCommandArg(districtId)} --configs "configs/prod/${districtId}.json" --require-ready-to-finalize`,
@@ -536,6 +558,18 @@ const nextCommandLines = (result: P2StatusResult) => {
   }
   if (result.readyFinalizeDistricts.length > 0 || result.readyToFinalize) {
     const finalizeCommands = finalizeCommandLines(result)
+    if (matchesSongshanP2ShortcutScope(result.inputs)) {
+      return [
+        '- npm run ops:p2-songshan-finalize-ready',
+        ...(finalizeCommands.length > 0
+          ? finalizeCommands
+          : [
+              '- Review the `ops:p2-songshan-finalize-ready` report for district finalize commands.',
+            ]),
+        '- npm run ops:p2-songshan-finalize-ready:execute',
+        `- ${p2StrictReadinessCommand(result)}`,
+      ]
+    }
     if (!matchesDefaultP2ShortcutScope(result.inputs)) {
       return [
         `- ${p0AdvanceCommand(result, [
@@ -578,6 +612,15 @@ const nextCommandLines = (result: P2StatusResult) => {
         : ['- Review the `ops:p2-finalize-ready` report for district finalize commands.']),
       '- npm run ops:p2-finalize-ready:execute',
       '- npm run ops:p2-expansion-readiness:strict',
+    ]
+  }
+  if (matchesSongshanP2ShortcutScope(result.inputs)) {
+    return [
+      '- npm run ops:p2-songshan-human-review-handoff',
+      '- npm run ops:p2-songshan-review-diagnostics',
+      `- Fill reviewStatus/reviewNote/createdAt in returned ${formatList(result.pendingHumanReviewDistricts)} reviewer CSVs.`,
+      '- npm run ops:p2-songshan-review-intake',
+      '- npm run ops:p2-songshan-review-gate',
     ]
   }
   if (!matchesDefaultP2ShortcutScope(result.inputs)) {
@@ -631,6 +674,21 @@ const humanReviewRequiredLines = (result: P2StatusResult) =>
     return `- ${districtId}: fill reviewStatus/reviewNote/createdAt in ${handoffPath}`
   })
 
+const humanReviewHandoffCommand = (result: P2StatusResult) => {
+  if (matchesDefaultP2ShortcutScope(result.inputs)) {
+    return 'npm run ops:p2-human-review-handoff'
+  }
+  if (matchesSongshanP2ShortcutScope(result.inputs)) {
+    return 'npm run ops:p2-songshan-human-review-handoff'
+  }
+  return p0AdvanceCommand(result, [
+    '--out',
+    '.tmp/p2-human-review-handoff.md',
+    '--json-out',
+    '.tmp/p2-human-review-handoff.json',
+  ])
+}
+
 const latestReviewPackageLines = (result: P2StatusResult) => {
   const packageByDistrict = new Map(
     result.latestReviewPackages.map((entry) => [entry.districtId, entry] as const),
@@ -638,7 +696,7 @@ const latestReviewPackageLines = (result: P2StatusResult) => {
   return result.pendingHumanReviewDistricts.map((districtId) => {
     const packageEntry = packageByDistrict.get(districtId)
     if (!packageEntry) {
-      return `- ${districtId}: none found; run \`npm run ops:p2-human-review-handoff\``
+      return `- ${districtId}: none found; run \`${humanReviewHandoffCommand(result)}\``
     }
     return `- ${districtId}: ${packageEntry.zipPath} (${packageEntry.bytes} bytes, ${packageEntry.modifiedAt})`
   })
