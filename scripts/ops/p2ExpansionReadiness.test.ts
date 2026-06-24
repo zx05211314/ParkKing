@@ -3,6 +3,7 @@ import type { DistrictReadinessMatrixResult } from './districtReadinessMatrix'
 import type { HumanReviewBundleIndexResult } from './humanReviewBundleIndex'
 import type { P1ReleaseReadinessResult } from './p1ReleaseReadiness'
 import {
+  inferConfigRootFromGlob,
   parseP2ExpansionReadinessArgs,
   renderP2ExpansionReadiness,
   runP2ExpansionReadiness,
@@ -142,6 +143,7 @@ const buildReviewIndex = (
           reviewsPath: '.tmp/daan-human-review/daan-next-review.csv',
           mergedOutPath: '.tmp/daan-review.merged.csv',
           configPath: 'configs/prod/daan.json',
+          answerCasesPath: 'configs/prod/daan.answer-cases.json',
           allowPublishWarn: true,
           publishOverrideReason: 'daan reviewed first-publish baseline bootstrap',
         },
@@ -179,6 +181,8 @@ describe('p2ExpansionReadiness', () => {
         'public/data/generated/registry.json',
         '--configs',
         'configs/prod/*.json',
+        '--config-root',
+        'configs/prod',
         '--review-root',
         '.tmp',
         '--publish-gate-summary',
@@ -200,6 +204,7 @@ describe('p2ExpansionReadiness', () => {
       dryRunRoot: 'data/generated',
       registryPath: 'public/data/generated/registry.json',
       configGlob: 'configs/prod/*.json',
+      configRoot: 'configs/prod',
       reviewRoot: '.tmp',
       publishGateSummaryPath: 'data/generated/_ops/publish_gate_summary.json',
       timeoutMs: 25000,
@@ -209,6 +214,15 @@ describe('p2ExpansionReadiness', () => {
       requireReadyToFinalize: true,
       json: true,
     })
+  })
+
+  it('infers config root from config globs and files', () => {
+    expect(inferConfigRootFromGlob('configs/expansion/*.json')).toBe(
+      'configs/expansion',
+    )
+    expect(inferConfigRootFromGlob('configs\\expansion\\songshan.json')).toBe(
+      'configs/expansion',
+    )
   })
 
   it('passes automation readiness while marking pending human review', async () => {
@@ -248,6 +262,7 @@ describe('p2ExpansionReadiness', () => {
     })
     matrix.entries = matrix.entries.filter((entry) => entry.districtId === 'daan')
 
+    const reviewIndexRunner = vi.fn().mockResolvedValue(buildReviewIndex())
     const result = await runP2ExpansionReadiness(
       {
         expansionDistrictIds: ['daan'],
@@ -256,11 +271,18 @@ describe('p2ExpansionReadiness', () => {
       },
       buildRunners({
         runDistrictReadinessMatrix: vi.fn().mockResolvedValue(matrix),
+        runHumanReviewBundleIndex: reviewIndexRunner,
       }),
     )
 
     expect(result.pass).toBe(true)
     expect(result.status).toBe('HUMAN_REVIEW_REQUIRED')
+    expect(result.inputs.configRoot).toBe('configs/expansion')
+    expect(reviewIndexRunner).toHaveBeenCalledWith(
+      expect.objectContaining({
+        configRoot: 'configs/expansion',
+      }),
+    )
     expect(result.blockers).toEqual([])
     expect(result.expansionDistricts[0]).toMatchObject({
       districtId: 'daan',

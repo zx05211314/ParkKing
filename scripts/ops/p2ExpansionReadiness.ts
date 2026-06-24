@@ -39,6 +39,7 @@ export interface P2ExpansionReadinessOptions {
   dryRunRoot?: string | null
   registryPath?: string | null
   configGlob?: string | null
+  configRoot?: string | null
   reviewRoot?: string | null
   publishGateSummaryPath?: string | null
   skipP1?: boolean | null
@@ -57,6 +58,7 @@ export interface P2ExpansionReadinessInputs {
   dryRunRoot: string
   registryPath: string
   configGlob: string
+  configRoot: string
   reviewRoot: string
   publishGateSummaryPath: string | null
   skipP1: boolean
@@ -112,6 +114,7 @@ const DEFAULT_EXPANSION_DISTRICTS = ['daan', 'zhongshan']
 const DEFAULT_ROOT = 'public/data/generated'
 const DEFAULT_DRY_RUN_ROOT = 'data/generated'
 const DEFAULT_CONFIG_GLOB = 'configs/prod/*.json'
+const DEFAULT_CONFIG_ROOT = 'configs/prod'
 const DEFAULT_REVIEW_ROOT = '.tmp'
 const DEFAULT_TIMEOUT_MS = 25_000
 
@@ -176,8 +179,14 @@ export const parseP2ExpansionReadinessArgs = (
   ),
   root: getArgValue(argv, '--root', '--public-root', '--publicRoot'),
   dryRunRoot: getArgValue(argv, '--dry-run-root', '--dryRunRoot'),
-  registryPath: getArgValue(argv, '--registry', '--registry-path', '--registryPath'),
+  registryPath: getArgValue(
+    argv,
+    '--registry',
+    '--registry-path',
+    '--registryPath',
+  ),
   configGlob: getArgValue(argv, '--configs', '--config-glob', '--configGlob'),
+  configRoot: getArgValue(argv, '--config-root', '--configRoot'),
   reviewRoot: getArgValue(argv, '--review-root', '--reviewRoot'),
   publishGateSummaryPath: hasFlag(argv, '--no-publish-gate-summary')
     ? null
@@ -212,6 +221,7 @@ export const resolveP2ExpansionReadinessInputs = (
 ): P2ExpansionReadinessInputs => {
   const root = options.root?.trim() || DEFAULT_ROOT
   const dryRunRoot = options.dryRunRoot?.trim() || DEFAULT_DRY_RUN_ROOT
+  const configGlob = options.configGlob?.trim() || DEFAULT_CONFIG_GLOB
   return {
     currentDistrictId:
       options.currentDistrictId?.trim() || DEFAULT_CURRENT_DISTRICT,
@@ -223,7 +233,11 @@ export const resolveP2ExpansionReadinessInputs = (
     dryRunRoot,
     registryPath:
       options.registryPath?.trim() || path.join(root, 'registry.json'),
-    configGlob: options.configGlob?.trim() || DEFAULT_CONFIG_GLOB,
+    configGlob,
+    configRoot:
+      options.configRoot?.trim() ||
+      inferConfigRootFromGlob(configGlob) ||
+      DEFAULT_CONFIG_ROOT,
     reviewRoot: options.reviewRoot?.trim() || DEFAULT_REVIEW_ROOT,
     publishGateSummaryPath:
       options.publishGateSummaryPath === null
@@ -234,6 +248,27 @@ export const resolveP2ExpansionReadinessInputs = (
     requireReadyToFinalize: Boolean(options.requireReadyToFinalize),
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
   }
+}
+
+export const inferConfigRootFromGlob = (configGlob: string) => {
+  const normalized = configGlob.replace(/\\/g, '/')
+  const firstPattern = normalized.split(',')[0]?.trim()
+  if (!firstPattern) {
+    return null
+  }
+  const globIndex = ['*', '[', ']', '{', '}'].reduce((lowest, marker) => {
+    const index = firstPattern.indexOf(marker)
+    return index >= 0 && (lowest < 0 || index < lowest) ? index : lowest
+  }, -1)
+  const pathPart =
+    globIndex >= 0 ? firstPattern.slice(0, globIndex) : firstPattern
+  const withoutTrailingSlash = pathPart.replace(/\/+$/u, '')
+  if (!withoutTrailingSlash) {
+    return null
+  }
+  return firstPattern.endsWith('.json') && globIndex < 0
+    ? path.posix.dirname(withoutTrailingSlash)
+    : withoutTrailingSlash
 }
 
 const expectedFailCodes = new Set([
@@ -397,6 +432,7 @@ export const runP2ExpansionReadiness = async (
   })
   const reviewIndex = await runners.runHumanReviewBundleIndex({
     reviewRoot: inputs.reviewRoot,
+    configRoot: inputs.configRoot,
     districtIds: inputs.expansionDistrictIds,
     publishGateSummaryPath: inputs.publishGateSummaryPath,
   })
@@ -492,6 +528,7 @@ export const renderP2ExpansionReadiness = (
     `- Expansion districts: ${result.inputs.expansionDistrictIds.join(', ')}`,
     `- Public root: ${result.inputs.root}`,
     `- Dry-run root: ${result.inputs.dryRunRoot}`,
+    `- Config root: ${result.inputs.configRoot}`,
     `- Review root: ${result.inputs.reviewRoot}`,
     `- P1 release: ${formatP1(result.p1Release)}`,
     `- Require ready to finalize: ${result.inputs.requireReadyToFinalize ? 'yes' : 'no'}`,

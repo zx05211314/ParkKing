@@ -9,6 +9,7 @@ import {
   type P0AdvanceReviewsResult,
 } from './p0AdvanceReviews'
 import {
+  inferConfigRootFromGlob,
   renderP2ExpansionReadiness,
   runP2ExpansionReadiness,
   type P2ExpansionReadinessOptions,
@@ -28,6 +29,7 @@ export interface P2StatusOptions {
   dryRunRoot?: string | null
   registryPath?: string | null
   configGlob?: string | null
+  configRoot?: string | null
   reviewRoot?: string | null
   publishGateSummaryPath?: string | null
   skipP1?: boolean | null
@@ -46,6 +48,7 @@ export interface P2StatusInputs {
   dryRunRoot: string
   registryPath: string
   configGlob: string
+  configRoot: string
   reviewRoot: string
   publishGateSummaryPath: string | null
   skipP1: boolean
@@ -93,6 +96,13 @@ const DEFAULT_EXPANSION_DISTRICTS = ['daan', 'zhongshan']
 const DEFAULT_ROOT = 'public/data/generated'
 const DEFAULT_DRY_RUN_ROOT = 'data/generated'
 const DEFAULT_CONFIG_GLOB = 'configs/prod/*.json'
+const DEFAULT_CONFIG_ROOT = 'configs/prod'
+const DEFAULT_REGISTRY_PATH = path.join(DEFAULT_ROOT, 'registry.json')
+const DEFAULT_PUBLISH_GATE_SUMMARY_PATH = path.join(
+  DEFAULT_DRY_RUN_ROOT,
+  '_ops',
+  'publish_gate_summary.json',
+)
 const DEFAULT_REVIEW_ROOT = '.tmp'
 const DEFAULT_TIMEOUT_MS = 25_000
 
@@ -154,8 +164,14 @@ export const parseP2StatusArgs = (argv: string[]): P2StatusOptions => ({
   ),
   root: getArgValue(argv, '--root', '--public-root', '--publicRoot'),
   dryRunRoot: getArgValue(argv, '--dry-run-root', '--dryRunRoot'),
-  registryPath: getArgValue(argv, '--registry', '--registry-path', '--registryPath'),
+  registryPath: getArgValue(
+    argv,
+    '--registry',
+    '--registry-path',
+    '--registryPath',
+  ),
   configGlob: getArgValue(argv, '--configs', '--config-glob', '--configGlob'),
+  configRoot: getArgValue(argv, '--config-root', '--configRoot'),
   reviewRoot: getArgValue(argv, '--review-root', '--reviewRoot'),
   publishGateSummaryPath: hasFlag(argv, '--no-publish-gate-summary')
     ? null
@@ -186,6 +202,7 @@ export const resolveP2StatusInputs = (
 ): P2StatusInputs => {
   const root = options.root?.trim() || DEFAULT_ROOT
   const dryRunRoot = options.dryRunRoot?.trim() || DEFAULT_DRY_RUN_ROOT
+  const configGlob = options.configGlob?.trim() || DEFAULT_CONFIG_GLOB
   return {
     currentDistrictId:
       options.currentDistrictId?.trim() || DEFAULT_CURRENT_DISTRICT,
@@ -195,9 +212,12 @@ export const resolveP2StatusInputs = (
         : DEFAULT_EXPANSION_DISTRICTS,
     root,
     dryRunRoot,
-    registryPath:
-      options.registryPath?.trim() || path.join(root, 'registry.json'),
-    configGlob: options.configGlob?.trim() || DEFAULT_CONFIG_GLOB,
+    registryPath: options.registryPath?.trim() || path.join(root, 'registry.json'),
+    configGlob,
+    configRoot:
+      options.configRoot?.trim() ||
+      inferConfigRootFromGlob(configGlob) ||
+      DEFAULT_CONFIG_ROOT,
     reviewRoot: options.reviewRoot?.trim() || DEFAULT_REVIEW_ROOT,
     publishGateSummaryPath:
       options.publishGateSummaryPath === null
@@ -224,6 +244,7 @@ const p2ReadinessOptions = (
   dryRunRoot: inputs.dryRunRoot,
   registryPath: inputs.registryPath,
   configGlob: inputs.configGlob,
+  configRoot: inputs.configRoot,
   reviewRoot: inputs.reviewRoot,
   publishGateSummaryPath: inputs.publishGateSummaryPath,
   skipP1: inputs.skipP1,
@@ -233,6 +254,7 @@ const p2ReadinessOptions = (
 
 const reviewGateOptions = (inputs: P2StatusInputs): P0AdvanceReviewsOptions => ({
   reviewRoot: inputs.reviewRoot,
+  configRoot: inputs.configRoot,
   districtIds: inputs.expansionDistrictIds,
   publishGateSummaryPath: inputs.publishGateSummaryPath,
   reviewIntake: true,
@@ -393,6 +415,92 @@ const finalizeCommandLines = (result: P2StatusResult) =>
       .map((entry) => entry.command) ?? []),
   ]).map((command) => `- ${command}`)
 
+const quoteCommandArg = (value: string) =>
+  /[\s"*]/u.test(value) ? `"${value.replace(/"/g, '\\"')}"` : value
+
+const commandLine = (parts: string[]) => parts.join(' ')
+
+const matchesDefaultP2ShortcutScope = (inputs: P2StatusInputs) =>
+  inputs.currentDistrictId === DEFAULT_CURRENT_DISTRICT &&
+  inputs.root === DEFAULT_ROOT &&
+  inputs.dryRunRoot === DEFAULT_DRY_RUN_ROOT &&
+  inputs.registryPath === DEFAULT_REGISTRY_PATH &&
+  inputs.configGlob === DEFAULT_CONFIG_GLOB &&
+  inputs.configRoot === DEFAULT_CONFIG_ROOT &&
+  inputs.reviewRoot === DEFAULT_REVIEW_ROOT &&
+  inputs.publishGateSummaryPath === DEFAULT_PUBLISH_GATE_SUMMARY_PATH &&
+  inputs.timeoutMs === DEFAULT_TIMEOUT_MS &&
+  !inputs.skipP1 &&
+  inputs.expansionDistrictIds.length === DEFAULT_EXPANSION_DISTRICTS.length &&
+  inputs.expansionDistrictIds.every(
+    (districtId, index) => districtId === DEFAULT_EXPANSION_DISTRICTS[index],
+  )
+
+const publishGateCommandArgs = (inputs: P2StatusInputs) =>
+  inputs.publishGateSummaryPath === null
+    ? ['--no-publish-gate-summary']
+    : ['--publish-gate-summary', quoteCommandArg(inputs.publishGateSummaryPath)]
+
+const p0AdvanceCommand = (result: P2StatusResult, args: string[]) =>
+  commandLine([
+    'npm run ops:p0-advance-reviews --',
+    '--district',
+    quoteCommandArg(result.inputs.expansionDistrictIds.join(',')),
+    '--review-root',
+    quoteCommandArg(result.inputs.reviewRoot),
+    '--config-root',
+    quoteCommandArg(result.inputs.configRoot),
+    ...publishGateCommandArgs(result.inputs),
+    ...args,
+  ])
+
+const reviewDiagnosticsCommand = (result: P2StatusResult) =>
+  commandLine([
+    'npm run ops:review-handoff-audit --',
+    '--district',
+    quoteCommandArg(result.inputs.expansionDistrictIds.join(',')),
+    '--review-root',
+    quoteCommandArg(result.inputs.reviewRoot),
+    ...publishGateCommandArgs(result.inputs),
+    '--out',
+    '.tmp/p2-review-diagnostics.md',
+    '--json-out',
+    '.tmp/p2-review-diagnostics.json',
+    '--priority-out',
+    '.tmp/p2-review-priority.md',
+    '--priority-csv-out',
+    '.tmp/p2-review-priority.csv',
+    '--priority-json-out',
+    '.tmp/p2-review-priority.json',
+  ])
+
+const p2StrictReadinessCommand = (result: P2StatusResult) =>
+  commandLine([
+    'npm run ops:p2-expansion-readiness --',
+    '--current-district',
+    quoteCommandArg(result.inputs.currentDistrictId),
+    '--expansion-district',
+    quoteCommandArg(result.inputs.expansionDistrictIds.join(',')),
+    '--root',
+    quoteCommandArg(result.inputs.root),
+    '--dry-run-root',
+    quoteCommandArg(result.inputs.dryRunRoot),
+    '--registry',
+    quoteCommandArg(result.inputs.registryPath),
+    '--configs',
+    quoteCommandArg(result.inputs.configGlob),
+    '--config-root',
+    quoteCommandArg(result.inputs.configRoot),
+    '--review-root',
+    quoteCommandArg(result.inputs.reviewRoot),
+    ...publishGateCommandArgs(result.inputs),
+    ...(result.inputs.skipP1 ? ['--skip-p1'] : []),
+    '--require-ready-to-finalize',
+    ...(result.inputs.timeoutMs !== DEFAULT_TIMEOUT_MS
+      ? ['--timeout-ms', String(result.inputs.timeoutMs)]
+      : []),
+  ])
+
 const nextCommandLines = (result: P2StatusResult) => {
   if (result.status === 'BLOCKED') {
     return ['- Fix blockers listed above before continuing.']
@@ -402,6 +510,41 @@ const nextCommandLines = (result: P2StatusResult) => {
   }
   if (result.readyFinalizeDistricts.length > 0 || result.readyToFinalize) {
     const finalizeCommands = finalizeCommandLines(result)
+    if (!matchesDefaultP2ShortcutScope(result.inputs)) {
+      return [
+        `- ${p0AdvanceCommand(result, [
+          '--review-intake',
+          '--include-common-dirs',
+          '--validate-ready',
+          '--actionable-only',
+          '--require-ready-to-finalize',
+          '--no-package',
+          '--out',
+          '.tmp/p2-finalize-ready.md',
+          '--json-out',
+          '.tmp/p2-finalize-ready.json',
+        ])}`,
+        ...(finalizeCommands.length > 0
+          ? finalizeCommands
+          : [
+              '- Review the P0 advance review report for district finalize commands.',
+            ]),
+        `- ${p0AdvanceCommand(result, [
+          '--review-intake',
+          '--include-common-dirs',
+          '--validate-ready',
+          '--actionable-only',
+          '--require-ready-to-finalize',
+          '--no-package',
+          '--execute',
+          '--out',
+          '.tmp/p2-finalize-ready.md',
+          '--json-out',
+          '.tmp/p2-finalize-ready.json',
+        ])}`,
+        `- ${p2StrictReadinessCommand(result)}`,
+      ]
+    }
     return [
       '- npm run ops:p2-finalize-ready',
       ...(finalizeCommands.length > 0
@@ -409,6 +552,38 @@ const nextCommandLines = (result: P2StatusResult) => {
         : ['- Review the `ops:p2-finalize-ready` report for district finalize commands.']),
       '- npm run ops:p2-finalize-ready:execute',
       '- npm run ops:p2-expansion-readiness:strict',
+    ]
+  }
+  if (!matchesDefaultP2ShortcutScope(result.inputs)) {
+    return [
+      `- ${p0AdvanceCommand(result, [
+        '--out',
+        '.tmp/p2-human-review-handoff.md',
+        '--json-out',
+        '.tmp/p2-human-review-handoff.json',
+      ])}`,
+      `- ${reviewDiagnosticsCommand(result)}`,
+      `- Fill reviewStatus/reviewNote/createdAt in returned ${formatList(result.pendingHumanReviewDistricts)} reviewer CSVs.`,
+      `- ${p0AdvanceCommand(result, [
+        '--review-intake',
+        '--include-common-dirs',
+        '--validate-ready',
+        '--actionable-only',
+        '--no-package',
+        '--report-only',
+        '--out',
+        '.tmp/p2-review-intake.md',
+        '--json-out',
+        '.tmp/p2-review-intake.json',
+      ])}`,
+      `- ${p0AdvanceCommand(result, [
+        '--review-intake',
+        '--include-common-dirs',
+        '--validate-ready',
+        '--actionable-only',
+        '--require-ready-to-finalize',
+        '--no-package',
+      ])}`,
     ]
   }
   return [
@@ -463,6 +638,7 @@ export const renderP2Status = (result: P2StatusResult) => {
     `- Ready to finalize: ${result.readyToFinalize ? 'yes' : 'no'}`,
     `- Current district: ${result.inputs.currentDistrictId}`,
     `- Expansion districts: ${result.inputs.expansionDistrictIds.join(', ')}`,
+    `- Config root: ${result.inputs.configRoot}`,
     `- P1 release: ${result.readiness.p1Release ? (result.readiness.p1Release.pass ? 'pass' : 'blocked') : 'skipped'}`,
     `- Pending human review: ${formatList(result.pendingHumanReviewDistricts)}`,
     `- Ready finalize districts: ${formatList(result.readyFinalizeDistricts)}`,
