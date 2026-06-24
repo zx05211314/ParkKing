@@ -1,5 +1,6 @@
 import type { RiskMode } from '../../src/domain/ranking/policy'
 import {
+  DEFAULT_CONFIG_ROOT,
   DEFAULT_DATASET_ROOTS,
   DEFAULT_QA_HHMM,
   DEFAULT_RADIUS_METERS,
@@ -15,6 +16,7 @@ export interface SampleQaCandidateParams {
   outPath?: string | null
   manifestOutPath?: string | null
   reviewDocOutPath?: string | null
+  configRoot?: string
   riskMode?: RiskMode
   radiusMeters?: number
   shuffle?: boolean
@@ -31,6 +33,7 @@ export interface ResolvedSampleQaCandidateParams {
   outPath: string | null
   manifestOutPath: string | null
   reviewDocOutPath: string | null
+  configRoot: string
   riskMode: RiskMode
   radiusMeters: number
   shuffle: boolean
@@ -49,6 +52,7 @@ export const resolveSampleQaCandidateParams = (
   outPath: params.outPath ?? null,
   manifestOutPath: params.manifestOutPath ?? null,
   reviewDocOutPath: params.reviewDocOutPath ?? null,
+  configRoot: params.configRoot ?? DEFAULT_CONFIG_ROOT,
   riskMode: params.riskMode ?? 'NEUTRAL',
   radiusMeters: params.radiusMeters ?? DEFAULT_RADIUS_METERS,
   shuffle: params.shuffle === true,

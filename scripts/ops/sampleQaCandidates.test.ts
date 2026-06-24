@@ -166,10 +166,13 @@ describe('sampleQaCandidates', () => {
       '.tmp/demo.manifest.json',
       '--reviewDocOut',
       '.tmp/demo.review.md',
+      '--config-root',
+      'configs/expansion',
     ])
 
     expect(parsed.manifestOutPath).toBe('.tmp/demo.manifest.json')
     expect(parsed.reviewDocOutPath).toBe('.tmp/demo.review.md')
+    expect(parsed.configRoot).toBe('configs/expansion')
   })
 
   it('parses explicit dataset roots', () => {
@@ -204,6 +207,7 @@ describe('sampleQaCandidates', () => {
       districtId: 'demo',
       topN: 5,
       outPath: outA,
+      configRoot: 'configs/expansion',
       riskMode: 'NEUTRAL',
       radiusMeters: 600,
       datasetRoots: [publicRoot, dataRoot],
@@ -221,7 +225,11 @@ describe('sampleQaCandidates', () => {
     const csvB = await fs.readFile(outB, 'utf-8')
     const manifestA = JSON.parse(
       await fs.readFile(path.join(base, 'out-a.manifest.json'), 'utf-8'),
-    ) as { dataset: { datasetHash: string }; rows: { total: number } }
+    ) as {
+      dataset: { datasetHash: string }
+      rows: { total: number }
+      review: { gateCommand: string }
+    }
     const reviewDocA = await fs.readFile(path.join(base, 'out-a.review.md'), 'utf-8')
 
     expect(csvA).toBe(csvB)
@@ -229,7 +237,9 @@ describe('sampleQaCandidates', () => {
     expect(resultA[0]?.reviewDocPath).toMatch(/out-a\.review\.md$/)
     expect(manifestA.dataset.datasetHash).toBe('demo-hash')
     expect(manifestA.rows.total).toBeGreaterThan(0)
+    expect(manifestA.review.gateCommand).toContain('configs/expansion/demo.json')
     expect(reviewDocA).toContain('# QA Review Packet: demo')
+    expect(reviewDocA).toContain('configs/expansion/demo.json')
     expect(reviewDocA).toContain('Verdict: LEGAL / ILLEGAL / UNCLEAR')
     expect(csvA).toContain('topReasons[]')
     expect(csvA).toMatch(/https:\/\/www\.google\.com\/maps\?q=-?\d+\.\d{6},-?\d+\.\d{6}/)

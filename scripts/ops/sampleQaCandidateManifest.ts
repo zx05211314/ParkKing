@@ -4,10 +4,11 @@ import type { RiskMode } from '../../src/domain/ranking/policy'
 import type { DatasetMeta } from '../../src/data/segmentBuilder'
 import { VALID_QA_REVIEW_STATUSES } from './qaReviewSummaryTypes'
 import { resolveQaManifestOutPath } from './sampleQaCandidatePaths'
-import type {
-  QaCandidateInputCounts,
-  QaCandidateRow,
-  QaCandidateStrategy,
+import {
+  DEFAULT_CONFIG_ROOT,
+  type QaCandidateInputCounts,
+  type QaCandidateRow,
+  type QaCandidateStrategy,
 } from './sampleQaCandidateTypes'
 
 export interface QaCandidateManifest {
@@ -78,12 +79,20 @@ const toCommandPath = (value: string) => {
   return commandPath.replaceAll(path.sep, '/')
 }
 
-const buildReviewCommand = (script: string, csvPath: string, districtId: string) => {
+const buildReviewCommand = (
+  script: string,
+  csvPath: string,
+  districtId: string,
+  configRoot: string,
+) => {
   const quotedCsvPath = quoteCommandArg(toCommandPath(csvPath))
   if (script === 'summary') {
     return `npm run ops:qa-review-summary -- --input ${quotedCsvPath} --min-reviewed 1`
   }
-  return `npm run ops:qa-review-gate -- --input ${quotedCsvPath} --config configs/prod/${districtId}.json --min-reviewed 1 --require-status LEGAL --require-status ILLEGAL --require-bucket marked_space_park`
+  const configPath = quoteCommandArg(
+    toCommandPath(path.join(configRoot, `${districtId}.json`)),
+  )
+  return `npm run ops:qa-review-gate -- --input ${quotedCsvPath} --config ${configPath} --min-reviewed 1 --require-status LEGAL --require-status ILLEGAL --require-bucket marked_space_park`
 }
 
 const summarizeRows = (rows: QaCandidateRow[]): QaCandidateManifest['rows'] => {
@@ -146,6 +155,7 @@ const summarizeRows = (rows: QaCandidateRow[]): QaCandidateManifest['rows'] => {
 export const buildQaCandidateManifest = (params: {
   districtId: string
   csvPath: string
+  configRoot?: string
   datasetBaseDir: string
   datasetMeta: DatasetMeta | null
   inputCounts: QaCandidateInputCounts
@@ -160,6 +170,7 @@ export const buildQaCandidateManifest = (params: {
   createdAt?: string
 }): QaCandidateManifest => {
   const csvPath = path.resolve(params.csvPath)
+  const configRoot = params.configRoot ?? DEFAULT_CONFIG_ROOT
   return {
     schemaVersion: 1,
     createdAt: params.createdAt ?? new Date().toISOString(),
@@ -191,8 +202,13 @@ export const buildQaCandidateManifest = (params: {
     review: {
       statusColumn: 'reviewStatus',
       validStatuses: VALID_QA_REVIEW_STATUSES,
-      summaryCommand: buildReviewCommand('summary', csvPath, params.districtId),
-      gateCommand: buildReviewCommand('gate', csvPath, params.districtId),
+      summaryCommand: buildReviewCommand(
+        'summary',
+        csvPath,
+        params.districtId,
+        configRoot,
+      ),
+      gateCommand: buildReviewCommand('gate', csvPath, params.districtId, configRoot),
     },
   }
 }
