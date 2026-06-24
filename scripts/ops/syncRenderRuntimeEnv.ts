@@ -490,6 +490,22 @@ export const syncRenderRuntimeEnv = async (
   }
 }
 
+const renderManualDashboardFallback = (result: RenderRuntimeEnvSyncResult) => {
+  if (result.pass) {
+    return []
+  }
+
+  return [
+    '',
+    '## Manual Dashboard Fallback',
+    '',
+    '- Open Render Dashboard -> parkking service -> Environment.',
+    '- Add or update every key under Required Render Environment with the exact value shown.',
+    '- Save changes and trigger Manual Deploy -> Deploy latest commit.',
+    '- After deploy completes, rerun production rollout status with --check-live.',
+  ]
+}
+
 export const renderRenderRuntimeEnvSyncResult = (
   result: RenderRuntimeEnvSyncResult,
 ) => [
@@ -532,6 +548,7 @@ export const renderRenderRuntimeEnvSyncResult = (
         `- Error: ${result.deployResult.error ?? 'none'}`,
       ]
     : []),
+  ...renderManualDashboardFallback(result),
   '',
   '## Errors',
   '',
