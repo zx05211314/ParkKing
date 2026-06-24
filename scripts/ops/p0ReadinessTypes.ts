@@ -16,6 +16,7 @@ export interface P0ReadinessArgs {
   allowPublishWarn: boolean
   allowPublishFail: boolean
   publishOverrideReason: string | null
+  allowMismatchedCaseHash: boolean | null
   json: boolean
 }
 
@@ -33,6 +34,7 @@ export interface P0ReadinessParams {
   allowPublishWarn?: boolean | null
   allowPublishFail?: boolean | null
   publishOverrideReason?: string | null
+  allowMismatchedCaseHash?: boolean | null
 }
 
 export interface P0ReadinessCheck<T> {
@@ -55,6 +57,7 @@ export interface P0ReadinessResolvedInputs {
   allowPublishWarn: boolean
   allowPublishFail: boolean
   publishOverrideReason: string | null
+  allowMismatchedCaseHash: boolean
 }
 
 export interface P0ReadinessResult {

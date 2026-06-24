@@ -53,6 +53,7 @@ import {
   type BundleBudgetOptions,
   type BundleBudgetResult,
 } from './bundleBudget'
+import { resolveReviewedCaseHashMismatchAllowance } from './reviewedCaseHashMismatch'
 
 export interface P1ReleaseReadinessOptions {
   districtId?: string | null
@@ -286,6 +287,7 @@ export const runP1ReleaseReadiness = async (
   runners: P1ReleaseReadinessRunners = defaultRunners,
 ): Promise<P1ReleaseReadinessResult> => {
   const inputs = resolveP1ReleaseReadinessInputs(options)
+  const allowMismatchedCaseHash = resolveReviewedCaseHashMismatchAllowance(undefined)
   const refreshedPublishReportPath = resolveP1PublishReportRefreshPath(inputs.districtId)
   const publishReportRefresh = await runCheck(
     'Publish report refresh',
@@ -306,6 +308,7 @@ export const runP1ReleaseReadiness = async (
         districtId: inputs.districtId,
         answerCasesPath: inputs.answerCasesPath,
         publishReportPath: refreshedPublishReportPath,
+        ...(allowMismatchedCaseHash ? { allowMismatchedCaseHash } : {}),
       }),
     (summary) => summary.pass,
   )
@@ -357,6 +360,7 @@ export const runP1ReleaseReadiness = async (
         district: inputs.districtId,
         casesPath: inputs.answerCasesPath,
         timeoutMs: inputs.timeoutMs,
+        ...(allowMismatchedCaseHash ? { allowMismatchedCaseHash } : {}),
       }),
     (summary) => summary.failed === 0,
   )
@@ -372,6 +376,7 @@ export const runP1ReleaseReadiness = async (
             requiredReviewedCaseDistricts: [inputs.districtId],
             timeoutMs: inputs.timeoutMs,
             startPreview: true,
+            ...(allowMismatchedCaseHash ? { allowMismatchedCaseHash } : {}),
           }),
         (summary) => !summary.hasErrors,
       )
@@ -388,6 +393,7 @@ export const runP1ReleaseReadiness = async (
             limit: 1,
             timeoutMs: inputs.timeoutMs,
             startPreview: true,
+            ...(allowMismatchedCaseHash ? { allowMismatchedCaseHash } : {}),
           }),
         (summary) => summary.passCount === summary.caseCount,
       )

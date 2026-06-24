@@ -53,5 +53,8 @@ export const parseP0ReadinessArgs = (argv: string[]): P0ReadinessArgs => ({
     '--publishOverride',
     '--override',
   ),
+  allowMismatchedCaseHash:
+    argv.includes('--allow-mismatched-case-hash') ||
+    argv.includes('--allowMismatchedCaseHash'),
   json: argv.includes('--json'),
 })

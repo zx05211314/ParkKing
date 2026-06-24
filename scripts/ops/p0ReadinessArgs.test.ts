@@ -30,6 +30,7 @@ describe('parseP0ReadinessArgs', () => {
       '--allow-publish-fail',
       '--publish-override',
       'P0 bootstrap',
+      '--allow-mismatched-case-hash',
       '--json',
     ])
 
@@ -47,6 +48,7 @@ describe('parseP0ReadinessArgs', () => {
       allowPublishWarn: true,
       allowPublishFail: true,
       publishOverrideReason: 'P0 bootstrap',
+      allowMismatchedCaseHash: true,
       json: true,
     })
   })

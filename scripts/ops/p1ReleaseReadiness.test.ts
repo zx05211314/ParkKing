@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { P0ReadinessResult } from './p0ReadinessTypes'
 import type { DistrictReadinessMatrixResult } from './districtReadinessMatrix'
 import type { SmokeApiServicesSummary } from './smokeApiServices'
@@ -146,6 +146,10 @@ const buildRunners = (
 })
 
 describe('p1ReleaseReadiness', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   it('parses release readiness options', () => {
     expect(
       parseP1ReleaseReadinessArgs([
@@ -264,6 +268,34 @@ describe('p1ReleaseReadiness', () => {
     expect(result.blockers).toEqual(['District readiness matrix: failed'])
     expect(renderP1ReleaseReadiness(result)).toContain(
       '# P1 Release Readiness: BLOCKED',
+    )
+  })
+
+  it('forwards reviewed-case hash mismatch allowance to reviewed-case checks', async () => {
+    vi.stubEnv('PARKKING_ALLOW_REVIEWED_CASE_HASH_MISMATCH', 'true')
+    const runners = buildRunners()
+
+    await runP1ReleaseReadiness({}, runners)
+
+    expect(runners.buildP0Readiness).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowMismatchedCaseHash: true,
+      }),
+    )
+    expect(runners.runSmokeParkingAnswerService).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowMismatchedCaseHash: true,
+      }),
+    )
+    expect(runners.runSmokeReviewedUiPacks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowMismatchedCaseHash: true,
+      }),
+    )
+    expect(runners.runSmokeUiParkingAnswers).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowMismatchedCaseHash: true,
+      }),
     )
   })
 
