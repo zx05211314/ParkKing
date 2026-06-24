@@ -80,6 +80,8 @@ describe('packageHumanReviews', () => {
         'packageHumanReviews',
         '--review-root',
         '.tmp',
+        '--config-root',
+        'configs/expansion',
         '--district',
         'daan,zhongshan',
         '--out-dir',
@@ -92,6 +94,7 @@ describe('packageHumanReviews', () => {
       ]),
     ).toEqual({
       reviewRoot: '.tmp',
+      configRoot: 'configs/expansion',
       districtIds: ['daan', 'zhongshan'],
       all: false,
       outDir: '.tmp/reviews',

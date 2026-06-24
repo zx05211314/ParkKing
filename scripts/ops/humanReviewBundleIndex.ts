@@ -6,6 +6,7 @@ import fg from 'fast-glob'
 import { buildQaReviewSummary } from './qaReviewSummaryState'
 
 const DEFAULT_REVIEW_ROOT = '.tmp'
+const DEFAULT_CONFIG_ROOT = 'configs/prod'
 const DEFAULT_PUBLISH_GATE_SUMMARY = 'data/generated/_ops/publish_gate_summary.json'
 const HUMAN_REVIEW_SUFFIX = '-human-review'
 
@@ -33,6 +34,7 @@ export interface HumanReviewBundleFinalizeInputs {
 
 export interface HumanReviewBundleIndexOptions {
   reviewRoot?: string
+  configRoot?: string
   districtIds?: string[]
   publishGateSummaryPath?: string | null
   requireReadyToFinalize?: boolean
@@ -114,6 +116,8 @@ export const parseHumanReviewBundleIndexArgs = (
 ): HumanReviewBundleIndexOptions => ({
   reviewRoot:
     getArgValue(argv, '--review-root', '--reviewRoot') ?? DEFAULT_REVIEW_ROOT,
+  configRoot:
+    getArgValue(argv, '--config-root', '--configRoot') ?? DEFAULT_CONFIG_ROOT,
   districtIds: getArgValues(argv, '--district', '--district-id', '--districtId'),
   publishGateSummaryPath: hasFlag(argv, '--no-publish-gate-summary')
     ? null
@@ -254,13 +258,14 @@ const buildFinalizeInputs = (params: {
   districtId: string
   sourcePath: string
   files: ExpectedFiles
+  configRoot: string
   allowWarnReason: string | null
 }): HumanReviewBundleFinalizeInputs => ({
   districtId: params.districtId,
   sourcePath: params.sourcePath,
   reviewsPath: params.files.handoffCsv,
   mergedOutPath: toMergedCsvPath(params.sourcePath),
-  configPath: path.join('configs', 'prod', `${params.districtId}.json`),
+  configPath: path.join(params.configRoot, `${params.districtId}.json`),
   allowPublishWarn: Boolean(params.allowWarnReason),
   publishOverrideReason: params.allowWarnReason,
 })
@@ -320,6 +325,7 @@ const resolveStatus = (params: {
 
 const buildBundleEntry = async (
   bundleDir: string,
+  configRoot: string,
   publishGateWarnCodesByDistrict: Map<string, string[]>,
 ): Promise<HumanReviewBundleEntry> => {
   const bundleName = path.basename(bundleDir)
@@ -482,6 +488,7 @@ const buildBundleEntry = async (
     districtId,
     sourcePath,
     files,
+    configRoot,
     allowWarnReason,
   })
 
@@ -525,6 +532,7 @@ export const runHumanReviewBundleIndex = async (
   options: HumanReviewBundleIndexOptions = {},
 ): Promise<HumanReviewBundleIndexResult> => {
   const reviewRoot = path.resolve(options.reviewRoot ?? DEFAULT_REVIEW_ROOT)
+  const configRoot = options.configRoot ?? DEFAULT_CONFIG_ROOT
   const publishGateSummaryPath =
     options.publishGateSummaryPath === null
       ? null
@@ -571,7 +579,7 @@ export const runHumanReviewBundleIndex = async (
   const entries = (
     await Promise.all(
       bundleDirs.map((bundleDir) =>
-        buildBundleEntry(bundleDir, publishGateWarnCodesByDistrict),
+        buildBundleEntry(bundleDir, configRoot, publishGateWarnCodesByDistrict),
       ),
     )
   ).filter((entry) => matchesDistrictFilter(entry, districtIds))

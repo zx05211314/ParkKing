@@ -371,6 +371,9 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   `npm run ops:human-review-index -- --out .tmp/human-review-index.md --json-out .tmp/human-review-index.json`
 - Package districts that still need human review into zip handoff files:
   `npm run ops:package-human-reviews -- --district daan,zhongshan`
+  For expansion candidates that are not yet promoted to `configs/prod`, pass
+  `--config-root configs/expansion` so generated validation/finalize commands
+  point at the candidate config.
 - Row-level audit for filled or partially filled human review handoff CSVs:
   `npm run ops:review-handoff-audit -- --district daan,zhongshan`
   `npm run ops:review-handoff-audit -- --district daan,zhongshan --priority-out .tmp/human-review-priority.md --priority-csv-out .tmp/human-review-priority.csv --priority-json-out .tmp/human-review-priority.json`

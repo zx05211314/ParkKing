@@ -21,6 +21,7 @@ import { REVIEW_TIMESTAMP_MESSAGE } from './reviewTimestamp'
 
 const DEFAULT_REVIEW_ROOT = '.tmp'
 const DEFAULT_OUT_DIR = '.tmp/human-review-packages'
+const DEFAULT_CONFIG_ROOT = 'configs/prod'
 const DEFAULT_PUBLISH_GATE_SUMMARY = 'data/generated/_ops/publish_gate_summary.json'
 
 interface PackageSourceFile {
@@ -31,6 +32,7 @@ interface PackageSourceFile {
 
 export interface PackageHumanReviewsOptions {
   reviewRoot?: string
+  configRoot?: string
   districtIds?: string[]
   all?: boolean
   outDir?: string
@@ -112,6 +114,8 @@ export const parsePackageHumanReviewsArgs = (
 ): PackageHumanReviewsOptions => ({
   reviewRoot:
     getArgValue(argv, '--review-root', '--reviewRoot') ?? DEFAULT_REVIEW_ROOT,
+  configRoot:
+    getArgValue(argv, '--config-root', '--configRoot') ?? DEFAULT_CONFIG_ROOT,
   districtIds: getArgValues(argv, '--district', '--district-id', '--districtId'),
   all: hasFlag(argv, '--all'),
   outDir: getArgValue(argv, '--out-dir', '--outDir') ?? DEFAULT_OUT_DIR,
@@ -447,6 +451,7 @@ export const runPackageHumanReviews = async (
 
   const index = await runHumanReviewBundleIndex({
     reviewRoot,
+    configRoot: options.configRoot ?? DEFAULT_CONFIG_ROOT,
     districtIds: options.all ? [] : districtIds,
     publishGateSummaryPath:
       options.publishGateSummaryPath === undefined
