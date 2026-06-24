@@ -21,8 +21,12 @@ const writeJson = async (targetPath: string, payload: unknown) => {
   await writeText(targetPath, `${JSON.stringify(payload, null, 2)}\n`)
 }
 
-const writeConfig = async (root: string, districtId: string) => {
-  const configPath = path.join(root, 'configs', 'prod', `${districtId}.json`)
+const writeConfig = async (
+  root: string,
+  districtId: string,
+  configSet = 'prod',
+) => {
+  const configPath = path.join(root, 'configs', configSet, `${districtId}.json`)
   await writeJson(configPath, {
     districtId,
     districtName: districtId.toUpperCase(),
@@ -267,6 +271,69 @@ describe('districtReadinessMatrix', () => {
     expect(renderDistrictReadinessMatrix(result)).toContain(
       'District filter: xinyi',
     )
+  })
+
+  it('loads configs from comma-separated prod and expansion globs', async () => {
+    const root = await makeTempRoot()
+    const publicRoot = path.join(root, 'public', 'data', 'generated')
+    const dryRunRoot = path.join(root, 'data', 'generated')
+    const reviewRoot = path.join(root, '.tmp')
+    await writeConfig(root, 'xinyi')
+    await writeConfig(root, 'songshan', 'expansion')
+    await writeMeta(publicRoot, 'xinyi', {
+      parkingSpaces: 3,
+      signOverrides: 2,
+      inferredCandidates: 4,
+    })
+    await writeMeta(dryRunRoot, 'songshan', {
+      parkingSpaces: 7,
+      signOverrides: 0,
+      inferredCandidates: 8,
+    })
+    await writeJson(path.join(publicRoot, 'registry.json'), {
+      districts: [{ districtId: 'xinyi' }],
+    })
+    await writeText(
+      path.join(reviewRoot, 'xinyi-current-review.merged.csv'),
+      [
+        'districtId,segmentId,reviewBucket,reviewStatus,reviewNote,createdAt',
+        'xinyi,s1,marked_space_park,LEGAL,observed,2026-05-10T00:00:00.000Z',
+        'xinyi,s2,marked_space_park,ILLEGAL,observed,2026-05-10T00:00:00.000Z',
+        'xinyi,s3,no_stop,LEGAL,observed,2026-05-10T00:00:00.000Z',
+        'xinyi,s4,no_stop,ILLEGAL,observed,2026-05-10T00:00:00.000Z',
+        '',
+      ].join('\n'),
+    )
+
+    const configGlob = [
+      path.join(root, 'configs', 'prod', 'xinyi.json'),
+      path.join(root, 'configs', 'expansion', '*.json'),
+    ].join(',')
+    const result = await runDistrictReadinessMatrix({
+      configGlob,
+      districtIds: ['xinyi', 'songshan'],
+      publicRoot,
+      dryRunRoot,
+      reviewRoot,
+    })
+
+    expect(result.missingDistrictIds).toEqual([])
+    expect(result.entries.map((entry) => entry.districtId)).toEqual([
+      'songshan',
+      'xinyi',
+    ])
+    expect(result.entries.find((entry) => entry.districtId === 'xinyi')).toMatchObject({
+      runtimeStatus: 'published',
+      reviewStatus: 'pass',
+    })
+    expect(
+      result.entries.find((entry) => entry.districtId === 'songshan'),
+    ).toMatchObject({
+      runtimeStatus: 'not-published',
+      dataPackStatus: 'available',
+      primaryDatasetSource: 'dry-run',
+      reviewStatus: 'missing',
+    })
   })
 
   it('blocks when a requested district config is missing', async () => {

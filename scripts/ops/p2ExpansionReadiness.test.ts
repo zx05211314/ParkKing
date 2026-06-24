@@ -223,6 +223,11 @@ describe('p2ExpansionReadiness', () => {
     expect(inferConfigRootFromGlob('configs\\expansion\\songshan.json')).toBe(
       'configs/expansion',
     )
+    expect(
+      inferConfigRootFromGlob(
+        'configs/prod/xinyi.json,configs/expansion/songshan.json',
+      ),
+    ).toBeNull()
   })
 
   it('passes automation readiness while marking pending human review', async () => {

@@ -113,6 +113,36 @@ const parseDistrictIds = (value: string | null) =>
         .map((districtId) => districtId.trim())
         .filter(Boolean)
 
+export const splitConfigGlobPatterns = (configGlob: string) => {
+  const patterns: string[] = []
+  let current = ''
+  let braceDepth = 0
+
+  for (const char of configGlob) {
+    if (char === '{') {
+      braceDepth += 1
+    }
+    if (char === '}') {
+      braceDepth = Math.max(0, braceDepth - 1)
+    }
+    if (char === ',' && braceDepth === 0) {
+      const pattern = current.trim()
+      if (pattern) {
+        patterns.push(pattern)
+      }
+      current = ''
+      continue
+    }
+    current += char
+  }
+
+  const pattern = current.trim()
+  if (pattern) {
+    patterns.push(pattern)
+  }
+  return patterns
+}
+
 export const parseDistrictReadinessMatrixArgs = (
   argv: string[],
 ): DistrictReadinessMatrixOptions => ({
@@ -187,7 +217,10 @@ const getCount = (
 ) => getNumber(meta, topLevelKey) ?? getNumber(getCountsRecord(meta), countsKey)
 
 const readConfigs = async (configGlob: string) => {
-  const matches = await fg(configGlob.replace(/\\/g, '/'), {
+  const patterns = splitConfigGlobPatterns(configGlob).map((pattern) =>
+    pattern.replace(/\\/g, '/'),
+  )
+  const matches = await fg(patterns, {
     absolute: true,
     onlyFiles: true,
   })

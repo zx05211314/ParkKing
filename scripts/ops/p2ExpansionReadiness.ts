@@ -3,6 +3,7 @@ import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   runDistrictReadinessMatrix,
+  splitConfigGlobPatterns,
   type DistrictReadinessEntry,
   type DistrictReadinessMatrixOptions,
   type DistrictReadinessMatrixResult,
@@ -250,25 +251,32 @@ export const resolveP2ExpansionReadinessInputs = (
   }
 }
 
-export const inferConfigRootFromGlob = (configGlob: string) => {
-  const normalized = configGlob.replace(/\\/g, '/')
-  const firstPattern = normalized.split(',')[0]?.trim()
-  if (!firstPattern) {
+const inferConfigRootFromPattern = (configPattern: string) => {
+  const normalized = configPattern.replace(/\\/g, '/').trim()
+  if (!normalized) {
     return null
   }
   const globIndex = ['*', '[', ']', '{', '}'].reduce((lowest, marker) => {
-    const index = firstPattern.indexOf(marker)
+    const index = normalized.indexOf(marker)
     return index >= 0 && (lowest < 0 || index < lowest) ? index : lowest
   }, -1)
   const pathPart =
-    globIndex >= 0 ? firstPattern.slice(0, globIndex) : firstPattern
+    globIndex >= 0 ? normalized.slice(0, globIndex) : normalized
   const withoutTrailingSlash = pathPart.replace(/\/+$/u, '')
   if (!withoutTrailingSlash) {
     return null
   }
-  return firstPattern.endsWith('.json') && globIndex < 0
+  return normalized.endsWith('.json') && globIndex < 0
     ? path.posix.dirname(withoutTrailingSlash)
     : withoutTrailingSlash
+}
+
+export const inferConfigRootFromGlob = (configGlob: string) => {
+  const roots = splitConfigGlobPatterns(configGlob)
+    .map(inferConfigRootFromPattern)
+    .filter((root): root is string => Boolean(root))
+  const uniqueRoots = Array.from(new Set(roots))
+  return uniqueRoots.length === 1 ? uniqueRoots[0] : null
 }
 
 const expectedFailCodes = new Set([
