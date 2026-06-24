@@ -278,4 +278,66 @@ describe('districtReadinessMatrix', () => {
       path.resolve(casesPath).replace(/\\/g, '/'),
     )
   })
+
+  it('does not block publish warnings that passed with an explicit override', async () => {
+    const root = await makeTempRoot()
+    const publicRoot = path.join(root, 'public', 'data', 'generated')
+    const reviewRoot = path.join(root, '.tmp')
+    await writeConfig(root, 'xinyi')
+    await writeMeta(publicRoot, 'xinyi', {
+      parkingSpaces: 3,
+      signOverrides: 2,
+      inferredCandidates: 4,
+    })
+    await writeJson(path.join(publicRoot, 'registry.json'), {
+      districts: [{ districtId: 'xinyi' }],
+    })
+    await writeJson(path.join(publicRoot, '_ops', 'publish_gate_summary.json'), {
+      allowWarn: true,
+      overrideReason: 'tag release approved by reviewed gates',
+      exitCode: 0,
+      baselineAdopt: {
+        enabled: false,
+        applied: false,
+        districtIds: [],
+        reason: null,
+      },
+      districts: [
+        {
+          districtId: 'xinyi',
+          warn: 1,
+          fail: 0,
+          topWarnCodes: ['PERF_REGRESSION'],
+          topFailCodes: [],
+        },
+      ],
+    })
+    await writeText(
+      path.join(reviewRoot, 'xinyi-current-review.merged.csv'),
+      [
+        'districtId,segmentId,reviewBucket,reviewStatus,reviewNote,createdAt',
+        'xinyi,s1,marked_space_park,LEGAL,observed,2026-05-10T00:00:00.000Z',
+        'xinyi,s2,marked_space_park,ILLEGAL,observed,2026-05-10T00:00:00.000Z',
+        'xinyi,s3,no_stop,LEGAL,observed,2026-05-10T00:00:00.000Z',
+        'xinyi,s4,no_stop,ILLEGAL,observed,2026-05-10T00:00:00.000Z',
+        '',
+      ].join('\n'),
+    )
+
+    const result = await runDistrictReadinessMatrix({
+      configGlob: path.join(root, 'configs', 'prod', '*.json'),
+      publicRoot,
+      reviewRoot,
+    })
+
+    expect(result.entries[0]).toMatchObject({
+      publishGateStatus: 'pass',
+      publishGateWarnCodes: ['PERF_REGRESSION'],
+      publishGateWarnAllowed: true,
+      blockers: [],
+    })
+    expect(renderDistrictReadinessMatrix(result)).toContain(
+      'warn PERF_REGRESSION (allowed); fail none',
+    )
+  })
 })

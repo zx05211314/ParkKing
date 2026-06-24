@@ -39,6 +39,13 @@ interface AnswerCaseReviewFallback {
   reviewedRows: number
 }
 
+interface PublishGateEntry {
+  status: PublishGateStatus
+  warnCodes: string[]
+  failCodes: string[]
+  warnAllowed: boolean
+}
+
 export interface DistrictReadinessEntry {
   districtId: string
   districtName: string
@@ -58,6 +65,7 @@ export interface DistrictReadinessEntry {
   publishGateStatus: PublishGateStatus
   publishGateWarnCodes: string[]
   publishGateFailCodes: string[]
+  publishGateWarnAllowed: boolean
   blockers: string[]
 }
 
@@ -306,13 +314,14 @@ const answerCaseFallbackReview = (fallback: AnswerCaseReviewFallback) => ({
 })
 
 const readPublishGateEntries = async (paths: string[]) => {
-  const entries = new Map<
-    string,
-    { status: PublishGateStatus; warnCodes: string[]; failCodes: string[] }
-  >()
+  const entries = new Map<string, PublishGateEntry>()
   for (const summaryPath of paths) {
     const summary = await readJsonIfExists(summaryPath)
     const districts = Array.isArray(summary?.districts) ? summary.districts : []
+    const summaryWarnOverrideAllowed =
+      summary?.allowWarn === true &&
+      Boolean(getString(summary, 'overrideReason')) &&
+      getNumber(summary, 'exitCode') === 0
     const baselineAdopt = isRecord(summary?.baselineAdopt)
       ? summary.baselineAdopt
       : null
@@ -341,10 +350,13 @@ const readPublishGateEntries = async (paths: string[]) => {
         ? record.topWarnCodes.filter((value): value is string => typeof value === 'string')
         : []
       const baselineAdopted = baselineAdoptedIds.has(districtId) && fail === 0
+      const warnAllowed =
+        warn > 0 && fail === 0 && (baselineAdopted || summaryWarnOverrideAllowed)
       entries.set(districtId, {
-        status: fail > 0 ? 'fail' : warn > 0 && !baselineAdopted ? 'warn' : 'pass',
-        warnCodes: baselineAdopted ? [] : topWarnCodes,
+        status: fail > 0 ? 'fail' : warn > 0 && !warnAllowed ? 'warn' : 'pass',
+        warnCodes: topWarnCodes,
         failCodes: topFailCodes,
+        warnAllowed,
       })
     })
   }
@@ -359,6 +371,7 @@ const buildBlockers = (params: {
   publishGateStatus: PublishGateStatus
   publishGateWarnCodes: string[]
   publishGateFailCodes: string[]
+  publishGateWarnAllowed: boolean
 }) => {
   const blockers: string[] = []
   if (params.runtimeStatus !== 'published') {
@@ -382,7 +395,10 @@ const buildBlockers = (params: {
   if (params.publishGateStatus === 'fail') {
     blockers.push(`publish gate fail: ${params.publishGateFailCodes.join(', ') || 'unknown'}`)
   }
-  if (params.publishGateStatus === 'warn' || params.publishGateWarnCodes.length > 0) {
+  if (
+    (params.publishGateStatus === 'warn' || params.publishGateWarnCodes.length > 0) &&
+    !params.publishGateWarnAllowed
+  ) {
     blockers.push(`publish gate warn: ${params.publishGateWarnCodes.join(', ') || 'unknown'}`)
   }
   return blockers
@@ -396,11 +412,11 @@ const buildEntry = async (params: {
   registryIds: Set<string>
   publicPublishGateEntries: Map<
     string,
-    { status: PublishGateStatus; warnCodes: string[]; failCodes: string[] }
+    PublishGateEntry
   >
   dryRunPublishGateEntries: Map<
     string,
-    { status: PublishGateStatus; warnCodes: string[]; failCodes: string[] }
+    PublishGateEntry
   >
   answerCaseReviewFallbacks: Map<string, AnswerCaseReviewFallback>
 }) => {
@@ -465,6 +481,7 @@ const buildEntry = async (params: {
     status: 'unknown' as PublishGateStatus,
     warnCodes: [],
     failCodes: [],
+    warnAllowed: false,
   }
   const blockers = buildBlockers({
     runtimeStatus,
@@ -474,6 +491,7 @@ const buildEntry = async (params: {
     publishGateStatus: publishGate.status,
     publishGateWarnCodes: publishGate.warnCodes,
     publishGateFailCodes: publishGate.failCodes,
+    publishGateWarnAllowed: publishGate.warnAllowed,
   })
 
   return {
@@ -495,6 +513,7 @@ const buildEntry = async (params: {
     publishGateStatus: publishGate.status,
     publishGateWarnCodes: publishGate.warnCodes,
     publishGateFailCodes: publishGate.failCodes,
+    publishGateWarnAllowed: publishGate.warnAllowed,
     blockers,
   } satisfies DistrictReadinessEntry
 }
@@ -590,7 +609,7 @@ export const renderDistrictReadinessMatrix = (
     lines.push(`- ${entry.districtId}: dataset ${entry.datasetHash ?? '-'} (${entry.primaryDatasetSource ?? '-'})`)
     lines.push(`  Review: ${entry.reviewPath ?? '-'}; next: ${entry.nextReviewPath ?? '-'}`)
     lines.push(
-      `  Publish gate codes: warn ${entry.publishGateWarnCodes.join(', ') || 'none'}; fail ${entry.publishGateFailCodes.join(', ') || 'none'}`,
+      `  Publish gate codes: warn ${entry.publishGateWarnCodes.join(', ') || 'none'}${entry.publishGateWarnAllowed ? ' (allowed)' : ''}; fail ${entry.publishGateFailCodes.join(', ') || 'none'}`,
     )
   })
 
