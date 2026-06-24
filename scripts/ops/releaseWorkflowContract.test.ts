@@ -124,6 +124,12 @@ describe('release workflow contracts', () => {
     expect(workflow).toContain("startsWith(github.event.workflow_run.head_branch, 'data-')")
     expect(workflow).toContain('RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}')
     expect(workflow).toContain(
+      'PARKKING_RENDER_SERVICE_ID: ${{ secrets.PARKKING_RENDER_SERVICE_ID }}',
+    )
+    expect(workflow).toContain(
+      'PARKKING_RENDER_SERVICE_NAME: ${{ secrets.PARKKING_RENDER_SERVICE_NAME }}',
+    )
+    expect(workflow).toContain(
       'PARKKING_WORKFLOW_EVENT_NAME: ${{ github.event_name }}',
     )
     expect(workflow).toContain(
