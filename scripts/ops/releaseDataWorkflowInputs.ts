@@ -5,7 +5,7 @@ import { validateReleaseId } from './packageReleaseUtils'
 type Env = NodeJS.ProcessEnv
 
 const DEFAULT_CONFIGS_GLOB = 'configs/prod/*.json'
-const TAG_TRIGGER_ALLOW_WARN_OVERRIDE_REASON =
+export const TAG_TRIGGER_ALLOW_WARN_OVERRIDE_REASON =
   'Tag-triggered release uses reviewed UI, P3, deploy, and URL-smoke gates after production ingest.'
 
 export interface ReleaseDataWorkflowInputs {

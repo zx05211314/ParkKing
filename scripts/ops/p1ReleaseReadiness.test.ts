@@ -16,6 +16,7 @@ import {
   runP1ReleaseReadiness,
   type P1ReleaseReadinessRunners,
 } from './p1ReleaseReadiness'
+import { TAG_TRIGGER_ALLOW_WARN_OVERRIDE_REASON } from './releaseDataWorkflowInputs'
 
 const p0Pass = {
   pass: true,
@@ -216,6 +217,8 @@ describe('p1ReleaseReadiness', () => {
       publishReportPath: expect.stringMatching(
         /^\.tmp[\\/]p1-release-readiness[\\/]xinyi-ingest_all_report\.json$/,
       ),
+      allowPublishWarn: true,
+      publishOverrideReason: TAG_TRIGGER_ALLOW_WARN_OVERRIDE_REASON,
     })
     expect(runners.runSmokeApiServices).toHaveBeenCalledWith({
       startPreview: true,
