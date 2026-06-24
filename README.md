@@ -461,6 +461,18 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   `npm run ops:p2-status`
   This writes `.tmp/p2-status.md` and `.tmp/p2-status.json` by combining current readiness, strict readiness, returned-review intake, review gate, handoff audit, and the latest reviewer zip paths under `.tmp/human-review-packages`. It exits cleanly when the only blocker is pending human review, and exits non-zero only for automation blockers that need code/data repair. When called with expansion candidate configs, for example `npm run ops:p2-status -- --expansion-district songshan --configs "configs/expansion/*.json" --skip-p1 --report-only`, it propagates the inferred `configs/expansion` root into readiness and review-gate commands. For mixed prod/candidate configs, pass `--config-root configs/expansion` explicitly so review-gate finalize commands target the candidate files.
   CI also uploads the same P2 status and review diagnostics with explicit `--report-only` flags so Daan/Zhongshan expansion blockers are visible without blocking the current Xinyi release gate; unhandled CLI errors still fail the workflow.
+- Current Songshan P2 candidate shortcuts:
+  `npm run ops:p2-songshan-status -- --report-only`
+  `npm run ops:p2-songshan-human-review-handoff -- --report-only`
+  `npm run ops:p2-songshan-review-diagnostics -- --report-only`
+  `npm run ops:p2-songshan-review-intake`
+  `npm run ops:p2-songshan-review-gate-report`
+  `npm run ops:p2-songshan-review-gate`
+  `npm run ops:p2-songshan-finalize-ready`
+  `npm run ops:p2-songshan-finalize-ready:execute`
+  `npm run ops:p2-songshan-promote`
+  `npm run ops:p2-songshan-promote:execute`
+  These wrap the mixed Xinyi production plus Songshan expansion config set (`configs/prod/xinyi.json,configs/expansion/songshan.json`) and force `--config-root configs/expansion`, so review-gate/finalize commands write Songshan answer cases under `configs/expansion` until `ops:p2-songshan-promote:execute` deliberately copies reviewed files into `configs/prod`. These shortcuts do not bypass human review; they only remove the long repeated command arguments.
 - P2 human review handoff for Daan/Zhongshan:
   `npm run ops:p2-human-review-handoff`
   This packages the current `ready-for-review` bundles, writes `.tmp/p2-human-review-handoff.md` and `.tmp/p2-human-review-handoff.json`, and leaves the expansion readiness strict gate blocked until a human fills valid review rows. CI runs this as a report-only handoff helper and uploads `.tmp/human-review-packages/**` with the P2 status artifact.

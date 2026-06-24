@@ -291,6 +291,45 @@ describe('release workflow contracts', () => {
     )
   })
 
+  it('keeps Songshan P2 candidate shortcuts pinned to expansion configs', async () => {
+    const packageJson = await readPackageJson()
+    const scripts = packageJson.scripts ?? {}
+    const songshanShortcutNames = [
+      'ops:p2-songshan-human-review-handoff',
+      'ops:p2-songshan-review-intake',
+      'ops:p2-songshan-review-gate-report',
+      'ops:p2-songshan-review-gate',
+      'ops:p2-songshan-finalize-ready',
+      'ops:p2-songshan-finalize-ready:execute',
+    ]
+
+    expect(scripts['ops:p2-songshan-status']).toContain(
+      '--expansion-district songshan',
+    )
+    expect(scripts['ops:p2-songshan-status']).toContain(
+      '--configs "configs/prod/xinyi.json,configs/expansion/songshan.json"',
+    )
+    expect(scripts['ops:p2-songshan-status']).toContain(
+      '--config-root configs/expansion',
+    )
+    expect(scripts['ops:p2-songshan-status']).toContain('--skip-p1')
+    expect(scripts['ops:p2-songshan-review-diagnostics']).toContain(
+      '--district songshan',
+    )
+    expect(scripts['ops:p2-songshan-promote']).toBe(
+      'tsx scripts/ops/p2PromoteExpansion.ts --district songshan',
+    )
+    expect(scripts['ops:p2-songshan-promote:execute']).toBe(
+      'tsx scripts/ops/p2PromoteExpansion.ts --district songshan --execute',
+    )
+    for (const shortcutName of songshanShortcutNames) {
+      const script = scripts[shortcutName] ?? ''
+      expect(script).toContain('--district songshan')
+      expect(script).toContain('--config-root configs/expansion')
+      expect(script).not.toContain('daan,zhongshan')
+    }
+  })
+
   it('keeps CI typechecking deploy ops helpers before build', async () => {
     const workflow = await readWorkflow('ci.yml')
 
