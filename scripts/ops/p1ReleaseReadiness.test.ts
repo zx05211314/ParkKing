@@ -9,6 +9,7 @@ import type { SmokeUiParkingAnswersSummary } from './smokeUiParkingAnswers'
 import type { SmokeUiMapViewSummary } from './smokeUiMapView'
 import type { SmokeUiIssueReportSummary } from './smokeUiIssueReport'
 import type { BundleBudgetResult } from './bundleBudget'
+import type { RefreshPublishReportResult } from './refreshPublishReportState'
 import {
   parseP1ReleaseReadinessArgs,
   renderP1ReleaseReadiness,
@@ -26,6 +27,13 @@ const p0Pass = {
   qaReview: { pass: true, summary: null, error: null },
   publishGate: { pass: true, summary: null, error: null },
 } as unknown as P0ReadinessResult
+
+const publishReportRefreshPass = {
+  summary: {
+    districtId: 'xinyi',
+    warnings: [],
+  },
+} as unknown as RefreshPublishReportResult
 
 const matrixWithKnownBlockers = {
   entries: [
@@ -123,6 +131,7 @@ const issueReportUiPass = {
 const buildRunners = (
   overrides: Partial<P1ReleaseReadinessRunners> = {},
 ): P1ReleaseReadinessRunners => ({
+  refreshPublishReport: vi.fn().mockResolvedValue(publishReportRefreshPass),
   buildP0Readiness: vi.fn().mockResolvedValue(p0Pass),
   runDistrictReadinessMatrix: vi.fn().mockResolvedValue(matrixWithKnownBlockers),
   runSmokeApiServices: vi.fn().mockResolvedValue(apiPass),
@@ -185,6 +194,25 @@ describe('p1ReleaseReadiness', () => {
         blockers: ['runtime stale-public-dir', 'sign overrides missing or zero'],
       },
     ])
+    expect(runners.refreshPublishReport).toHaveBeenCalledWith({
+      configPath: expect.stringMatching(/^configs[\\/]prod[\\/]xinyi\.json$/),
+      datasetDir: expect.stringMatching(/^public[\\/]data[\\/]generated[\\/]xinyi$/),
+      outPath: expect.stringMatching(
+        /^\.tmp[\\/]p1-release-readiness[\\/]xinyi-ingest_all_report\.json$/,
+      ),
+    })
+    expect(
+      vi.mocked(runners.refreshPublishReport).mock.invocationCallOrder[0],
+    ).toBeLessThan(vi.mocked(runners.buildP0Readiness).mock.invocationCallOrder[0])
+    expect(runners.buildP0Readiness).toHaveBeenCalledWith({
+      districtId: 'xinyi',
+      answerCasesPath: expect.stringMatching(
+        /^configs[\\/]prod[\\/]xinyi\.answer-cases\.json$/,
+      ),
+      publishReportPath: expect.stringMatching(
+        /^\.tmp[\\/]p1-release-readiness[\\/]xinyi-ingest_all_report\.json$/,
+      ),
+    })
     expect(runners.runSmokeApiServices).toHaveBeenCalledWith({
       startPreview: true,
       timeoutMs: 25000,

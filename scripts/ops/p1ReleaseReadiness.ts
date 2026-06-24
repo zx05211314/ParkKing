@@ -4,6 +4,10 @@ import { fileURLToPath } from 'node:url'
 import { buildP0Readiness } from './p0ReadinessState'
 import type { P0ReadinessParams, P0ReadinessResult } from './p0ReadinessTypes'
 import {
+  buildRefreshPublishReport,
+  type RefreshPublishReportResult,
+} from './refreshPublishReportState'
+import {
   runDistrictReadinessMatrix,
   type DistrictReadinessEntry,
   type DistrictReadinessMatrixOptions,
@@ -87,6 +91,7 @@ export interface P1ReleaseReadinessCheck<T> {
 export interface P1ReleaseReadinessResult {
   pass: boolean
   inputs: P1ReleaseReadinessInputs
+  publishReportRefresh: P1ReleaseReadinessCheck<RefreshPublishReportResult>
   p0Readiness: P1ReleaseReadinessCheck<P0ReadinessResult>
   districtMatrix: P1ReleaseReadinessCheck<DistrictReadinessMatrixResult>
   bundleBudget: P1ReleaseReadinessCheck<BundleBudgetResult>
@@ -102,6 +107,9 @@ export interface P1ReleaseReadinessResult {
 }
 
 export interface P1ReleaseReadinessRunners {
+  refreshPublishReport: (
+    options: Parameters<typeof buildRefreshPublishReport>[0],
+  ) => Promise<RefreshPublishReportResult>
   buildP0Readiness: (params: P0ReadinessParams) => Promise<P0ReadinessResult>
   runDistrictReadinessMatrix: (
     options: DistrictReadinessMatrixOptions,
@@ -137,6 +145,7 @@ const DEFAULT_TIMEOUT_MS = 25_000
 const DEFAULT_DIST_DIR = 'dist'
 
 const defaultRunners: P1ReleaseReadinessRunners = {
+  refreshPublishReport: buildRefreshPublishReport,
   buildP0Readiness,
   runDistrictReadinessMatrix,
   runSmokeApiServices,
@@ -269,11 +278,26 @@ const knownDistrictBlockers = (matrix: DistrictReadinessMatrixResult | null) =>
         }))
     : []
 
+const resolveP1PublishReportRefreshPath = (districtId: string) =>
+  path.join('.tmp', 'p1-release-readiness', `${districtId}-ingest_all_report.json`)
+
 export const runP1ReleaseReadiness = async (
   options: P1ReleaseReadinessOptions = {},
   runners: P1ReleaseReadinessRunners = defaultRunners,
 ): Promise<P1ReleaseReadinessResult> => {
   const inputs = resolveP1ReleaseReadinessInputs(options)
+  const refreshedPublishReportPath = resolveP1PublishReportRefreshPath(inputs.districtId)
+  const publishReportRefresh = await runCheck(
+    'Publish report refresh',
+    true,
+    () =>
+      runners.refreshPublishReport({
+        configPath: path.join('configs', 'prod', `${inputs.districtId}.json`),
+        datasetDir: path.join(inputs.root, inputs.districtId),
+        outPath: refreshedPublishReportPath,
+      }),
+    () => true,
+  )
   const p0Readiness = await runCheck(
     'P0 readiness',
     true,
@@ -281,6 +305,7 @@ export const runP1ReleaseReadiness = async (
       runners.buildP0Readiness({
         districtId: inputs.districtId,
         answerCasesPath: inputs.answerCasesPath,
+        publishReportPath: refreshedPublishReportPath,
       }),
     (summary) => summary.pass,
   )
@@ -393,6 +418,7 @@ export const runP1ReleaseReadiness = async (
         (summary) => summary.pass,
       )
   const checks: ReadonlyArray<P1ReleaseReadinessCheck<unknown>> = [
+    publishReportRefresh,
     p0Readiness,
     districtMatrix,
     bundleBudget,
@@ -408,6 +434,7 @@ export const runP1ReleaseReadiness = async (
   return {
     pass: blockers.length === 0,
     inputs,
+    publishReportRefresh,
     p0Readiness,
     districtMatrix,
     bundleBudget,
@@ -479,6 +506,16 @@ const formatP0 = (summary: P0ReadinessResult | null) => {
   }`
 }
 
+const formatPublishReportRefresh = (summary: RefreshPublishReportResult | null) => {
+  if (!summary) {
+    return '-'
+  }
+  const failCount = summary.summary.warnings.filter(
+    (warning) => warning.severity === 'FAIL',
+  ).length
+  return `${summary.summary.districtId} report refreshed, fail warnings ${failCount}`
+}
+
 const formatKnownDistrictBlockers = (
   blockers: P1ReleaseReadinessResult['knownDistrictBlockers'],
 ) =>
@@ -520,6 +557,7 @@ export const renderP1ReleaseReadiness = (result: P1ReleaseReadinessResult) => {
     '',
     '| Status | Check | Summary | Error |',
     '| --- | --- | --- | --- |',
+    `| ${checkStatus(result.publishReportRefresh)} | Publish report refresh | ${formatPublishReportRefresh(result.publishReportRefresh.summary)} | ${result.publishReportRefresh.error ?? ''} |`,
     `| ${checkStatus(result.p0Readiness)} | P0 readiness | ${formatP0(result.p0Readiness.summary)} | ${result.p0Readiness.error ?? ''} |`,
     `| ${checkStatus(result.districtMatrix)} | District readiness matrix | ${
       result.districtMatrix.summary

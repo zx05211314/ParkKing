@@ -1,12 +1,12 @@
 {
-  "baselineCreatedAt": "2026-06-06T09:31:04.069Z",
-  "baselineDatasetHash": "4c6b09e69fb1ff0f122df85ffee0fae60b3399680b7243fb498bf2f4679abc78",
+  "baselineCreatedAt": "2026-06-24T03:04:59.038Z",
+  "baselineDatasetHash": "9e4f270d4a347257e37a6729b2854b60bdba34a76af7496e543b52139a5d7e4e",
   "baselineSchemaVersion": 1,
-  "baselineSourceMetaSha256": "940164652709cb9cc9fc9d28bb4fceedd007c01700070696cdf589ea2abb6de7",
+  "baselineSourceMetaSha256": "d7a92ce6f483cd09f4a709845098b0a49ba328f800f29ac569c019d0f1224674",
   "baselineDistrictName": "Xinyi",
-  "generatedAt": "2026-06-06T09:31:04.070Z",
+  "generatedAt": "2026-06-24T03:04:59.038Z",
   "districtId": "xinyi",
-  "datasetHash": "4c6b09e69fb1ff0f122df85ffee0fae60b3399680b7243fb498bf2f4679abc78",
+  "datasetHash": "9e4f270d4a347257e37a6729b2854b60bdba34a76af7496e543b52139a5d7e4e",
   "counts": {
     "segments": 11232,
     "intersections": 183,
@@ -29,12 +29,12 @@
   },
   "performance": {
     "day": {
-      "evalFirstMsMedian": 369,
-      "evalSecondMsMedian": 288
+      "evalFirstMsMedian": 251,
+      "evalSecondMsMedian": 197
     },
     "night": {
-      "evalFirstMsMedian": 295,
-      "evalSecondMsMedian": 268
+      "evalFirstMsMedian": 202,
+      "evalSecondMsMedian": 194
     }
   },
   "reasonCodes": {
