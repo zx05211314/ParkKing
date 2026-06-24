@@ -54,6 +54,7 @@ import {
   type BundleBudgetResult,
 } from './bundleBudget'
 import { resolveReviewedCaseHashMismatchAllowance } from './reviewedCaseHashMismatch'
+import { TAG_TRIGGER_ALLOW_WARN_OVERRIDE_REASON } from './releaseDataWorkflowInputs'
 
 export interface P1ReleaseReadinessOptions {
   districtId?: string | null
@@ -79,6 +80,8 @@ export interface P1ReleaseReadinessInputs {
   strictMatrix: boolean
   answerCasesPath: string
   distDir: string
+  allowPublishWarn: boolean
+  publishOverrideReason: string
 }
 
 export interface P1ReleaseReadinessCheck<T> {
@@ -227,6 +230,8 @@ export const resolveP1ReleaseReadinessInputs = (
       options.answerCasesPath?.trim() ||
       path.join('configs', 'prod', `${districtId}.answer-cases.json`),
     distDir: options.distDir?.trim() || DEFAULT_DIST_DIR,
+    allowPublishWarn: true,
+    publishOverrideReason: TAG_TRIGGER_ALLOW_WARN_OVERRIDE_REASON,
   }
 }
 
@@ -308,6 +313,8 @@ export const runP1ReleaseReadiness = async (
         districtId: inputs.districtId,
         answerCasesPath: inputs.answerCasesPath,
         publishReportPath: refreshedPublishReportPath,
+        allowPublishWarn: inputs.allowPublishWarn,
+        publishOverrideReason: inputs.publishOverrideReason,
         ...(allowMismatchedCaseHash ? { allowMismatchedCaseHash } : {}),
       }),
     (summary) => summary.pass,
@@ -516,10 +523,13 @@ const formatPublishReportRefresh = (summary: RefreshPublishReportResult | null) 
   if (!summary) {
     return '-'
   }
+  const warnCount = summary.summary.warnings.filter(
+    (warning) => warning.severity === 'WARN',
+  ).length
   const failCount = summary.summary.warnings.filter(
     (warning) => warning.severity === 'FAIL',
   ).length
-  return `${summary.summary.districtId} report refreshed, fail warnings ${failCount}`
+  return `${summary.summary.districtId} report refreshed, warn ${warnCount}, fail ${failCount}`
 }
 
 const formatKnownDistrictBlockers = (
@@ -558,6 +568,8 @@ export const renderP1ReleaseReadiness = (result: P1ReleaseReadinessResult) => {
     `- Timeout: ${result.inputs.timeoutMs}ms`,
     `- Strict matrix: ${result.inputs.strictMatrix ? 'yes' : 'no'}`,
     `- UI smoke: ${result.inputs.skipUi ? 'skipped' : 'enabled'}`,
+    `- Publish WARN override: ${result.inputs.allowPublishWarn ? 'yes' : 'no'}`,
+    `- Publish override reason: ${result.inputs.publishOverrideReason}`,
     '',
     '## Checks',
     '',
