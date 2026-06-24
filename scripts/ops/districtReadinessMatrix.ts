@@ -71,6 +71,7 @@ export interface DistrictReadinessEntry {
 
 export interface DistrictReadinessMatrixOptions {
   configGlob?: string
+  districtIds?: string[]
   publicRoot?: string
   dryRunRoot?: string
   reviewRoot?: string
@@ -83,6 +84,8 @@ export interface DistrictReadinessMatrixOptions {
 
 export interface DistrictReadinessMatrixResult {
   configGlob: string
+  districtIds: string[]
+  missingDistrictIds: string[]
   publicRoot: string
   dryRunRoot: string
   reviewRoot: string
@@ -102,12 +105,21 @@ const getArgValue = (argv: string[], ...flags: string[]) => {
   return null
 }
 
+const parseDistrictIds = (value: string | null) =>
+  value === null
+    ? []
+    : value
+        .split(',')
+        .map((districtId) => districtId.trim())
+        .filter(Boolean)
+
 export const parseDistrictReadinessMatrixArgs = (
   argv: string[],
 ): DistrictReadinessMatrixOptions => ({
   configGlob:
     getArgValue(argv, '--configs', '--config-glob', '--configGlob') ??
     DEFAULT_CONFIG_GLOB,
+  districtIds: parseDistrictIds(getArgValue(argv, '--district', '--districts')),
   publicRoot:
     getArgValue(argv, '--public-root', '--publicRoot') ?? DEFAULT_PUBLIC_ROOT,
   dryRunRoot:
@@ -528,7 +540,19 @@ export const runDistrictReadinessMatrix = async (
   const registryPath = path.resolve(
     options.registryPath ?? path.join(publicRoot, 'registry.json'),
   )
-  const configs = await readConfigs(configGlob)
+  const allConfigs = await readConfigs(configGlob)
+  const districtIds = (options.districtIds ?? [])
+    .map((districtId) => districtId.trim())
+    .filter(Boolean)
+  const districtFilter = new Set(districtIds)
+  const configs =
+    districtFilter.size > 0
+      ? allConfigs.filter((config) => districtFilter.has(config.districtId))
+      : allConfigs
+  const foundDistrictIds = new Set(configs.map((config) => config.districtId))
+  const missingDistrictIds = districtIds.filter(
+    (districtId) => !foundDistrictIds.has(districtId),
+  )
   const registry = await readRegistryDistrictIds(registryPath)
   const allowAnswerCaseReviewFallback = resolveAnswerCaseReviewFallbackAllowance(
     options.allowAnswerCaseReviewFallback,
@@ -561,13 +585,17 @@ export const runDistrictReadinessMatrix = async (
 
   return {
     configGlob,
+    districtIds,
+    missingDistrictIds,
     publicRoot,
     dryRunRoot,
     reviewRoot,
     registryPath,
     registryFound: registry.found,
     entries,
-    hasBlockers: entries.some((entry) => entry.blockers.length > 0),
+    hasBlockers:
+      missingDistrictIds.length > 0 ||
+      entries.some((entry) => entry.blockers.length > 0),
   }
 }
 
@@ -579,6 +607,8 @@ export const renderDistrictReadinessMatrix = (
   const lines = [
     `District readiness matrix: ${result.hasBlockers ? 'WARN' : 'PASS'}`,
     `Configs: ${result.configGlob}`,
+    `District filter: ${result.districtIds.join(', ') || 'all'}`,
+    `Missing requested districts: ${result.missingDistrictIds.join(', ') || 'none'}`,
     `Public root: ${result.publicRoot}`,
     `Dry-run root: ${result.dryRunRoot}`,
     `Review root: ${result.reviewRoot}`,

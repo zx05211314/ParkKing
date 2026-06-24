@@ -172,6 +172,7 @@ describe('p3ReleaseReadiness', () => {
     expect(result.blockers).toEqual([])
     expect(runners.runDistrictReadinessMatrix).toHaveBeenCalledWith(
       expect.objectContaining({
+        districtIds: ['xinyi', 'daan', 'zhongshan'],
         answerCasesGlob: 'configs/prod/*.answer-cases.json',
       }),
     )
