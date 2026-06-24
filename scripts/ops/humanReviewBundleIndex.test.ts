@@ -62,6 +62,8 @@ describe('humanReviewBundleIndex', () => {
         'humanReviewBundleIndex',
         '--review-root',
         '.tmp',
+        '--config-root',
+        'configs/expansion',
         '--district',
         'daan,zhongshan',
         '--publish-gate-summary',
@@ -77,6 +79,7 @@ describe('humanReviewBundleIndex', () => {
       ]),
     ).toEqual({
       reviewRoot: '.tmp',
+      configRoot: 'configs/expansion',
       districtIds: ['daan', 'zhongshan'],
       publishGateSummaryPath: '.tmp/publish_gate_summary.json',
       requireReadyToFinalize: true,
@@ -306,12 +309,14 @@ describe('humanReviewBundleIndex', () => {
 
     const result = await runHumanReviewBundleIndex({
       reviewRoot: root,
+      configRoot: 'configs/expansion',
       publishGateSummaryPath: summaryPath,
     })
 
     expect(result.entries[0]?.publishGateWarnCodes).toEqual(['BASELINE_MISSING'])
     expect(result.entries[0]?.finalizeInputs).toMatchObject({
       districtId: 'daan',
+      configPath: path.join('configs', 'expansion', 'daan.json'),
       allowPublishWarn: true,
       publishOverrideReason: 'daan reviewed first-publish baseline bootstrap',
     })
