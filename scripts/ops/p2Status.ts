@@ -415,6 +415,11 @@ const finalizeCommandLines = (result: P2StatusResult) =>
       .map((entry) => entry.command) ?? []),
   ]).map((command) => `- ${command}`)
 
+const reviewedButUnpublishedDistricts = (result: P2StatusResult) =>
+  result.readiness.expansionDistricts
+    .filter((district) => district.nextAction === 'already-reviewed')
+    .map((district) => district.districtId)
+
 const quoteCommandArg = (value: string) =>
   /[\s"*]/u.test(value) ? `"${value.replace(/"/g, '\\"')}"` : value
 
@@ -501,12 +506,33 @@ const p2StrictReadinessCommand = (result: P2StatusResult) =>
       : []),
   ])
 
+const publishReviewedExpansionCommands = (result: P2StatusResult) => {
+  const districts = reviewedButUnpublishedDistricts(result)
+  if (districts.length === 0) {
+    return [
+      '- none; expansion districts are published. Continue with the next roadmap priority.',
+    ]
+  }
+
+  return districts.flatMap((districtId) => [
+    ...(result.inputs.configRoot === DEFAULT_CONFIG_ROOT
+      ? []
+      : [
+          `- npm run ops:p2-promote-expansion -- --district ${quoteCommandArg(districtId)}`,
+          `- npm run ops:p2-promote-expansion -- --district ${quoteCommandArg(districtId)} --execute`,
+        ]),
+    `- npm run ops:check-inputs -- --config configs/prod/${districtId}.json`,
+    `- npm run ingest:all -- --configs "configs/prod/${districtId}.json" --allowWarn --override "${districtId} reviewed expansion promotion"`,
+    `- npm run ops:p2-expansion-readiness -- --current-district ${quoteCommandArg(result.inputs.currentDistrictId)} --expansion-district ${quoteCommandArg(districtId)} --configs "configs/prod/${districtId}.json" --require-ready-to-finalize`,
+  ])
+}
+
 const nextCommandLines = (result: P2StatusResult) => {
   if (result.status === 'BLOCKED') {
     return ['- Fix blockers listed above before continuing.']
   }
   if (result.status === 'EXPANSION_READY') {
-    return ['- none; expansion districts are published. Continue with the next roadmap priority.']
+    return publishReviewedExpansionCommands(result)
   }
   if (result.readyFinalizeDistricts.length > 0 || result.readyToFinalize) {
     const finalizeCommands = finalizeCommandLines(result)
