@@ -76,7 +76,7 @@ const finalizeResult = (params: P0FinalizeReviewParams): P0FinalizeReviewResult 
       reviewsPath: params.reviewsPath,
       mergedOutPath: params.mergedOutPath,
       configPath: params.configPath,
-      answerCasesPath: 'configs/prod/daan.answer-cases.json',
+      answerCasesPath: params.answerCasesPath ?? 'configs/prod/daan.answer-cases.json',
       outDir: null,
       publishReportPath: null,
       noCleanup: false,
@@ -179,6 +179,11 @@ describe('p0FinalizeReadyReviews', () => {
       reviewsPath: bundle.handoffPath,
       mergedOutPath: bundle.sourcePath.replace(/\.csv$/i, '.merged.csv'),
       configPath: path.join('configs', 'expansion', 'daan.json'),
+      answerCasesPath: path.join(
+        'configs',
+        'expansion',
+        'daan.answer-cases.json',
+      ),
     })
     expect(result.ready[0]?.result?.stage).toBe('done')
   })

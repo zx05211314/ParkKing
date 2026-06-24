@@ -23,6 +23,7 @@ export interface P0ValidatePriorityReviewOptions {
   filteredReviewsOutPath?: string | null
   mergedOutPath?: string | null
   configPath?: string | null
+  answerCasesPath?: string | null
   outDir?: string | null
   allowPublishWarn?: boolean
   allowPublishFail?: boolean
@@ -75,6 +76,12 @@ export const parseP0ValidatePriorityReviewArgs = (
   ),
   mergedOutPath: getArgValue(argv, '--merged-out', '--mergedOut', '--mergedOutPath'),
   configPath: getArgValue(argv, '--config', '--configPath', '--config-path'),
+  answerCasesPath: getArgValue(
+    argv,
+    '--answer-cases',
+    '--answerCases',
+    '--answerCasesPath',
+  ),
   outDir: getArgValue(argv, '--out-dir', '--outDir'),
   allowPublishWarn: hasFlag(argv, '--allow-publish-warn', '--allowPublishWarn'),
   allowPublishFail: hasFlag(argv, '--allow-publish-fail', '--allowPublishFail'),
@@ -182,6 +189,10 @@ const buildFinalizeCommand = (
   const reason = options.publishOverrideReason?.trim()
   if (reason) {
     args.push('--publish-override', quoteArg(reason))
+  }
+  const answerCasesPath = options.answerCasesPath?.trim()
+  if (answerCasesPath) {
+    args.push('--answer-cases', quoteArg(path.resolve(answerCasesPath)))
   }
   return args.join(' ')
 }

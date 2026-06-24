@@ -102,6 +102,9 @@ describe('p0ReviewIntake', () => {
     expect(result.candidates[0]?.validationCommand?.replace(/\\/g, '/')).toContain(
       '--config "configs/expansion/daan.json"',
     )
+    expect(result.candidates[0]?.validationCommand?.replace(/\\/g, '/')).toContain(
+      '--answer-cases "configs/expansion/daan.answer-cases.json"',
+    )
     expect(renderP0ReviewIntake(result)).toContain('P0 review intake: READY-TO-VALIDATE')
   })
 
@@ -153,6 +156,9 @@ describe('p0ReviewIntake', () => {
     })
     expect(validateCalls[0]?.configPath?.replace(/\\/g, '/')).toBe(
       'configs/expansion/daan.json',
+    )
+    expect(validateCalls[0]?.answerCasesPath?.replace(/\\/g, '/')).toBe(
+      'configs/expansion/daan.answer-cases.json',
     )
     expect(renderP0ReviewIntake(result)).toContain('Finalize daan:')
   })

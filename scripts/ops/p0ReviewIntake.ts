@@ -324,12 +324,17 @@ const buildValidationCommand = (params: {
   const inputs = params.bundleEntry?.finalizeInputs
   const configPath =
     inputs?.configPath ?? path.join(params.configRoot, `${params.districtId}.json`)
+  const answerCasesPath =
+    inputs?.answerCasesPath ??
+    path.join(params.configRoot, `${params.districtId}.answer-cases.json`)
   const args = [
     'npm run ops:p0-validate-priority-review --',
     '--district',
     params.districtId,
     '--config',
     quoteArg(configPath),
+    '--answer-cases',
+    quoteArg(answerCasesPath),
     ...(inputs?.sourcePath ? ['--source', quoteArg(inputs.sourcePath)] : []),
     '--reviews',
     quoteArg(params.filePath),
@@ -497,6 +502,9 @@ const validateCandidate = async (
     districtId: candidate.districtId,
     configPath:
       finalizeInputs?.configPath ?? path.join(configRoot, `${candidate.districtId}.json`),
+    answerCasesPath:
+      finalizeInputs?.answerCasesPath ??
+      path.join(configRoot, `${candidate.districtId}.answer-cases.json`),
     sourcePath: finalizeInputs?.sourcePath,
     reviewsPath: candidate.filePath,
     allowPublishWarn: finalizeInputs?.allowPublishWarn,

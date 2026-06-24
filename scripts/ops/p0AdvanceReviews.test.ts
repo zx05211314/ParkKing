@@ -83,7 +83,7 @@ const finalizeResult = (params: P0FinalizeReviewParams): P0FinalizeReviewResult 
       reviewsPath: params.reviewsPath,
       mergedOutPath: params.mergedOutPath,
       configPath: params.configPath,
-      answerCasesPath: 'configs/prod/daan.answer-cases.json',
+      answerCasesPath: params.answerCasesPath ?? 'configs/prod/daan.answer-cases.json',
       outDir: null,
       publishReportPath: null,
       noCleanup: false,
@@ -177,6 +177,9 @@ describe('p0AdvanceReviews', () => {
     expect(result.index.entries[0]?.finalizeInputs.configPath.replace(/\\/g, '/')).toBe(
       'configs/expansion/daan.json',
     )
+    expect(
+      result.index.entries[0]?.finalizeInputs.answerCasesPath.replace(/\\/g, '/'),
+    ).toBe('configs/expansion/daan.answer-cases.json')
     expect(result.entries).toEqual([
       {
         districtId: 'daan',
@@ -391,6 +394,7 @@ describe('p0AdvanceReviews', () => {
       reviewsPath: filteredCsv,
       mergedOutPath: mergedCsv,
       configPath,
+      answerCasesPath: path.join('configs', 'prod', 'daan.answer-cases.json'),
     })
     expect(result.intakeFinalizeResults[0]?.result?.stage).toBe('done')
     expect(renderP0AdvanceReviews(result)).toContain('## Intake Finalize')

@@ -122,6 +122,7 @@ const toFinalizeParams = (
   reviewsPath: inputs.reviewsPath,
   mergedOutPath: inputs.mergedOutPath,
   configPath: inputs.configPath,
+  answerCasesPath: inputs.answerCasesPath,
   allowPublishWarn: inputs.allowPublishWarn,
   publishOverrideReason: inputs.publishOverrideReason,
 })
