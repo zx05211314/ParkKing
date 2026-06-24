@@ -7,6 +7,7 @@ import {
   renderP0ReviewIntake,
   runP0ReviewIntake,
 } from './p0ReviewIntake'
+import type { P0ValidatePriorityReviewOptions } from './p0ValidatePriorityReview'
 
 const makeTempRoot = async () =>
   fs.mkdtemp(path.join(os.tmpdir(), 'p0-review-intake-'))
@@ -24,6 +25,8 @@ describe('p0ReviewIntake', () => {
         'p0ReviewIntake',
         '--review-root',
         '.tmp',
+        '--config-root',
+        'configs/expansion',
         '--district',
         'daan,zhongshan',
         '--scan-dir',
@@ -45,6 +48,7 @@ describe('p0ReviewIntake', () => {
       ]),
     ).toEqual({
       reviewRoot: '.tmp',
+      configRoot: 'configs/expansion',
       districtIds: ['daan', 'zhongshan'],
       scanDirs: ['.tmp/returned'],
       includeCommonDirs: true,
@@ -74,6 +78,7 @@ describe('p0ReviewIntake', () => {
 
     const result = await runP0ReviewIntake({
       reviewRoot: root,
+      configRoot: 'configs/expansion',
       scanDirs: [root],
       districtIds: ['daan'],
       publishGateSummaryPath: null,
@@ -94,12 +99,16 @@ describe('p0ReviewIntake', () => {
     expect(result.candidates[0]?.validationCommand).toContain(
       'npm run ops:p0-validate-priority-review -- --district daan',
     )
+    expect(result.candidates[0]?.validationCommand?.replace(/\\/g, '/')).toContain(
+      '--config "configs/expansion/daan.json"',
+    )
     expect(renderP0ReviewIntake(result)).toContain('P0 review intake: READY-TO-VALIDATE')
   })
 
   it('can validate ready reviewer CSVs and surface finalize commands', async () => {
     const root = await makeTempRoot()
     const returnedCsv = path.join(root, 'daan-priority-review.csv')
+    const validateCalls: P0ValidatePriorityReviewOptions[] = []
     await writeText(
       returnedCsv,
       [
@@ -111,26 +120,30 @@ describe('p0ReviewIntake', () => {
 
     const result = await runP0ReviewIntake({
       reviewRoot: root,
+      configRoot: 'configs/expansion',
       scanDirs: [root],
       districtIds: ['daan'],
       publishGateSummaryPath: null,
       validateReady: true,
-      validatePriorityReview: async (options) => ({
-        pass: true,
-        districtId: options.districtId ?? 'daan',
-        sourcePath: options.sourcePath ?? path.join(root, 'daan-review.csv'),
-        reviewsPath: options.reviewsPath ?? returnedCsv,
-        filteredReviewsOutPath: path.join(root, 'daan-priority.filtered.csv'),
-        mergedOutPath: path.join(root, 'daan-priority.merged.csv'),
-        configPath: options.configPath ?? 'configs/prod/daan.json',
-        outDir: options.outDir ?? path.join(root, 'overrides'),
-        priorityRows: 1,
-        filteredRows: 1,
-        promote: null,
-        finalizeCommand: 'npm run ops:p0-finalize-review -- --district daan',
-        errors: [],
-        warnings: [],
-      }),
+      validatePriorityReview: async (options) => {
+        validateCalls.push(options)
+        return {
+          pass: true,
+          districtId: options.districtId ?? 'daan',
+          sourcePath: options.sourcePath ?? path.join(root, 'daan-review.csv'),
+          reviewsPath: options.reviewsPath ?? returnedCsv,
+          filteredReviewsOutPath: path.join(root, 'daan-priority.filtered.csv'),
+          mergedOutPath: path.join(root, 'daan-priority.merged.csv'),
+          configPath: options.configPath ?? 'configs/prod/daan.json',
+          outDir: options.outDir ?? path.join(root, 'overrides'),
+          priorityRows: 1,
+          filteredRows: 1,
+          promote: null,
+          finalizeCommand: 'npm run ops:p0-finalize-review -- --district daan',
+          errors: [],
+          warnings: [],
+        }
+      },
     })
 
     expect(result.status).toBe('ready-to-finalize')
@@ -138,6 +151,9 @@ describe('p0ReviewIntake', () => {
       nextAction: 'finalize-review',
       finalizeCommand: 'npm run ops:p0-finalize-review -- --district daan',
     })
+    expect(validateCalls[0]?.configPath?.replace(/\\/g, '/')).toBe(
+      'configs/expansion/daan.json',
+    )
     expect(renderP0ReviewIntake(result)).toContain('Finalize daan:')
   })
 

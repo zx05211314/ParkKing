@@ -13,12 +13,14 @@ import type {
 } from './p0FinalizeReviewTypes'
 
 const DEFAULT_REVIEW_ROOT = '.tmp'
+const DEFAULT_CONFIG_ROOT = 'configs/prod'
 const DEFAULT_PUBLISH_GATE_SUMMARY = 'data/generated/_ops/publish_gate_summary.json'
 
 type ReadyStatus = 'ready-to-finalize' | 'review-complete'
 
 export interface P0FinalizeReadyReviewsOptions {
   reviewRoot?: string
+  configRoot?: string
   districtIds?: string[]
   all?: boolean
   publishGateSummaryPath?: string | null
@@ -86,6 +88,8 @@ export const parseP0FinalizeReadyReviewsArgs = (
 ): P0FinalizeReadyReviewsOptions => ({
   reviewRoot:
     getArgValue(argv, '--review-root', '--reviewRoot') ?? DEFAULT_REVIEW_ROOT,
+  configRoot:
+    getArgValue(argv, '--config-root', '--configRoot') ?? DEFAULT_CONFIG_ROOT,
   districtIds: getArgValues(argv, '--district', '--district-id', '--districtId'),
   all: hasFlag(argv, '--all'),
   publishGateSummaryPath: hasFlag(argv, '--no-publish-gate-summary')
@@ -126,6 +130,7 @@ export const runP0FinalizeReadyReviews = async (
   options: P0FinalizeReadyReviewsOptions = {},
 ): Promise<P0FinalizeReadyReviewsResult> => {
   const reviewRoot = path.resolve(options.reviewRoot ?? DEFAULT_REVIEW_ROOT)
+  const configRoot = options.configRoot ?? DEFAULT_CONFIG_ROOT
   const districtIds = options.districtIds ?? []
   const errors: string[] = []
   const warnings: string[] = []
@@ -135,6 +140,7 @@ export const runP0FinalizeReadyReviews = async (
 
   const index = await runHumanReviewBundleIndex({
     reviewRoot,
+    configRoot,
     districtIds: options.all ? [] : districtIds,
     publishGateSummaryPath:
       options.publishGateSummaryPath === undefined

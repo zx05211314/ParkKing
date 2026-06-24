@@ -101,6 +101,8 @@ describe('p0FinalizeReadyReviews', () => {
         'p0FinalizeReadyReviews',
         '--review-root',
         '.tmp',
+        '--config-root',
+        'configs/expansion',
         '--district',
         'daan,zhongshan',
         '--publish-gate-summary',
@@ -112,6 +114,7 @@ describe('p0FinalizeReadyReviews', () => {
       ]),
     ).toEqual({
       reviewRoot: '.tmp',
+      configRoot: 'configs/expansion',
       districtIds: ['daan', 'zhongshan'],
       all: false,
       publishGateSummaryPath: '.tmp/publish_gate_summary.json',
@@ -157,6 +160,7 @@ describe('p0FinalizeReadyReviews', () => {
 
     const result = await runP0FinalizeReadyReviews({
       reviewRoot: root,
+      configRoot: 'configs/expansion',
       districtIds: ['daan'],
       publishGateSummaryPath: null,
       execute: true,
@@ -174,7 +178,7 @@ describe('p0FinalizeReadyReviews', () => {
       sourcePath: bundle.sourcePath,
       reviewsPath: bundle.handoffPath,
       mergedOutPath: bundle.sourcePath.replace(/\.csv$/i, '.merged.csv'),
-      configPath: path.join('configs', 'prod', 'daan.json'),
+      configPath: path.join('configs', 'expansion', 'daan.json'),
     })
     expect(result.ready[0]?.result?.stage).toBe('done')
   })

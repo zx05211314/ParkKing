@@ -380,6 +380,9 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   `npm run ops:review-handoff-audit -- --district daan,zhongshan --strict`
 - Safely advance selected P0 review bundles to the next available step:
   `npm run ops:p0-advance-reviews -- --district daan,zhongshan`
+  For expansion candidates, add `--config-root configs/expansion` so package,
+  intake validation, and finalize-ready commands continue to use the candidate
+  config instead of `configs/prod`.
   `npm run ops:p0-advance-reviews -- --district daan,zhongshan --review-intake --include-common-dirs`
   `npm run ops:p0-advance-reviews -- --district daan,zhongshan --review-intake --include-common-dirs --out .tmp/p0-advance-reviews.md --json-out .tmp/p0-advance-reviews.json`
   `npm run ops:p0-advance-reviews -- --district daan,zhongshan --review-intake --include-common-dirs --validate-ready`
@@ -394,11 +397,15 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
 - Scan `.tmp`, Desktop, and Downloads for returned reviewer CSVs before finalizing:
   `npm run ops:p0-review-intake -- --district daan,zhongshan --include-common-dirs --out .tmp/p0-review-intake.md --json-out .tmp/p0-review-intake.json`
   `npm run ops:p0-review-intake -- --district daan,zhongshan --include-common-dirs --validate-ready`
+  Use `--config-root configs/expansion` for returned reviews from expansion
+  packages that are not promoted to prod yet.
 - Validate a filled priority-review CSV before running finalize:
   `npm run ops:p0-validate-priority-review -- --district daan --reviews .tmp/human-review-priority.csv --allow-publish-warn --publish-override "daan reviewed first-publish baseline bootstrap"`
 - Dry-run or execute P0 closure for districts whose human-review handoff is already ready:
   `npm run ops:p0-finalize-ready-reviews -- --district daan,zhongshan`
   `npm run ops:p0-finalize-ready-reviews -- --district daan,zhongshan --execute`
+  Use `--config-root configs/expansion` when finalizing a ready expansion
+  handoff before promotion to `configs/prod`.
 - Strict inventory check for CI or release prep:
   `npm run ops:generated-pack-inventory -- --root public/data/generated --strict`
 - Bulk answerability smoke check for every generated district pack:
