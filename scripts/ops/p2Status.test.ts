@@ -145,6 +145,9 @@ const runners = (params: {
   }
 }
 
+const nextCommandsSection = (markdown: string) =>
+  markdown.split('## Next Commands')[1] ?? ''
+
 describe('p2Status', () => {
   it('parses P2 status options', () => {
     expect(
@@ -272,6 +275,60 @@ describe('p2Status', () => {
     expect(markdown).toContain('--config-root configs/expansion')
     expect(markdown).toContain('returned songshan reviewer CSVs')
     expect(markdown).not.toContain('Daan/Zhongshan reviewer CSVs')
+  })
+
+  it('recommends Songshan candidate shortcuts for the mixed candidate scope', async () => {
+    const songshanInputs = {
+      ...readiness().inputs,
+      currentDistrictId: 'xinyi',
+      expansionDistrictIds: ['songshan'],
+      configGlob: 'configs/prod/xinyi.json,configs/expansion/songshan.json',
+      configRoot: 'configs/expansion',
+      skipP1: true,
+    }
+    const songshanDistricts = [expansionDistrict('songshan', 'fill-human-review')]
+    const result = await runP2Status(
+      {
+        currentDistrictId: 'xinyi',
+        expansionDistrictIds: ['songshan'],
+        configGlob: 'configs/prod/xinyi.json,configs/expansion/songshan.json',
+        configRoot: 'configs/expansion',
+        skipP1: true,
+      },
+      runners({
+        loose: readiness({
+          inputs: songshanInputs,
+          p1Release: null,
+          expansionDistricts: songshanDistricts,
+        }),
+        strict: readiness({
+          pass: false,
+          status: 'BLOCKED',
+          inputs: {
+            ...songshanInputs,
+            requireReadyToFinalize: true,
+          },
+          p1Release: null,
+          expansionDistricts: songshanDistricts,
+          blockers: ['expansion districts not ready to finalize: songshan'],
+        }),
+        gate: reviewGate({
+          selectedDistricts: ['songshan'],
+          errors: ['Require-ready-to-finalize failed; not ready for finalize: songshan'],
+        }),
+      }),
+    )
+
+    const markdown = renderP2Status(result)
+    const nextCommands = nextCommandsSection(markdown)
+    expect(markdown).toContain(
+      'songshan: none found; run `npm run ops:p2-songshan-human-review-handoff`',
+    )
+    expect(nextCommands).toContain('npm run ops:p2-songshan-human-review-handoff')
+    expect(nextCommands).toContain('npm run ops:p2-songshan-review-diagnostics')
+    expect(nextCommands).toContain('npm run ops:p2-songshan-review-intake')
+    expect(nextCommands).toContain('npm run ops:p2-songshan-review-gate')
+    expect(nextCommands).not.toContain('npm run ops:p0-advance-reviews --')
   })
 
   it('does not disable publish gate summary when the flag is omitted', () => {
@@ -543,10 +600,13 @@ describe('p2Status', () => {
     expect(result.status).toBe('EXPANSION_READY')
     expect(result.finalizedDistricts).toEqual([])
     expect(markdown).toContain(
-      'npm run ops:p2-promote-expansion -- --district songshan',
+      'npm run ops:p2-songshan-promote',
     )
     expect(markdown).toContain(
-      'npm run ops:p2-promote-expansion -- --district songshan --execute',
+      'npm run ops:p2-songshan-promote:execute',
+    )
+    expect(markdown).not.toContain(
+      'npm run ops:p2-promote-expansion -- --district songshan',
     )
     expect(markdown).toContain(
       'npm run ingest:all -- --configs "configs/prod/songshan.json"',
