@@ -258,6 +258,7 @@ const isExpectedExpansionMatrixBlocker = (blocker: string) =>
   blocker === 'runtime not-published' ||
   blocker === 'sign overrides missing or zero' ||
   blocker === 'review blocked' ||
+  blocker === 'review missing' ||
   blocker === 'publish gate warn: BASELINE_MISSING' ||
   isExpectedPublishFailBlocker(blocker)
 
@@ -415,12 +416,14 @@ export const runP2ExpansionReadiness = async (
   if (p1Release && !p1Release.pass) {
     blockers.push('P1 release readiness is blocked')
   }
-  if (!currentDistrict) {
-    blockers.push(`current district ${inputs.currentDistrictId} missing from matrix`)
-  } else if (currentDistrict.blockers.length > 0) {
-    blockers.push(
-      `current district ${inputs.currentDistrictId} has blockers: ${currentDistrict.blockers.join('; ')}`,
-    )
+  if (!inputs.skipP1) {
+    if (!currentDistrict) {
+      blockers.push(`current district ${inputs.currentDistrictId} missing from matrix`)
+    } else if (currentDistrict.blockers.length > 0) {
+      blockers.push(
+        `current district ${inputs.currentDistrictId} has blockers: ${currentDistrict.blockers.join('; ')}`,
+      )
+    }
   }
   reviewIndex.errors.forEach((error) => blockers.push(error))
   expansionDistricts.forEach((district) => {

@@ -234,6 +234,43 @@ describe('p2ExpansionReadiness', () => {
     )
   })
 
+  it('treats candidate-only ready handoffs as human review required when P1 is skipped', async () => {
+    const matrix = buildMatrix({
+      runtimeStatus: 'not-published',
+      reviewStatus: 'missing',
+      blockers: [
+        'runtime not-published',
+        'sign overrides missing or zero',
+        'review missing',
+        'publish gate fail: SIGN_OVERRIDE_COVERAGE_ZERO, SIGN_OVERRIDE_INPUT_MISSING',
+        'publish gate warn: BASELINE_MISSING',
+      ],
+    })
+    matrix.entries = matrix.entries.filter((entry) => entry.districtId === 'daan')
+
+    const result = await runP2ExpansionReadiness(
+      {
+        expansionDistrictIds: ['daan'],
+        configGlob: 'configs/expansion/*.json',
+        skipP1: true,
+      },
+      buildRunners({
+        runDistrictReadinessMatrix: vi.fn().mockResolvedValue(matrix),
+      }),
+    )
+
+    expect(result.pass).toBe(true)
+    expect(result.status).toBe('HUMAN_REVIEW_REQUIRED')
+    expect(result.blockers).toEqual([])
+    expect(result.expansionDistricts[0]).toMatchObject({
+      districtId: 'daan',
+      reviewStatus: 'missing',
+      reviewBundleStatus: 'ready-for-review',
+      nextAction: 'fill-human-review',
+      automationBlockers: [],
+    })
+  })
+
   it('does not disable publish gate summary when the flag is omitted', () => {
     expect(
       parseP2ExpansionReadinessArgs(['node', 'p2ExpansionReadiness']),
