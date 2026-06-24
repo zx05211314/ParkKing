@@ -243,6 +243,7 @@ export const runP3ReleaseReadiness = async (
     () =>
       runners.runDistrictReadinessMatrix({
         configGlob: inputs.configGlob,
+        districtIds: inputs.districtIds,
         publicRoot: inputs.root,
         registryPath: inputs.registryPath,
         answerCasesGlob: inputs.answerCasesGlob,
