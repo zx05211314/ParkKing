@@ -81,6 +81,7 @@
     "ops:p2-review-gate-report": "tsx scripts/ops/p0AdvanceReviews.ts --district daan,zhongshan --review-intake --include-common-dirs --validate-ready --actionable-only --require-ready-to-finalize --no-package --report-only --out .tmp/p2-review-gate.md --json-out .tmp/p2-review-gate.json",
     "ops:p2-finalize-ready": "tsx scripts/ops/p0AdvanceReviews.ts --district daan,zhongshan --review-intake --include-common-dirs --validate-ready --actionable-only --require-ready-to-finalize --no-package --out .tmp/p2-finalize-ready.md --json-out .tmp/p2-finalize-ready.json",
     "ops:p2-finalize-ready:execute": "tsx scripts/ops/p0AdvanceReviews.ts --district daan,zhongshan --review-intake --include-common-dirs --validate-ready --actionable-only --require-ready-to-finalize --no-package --execute --out .tmp/p2-finalize-ready.md --json-out .tmp/p2-finalize-ready.json",
+    "ops:p2-promote-expansion": "tsx scripts/ops/p2PromoteExpansion.ts",
     "ops:p3-release-readiness": "tsx scripts/ops/p3ReleaseReadiness.ts --out .tmp/p3-release-readiness.md --json-out .tmp/p3-release-readiness.json",
     "ops:p0-review-intake": "tsx scripts/ops/p0ReviewIntake.ts",
     "ops:p0-validate-priority-review": "tsx scripts/ops/p0ValidatePriorityReview.ts",

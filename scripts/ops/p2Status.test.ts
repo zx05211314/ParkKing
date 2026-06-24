@@ -495,4 +495,64 @@ describe('p2Status', () => {
     expect(renderP2Status(result)).not.toContain('finalize daan')
     expect(renderP2Status(result)).not.toContain('npm run ops:p2-finalize-ready:execute')
   })
+
+  it('recommends promotion when reviewed expansion configs are not published yet', async () => {
+    const songshanInputs = {
+      ...readiness().inputs,
+      currentDistrictId: 'xinyi',
+      expansionDistrictIds: ['songshan'],
+      configGlob: 'configs/prod/xinyi.json,configs/expansion/songshan.json',
+      configRoot: 'configs/expansion',
+      skipP1: true,
+    }
+    const reviewedDistricts = [expansionDistrict('songshan', 'already-reviewed')]
+    const result = await runP2Status(
+      {
+        currentDistrictId: 'xinyi',
+        expansionDistrictIds: ['songshan'],
+        configGlob: 'configs/prod/xinyi.json,configs/expansion/songshan.json',
+        configRoot: 'configs/expansion',
+        skipP1: true,
+      },
+      runners({
+        loose: readiness({
+          status: 'EXPANSION_READY',
+          inputs: songshanInputs,
+          p1Release: null,
+          expansionDistricts: reviewedDistricts,
+        }),
+        strict: readiness({
+          status: 'EXPANSION_READY',
+          inputs: {
+            ...songshanInputs,
+            requireReadyToFinalize: true,
+          },
+          p1Release: null,
+          expansionDistricts: reviewedDistricts,
+        }),
+        gate: reviewGate({
+          pass: true,
+          status: 'completed',
+          selectedDistricts: ['songshan'],
+          errors: [],
+        }),
+      }),
+    )
+
+    const markdown = renderP2Status(result)
+    expect(result.status).toBe('EXPANSION_READY')
+    expect(result.finalizedDistricts).toEqual([])
+    expect(markdown).toContain(
+      'npm run ops:p2-promote-expansion -- --district songshan',
+    )
+    expect(markdown).toContain(
+      'npm run ops:p2-promote-expansion -- --district songshan --execute',
+    )
+    expect(markdown).toContain(
+      'npm run ingest:all -- --configs "configs/prod/songshan.json"',
+    )
+    expect(markdown).not.toContain(
+      'none; expansion districts are published',
+    )
+  })
 })
