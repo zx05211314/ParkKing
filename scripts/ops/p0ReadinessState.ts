@@ -6,6 +6,7 @@ import { buildPublishGateRunSummary } from './publishGateRunSummary'
 import { buildP0ReviewConfigDriftWarnings } from './p0ReadinessConfigDrift'
 import { buildQaReviewSummary } from './qaReviewSummaryState'
 import { runSmokeExactParkingAnswers } from './smokeExactParkingAnswers'
+import { resolveReviewedCaseHashMismatchAllowance } from './reviewedCaseHashMismatch'
 import type {
   P0ReadinessCheck,
   P0ReadinessParams,
@@ -60,6 +61,7 @@ export const resolveP0ReadinessInputs = async ({
   allowPublishWarn,
   allowPublishFail,
   publishOverrideReason,
+  allowMismatchedCaseHash,
 }: P0ReadinessParams, cwd = process.cwd()): Promise<P0ReadinessResolvedInputs> => {
   const resolvedDistrictId = districtId?.trim() || DEFAULT_DISTRICT_ID
   const resolvedReviewPath =
@@ -94,6 +96,9 @@ export const resolveP0ReadinessInputs = async ({
     allowPublishWarn: Boolean(allowPublishWarn),
     allowPublishFail: Boolean(allowPublishFail),
     publishOverrideReason: publishOverrideReason?.trim() || null,
+    allowMismatchedCaseHash: resolveReviewedCaseHashMismatchAllowance(
+      allowMismatchedCaseHash ?? undefined,
+    ),
   }
 }
 
@@ -297,6 +302,7 @@ export const buildP0Readiness = async (
         minNoStopAnswers: 1,
         minMarkedSpaceParkAnswers: 1,
         casesPath: inputs.answerCasesPath ?? undefined,
+        allowMismatchedCaseHash: inputs.allowMismatchedCaseHash,
       }),
     () => true,
   )

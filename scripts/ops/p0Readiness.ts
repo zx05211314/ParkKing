@@ -23,6 +23,7 @@ const run = async () => {
     allowPublishWarn: args.allowPublishWarn,
     allowPublishFail: args.allowPublishFail,
     publishOverrideReason: args.publishOverrideReason,
+    allowMismatchedCaseHash: args.allowMismatchedCaseHash,
   })
   const output = args.json
     ? `${JSON.stringify(result, null, 2)}\n`
