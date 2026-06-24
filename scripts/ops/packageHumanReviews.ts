@@ -235,6 +235,8 @@ const buildPriorityValidationCommand = (
     quoteArg(reviewsPath),
     '--config',
     quoteArg(entry.finalizeInputs.configPath),
+    '--answer-cases',
+    quoteArg(entry.finalizeInputs.answerCasesPath),
     ...(entry.finalizeInputs.allowPublishWarn && entry.finalizeInputs.publishOverrideReason
       ? [
           '--allow-publish-warn',

@@ -28,6 +28,7 @@ export interface HumanReviewBundleFinalizeInputs {
   reviewsPath: string
   mergedOutPath: string
   configPath: string
+  answerCasesPath: string
   allowPublishWarn: boolean
   publishOverrideReason: string | null
 }
@@ -266,6 +267,10 @@ const buildFinalizeInputs = (params: {
   reviewsPath: params.files.handoffCsv,
   mergedOutPath: toMergedCsvPath(params.sourcePath),
   configPath: path.join(params.configRoot, `${params.districtId}.json`),
+  answerCasesPath: path.join(
+    params.configRoot,
+    `${params.districtId}.answer-cases.json`,
+  ),
   allowPublishWarn: Boolean(params.allowWarnReason),
   publishOverrideReason: params.allowWarnReason,
 })
@@ -283,6 +288,8 @@ const buildFinalizeCommand = (inputs: HumanReviewBundleFinalizeInputs) =>
     quoteArg(inputs.mergedOutPath),
     '--config',
     quoteArg(inputs.configPath),
+    '--answer-cases',
+    quoteArg(inputs.answerCasesPath),
     ...(inputs.allowPublishWarn && inputs.publishOverrideReason
       ? [
           '--allow-publish-warn',

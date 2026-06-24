@@ -35,6 +35,8 @@ describe('p0ValidatePriorityReview', () => {
         '.tmp/daan-review.merged.csv',
         '--config',
         'configs/prod/daan.json',
+        '--answer-cases',
+        'configs/prod/daan.answer-cases.json',
         '--out-dir',
         '.tmp/overrides',
         '--allow-publish-warn',
@@ -49,6 +51,7 @@ describe('p0ValidatePriorityReview', () => {
       filteredReviewsOutPath: '.tmp/daan-priority.filtered.csv',
       mergedOutPath: '.tmp/daan-review.merged.csv',
       configPath: 'configs/prod/daan.json',
+      answerCasesPath: 'configs/prod/daan.answer-cases.json',
       outDir: '.tmp/overrides',
       allowPublishWarn: true,
       allowPublishFail: false,
@@ -64,6 +67,7 @@ describe('p0ValidatePriorityReview', () => {
     const filteredReviewsOutPath = path.join(root, 'daan-priority.filtered.csv')
     const mergedOutPath = path.join(root, 'daan-priority.merged.csv')
     const configPath = path.join(root, 'daan.json')
+    const answerCasesPath = path.join(root, 'daan.answer-cases.json')
     const outDir = path.join(root, 'overrides')
     await writeText(sourcePath, 'districtId,segmentId,reviewBucket\n')
     await writeText(configPath, '{}\n')
@@ -84,6 +88,7 @@ describe('p0ValidatePriorityReview', () => {
       filteredReviewsOutPath,
       mergedOutPath,
       configPath,
+      answerCasesPath,
       outDir,
       allowPublishWarn: true,
       publishOverrideReason: 'daan reviewed bootstrap',
@@ -116,6 +121,9 @@ describe('p0ValidatePriorityReview', () => {
     expect(result.finalizeCommand).toContain('--allow-publish-warn')
     expect(result.finalizeCommand).toContain(
       '--publish-override "daan reviewed bootstrap"',
+    )
+    expect(result.finalizeCommand).toContain(
+      `--answer-cases "${path.resolve(answerCasesPath)}"`,
     )
     expect(renderP0ValidatePriorityReview(result)).toContain(
       'P0 priority review validation: PASS',

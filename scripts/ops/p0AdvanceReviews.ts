@@ -266,6 +266,7 @@ const toIntakeFinalizeParams = (
     reviewsPath: validation.filteredReviewsOutPath,
     mergedOutPath: validation.mergedOutPath,
     configPath: validation.configPath,
+    answerCasesPath: bundleEntry?.finalizeInputs.answerCasesPath,
     allowPublishWarn: bundleEntry?.finalizeInputs.allowPublishWarn,
     publishOverrideReason: bundleEntry?.finalizeInputs.publishOverrideReason,
   }

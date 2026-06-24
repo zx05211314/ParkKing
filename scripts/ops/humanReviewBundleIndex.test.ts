@@ -317,9 +317,17 @@ describe('humanReviewBundleIndex', () => {
     expect(result.entries[0]?.finalizeInputs).toMatchObject({
       districtId: 'daan',
       configPath: path.join('configs', 'expansion', 'daan.json'),
+      answerCasesPath: path.join(
+        'configs',
+        'expansion',
+        'daan.answer-cases.json',
+      ),
       allowPublishWarn: true,
       publishOverrideReason: 'daan reviewed first-publish baseline bootstrap',
     })
+    expect(result.entries[0]?.finalizeCommand.replace(/\\/g, '/')).toContain(
+      '--answer-cases "configs/expansion/daan.answer-cases.json"',
+    )
     expect(result.entries[0]?.finalizeCommand).toContain('--allow-publish-warn')
     expect(result.entries[0]?.finalizeCommand).toContain(
       '--publish-override "daan reviewed first-publish baseline bootstrap"',

@@ -168,6 +168,9 @@ describe('packageHumanReviews', () => {
     expect(packageEntry.priorityValidationCommand.replace(/\\/g, '/')).toContain(
       '--config "configs/expansion/daan.json"',
     )
+    expect(packageEntry.priorityValidationCommand.replace(/\\/g, '/')).toContain(
+      '--answer-cases "configs/expansion/daan.answer-cases.json"',
+    )
     expect(renderPackageHumanReviews(result)).toContain('Human review package: PASS')
     expect(renderPackageHumanReviews(result)).toContain(
       'Validate priority review: npm run ops:p0-validate-priority-review',
