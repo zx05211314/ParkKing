@@ -59,6 +59,8 @@ jobs:
       - name: Sync Render runtime env
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          PARKKING_RENDER_SERVICE_ID: ${{ secrets.PARKKING_RENDER_SERVICE_ID }}
+          PARKKING_RENDER_SERVICE_NAME: ${{ secrets.PARKKING_RENDER_SERVICE_NAME }}
           PARKKING_WORKFLOW_EVENT_NAME: ${{ github.event_name }}
           PARKKING_WORKFLOW_RUN_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
           PARKKING_INPUT_SERVICE_ID: ${{ github.event.inputs.serviceId }}
