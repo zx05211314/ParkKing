@@ -5,6 +5,18 @@ import { tmpdir } from 'node:os'
 import { runIngestAll } from './ingestAll'
 
 describe('ingestAll publish gate', () => {
+  it('rejects report-only mode outside dry-run', async () => {
+    await expect(
+      runIngestAll([
+        'node',
+        'ingestAll',
+        '--configs',
+        'configs/prod/*.json',
+        '--report-only',
+      ]),
+    ).rejects.toThrow('--report-only is only supported with --dry-run.')
+  })
+
   it('does not publish packs when gate fails', async () => {
     const baseDir = await fs.mkdtemp(path.join(tmpdir(), 'ingest-all-'))
     const fixturesDir = path.resolve('tests/fixtures/xinyi')

@@ -8,8 +8,12 @@ export interface IngestAllArgs {
   allowFail: boolean
   overrideReason: string | null
   dryRun: boolean
+  reportOnly: boolean
   noCleanup: boolean
 }
+
+const hasAnyFlag = (args: string[], flags: string[]) =>
+  flags.some((flag) => args.includes(flag))
 
 export const parseIngestAllArgs = (argv: string[]): IngestAllArgs => {
   const args = [...argv]
@@ -20,11 +24,12 @@ export const parseIngestAllArgs = (argv: string[]): IngestAllArgs => {
 
   return {
     globPattern: globIndex >= 0 ? args[globIndex + 1] : null,
-    allowWarn: args.includes('--allowWarn'),
-    allowFail: args.includes('--allowFail'),
+    allowWarn: hasAnyFlag(args, ['--allowWarn', '--allow-warn']),
+    allowFail: hasAnyFlag(args, ['--allowFail', '--allow-fail']),
     overrideReason: overrideIndex >= 0 ? args[overrideIndex + 1] : null,
-    dryRun: args.includes('--dryRun'),
-    noCleanup: args.includes('--noCleanup'),
+    dryRun: hasAnyFlag(args, ['--dryRun', '--dry-run']),
+    reportOnly: hasAnyFlag(args, ['--reportOnly', '--report-only']),
+    noCleanup: hasAnyFlag(args, ['--noCleanup', '--no-cleanup']),
   }
 }
 

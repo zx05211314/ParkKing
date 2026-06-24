@@ -100,6 +100,7 @@ describe('ingestAllPublish', () => {
         allowFail: false,
         overrideReason: null,
         dryRun: false,
+        reportOnly: false,
       },
       cwd,
       logger: (message) => messages.push(message),
