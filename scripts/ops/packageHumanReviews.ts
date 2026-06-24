@@ -233,6 +233,8 @@ const buildPriorityValidationCommand = (
     entry.districtId,
     '--reviews',
     quoteArg(reviewsPath),
+    '--config',
+    quoteArg(entry.finalizeInputs.configPath),
     ...(entry.finalizeInputs.allowPublishWarn && entry.finalizeInputs.publishOverrideReason
       ? [
           '--allow-publish-warn',
