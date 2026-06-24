@@ -5,19 +5,24 @@ import { NEW_DISTRICT_USAGE, parseArgs } from './newDistrictArgs'
 import { buildNewDistrictConfig } from './newDistrictConfig'
 import type { NewDistrictOptions } from './newDistrictTypes'
 
+const DEFAULT_OUTPUT_ROOT = 'configs/prod'
+
+const fileExists = async (filePath: string) => {
+  try {
+    await fs.access(filePath)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export const newDistrict = async (options: NewDistrictOptions) => {
   const configPath = path.resolve(
-    'configs',
-    'prod',
+    options.outputRoot ?? DEFAULT_OUTPUT_ROOT,
     `${options.districtId}.json`,
   )
-  try {
-    await fs.access(configPath)
-    if (!options.force) {
-      throw new Error(`Config already exists at ${configPath} (use --force)`)
-    }
-  } catch {
-    // OK to write
+  if ((await fileExists(configPath)) && !options.force) {
+    throw new Error(`Config already exists at ${configPath} (use --force)`)
   }
 
   const payload = buildNewDistrictConfig(options)
@@ -35,6 +40,10 @@ const run = async () => {
     districtId: args.districtId,
     districtName: args.districtName,
     sourceRoot: args.sourceRoot,
+    outputRoot: args.outputRoot,
+    sourcePreset: args.sourcePreset,
+    boundaryFeatureId: args.boundaryFeatureId,
+    boundaryName: args.boundaryName,
     force: args.force,
   })
 }

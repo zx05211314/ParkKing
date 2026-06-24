@@ -8,6 +8,7 @@ const REQUIRED_INPUT_DEFS = [
 ] as const
 
 const OPTIONAL_INPUT_DEFS = [
+  { key: 'parking_spaces', aliases: ['parkingSpaces'] },
   { key: 'road_centerlines', aliases: ['roadCenterlines'] },
   { key: 'intersections', aliases: ['intersection_points'] },
   { key: 'crosswalks', aliases: ['cross_walks'] },

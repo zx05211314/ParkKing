@@ -28,6 +28,33 @@ describe('ingestAllArgs', () => {
       allowFail: false,
       overrideReason: 'manual review',
       dryRun: true,
+      reportOnly: false,
+      noCleanup: true,
+    })
+  })
+
+  it('parses kebab-case aliases for ingest-all CLI flags', () => {
+    expect(
+      parseIngestAllArgs([
+        'node',
+        'ingestAll',
+        '--configs',
+        'configs/*.json',
+        '--allow-warn',
+        '--allow-fail',
+        '--override',
+        'manual review',
+        '--dry-run',
+        '--report-only',
+        '--no-cleanup',
+      ]),
+    ).toEqual({
+      globPattern: 'configs/*.json',
+      allowWarn: true,
+      allowFail: true,
+      overrideReason: 'manual review',
+      dryRun: true,
+      reportOnly: true,
       noCleanup: true,
     })
   })

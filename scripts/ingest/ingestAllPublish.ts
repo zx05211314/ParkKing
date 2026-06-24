@@ -17,7 +17,7 @@ export const runIngestAllOutputWorkflow = async (params: {
   failures: string[]
   args: Pick<
     IngestAllArgs,
-    'allowWarn' | 'allowFail' | 'overrideReason' | 'dryRun'
+    'allowWarn' | 'allowFail' | 'overrideReason' | 'dryRun' | 'reportOnly'
   >
   cwd?: string
   logger?: (message: string) => void

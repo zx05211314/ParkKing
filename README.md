@@ -298,24 +298,27 @@ Optional inputs:
 
 ### Config Schema (scaffolded)
 
-`configs/prod/<districtId>.json` is created by the scaffolder.
+`configs/prod/<districtId>.json` is created by the scaffolder only when a
+district is ready for the reviewed release lane. New districts should start in
+`configs/expansion/<districtId>.json` so dry runs and review packets can be built
+without changing the production publish glob.
 
 ```json
 {
   "districtId": "xinyi",
   "districtName": "Xinyi",
   "inputs": {
-    "districtBounds": "data/raw/xinyi/district_bounds.shp",
-    "redYellow": "data/raw/xinyi/red_yellow.shp",
-    "busStops": "data/raw/xinyi/bus_stops.shp",
-    "hydrants": "data/raw/xinyi/hydrants.shp",
-    "road_centerlines": "data/raw/xinyi/road_centerlines.shp",
-    "crosswalks": "data/raw/xinyi/crosswalks.shp",
-    "sign_overrides": "data/raw/xinyi/sign_overrides.geojson"
+    "districtBounds": "../../data/raw/xinyi/district_bounds.shp",
+    "redYellow": "../../data/raw/xinyi/red_yellow.shp",
+    "busStops": "../../data/raw/xinyi/bus_stops.shp",
+    "hydrants": "../../data/raw/xinyi/hydrants.shp",
+    "road_centerlines": "../../data/raw/xinyi/road_centerlines.shp",
+    "crosswalks": "../../data/raw/xinyi/crosswalks.shp",
+    "sign_overrides": "../../data/raw/xinyi/sign_overrides.geojson"
   },
   "outputs": {
-    "generatedDir": "data/generated/xinyi",
-    "publicDir": "public/data/generated/xinyi"
+    "generatedDir": "../../data/generated/xinyi",
+    "publicDir": "../../public/data/generated/xinyi"
   },
   "crs": { "default": "EPSG:3826" },
   "ops": { "thresholds": { "counts": { "segments": 20 } } }
@@ -324,11 +327,19 @@ Optional inputs:
 
 ### Deterministic Command Sequence
 
-1. Scaffold config:
+1. Scaffold candidate config outside the production release glob:
+   `npm run ops:new-district -- --districtId songshan --districtName "Songshan" --sourceRoot "data/sources/shared" --outputRoot configs/expansion --sourcePreset taipei-shared --boundaryFeatureId 63001`
+2. Validate candidate inputs:
+   `npm run ops:check-inputs -- --config configs/expansion/songshan.json`
+3. Dry-run candidate ingest/review work:
+   `npm run ingest:all -- --configs "configs/expansion/songshan.json" --dry-run --report-only --allow-warn --override "songshan expansion candidate baseline bootstrap"`
+4. Promote the config to `configs/prod/<id>.json` only after review evidence and pinned answer cases are ready.
+
+Legacy per-district raw source scaffold:
    `npm run ops:new-district -- --districtId <id> --districtName "<Name>" --sourceRoot "data/raw/<id>"`
-2. Validate inputs:
+1. Validate inputs:
    `npm run ops:check-inputs -- --config configs/prod/<id>.json`
-3. Ingest + publish:
+2. Ingest + publish:
    `npm run ingest:all -- --configs "configs/prod/<id>.json"`
 
 Optional override (when publish gate warns and you still need to publish):

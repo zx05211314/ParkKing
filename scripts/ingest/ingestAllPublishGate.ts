@@ -5,7 +5,10 @@ import { runPublishGate } from '../ops/publishGate'
 export const runIngestAllGate = async (params: {
   reportPath: string
   publicReportPath: string
-  args: Pick<IngestAllArgs, 'allowWarn' | 'allowFail' | 'overrideReason' | 'dryRun'>
+  args: Pick<
+    IngestAllArgs,
+    'allowWarn' | 'allowFail' | 'overrideReason' | 'dryRun' | 'reportOnly'
+  >
   cwd?: string
 }) => {
   const cwd = params.cwd ?? process.cwd()
@@ -20,7 +23,10 @@ export const runIngestAllGate = async (params: {
     publishedRootDir: path.resolve(cwd, 'public/data/generated'),
   })
 
-  if (gateResult.exitCode !== 0) {
+  if (
+    gateResult.exitCode !== 0 &&
+    !(params.args.dryRun && params.args.reportOnly)
+  ) {
     throw new Error(`Publish gate failed with exit code ${gateResult.exitCode}`)
   }
 }

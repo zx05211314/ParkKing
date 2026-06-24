@@ -63,6 +63,9 @@ export const runIngestAll = async (argv: string[]) => {
   if ((parsedArgs.allowWarn || parsedArgs.allowFail) && !parsedArgs.overrideReason) {
     throw new Error('Missing --override "<reason>" for allowWarn/allowFail.')
   }
+  if (parsedArgs.reportOnly && !parsedArgs.dryRun) {
+    throw new Error('--report-only is only supported with --dry-run.')
+  }
 
   const resolvedConfigs = await resolveIngestAllConfigPaths(globPattern)
   const failures: string[] = []

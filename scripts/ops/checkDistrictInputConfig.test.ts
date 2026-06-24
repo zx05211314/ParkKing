@@ -10,6 +10,7 @@ describe('checkDistrictInputConfig', () => {
           red_yellow: 'red.geojson',
           bus_stops: 'bus.geojson',
           hydrants: 'hydrants.geojson',
+          parkingSpaces: 'parking.geojson',
           cross_walks: 'crosswalks.geojson',
           signOverrides: 'overrides.geojson',
         },
@@ -19,6 +20,7 @@ describe('checkDistrictInputConfig', () => {
       redYellow: 'red.geojson',
       busStops: 'bus.geojson',
       hydrants: 'hydrants.geojson',
+      parking_spaces: 'parking.geojson',
       crosswalks: 'crosswalks.geojson',
       sign_overrides: 'overrides.geojson',
     })
