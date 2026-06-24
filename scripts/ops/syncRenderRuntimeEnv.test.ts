@@ -196,6 +196,12 @@ describe('syncRenderRuntimeEnv', () => {
     expect(calls).toEqual([])
     expect(result.errors.join('\n')).toContain('Missing RENDER_API_KEY')
     expect(result.deployResult).toBeNull()
+    expect(renderRenderRuntimeEnvSyncResult(result)).toContain(
+      '## Manual Dashboard Fallback',
+    )
+    expect(renderRenderRuntimeEnvSyncResult(result)).toContain(
+      'Manual Deploy -> Deploy latest commit',
+    )
   })
 
   it('fails service-name resolution without a Render token before calling the API', async () => {
