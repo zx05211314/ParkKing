@@ -706,6 +706,7 @@ Generate manual QA candidates from the latest district pack or generated folder:
 
 - `npm run ops:sample-qa -- --district xinyi --topN 50 --riskMode Neutral --radius 600`
 - `npm run ops:sample-qa -- --district xinyi --strategy review --hhmm 21:00 --radius 5000 --topN 80 --out .tmp/xinyi-review.csv`
+- `npm run ops:sample-qa -- --district songshan --strategy review --config-root configs/expansion --out .tmp/songshan-review.csv`
 - `npm run ops:sample-qa -- --all --topN 50`
 
 Default output path:
@@ -713,7 +714,7 @@ Default output path:
 - `public/data/generated/<districtId>/qa_candidates.manifest.json`
 - `public/data/generated/<districtId>/qa_candidates.review.md`
 
-The manifest is written next to the CSV by default. It records sampling params, dataset hash/config hash, source pack directory, bucket counts, reason counts, and the exact follow-up `ops:qa-review-summary` / `ops:qa-review-gate` commands. Use `--manifestOut <path>` to place it elsewhere; `--all` supports `{districtId}` and `<id>` placeholders.
+The manifest is written next to the CSV by default. It records sampling params, dataset hash/config hash, source pack directory, bucket counts, reason counts, and the exact follow-up `ops:qa-review-summary` / `ops:qa-review-gate` commands. Use `--manifestOut <path>` to place it elsewhere; `--all` supports `{districtId}` and `<id>` placeholders. Use `--config-root configs/expansion` for expansion packets that should gate against candidate configs instead of `configs/prod`.
 The review doc is also written next to the CSV by default. It groups candidates by `reviewBucket`, includes map and Street View links, and leaves verdict/notes blanks for human review. Use `--reviewDocOut <path>` to place it elsewhere.
 `ops:qa-review-summary` auto-loads the adjacent `.manifest.json` when present, or accepts `--manifest <path>`, so gate output shows the reviewed packet's dataset hash and config hash. Add `--strict-manifest` when you want summary to fail on stale manifest pointers or row-count mismatches, `--strict-reviewed-rows` when invalid reviewed rows should fail instead of warn, and `--strict-reviewed-segments` when duplicate/conflicting segment reviews should fail instead of warn. Use repeated `--min-reviewed-bucket bucket=count` flags, or comma-separated pairs, to require minimum reviewed coverage for specific QA buckets. Summary and gate output also list unmet review requirements, a minimum review plan, and the next pending rows to review; tune that handoff with `--next-review-limit` and write a focused handoff CSV with `--next-review-out <path>`.
 Use `npm run ops:p0-readiness` for a one-command Xinyi P0 status check. It combines exact answer smoke, reviewed answer golden cases, strict QA review summary, review packet provenance, current config drift, and publish gate state into a single blocked/pass report without exporting overrides or bypassing any gate.

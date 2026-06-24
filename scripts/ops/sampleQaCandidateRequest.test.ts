@@ -11,6 +11,7 @@ describe('sampleQaCandidateRequest', () => {
       districtId: 'xinyi',
       topN: 50,
       outPath: null,
+      configRoot: 'configs/prod',
       riskMode: 'NEUTRAL',
       radiusMeters: 600,
       shuffle: false,

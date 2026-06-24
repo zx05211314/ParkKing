@@ -1,6 +1,7 @@
 import type { RiskMode } from '../../src/domain/ranking/policy'
 import type { CliArgs } from './sampleQaCandidateTypes'
 import {
+  DEFAULT_CONFIG_ROOT,
   DEFAULT_RADIUS_METERS,
   DEFAULT_QA_HHMM,
   DEFAULT_TOP_N,
@@ -110,6 +111,10 @@ export const parseArgs = (argv: string[]): CliArgs => {
     manifestOutPath: parseArgValue(argv, '--manifestOut'),
     reviewDocOutPath:
       parseArgValue(argv, '--reviewDocOut') ?? parseArgValue(argv, '--docOut'),
+    configRoot:
+      parseArgValue(argv, '--config-root') ??
+      parseArgValue(argv, '--configRoot') ??
+      DEFAULT_CONFIG_ROOT,
     riskMode: parseRiskMode(parseArgValue(argv, '--riskMode')),
     radiusMeters: parsePositiveNumber(
       parseArgValue(argv, '--radius'),

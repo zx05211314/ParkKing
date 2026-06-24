@@ -109,4 +109,37 @@ describe('buildQaCandidateManifest', () => {
     expect(manifest.review.gateCommand).toContain('tmp/xinyi-review.csv')
     expect(manifest.review.gateCommand).toContain('configs/prod/xinyi.json')
   })
+
+  it('uses a custom config root in the review gate command', () => {
+    const manifest = buildQaCandidateManifest({
+      districtId: 'songshan',
+      csvPath: path.join('tmp', 'songshan-review.csv'),
+      configRoot: 'configs/expansion',
+      datasetBaseDir: path.join('public', 'data', 'generated', 'songshan'),
+      datasetMeta: null,
+      inputCounts: {
+        redYellow: 1,
+        busStops: 0,
+        hydrants: 0,
+        intersections: 0,
+        crosswalks: 0,
+        signOverrides: 0,
+        inferredCandidates: 0,
+        parkingSpaces: 0,
+      },
+      rows: [buildRow({ districtId: 'songshan' })],
+      topN: 1,
+      riskMode: 'NEUTRAL',
+      radiusMeters: 600,
+      shuffle: false,
+      seed: 1,
+      strategy: 'review',
+      hhmm: '13:00',
+      createdAt: '2026-04-25T01:00:00.000Z',
+    })
+
+    expect(manifest.review.gateCommand).toContain(
+      'configs/expansion/songshan.json',
+    )
+  })
 })

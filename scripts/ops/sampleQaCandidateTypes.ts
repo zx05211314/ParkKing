@@ -4,6 +4,7 @@ import type { DatasetMeta } from '../../src/data/segmentBuilder'
 export const DEFAULT_TOP_N = 50
 export const DEFAULT_RADIUS_METERS = 600
 export const DEFAULT_QA_HHMM = '13:00'
+export const DEFAULT_CONFIG_ROOT = 'configs/prod'
 export const DEFAULT_DATASET_ROOTS = ['public/data/generated', 'data/generated']
 export const REQUIRED_DATASET_FILES = [
   'dataset_meta.json',
@@ -20,6 +21,7 @@ export interface CliArgs {
   outPath: string | null
   manifestOutPath: string | null
   reviewDocOutPath: string | null
+  configRoot: string
   riskMode: RiskMode
   radiusMeters: number
   datasetRoots: string[]

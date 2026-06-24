@@ -51,6 +51,7 @@ export const sampleQaCandidates = async (
     const manifest = buildQaCandidateManifest({
       districtId,
       csvPath: outPath,
+      configRoot: resolved.configRoot,
       datasetBaseDir: packet.context.datasetBaseDir,
       datasetMeta: packet.context.datasetMeta,
       inputCounts: packet.context.inputCounts,
@@ -99,6 +100,7 @@ const run = async () => {
     outPath: args.outPath,
     manifestOutPath: args.manifestOutPath,
     reviewDocOutPath: args.reviewDocOutPath,
+    configRoot: args.configRoot,
     riskMode: args.riskMode,
     radiusMeters: args.radiusMeters,
     datasetRoots: args.datasetRoots.length > 0 ? args.datasetRoots : undefined,
