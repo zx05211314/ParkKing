@@ -51,6 +51,7 @@ const readiness = (
       dryRunRoot: 'data/generated',
       registryPath: 'public/data/generated/registry.json',
       configGlob: 'configs/prod/*.json',
+      configRoot: 'configs/prod',
       reviewRoot: '.tmp',
       publishGateSummaryPath: 'data/generated/_ops/publish_gate_summary.json',
       skipP1: false,
@@ -78,6 +79,7 @@ const reviewGate = (
     status: 'blocked',
     mode: 'dry-run',
     reviewRoot: '.tmp',
+    configRoot: 'configs/prod',
     outDir: '.tmp/human-review-packages',
     selectedDistricts: ['daan', 'zhongshan'],
     entries: [
@@ -161,6 +163,8 @@ describe('p2Status', () => {
         'public/data/generated/registry.json',
         '--configs',
         'configs/prod/*.json',
+        '--config-root',
+        'configs/prod',
         '--review-root',
         '.tmp',
         '--publish-gate-summary',
@@ -182,6 +186,7 @@ describe('p2Status', () => {
       dryRunRoot: 'data/generated',
       registryPath: 'public/data/generated/registry.json',
       configGlob: 'configs/prod/*.json',
+      configRoot: 'configs/prod',
       reviewRoot: '.tmp',
       publishGateSummaryPath: 'data/generated/_ops/publish_gate_summary.json',
       timeoutMs: 25_000,
@@ -191,6 +196,82 @@ describe('p2Status', () => {
       reportOnly: true,
       json: true,
     })
+  })
+
+  it('infers expansion config root and passes it to readiness and review gate', async () => {
+    const songshanInputs = {
+      ...readiness().inputs,
+      currentDistrictId: 'songshan',
+      expansionDistrictIds: ['songshan'],
+      configGlob: 'configs/expansion/*.json',
+      configRoot: 'configs/expansion',
+      skipP1: true,
+    }
+    const songshanDistricts = [expansionDistrict('songshan', 'fill-human-review')]
+    const runnerSet = runners({
+      loose: readiness({
+        inputs: songshanInputs,
+        p1Release: null,
+        expansionDistricts: songshanDistricts,
+      }),
+      strict: readiness({
+        pass: false,
+        status: 'BLOCKED',
+        inputs: {
+          ...songshanInputs,
+          requireReadyToFinalize: true,
+        },
+        p1Release: null,
+        expansionDistricts: songshanDistricts,
+        blockers: ['expansion districts not ready to finalize: songshan'],
+      }),
+    })
+    const result = await runP2Status(
+      {
+        expansionDistrictIds: ['songshan'],
+        configGlob: 'configs/expansion/*.json',
+        skipP1: true,
+      },
+      runnerSet,
+    )
+
+    expect(result.inputs).toMatchObject({
+      expansionDistrictIds: ['songshan'],
+      configGlob: 'configs/expansion/*.json',
+      configRoot: 'configs/expansion',
+    })
+    expect(runnerSet.runP2ExpansionReadiness).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        configGlob: 'configs/expansion/*.json',
+        configRoot: 'configs/expansion',
+        expansionDistrictIds: ['songshan'],
+        requireReadyToFinalize: false,
+        skipP1: true,
+      }),
+    )
+    expect(runnerSet.runP2ExpansionReadiness).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        configGlob: 'configs/expansion/*.json',
+        configRoot: 'configs/expansion',
+        expansionDistrictIds: ['songshan'],
+        requireReadyToFinalize: true,
+        skipP1: true,
+      }),
+    )
+    expect(runnerSet.runP0AdvanceReviews).toHaveBeenCalledWith(
+      expect.objectContaining({
+        configRoot: 'configs/expansion',
+        districtIds: ['songshan'],
+      }),
+    )
+    const markdown = renderP2Status(result)
+    expect(markdown).toContain('- Config root: configs/expansion')
+    expect(markdown).toContain('--district songshan')
+    expect(markdown).toContain('--config-root configs/expansion')
+    expect(markdown).toContain('returned songshan reviewer CSVs')
+    expect(markdown).not.toContain('Daan/Zhongshan reviewer CSVs')
   })
 
   it('does not disable publish gate summary when the flag is omitted', () => {
