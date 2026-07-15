@@ -76,4 +76,44 @@ describe('fetchDistrictSources', () => {
     expect(provenance.files[0]?.relativePath).toBe('data/raw/xinyi/source.txt')
     expect(provenance.files[0]?.sha256).toBe(digest)
   })
+
+  it('writes source-only provenance without inventing a district config', async () => {
+    const baseDir = await fs.mkdtemp(path.join(tmpdir(), 'fetch-source-only-'))
+    const buffer = Buffer.from('source-only-data')
+    const digest = hashBuffer(buffer)
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.stubGlobal('fetch', async () => ({
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => toArrayBuffer(buffer),
+    }))
+
+    await fetchDistrictSources({
+      districtManifest: {
+        districtId: 'taoyuan',
+        sourceOnly: true,
+        sources: [
+          {
+            url: 'https://example.com/town-boundaries.zip',
+            dest: 'data/sources/taoyuan/town-boundaries.zip',
+            sha256: digest,
+          },
+        ],
+      },
+      manifestDir: baseDir,
+      provenanceRoot: baseDir,
+      dryRun: false,
+    })
+
+    const provenance = JSON.parse(
+      await fs.readFile(
+        path.join(baseDir, 'data', 'sources', 'taoyuan', 'provenance.json'),
+        'utf-8',
+      ),
+    ) as { districtId: string; configHash: string; sourceOnly?: boolean }
+
+    expect(provenance.districtId).toBe('taoyuan')
+    expect(provenance.sourceOnly).toBe(true)
+    expect(provenance.configHash).toMatch(/^[a-f0-9]{64}$/)
+  })
 })

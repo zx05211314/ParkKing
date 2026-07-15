@@ -1,8 +1,11 @@
+import * as path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import type { P0AdvanceReviewsResult } from './p0AdvanceReviews'
 import {
+  canCreateMissingReviewHandoff,
   classifyP2CandidateStage,
   parseP2CandidateAdvanceArgs,
+  resolveCandidateReviewPaths,
   resolveP2CandidateAdvanceInputs,
   runP2CandidateAdvance,
   type P2CandidateAdvanceRunners,
@@ -16,6 +19,7 @@ const statusResult = (params: {
   pending?: boolean
   ready?: boolean
   packaged?: boolean
+  missingBundle?: boolean
   pass?: boolean
 }): P2StatusResult =>
   ({
@@ -30,6 +34,11 @@ const statusResult = (params: {
         {
           districtId: 'songshan',
           nextAction: params.nextAction,
+          dataPackStatus: 'available',
+          reviewBundleStatus: params.missingBundle ? 'missing' : 'ready-for-review',
+          automationBlockers: params.missingBundle
+            ? ['human review bundle missing']
+            : [],
         },
       ],
     },
@@ -68,6 +77,17 @@ const promotionResult = (pass = true): P2PromoteExpansionResult =>
     followUpCommands: ['npm run ingest:all -- --configs configs/prod/songshan.json'],
   }) as P2PromoteExpansionResult
 
+const preparationResult = () => ({
+  pass: true,
+  bundleDir: '.tmp/songshan-human-review',
+  sourcePath: '.tmp/songshan-human-review/songshan-review.csv',
+  handoffPath: '.tmp/songshan-human-review/songshan-next-review.csv',
+  sampled: true,
+  prepared: true,
+  errors: [],
+  warnings: [],
+})
+
 const runners = (
   statuses: P2StatusResult[],
 ): P2CandidateAdvanceRunners => ({
@@ -79,6 +99,7 @@ const runners = (
     return next
   }),
   runAdvanceReviews: vi.fn().mockResolvedValue(advanceResult()),
+  prepareReview: vi.fn().mockResolvedValue(preparationResult()),
   runPromotion: vi.fn().mockResolvedValue(promotionResult()),
 })
 
@@ -103,6 +124,30 @@ describe('p2CandidateAdvance', () => {
       execute: true,
       overwrite: true,
     })
+  })
+
+  it('places every candidate review artifact in the indexed bundle directory', () => {
+    const inputs = resolveP2CandidateAdvanceInputs({
+      districtId: 'beitou',
+      reviewRoot: '.tmp/reviews',
+    })
+    const paths = resolveCandidateReviewPaths(inputs)
+
+    expect(paths.bundleDir).toBe(
+      path.resolve('.tmp/reviews/beitou-human-review'),
+    )
+    expect(paths.sourcePath).toBe(
+      path.join(paths.bundleDir, 'beitou-review.csv'),
+    )
+    expect(paths.handoffPath).toBe(
+      path.join(paths.bundleDir, 'beitou-next-review.csv'),
+    )
+    expect(paths.checklistPath).toBe(
+      path.join(paths.bundleDir, 'beitou-next-review.md'),
+    )
+    expect(paths.geojsonPath).toBe(
+      path.join(paths.bundleDir, 'beitou-next-review.geojson'),
+    )
   })
 
   it('rejects unsafe or current-district candidate ids', () => {
@@ -140,7 +185,35 @@ describe('p2CandidateAdvance', () => {
         configRoot: 'configs/expansion',
       }),
     )
+    expect(workflowRunners.prepareReview).toHaveBeenCalledTimes(1)
     expect(workflowRunners.runPromotion).not.toHaveBeenCalled()
+  })
+
+  it('repairs the new-candidate deadlock when the only blocker is a missing bundle', async () => {
+    const missingBundle = statusResult({
+      nextAction: 'fix-blockers',
+      status: 'BLOCKED',
+      missingBundle: true,
+      pass: false,
+    })
+    const workflowRunners = runners([
+      missingBundle,
+      statusResult({
+        nextAction: 'fill-human-review',
+        pending: true,
+        packaged: true,
+      }),
+    ])
+
+    expect(canCreateMissingReviewHandoff(missingBundle, 'songshan')).toBe(true)
+    const result = await runP2CandidateAdvance(
+      { districtId: 'songshan' },
+      workflowRunners,
+    )
+
+    expect(result.stage).toBe('human-review-required')
+    expect(result.handoffResult?.pass).toBe(true)
+    expect(workflowRunners.runAdvanceReviews).toHaveBeenCalledTimes(1)
   })
 
   it('dry-runs finalize without promoting', async () => {

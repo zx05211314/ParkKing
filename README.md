@@ -335,6 +335,20 @@ without changing the production publish glob.
    `npm run ingest:all -- --configs "configs/expansion/songshan.json" --dry-run --report-only --allow-warn --override "songshan expansion candidate baseline bootstrap"`
 4. Promote the config to `configs/prod/<id>.json` only after review evidence and pinned answer cases are ready.
 
+Taipei-wide expansion is tracked in `configs/coverage.expansion.json`. The 12 official
+districts now have either production or expansion configs; Shipai is represented through
+its parent Beitou district and is not treated as a separate administrative district. Check
+the contract with `npm run ops:coverage-status`.
+
+Taoyuan is intentionally source-only until equivalent curb-legality inputs exist. Fetch and
+unpack its official administrative boundaries and fare metadata with
+`npm run ops:fetch-taoyuan-sources` and `npm run ops:unpack-taoyuan-sources`, then verify
+all 13 boundaries with `npm run ops:validate-taoyuan-boundaries`. With TDX
+credentials in `TDX_CLIENT_ID` and `TDX_CLIENT_SECRET`, run
+`npm run ops:fetch-taoyuan-paid-curb` to normalize paid curb segment geometry/reference
+points. The output uses `PAID_CURB_SEGMENT` with `legalAnswerEligible: false`; it must not be
+renamed to `parking_spaces.geojson` or used to produce a general legal parking answer.
+
 Legacy per-district raw source scaffold:
    `npm run ops:new-district -- --districtId <id> --districtName "<Name>" --sourceRoot "data/raw/<id>"`
 1. Validate inputs:

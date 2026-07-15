@@ -7,6 +7,8 @@ import {
   type P0AdvanceReviewsOptions,
   type P0AdvanceReviewsResult,
 } from './p0AdvanceReviews'
+import { p0PrepareReview } from './p0PrepareReview'
+import { sampleQaCandidates } from './sampleQaCandidates'
 import {
   renderP2PromoteExpansion,
   runP2PromoteExpansion,
@@ -77,9 +79,21 @@ export interface P2CandidateAdvanceResult {
   mode: 'dry-run' | 'execute'
   inputs: P2CandidateAdvanceInputs
   status: P2StatusResult
+  reviewPreparation: P2CandidateReviewPreparationResult | null
   handoffResult: P0AdvanceReviewsResult | null
   finalizeResult: P0AdvanceReviewsResult | null
   promotionResult: P2PromoteExpansionResult | null
+  errors: string[]
+  warnings: string[]
+}
+
+export interface P2CandidateReviewPreparationResult {
+  pass: boolean
+  bundleDir: string
+  sourcePath: string
+  handoffPath: string
+  sampled: boolean
+  prepared: boolean
   errors: string[]
   warnings: string[]
 }
@@ -89,14 +103,119 @@ export interface P2CandidateAdvanceRunners {
   runAdvanceReviews: (
     options: P0AdvanceReviewsOptions,
   ) => Promise<P0AdvanceReviewsResult>
+  prepareReview: (
+    inputs: P2CandidateAdvanceInputs,
+  ) => Promise<P2CandidateReviewPreparationResult>
   runPromotion: (
     options: P2PromoteExpansionOptions,
   ) => Promise<P2PromoteExpansionResult>
 }
 
+const pathExists = async (targetPath: string) => {
+  try {
+    await fs.access(targetPath)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export const resolveCandidateReviewPaths = (
+  inputs: P2CandidateAdvanceInputs,
+) => {
+  const bundleDir = path.resolve(
+    inputs.reviewRoot,
+    `${inputs.districtId}-human-review`,
+  )
+  return {
+    bundleDir,
+    sourcePath: path.join(bundleDir, `${inputs.districtId}-review.csv`),
+    handoffPath: path.join(bundleDir, `${inputs.districtId}-next-review.csv`),
+    checklistPath: path.join(bundleDir, `${inputs.districtId}-next-review.md`),
+    geojsonPath: path.join(
+      bundleDir,
+      `${inputs.districtId}-next-review.geojson`,
+    ),
+    mergedPath: path.join(bundleDir, `${inputs.districtId}-review.merged.csv`),
+  }
+}
+
+export const prepareCandidateReview = async (
+  inputs: P2CandidateAdvanceInputs,
+): Promise<P2CandidateReviewPreparationResult> => {
+  const {
+    bundleDir,
+    sourcePath,
+    handoffPath,
+    checklistPath,
+    geojsonPath,
+    mergedPath,
+  } = resolveCandidateReviewPaths(inputs)
+  const errors: string[] = []
+  const warnings: string[] = []
+  let sampled = false
+  let prepared = false
+
+  if (await pathExists(handoffPath)) {
+    warnings.push(`Reusing existing review handoff at ${handoffPath}`)
+    return {
+      pass: true,
+      bundleDir,
+      sourcePath,
+      handoffPath,
+      sampled,
+      prepared,
+      errors,
+      warnings,
+    }
+  }
+
+  if (!(await pathExists(sourcePath))) {
+    await sampleQaCandidates({
+      districtId: inputs.districtId,
+      topN: 80,
+      outPath: sourcePath,
+      configRoot: inputs.configRoot,
+      riskMode: 'NEUTRAL',
+      radiusMeters: 5000,
+      datasetRoots: [inputs.dryRunRoot, inputs.root],
+      strategy: 'review',
+      hhmm: '21:00',
+    })
+    sampled = true
+  }
+
+  const preparedReview = await p0PrepareReview({
+    districtId: inputs.districtId,
+    sourcePath,
+    configPath: path.resolve(
+      inputs.configRoot,
+      `${inputs.districtId}.json`,
+    ),
+    nextReviewOutPath: handoffPath,
+    checklistOutPath: checklistPath,
+    geojsonOutPath: geojsonPath,
+    mergedOutPath: mergedPath,
+  })
+  prepared = preparedReview.pass
+  errors.push(...preparedReview.errors)
+  warnings.push(...preparedReview.warnings)
+  return {
+    pass: preparedReview.pass,
+    bundleDir,
+    sourcePath,
+    handoffPath,
+    sampled,
+    prepared,
+    errors,
+    warnings,
+  }
+}
+
 const defaultRunners: P2CandidateAdvanceRunners = {
   runStatus: runP2Status,
   runAdvanceReviews: runP0AdvanceReviews,
+  prepareReview: prepareCandidateReview,
   runPromotion: runP2PromoteExpansion,
 }
 
@@ -255,6 +374,24 @@ export const classifyP2CandidateStage = (
   return 'blocked'
 }
 
+export const canCreateMissingReviewHandoff = (
+  status: P2StatusResult,
+  districtId: string,
+) => {
+  if (status.latestReviewPackages.some((entry) => entry.districtId === districtId)) {
+    return false
+  }
+  const district = status.readiness.expansionDistricts.find(
+    (entry) => entry.districtId === districtId,
+  )
+  return (
+    district?.reviewBundleStatus === 'missing' &&
+    district.dataPackStatus === 'available' &&
+    district.automationBlockers.length === 1 &&
+    district.automationBlockers[0] === 'human review bundle missing'
+  )
+}
+
 const unique = (values: string[]) => Array.from(new Set(values))
 
 export const runP2CandidateAdvance = async (
@@ -264,24 +401,30 @@ export const runP2CandidateAdvance = async (
   const inputs = resolveP2CandidateAdvanceInputs(options)
   let status = await runners.runStatus(statusOptions(inputs))
   let stage = classifyP2CandidateStage(status)
+  let reviewPreparation: P2CandidateReviewPreparationResult | null = null
   let handoffResult: P0AdvanceReviewsResult | null = null
   let finalizeResult: P0AdvanceReviewsResult | null = null
   let promotionResult: P2PromoteExpansionResult | null = null
 
-  if (
-    stage === 'human-review-required' &&
-    !status.latestReviewPackages.some(
-      (entry) => entry.districtId === inputs.districtId,
-    )
-  ) {
-    handoffResult = await runners.runAdvanceReviews({
-      ...commonAdvanceOptions(inputs),
-      outPath: '.tmp/p2-human-review-handoff.md',
-      jsonOutPath: '.tmp/p2-human-review-handoff.json',
-    })
-    if (handoffResult.pass) {
-      status = await runners.runStatus(statusOptions(inputs))
-      stage = classifyP2CandidateStage(status)
+  const needsReviewHandoff =
+    (stage === 'human-review-required' &&
+      !status.latestReviewPackages.some(
+        (entry) => entry.districtId === inputs.districtId,
+      )) ||
+    canCreateMissingReviewHandoff(status, inputs.districtId)
+
+  if (needsReviewHandoff) {
+    reviewPreparation = await runners.prepareReview(inputs)
+    if (reviewPreparation.pass) {
+      handoffResult = await runners.runAdvanceReviews({
+        ...commonAdvanceOptions(inputs),
+        outPath: '.tmp/p2-human-review-handoff.md',
+        jsonOutPath: '.tmp/p2-human-review-handoff.json',
+      })
+      if (handoffResult.pass) {
+        status = await runners.runStatus(statusOptions(inputs))
+        stage = classifyP2CandidateStage(status)
+      }
     }
   }
 
@@ -319,12 +462,16 @@ export const runP2CandidateAdvance = async (
 
   const errors = unique([
     ...status.blockers,
+    ...(reviewPreparation && !reviewPreparation.pass
+      ? reviewPreparation.errors
+      : []),
     ...(handoffResult && !handoffResult.pass ? handoffResult.errors : []),
     ...(finalizeResult && !finalizeResult.pass ? finalizeResult.errors : []),
     ...(promotionResult && !promotionResult.pass ? promotionResult.errors : []),
   ])
   const warnings = unique([
     ...status.warnings,
+    ...(reviewPreparation?.warnings ?? []),
     ...(handoffResult?.warnings ?? []),
     ...(finalizeResult?.warnings ?? []),
     ...(promotionResult?.warnings ?? []),
@@ -336,6 +483,7 @@ export const runP2CandidateAdvance = async (
     mode: inputs.execute ? 'execute' : 'dry-run',
     inputs,
     status,
+    reviewPreparation,
     handoffResult,
     finalizeResult,
     promotionResult,
@@ -394,6 +542,18 @@ export const renderP2CandidateAdvance = (
 
   if (result.handoffResult) {
     lines.push('', '## Human Review Handoff', '', renderP0AdvanceReviews(result.handoffResult))
+  }
+  if (result.reviewPreparation) {
+    lines.push(
+      '',
+      '## Review Preparation',
+      '',
+      `- Bundle: ${result.reviewPreparation.bundleDir}`,
+      `- Source: ${result.reviewPreparation.sourcePath}`,
+      `- Handoff: ${result.reviewPreparation.handoffPath}`,
+      `- Sampled: ${result.reviewPreparation.sampled ? 'yes' : 'no'}`,
+      `- Prepared: ${result.reviewPreparation.prepared ? 'yes' : 'no'}`,
+    )
   }
   if (result.finalizeResult) {
     lines.push('', '## Finalize', '', renderP0AdvanceReviews(result.finalizeResult))

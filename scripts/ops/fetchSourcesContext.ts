@@ -7,6 +7,17 @@ import {
 import { hashBufferSha256 } from './fetchSourcesProvenance'
 import type { DistrictSourceManifest } from './fetchSourcesTypes'
 
+const buildSourceManifestHash = (manifest: DistrictSourceManifest) =>
+  hashBufferSha256(
+    Buffer.from(
+      JSON.stringify({
+        districtId: manifest.districtId,
+        sourceOnly: true,
+        sources: manifest.sources ?? [],
+      }),
+    ),
+  )
+
 export const resolveDistrictSourceContext = async (params: {
   manifest: DistrictSourceManifest
   manifestDir: string
@@ -19,10 +30,25 @@ export const resolveDistrictSourceContext = async (params: {
     districtId,
   )
 
-  if (!districtId || !configPath) {
+  if (!districtId) {
     throw new Error(
       'Unable to resolve districtId/configPath. Provide districtId or configPath in manifest.',
     )
+  }
+
+  if (!configPath) {
+    if (!params.manifest.sourceOnly) {
+      throw new Error(
+        'Unable to resolve districtId/configPath. Provide districtId or configPath in manifest.',
+      )
+    }
+    return {
+      districtId,
+      configDistrictId: districtId,
+      configPath: null,
+      configHash: buildSourceManifestHash(params.manifest),
+      sourceOnly: true,
+    }
   }
 
   const configRaw = await fs.readFile(configPath, 'utf-8')
@@ -33,5 +59,6 @@ export const resolveDistrictSourceContext = async (params: {
     configDistrictId: config.districtId ?? districtId,
     configPath,
     configHash: hashBufferSha256(Buffer.from(configRaw)),
+    sourceOnly: false,
   }
 }

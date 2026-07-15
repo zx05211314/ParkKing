@@ -11,6 +11,12 @@ export const detectCrsFromPrj = (prj: string | null, fallback: string): string =
   if (normalized.includes('wgs_1984') || normalized.includes('wgs 84')) {
     return EPSG_4326
   }
+  if (
+    normalized.trimStart().startsWith('geogcs') &&
+    (normalized.includes('twd97') || normalized.includes('twd_1997'))
+  ) {
+    return EPSG_4326
+  }
   if (normalized.includes('twd97') || normalized.includes('twd_1997')) {
     return EPSG_3826
   }

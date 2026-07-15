@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "regions": [
+    {
+      "regionId": "taipei",
+      "regionName": "Taipei City",
+      "expectedDistrictCount": 12,
+      "answerCapability": "full-rule-pipeline",
+      "districts": [
+        {
+          "districtId": "songshan",
+          "districtName": "Songshan",
+          "boundaryFeatureId": "63001",
+          "publishStage": "candidate",
+          "configPath": "configs/expansion/songshan.json",
+          "requiresHumanReview": true
+        },
+        {
+          "districtId": "xinyi",
+          "districtName": "Xinyi",
+          "boundaryFeatureId": "63002",
+          "publishStage": "production",
+          "configPath": "configs/prod/xinyi.json",
+          "requiresHumanReview": false
+        },
+        {
+          "districtId": "daan",
+          "districtName": "Daan",
+          "boundaryFeatureId": "63003",
+          "publishStage": "production",
+          "configPath": "configs/prod/daan.json",
+          "requiresHumanReview": false
+        },
+        {
+          "districtId": "zhongshan",
+          "districtName": "Zhongshan",
+          "boundaryFeatureId": "63004",
+          "publishStage": "production",
+          "configPath": "configs/prod/zhongshan.json",
+          "requiresHumanReview": false
+        },
+        {
+          "districtId": "zhongzheng",
+          "districtName": "Zhongzheng",
+          "boundaryFeatureId": "63005",
+          "publishStage": "candidate",
+          "configPath": "configs/expansion/zhongzheng.json",
+          "requiresHumanReview": true
+        },
+        {
+          "districtId": "datong",
+          "districtName": "Datong",
+          "boundaryFeatureId": "63006",
+          "publishStage": "candidate",
+          "configPath": "configs/expansion/datong.json",
+          "requiresHumanReview": true
+        },
+        {
+          "districtId": "wanhua",
+          "districtName": "Wanhua",
+          "boundaryFeatureId": "63007",
+          "publishStage": "candidate",
+          "configPath": "configs/expansion/wanhua.json",
+          "requiresHumanReview": true
+        },
+        {
+          "districtId": "wenshan",
+          "districtName": "Wenshan",
+          "boundaryFeatureId": "63008",
+          "publishStage": "candidate",
+          "configPath": "configs/expansion/wenshan.json",
+          "requiresHumanReview": true
+        },
+        {
+          "districtId": "nangang",
+          "districtName": "Nangang",
+          "boundaryFeatureId": "63009",
+          "publishStage": "candidate",
+          "configPath": "configs/expansion/nangang.json",
+          "requiresHumanReview": true
+        },
+        {
+          "districtId": "neihu",
+          "districtName": "Neihu",
+          "boundaryFeatureId": "63010",
+          "publishStage": "candidate",
+          "configPath": "configs/expansion/neihu.json",
+          "requiresHumanReview": true
+        },
+        {
+          "districtId": "shilin",
+          "districtName": "Shilin",
+          "boundaryFeatureId": "63011",
+          "publishStage": "candidate",
+          "configPath": "configs/expansion/shilin.json",
+          "requiresHumanReview": true
+        },
+        {
+          "districtId": "beitou",
+          "districtName": "Beitou",
+          "boundaryFeatureId": "63012",
+          "publishStage": "candidate",
+          "configPath": "configs/expansion/beitou.json",
+          "requiresHumanReview": true
+        }
+      ],
+      "aliases": [
+        {
+          "areaId": "shipai",
+          "areaName": "Shipai",
+          "parentDistrictId": "beitou",
+          "coverageMode": "parent-district",
+          "standaloneBoundaryRequired": true
+        }
+      ],
+      "blockers": [
+        "Candidate districts need generated packs, real sign-override review, and reviewed answer cases before production publication."
+      ]
+    },
+    {
+      "regionId": "taoyuan",
+      "regionName": "Taoyuan City",
+      "expectedDistrictCount": 13,
+      "answerCapability": "paid-curb-reference-only",
+      "sourceManifestPath": "configs/sources.expansion.taoyuan.json",
+      "districts": [
+        { "districtId": "taoyuan-district", "districtName": "Taoyuan", "boundaryFeatureId": "68000010", "publishStage": "source-only", "requiresHumanReview": true },
+        { "districtId": "zhongli", "districtName": "Zhongli", "boundaryFeatureId": "68000020", "publishStage": "source-only", "requiresHumanReview": true },
+        { "districtId": "daxi", "districtName": "Daxi", "boundaryFeatureId": "68000030", "publishStage": "source-only", "requiresHumanReview": true },
+        { "districtId": "yangmei", "districtName": "Yangmei", "boundaryFeatureId": "68000040", "publishStage": "source-only", "requiresHumanReview": true },
+        { "districtId": "luzhu", "districtName": "Luzhu", "boundaryFeatureId": "68000050", "publishStage": "source-only", "requiresHumanReview": true },
+        { "districtId": "dayuan", "districtName": "Dayuan", "boundaryFeatureId": "68000060", "publishStage": "source-only", "requiresHumanReview": true },
+        { "districtId": "guishan", "districtName": "Guishan", "boundaryFeatureId": "68000070", "publishStage": "source-only", "requiresHumanReview": true },
+        { "districtId": "bade", "districtName": "Bade", "boundaryFeatureId": "68000080", "publishStage": "source-only", "requiresHumanReview": true },
+        { "districtId": "longtan", "districtName": "Longtan", "boundaryFeatureId": "68000090", "publishStage": "source-only", "requiresHumanReview": true },
+        { "districtId": "pingzhen", "districtName": "Pingzhen", "boundaryFeatureId": "68000100", "publishStage": "source-only", "requiresHumanReview": true },
+        { "districtId": "xinwu", "districtName": "Xinwu", "boundaryFeatureId": "68000110", "publishStage": "source-only", "requiresHumanReview": true },
+        { "districtId": "guanyin", "districtName": "Guanyin", "boundaryFeatureId": "68000120", "publishStage": "source-only", "requiresHumanReview": true },
+        { "districtId": "fuxing", "districtName": "Fuxing", "boundaryFeatureId": "68000130", "publishStage": "source-only", "requiresHumanReview": true }
+      ],
+      "aliases": [],
+      "blockers": [
+        "No authoritative Taoyuan red/yellow curb geometry is configured.",
+        "TDX exposes paid curb segment reference points for Taoyuan, not marked-space geometry or arbitrary curb legality.",
+        "TDX API credentials are required after the limited guest quota.",
+        "No Taoyuan sign-override review or legal answer cases exist."
+      ]
+    }
+  ]
+}

@@ -8,6 +8,7 @@ export interface SourceEntry {
 export interface DistrictSourceManifest {
   districtId?: string
   configPath?: string
+  sourceOnly?: boolean
   sources?: SourceEntry[]
 }
 
@@ -38,5 +39,6 @@ export interface ProvenanceManifest {
   districtId: string
   fetchedAt: string
   configHash: string
+  sourceOnly?: boolean
   files: ProvenanceFileEntry[]
 }
