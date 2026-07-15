@@ -74,6 +74,8 @@
     "ops:p2-expansion-readiness:report": "tsx scripts/ops/p2ExpansionReadiness.ts --out .tmp/p2-expansion-readiness.md --json-out .tmp/p2-expansion-readiness.json",
     "ops:p2-expansion-readiness:strict": "tsx scripts/ops/p2ExpansionReadiness.ts --require-ready-to-finalize",
     "ops:p2-status": "tsx scripts/ops/p2Status.ts --out .tmp/p2-status.md --json-out .tmp/p2-status.json",
+    "ops:p2-candidate-advance": "tsx scripts/ops/p2CandidateAdvance.ts",
+    "ops:p2-candidate-advance:execute": "tsx scripts/ops/p2CandidateAdvance.ts --execute",
     "ops:p2-human-review-handoff": "tsx scripts/ops/p0AdvanceReviews.ts --district daan,zhongshan --out .tmp/p2-human-review-handoff.md --json-out .tmp/p2-human-review-handoff.json",
     "ops:p2-review-diagnostics": "tsx scripts/ops/reviewHandoffAudit.ts --district daan,zhongshan --review-root .tmp --out .tmp/p2-review-diagnostics.md --json-out .tmp/p2-review-diagnostics.json --priority-out .tmp/p2-review-priority.md --priority-csv-out .tmp/p2-review-priority.csv --priority-json-out .tmp/p2-review-priority.json",
     "ops:p2-review-intake": "tsx scripts/ops/p0AdvanceReviews.ts --district daan,zhongshan --review-intake --include-common-dirs --validate-ready --actionable-only --no-package --report-only --out .tmp/p2-review-intake.md --json-out .tmp/p2-review-intake.json",

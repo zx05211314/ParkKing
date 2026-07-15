@@ -291,7 +291,7 @@ describe('release workflow contracts', () => {
     )
   })
 
-  it('keeps Songshan P2 candidate shortcuts pinned to expansion configs', async () => {
+  it('keeps generic and Songshan P2 candidate shortcuts pinned to safe entrypoints', async () => {
     const packageJson = await readPackageJson()
     const scripts = packageJson.scripts ?? {}
     const songshanShortcutNames = [
@@ -302,6 +302,13 @@ describe('release workflow contracts', () => {
       'ops:p2-songshan-finalize-ready',
       'ops:p2-songshan-finalize-ready:execute',
     ]
+
+    expect(scripts['ops:p2-candidate-advance']).toBe(
+      'tsx scripts/ops/p2CandidateAdvance.ts',
+    )
+    expect(scripts['ops:p2-candidate-advance:execute']).toBe(
+      'tsx scripts/ops/p2CandidateAdvance.ts --execute',
+    )
 
     expect(scripts['ops:p2-songshan-status']).toContain(
       '--expansion-district songshan',
