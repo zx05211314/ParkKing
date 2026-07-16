@@ -7,4 +7,3 @@ active district override. The ingest pipeline only reads
 Each quarantined entry wraps the original record without changing it and records
 why it was removed. A record may only be promoted into another district's active
 override file after a human reviews the evidence in that district context.
-
