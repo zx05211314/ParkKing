@@ -154,6 +154,27 @@ const createFixture = async (options: {
 }
 
 describe('taoyuanExpansionReadiness', () => {
+  it('runs the real-data report and preserves its artifacts in CI', async () => {
+    const workflow = await fs.readFile(
+      path.resolve('.github/workflows/ci.yml'),
+      'utf-8',
+    )
+    const reportIndex = workflow.indexOf(
+      'run: npm run ops:taoyuan-expansion-readiness:report',
+    )
+    const summaryIndex = workflow.indexOf(
+      'run: npm run ops:append-workflow-summary -- --append-file .tmp/taoyuan-expansion-readiness.md',
+    )
+    const uploadIndex = workflow.indexOf(
+      'name: taoyuan-expansion-readiness',
+    )
+
+    expect(reportIndex).toBeGreaterThan(-1)
+    expect(summaryIndex).toBeGreaterThan(reportIndex)
+    expect(uploadIndex).toBeGreaterThan(summaryIndex)
+    expect(workflow).toContain('.tmp/taoyuan-expansion-readiness.json')
+  })
+
   it('parses report and strict options', () => {
     expect(
       parseTaoyuanExpansionReadinessArgs([
