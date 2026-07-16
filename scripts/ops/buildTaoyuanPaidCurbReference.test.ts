@@ -1,8 +1,12 @@
+import * as fs from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { CoverageManifest } from './coverageStatus'
 import {
   buildTaoyuanPaidCurbReferencePack,
   parseTaoyuanPaidCurbXml,
+  writeTaoyuanPaidCurbReference,
 } from './buildTaoyuanPaidCurbReference'
 
 const manifest: CoverageManifest = {
@@ -87,5 +91,43 @@ describe('buildTaoyuanPaidCurbReference', () => {
     expect(() =>
       parseTaoyuanPaidCurbXml(xml.replace('<CityCode>TAO', '<CityCode>TPE')),
     ).toThrow('has cityCode TPE')
+  })
+
+  it('rebuilds the template without overwriting an existing human review CSV', async () => {
+    const root = await fs.mkdtemp(path.join(tmpdir(), 'taoyuan-reference-review-'))
+    const inputPath = path.join(root, 'paid-curb.xml')
+    const manifestPath = path.join(root, 'coverage.json')
+    const outputPath = path.join(root, 'reference.json')
+    const reviewDir = path.join(root, 'review')
+    await fs.writeFile(inputPath, xml, 'utf-8')
+    await fs.writeFile(manifestPath, JSON.stringify(manifest), 'utf-8')
+    const params = {
+      inputPath,
+      manifestPath,
+      outputPath,
+      reviewDistrictId: 'taoyuan-district',
+      reviewDir,
+    }
+    await writeTaoyuanPaidCurbReference(params)
+    const reviewPath = path.join(
+      reviewDir,
+      'taoyuan-district-paid-curb-review.csv',
+    )
+    await fs.writeFile(reviewPath, 'human-reviewed-content\n', 'utf-8')
+
+    await writeTaoyuanPaidCurbReference(params)
+
+    await expect(fs.readFile(reviewPath, 'utf-8')).resolves.toBe(
+      'human-reviewed-content\n',
+    )
+    await expect(
+      fs.readFile(
+        path.join(
+          reviewDir,
+          'taoyuan-district-paid-curb-review.template.csv',
+        ),
+        'utf-8',
+      ),
+    ).resolves.toContain('source_text_review_status')
   })
 })

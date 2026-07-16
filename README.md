@@ -355,7 +355,10 @@ all 13 boundaries and build the deterministic text-reference pack with
 `public/data/reference/taoyuan-paid-curb.json` and a Taoyuan District source-text review
 bundle under `.tmp/taoyuan-human-review/`. The current official XML contains 944 records,
 including 270 for Taoyuan District, but no geometry. Human approval of this CSV confirms
-source transcription only and never confirms parking legality. With TDX
+source transcription only and never confirms parking legality. Rebuilds refresh the
+`.template.csv` file but preserve an existing review CSV. Check structure, source hash,
+and pending counts with `npm run ops:taoyuan-review-status`; require every row to be
+explicitly approved with `npm run ops:taoyuan-review-gate`. With TDX
 credentials in `TDX_CLIENT_ID` and `TDX_CLIENT_SECRET`, run
 `npm run ops:fetch-taoyuan-paid-curb` to normalize paid curb segment geometry/reference
 points. The output uses `PAID_CURB_SEGMENT` with `legalAnswerEligible: false`; it must not be

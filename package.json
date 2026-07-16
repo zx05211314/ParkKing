@@ -42,6 +42,8 @@
     "ops:validate-taoyuan-boundaries": "tsx scripts/ops/validateTaoyuanBoundaries.ts",
     "ops:build-taoyuan-reference": "tsx scripts/ops/buildTaoyuanPaidCurbReference.ts",
     "ops:build-taoyuan-expansion": "npm run ops:validate-taoyuan-boundaries && npm run ops:build-taoyuan-reference && npm run ops:build-coverage-catalog && npm run ops:validate-coverage-catalog",
+    "ops:taoyuan-review-status": "tsx scripts/ops/validateTaoyuanPaidCurbReview.ts",
+    "ops:taoyuan-review-gate": "tsx scripts/ops/validateTaoyuanPaidCurbReview.ts --require-approved",
     "ops:sync-public-data": "tsx scripts/ops/syncPublicData.ts",
     "ops:smoke-public-data": "tsx scripts/ops/smokePublicData.ts",
     "ops:generated-pack-inventory": "tsx scripts/ops/generatedPackInventory.ts",

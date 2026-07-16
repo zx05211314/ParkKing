@@ -217,6 +217,22 @@ const buildReviewCsv = (
     .join('\r\n')}\r\n`
 }
 
+const writeFileIfMissing = async (filePath: string, content: string) => {
+  try {
+    await fs.writeFile(filePath, content, { encoding: 'utf-8', flag: 'wx' })
+    return true
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      'code' in error &&
+      error.code === 'EEXIST'
+    ) {
+      return false
+    }
+    throw error
+  }
+}
+
 const getArgValue = (argv: string[], flag: string) => {
   const index = argv.indexOf(flag)
   return index >= 0 ? argv[index + 1] ?? null : null
@@ -255,10 +271,15 @@ export const writeTaoyuanPaidCurbReference = async (params: {
     }
     await fs.mkdir(reviewDir, { recursive: true })
     const baseName = `${reviewDistrictId}-paid-curb-review`
+    const reviewCsv = buildReviewCsv(pack, reviewDistrictId)
     await fs.writeFile(
-      path.join(reviewDir, `${baseName}.csv`),
-      buildReviewCsv(pack, reviewDistrictId),
+      path.join(reviewDir, `${baseName}.template.csv`),
+      reviewCsv,
       'utf-8',
+    )
+    await writeFileIfMissing(
+      path.join(reviewDir, `${baseName}.csv`),
+      reviewCsv,
     )
     await fs.writeFile(
       path.join(reviewDir, `${baseName}.manifest.json`),
@@ -276,6 +297,8 @@ export const writeTaoyuanPaidCurbReference = async (params: {
             'NEEDS_CORRECTION',
             'UNCLEAR',
           ],
+          reviewCsv: `${baseName}.csv`,
+          templateCsv: `${baseName}.template.csv`,
         },
         null,
         2,
@@ -288,6 +311,7 @@ export const writeTaoyuanPaidCurbReference = async (params: {
         '# Taoyuan paid-curb source review',
         '',
         `Review ${district.recordCount} source rows in ${baseName}.csv.`,
+        `The generated ${baseName}.template.csv may be replaced on rebuild; the review CSV is preserved once created.`,
         'Set source_text_review_status to APPROVED_SOURCE_TEXT, NEEDS_CORRECTION, or UNCLEAR.',
         'Approval confirms source transcription only. It does not confirm geometry or parking legality.',
         '',
