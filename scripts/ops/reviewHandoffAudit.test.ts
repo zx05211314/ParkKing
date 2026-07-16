@@ -53,6 +53,7 @@ const writeBundle = async (
   await writeJson(path.join(bundleDir, `${districtId}-review.manifest.json`), {
     districtId,
     csvPath: sourcePath,
+    dataset: { datasetHash: `${districtId}-hash` },
     rows: { total: 2 },
   })
   return { bundleDir, sourcePath }
@@ -121,6 +122,8 @@ describe('reviewHandoffAudit', () => {
 
     expect(result.pass).toBe(true)
     expect(entry).toMatchObject({
+      bundleId: 'daan',
+      districtId: 'daan',
       rows: 4,
       estimatedMinimumNewReviews: 2,
       remainingMinimumNewReviews: 3,
@@ -182,6 +185,7 @@ describe('reviewHandoffAudit', () => {
     )
     expect(buildReviewHandoffPriorityRows(result)).toMatchObject([
       {
+        bundleId: 'daan',
         districtId: 'daan',
         rank: 1,
         rowNumber: 2,
@@ -191,6 +195,7 @@ describe('reviewHandoffAudit', () => {
         streetViewUrl: 'https://street.test',
       },
       {
+        bundleId: 'daan',
         districtId: 'daan',
         rank: 2,
         rowNumber: 3,
@@ -203,10 +208,10 @@ describe('reviewHandoffAudit', () => {
       '| Rank | Handoff row | Source row | Bucket | Segment | Reasons | Street View |',
     )
     expect(renderReviewHandoffPriorityCsv(result)).toContain(
-      'districtId,status,minimumNewReviews,rank,handoffRowNumber',
+      'bundleId,districtId,status,minimumNewReviews,rank,handoffRowNumber',
     )
     expect(renderReviewHandoffPriorityCsv(result)).toContain(
-      'daan,incomplete,3,1,2,2,s1,marked_space_park',
+      'daan,daan,incomplete,3,1,2,2,s1,marked_space_park',
     )
   })
 
@@ -237,6 +242,7 @@ describe('reviewHandoffAudit', () => {
     })
     expect(buildReviewHandoffPriorityRows(result)).toMatchObject([
       {
+        bundleId: 'daan',
         districtId: 'daan',
         minimumNewReviews: 2,
         rank: 2,
@@ -245,6 +251,7 @@ describe('reviewHandoffAudit', () => {
         reviewBucket: 'marked_space_park',
       },
       {
+        bundleId: 'daan',
         districtId: 'daan',
         minimumNewReviews: 2,
         rank: 4,

@@ -55,6 +55,7 @@ export interface PackagedHumanReviewFile {
 }
 
 export interface PackagedHumanReviewEntry {
+  bundleId: string
   districtId: string
   status: string
   zipPath: string
@@ -64,6 +65,7 @@ export interface PackagedHumanReviewEntry {
 }
 
 export interface SkippedHumanReviewPackageEntry {
+  bundleId: string
   districtId: string
   status: string
   reason: string
@@ -160,18 +162,19 @@ const uniqueFiles = (files: PackageSourceFile[]) => {
   })
 }
 
-const buildPackageFiles = (entry: HumanReviewBundleEntry): PackageSourceFile[] =>
-  uniqueFiles([
+const buildPackageFiles = (entry: HumanReviewBundleEntry): PackageSourceFile[] => {
+  const archiveRoot = entry.bundleId
+  return uniqueFiles([
     {
       label: 'sourceCsv',
       sourcePath: entry.sourcePath,
-      archivePath: normalizeArchivePath(entry.districtId, 'source', path.basename(entry.sourcePath)),
+      archivePath: normalizeArchivePath(archiveRoot, 'source', path.basename(entry.sourcePath)),
     },
     {
       label: 'bundledSourceCsv',
       sourcePath: entry.files.sourceCsv.path,
       archivePath: normalizeArchivePath(
-        entry.districtId,
+        archiveRoot,
         'bundle',
         path.basename(entry.files.sourceCsv.path),
       ),
@@ -180,7 +183,7 @@ const buildPackageFiles = (entry: HumanReviewBundleEntry): PackageSourceFile[] =
       label: 'sourceManifest',
       sourcePath: entry.files.sourceManifest.path,
       archivePath: normalizeArchivePath(
-        entry.districtId,
+        archiveRoot,
         'bundle',
         path.basename(entry.files.sourceManifest.path),
       ),
@@ -189,7 +192,7 @@ const buildPackageFiles = (entry: HumanReviewBundleEntry): PackageSourceFile[] =
       label: 'sourceReviewDoc',
       sourcePath: entry.files.sourceReviewDoc.path,
       archivePath: normalizeArchivePath(
-        entry.districtId,
+        archiveRoot,
         'bundle',
         path.basename(entry.files.sourceReviewDoc.path),
       ),
@@ -198,7 +201,7 @@ const buildPackageFiles = (entry: HumanReviewBundleEntry): PackageSourceFile[] =
       label: 'handoffCsv',
       sourcePath: entry.files.handoffCsv.path,
       archivePath: normalizeArchivePath(
-        entry.districtId,
+        archiveRoot,
         'review',
         path.basename(entry.files.handoffCsv.path),
       ),
@@ -207,7 +210,7 @@ const buildPackageFiles = (entry: HumanReviewBundleEntry): PackageSourceFile[] =
       label: 'handoffChecklist',
       sourcePath: entry.files.handoffChecklist.path,
       archivePath: normalizeArchivePath(
-        entry.districtId,
+        archiveRoot,
         'review',
         path.basename(entry.files.handoffChecklist.path),
       ),
@@ -216,12 +219,13 @@ const buildPackageFiles = (entry: HumanReviewBundleEntry): PackageSourceFile[] =
       label: 'handoffGeojson',
       sourcePath: entry.files.handoffGeojson.path,
       archivePath: normalizeArchivePath(
-        entry.districtId,
+        archiveRoot,
         'review',
         path.basename(entry.files.handoffGeojson.path),
       ),
     },
   ])
+}
 
 const buildPriorityValidationCommand = (
   entry: HumanReviewBundleEntry,
@@ -255,8 +259,9 @@ const buildPackageReadme = (
     ? buildReviewHandoffPriorityRows(districtAuditResult).length
     : null
   return [
-    `# Human Review Handoff: ${entry.districtId}`,
+    `# Human Review Handoff: ${entry.bundleId}`,
     '',
+    `District: ${entry.districtId}`,
     `Status: ${entry.status}`,
     `Handoff rows: ${entry.handoffRows ?? '-'}`,
     `Valid reviewed handoff rows: ${entry.handoffValidReviewedRows ?? '-'}`,
@@ -296,19 +301,19 @@ const buildPackageReadme = (
   ].join('\n')
 }
 
-const filterAuditResultForDistrict = (
+const filterAuditResultForBundle = (
   auditResult: ReviewHandoffAuditResult | null,
-  districtId: string,
+  bundleId: string,
 ) => {
   const entry = auditResult?.entries.find(
-    (auditEntry) => auditEntry.districtId === districtId,
+    (auditEntry) => auditEntry.bundleId === bundleId,
   )
   if (!auditResult || !entry) {
     return null
   }
   return {
     ...auditResult,
-    selectedDistricts: [districtId],
+    selectedDistricts: [bundleId],
     entries: [entry],
   }
 }
@@ -324,9 +329,9 @@ const writePackageForEntry = async (params: {
   const zip = new AdmZip()
   const files: PackagedHumanReviewFile[] = []
   const priorityValidationCommand = buildPriorityValidationCommand(entry)
-  const districtAuditResult = filterAuditResultForDistrict(
+  const districtAuditResult = filterAuditResultForBundle(
     auditResult,
-    entry.districtId,
+    entry.bundleId,
   )
 
   for (const file of buildPackageFiles(entry)) {
@@ -346,34 +351,35 @@ const writePackageForEntry = async (params: {
     })
   }
 
-  const readmePath = normalizeArchivePath(entry.districtId, 'README.md')
+  const archiveRoot = entry.bundleId
+  const readmePath = normalizeArchivePath(archiveRoot, 'README.md')
   zip.addFile(
     readmePath,
     Buffer.from(buildPackageReadme(entry, districtAuditResult), 'utf-8'),
   )
   zip.addFile(
-    normalizeArchivePath(entry.districtId, 'human-review-index.md'),
+    normalizeArchivePath(archiveRoot, 'human-review-index.md'),
     Buffer.from(indexMarkdown, 'utf-8'),
   )
   if (districtAuditResult) {
     zip.addFile(
-      normalizeArchivePath(entry.districtId, 'review', 'handoff-audit.md'),
+      normalizeArchivePath(archiveRoot, 'review', 'handoff-audit.md'),
       Buffer.from(renderReviewHandoffAudit(districtAuditResult), 'utf-8'),
     )
     zip.addFile(
-      normalizeArchivePath(entry.districtId, 'review', 'handoff-audit.json'),
+      normalizeArchivePath(archiveRoot, 'review', 'handoff-audit.json'),
       Buffer.from(`${JSON.stringify(districtAuditResult, null, 2)}\n`, 'utf-8'),
     )
     zip.addFile(
-      normalizeArchivePath(entry.districtId, 'review', 'priority-review.md'),
+      normalizeArchivePath(archiveRoot, 'review', 'priority-review.md'),
       Buffer.from(renderReviewHandoffPriorityGuide(districtAuditResult), 'utf-8'),
     )
     zip.addFile(
-      normalizeArchivePath(entry.districtId, 'review', 'priority-review.csv'),
+      normalizeArchivePath(archiveRoot, 'review', 'priority-review.csv'),
       Buffer.from(`${renderReviewHandoffPriorityCsv(districtAuditResult)}\n`, 'utf-8'),
     )
     zip.addFile(
-      normalizeArchivePath(entry.districtId, 'review', 'priority-review.json'),
+      normalizeArchivePath(archiveRoot, 'review', 'priority-review.json'),
       Buffer.from(
         `${JSON.stringify(buildReviewHandoffPriorityRows(districtAuditResult), null, 2)}\n`,
         'utf-8',
@@ -381,10 +387,11 @@ const writePackageForEntry = async (params: {
     )
   }
   zip.addFile(
-    normalizeArchivePath(entry.districtId, 'manifest.json'),
+    normalizeArchivePath(archiveRoot, 'manifest.json'),
     Buffer.from(
       `${JSON.stringify(
         {
+          bundleId: entry.bundleId,
           districtId: entry.districtId,
           status: entry.status,
           generatedAt: new Date().toISOString(),
@@ -393,27 +400,27 @@ const writePackageForEntry = async (params: {
           audit: districtAuditResult
             ? {
                 markdown: normalizeArchivePath(
-                  entry.districtId,
+                  archiveRoot,
                   'review',
                   'handoff-audit.md',
                 ),
                 json: normalizeArchivePath(
-                  entry.districtId,
+                  archiveRoot,
                   'review',
                   'handoff-audit.json',
                 ),
                 priorityMarkdown: normalizeArchivePath(
-                  entry.districtId,
+                  archiveRoot,
                   'review',
                   'priority-review.md',
                 ),
                 priorityCsv: normalizeArchivePath(
-                  entry.districtId,
+                  archiveRoot,
                   'review',
                   'priority-review.csv',
                 ),
                 priorityJson: normalizeArchivePath(
-                  entry.districtId,
+                  archiveRoot,
                   'review',
                   'priority-review.json',
                 ),
@@ -429,9 +436,10 @@ const writePackageForEntry = async (params: {
   )
 
   await fs.mkdir(outDir, { recursive: true })
-  const zipPath = path.resolve(outDir, `${entry.districtId}-human-review-${packageId}.zip`)
+  const zipPath = path.resolve(outDir, `${entry.bundleId}-human-review-${packageId}.zip`)
   zip.writeZip(zipPath)
   return {
+    bundleId: entry.bundleId,
     districtId: entry.districtId,
     status: entry.status,
     zipPath,
@@ -469,6 +477,7 @@ export const runPackageHumanReviews = async (
   const skipped = index.entries
     .filter((entry) => !readyForHumanReview(entry))
     .map((entry) => ({
+      bundleId: entry.bundleId,
       districtId: entry.districtId,
       status: entry.status,
       reason: skippedReason(entry),
@@ -481,7 +490,7 @@ export const runPackageHumanReviews = async (
   if (errors.length === 0 && (options.includeAudit ?? true)) {
     auditResult = await (options.auditHandoffs ?? runReviewHandoffAudit)({
       reviewRoot,
-      districtIds: packageable.map((entry) => entry.districtId),
+      districtIds: packageable.map((entry) => entry.bundleId),
       publishGateSummaryPath:
         options.publishGateSummaryPath === undefined
           ? DEFAULT_PUBLISH_GATE_SUMMARY
@@ -545,7 +554,11 @@ export const renderPackageHumanReviews = (result: PackageHumanReviewsResult) => 
     lines.push('- none')
   }
   result.packages.forEach((entry) => {
-    lines.push(`- ${entry.districtId}: ${entry.zipPath}`)
+    const label =
+      entry.bundleId === entry.districtId
+        ? entry.districtId
+        : `${entry.bundleId} (district ${entry.districtId})`
+    lines.push(`- ${label}: ${entry.zipPath}`)
     lines.push(`  Copied source/review files: ${entry.files.length}`)
     lines.push(`  Validate priority review: ${entry.priorityValidationCommand}`)
     lines.push(`  After review: ${entry.finalizeCommand}`)
@@ -556,7 +569,11 @@ export const renderPackageHumanReviews = (result: PackageHumanReviewsResult) => 
     lines.push('- none')
   }
   result.skipped.forEach((entry) => {
-    lines.push(`- ${entry.districtId}: ${entry.status}; ${entry.reason}`)
+    const label =
+      entry.bundleId === entry.districtId
+        ? entry.districtId
+        : `${entry.bundleId} (district ${entry.districtId})`
+    lines.push(`- ${label}: ${entry.status}; ${entry.reason}`)
   })
 
   if (result.errors.length > 0) {

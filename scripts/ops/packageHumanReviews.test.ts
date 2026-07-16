@@ -53,6 +53,7 @@ const writeBundle = async (
   await writeJson(path.join(bundleDir, `${districtId}-review.manifest.json`), {
     districtId,
     csvPath: sourcePath,
+    dataset: { datasetHash: `${districtId}-hash` },
     rows: { total: 4 },
   })
   return { bundleDir, sourcePath }
@@ -122,8 +123,10 @@ describe('packageHumanReviews', () => {
 
     expect(result.pass).toBe(true)
     expect(result.packages.map((entry) => entry.districtId)).toEqual(['daan'])
+    expect(result.packages.map((entry) => entry.bundleId)).toEqual(['daan'])
     expect(result.skipped).toEqual([
       {
+        bundleId: 'zhongshan',
         districtId: 'zhongshan',
         status: 'ready-to-finalize',
         reason: 'human review is already sufficient; use ops:p0-finalize-ready-reviews',
@@ -160,7 +163,7 @@ describe('packageHumanReviews', () => {
     )
     const priorityCsvEntry = zip.getEntry('daan/review/priority-review.csv')
     expect(priorityCsvEntry?.getData().toString('utf-8')).toContain(
-      'districtId,status,minimumNewReviews,rank,handoffRowNumber',
+      'bundleId,districtId,status,minimumNewReviews,rank,handoffRowNumber',
     )
     expect(packageEntry.priorityValidationCommand).toContain(
       'npm run ops:p0-validate-priority-review -- --district daan',
@@ -175,6 +178,62 @@ describe('packageHumanReviews', () => {
     expect(renderPackageHumanReviews(result)).toContain(
       'Validate priority review: npm run ops:p0-validate-priority-review',
     )
+  })
+
+  it('keeps district and area-scoped handoff packages isolated', async () => {
+    const root = await makeTempRoot()
+    const outDir = path.join(root, 'out')
+    const { bundleDir } = await writeBundle(root, 'beitou', pendingRows('beitou'))
+    const shipaiBundleDir = path.join(root, 'shipai-human-review')
+    await fs.cp(bundleDir, shipaiBundleDir, { recursive: true })
+
+    const result = await runPackageHumanReviews({
+      reviewRoot: root,
+      configRoot: 'configs/expansion',
+      outDir,
+      districtIds: ['beitou', 'shipai'],
+      publishGateSummaryPath: null,
+      now: new Date('2026-05-10T00:00:00.000Z'),
+    })
+
+    expect(result.pass).toBe(true)
+    expect(result.packages.map((entry) => entry.bundleId).sort()).toEqual([
+      'beitou',
+      'shipai',
+    ])
+    expect(new Set(result.packages.map((entry) => entry.zipPath)).size).toBe(2)
+
+    const shipaiPackage = result.packages.find(
+      (entry) => entry.bundleId === 'shipai',
+    )
+    if (!shipaiPackage) {
+      throw new Error('expected Shipai review package')
+    }
+    expect(shipaiPackage).toMatchObject({
+      districtId: 'beitou',
+      status: 'ready-for-review',
+    })
+    expect(path.basename(shipaiPackage.zipPath)).toBe(
+      'shipai-human-review-20260510000000.zip',
+    )
+    const zip = new AdmZip(shipaiPackage.zipPath)
+    const entries = zip.getEntries().map((entry) => entry.entryName)
+    expect(entries).toContain('shipai/README.md')
+    expect(entries).toContain('shipai/manifest.json')
+    expect(entries).toContain('shipai/review/beitou-next-review.csv')
+    const audit = zip
+      .getEntry('shipai/review/handoff-audit.json')
+      ?.getData()
+      .toString('utf-8')
+    expect(audit).toContain('shipai-human-review')
+    expect(audit).not.toContain('beitou-human-review')
+    const manifest = JSON.parse(
+      zip.getEntry('shipai/manifest.json')?.getData().toString('utf-8') ?? '{}',
+    ) as Record<string, unknown>
+    expect(manifest).toMatchObject({
+      bundleId: 'shipai',
+      districtId: 'beitou',
+    })
   })
 
   it('blocks when no district filter or all flag is supplied', async () => {

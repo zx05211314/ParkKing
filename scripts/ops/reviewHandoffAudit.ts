@@ -62,6 +62,7 @@ export interface ReviewHandoffPriorityRow {
 }
 
 export interface ReviewHandoffAuditEntry {
+  bundleId: string
   districtId: string
   status: string
   handoffCsv: string
@@ -90,6 +91,7 @@ export interface ReviewHandoffAuditResult {
 }
 
 export interface ReviewHandoffPriorityExportRow {
+  bundleId: string
   districtId: string
   status: string
   minimumNewReviews: number | null
@@ -409,6 +411,7 @@ const auditEntry = async (
       entry.handoffEstimatedMinimumNewReviews,
       rows,
     ),
+    bundleId: entry.bundleId,
     status: entry.status,
   }
 }
@@ -445,7 +448,7 @@ export const runReviewHandoffAudit = async (
         entries.push(await auditEntry(entry))
       } catch (error) {
         errors.push(
-          `${entry.districtId}: failed to audit ${entry.files.handoffCsv.path}: ${error instanceof Error ? error.message : String(error)}`,
+          `${entry.bundleId}: failed to audit ${entry.files.handoffCsv.path}: ${error instanceof Error ? error.message : String(error)}`,
         )
       }
     }
@@ -455,7 +458,7 @@ export const runReviewHandoffAudit = async (
     entries.forEach((entry) => {
       if (entry.pendingRows > 0 || entry.invalidRows > 0) {
         errors.push(
-          `${entry.districtId}: ${entry.pendingRows} pending row(s), ${entry.invalidRows} invalid reviewed row(s)`,
+          `${entry.bundleId}: ${entry.pendingRows} pending row(s), ${entry.invalidRows} invalid reviewed row(s)`,
         )
       }
     })
@@ -503,6 +506,7 @@ export const buildReviewHandoffPriorityRows = (
   result.entries.flatMap((entry) => {
     const rows = selectOutstandingPriorityRows(entry)
     return rows.map((row) => ({
+      bundleId: entry.bundleId,
       districtId: entry.districtId,
       status: entry.status,
       minimumNewReviews: entry.remainingMinimumNewReviews,
@@ -539,7 +543,11 @@ export const renderReviewHandoffPriorityGuide = (
       ...result,
       entries: [entry],
     })
-    lines.push('', `## ${entry.districtId}`)
+    const heading =
+      entry.bundleId === entry.districtId
+        ? entry.districtId
+        : `${entry.bundleId} (district ${entry.districtId})`
+    lines.push('', `## ${heading}`)
     lines.push(`Handoff CSV: ${entry.handoffCsv}`)
     lines.push(
       `Minimum remaining new reviews: ${entry.remainingMinimumNewReviews ?? 'unknown'}`,
@@ -580,6 +588,7 @@ export const renderReviewHandoffPriorityCsv = (
   result: ReviewHandoffAuditResult,
 ) => {
   const headers = [
+    'bundleId',
     'districtId',
     'status',
     'minimumNewReviews',
@@ -600,6 +609,7 @@ export const renderReviewHandoffPriorityCsv = (
   buildReviewHandoffPriorityRows(result).forEach((row) => {
     lines.push(
       [
+        row.bundleId,
         row.districtId,
         row.status,
         row.minimumNewReviews ?? '',
@@ -630,14 +640,15 @@ export const renderReviewHandoffAudit = (result: ReviewHandoffAuditResult) => {
     `Review root: ${result.reviewRoot}`,
     `Selected districts: ${result.selectedDistricts.join(', ') || 'none'}`,
     '',
-    '| District | Status | Rows | Reviewed | Valid | Remaining | Pending | Invalid | Statuses | Reviewed buckets |',
-    '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
+    '| Bundle | District | Status | Rows | Reviewed | Valid | Remaining | Pending | Invalid | Statuses | Reviewed buckets |',
+    '| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
   ]
 
   result.entries.forEach((entry) => {
     lines.push(
       [
-        `| ${entry.districtId}`,
+        `| ${entry.bundleId}`,
+        entry.districtId,
         entry.status,
         entry.rows,
         entry.reviewedRows,
@@ -652,7 +663,11 @@ export const renderReviewHandoffAudit = (result: ReviewHandoffAuditResult) => {
   })
 
   result.entries.forEach((entry) => {
-    lines.push('', `## ${entry.districtId}`)
+    const heading =
+      entry.bundleId === entry.districtId
+        ? entry.districtId
+        : `${entry.bundleId} (district ${entry.districtId})`
+    lines.push('', `## ${heading}`)
     lines.push(`Handoff CSV: ${entry.handoffCsv}`)
     lines.push(
       `Minimum remaining new reviews: ${entry.remainingMinimumNewReviews ?? 'unknown'}`,

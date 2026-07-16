@@ -612,7 +612,10 @@ dedicated status snapshot, and prints their own gate instead of inventing missin
 Use `ops:package-human-reviews -- --district <ids>` to create zip handoff packets under
 `.tmp/human-review-packages` for bundles that are still `ready-for-review`; it skips bundles that
 are already ready to finalize and requires `--district` or `--all` so scratch bundles are not
-packaged accidentally. Each packet includes `review/handoff-audit.md/json` plus
+packaged accidentally. Area-scoped bundles use their bundle id for the zip filename and archive
+root while retaining the owning district id for validation/finalize commands, so `shipai` and
+`beitou` can be packaged together without overwriting or sharing the wrong audit. Each packet
+includes `review/handoff-audit.md/json` plus
 `review/priority-review.md/csv/json` so the reviewer can start from the minimum row-level issues
 and priority rows without running local tooling first.
 If the reviewer fills `reviewStatus`, `reviewNote`, and `createdAt` in a single-district
