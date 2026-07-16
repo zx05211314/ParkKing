@@ -1,4 +1,11 @@
 import type { MapBounds } from '../map/bounds'
+import {
+  findCoverageDistrictById,
+  findCoverageDistrictByLocation,
+  isLocationInCoverageDistrict,
+  type RuntimeCoverageCatalog,
+  type RuntimeCoverageDistrict,
+} from '../data/coverageCatalog'
 
 export interface ParkingCoverageState {
   eligibleLocation: [number, number] | null
@@ -21,23 +28,60 @@ export const isLocationWithinBounds = (
   )
 }
 
+const buildKnownDistrictNotice = (
+  district: RuntimeCoverageDistrict,
+  activeDistrictName: string,
+) => {
+  if (district.publishStage === 'source-only') {
+    return `This location is in ${district.districtName}, ${district.regionName}. ParkKing currently has paid-curb reference sources only for this area; curb-marking and sign rules are not available, so no parking legality answer was calculated.`
+  }
+
+  if (district.publishStage === 'candidate') {
+    const aliasNames = district.aliases.map(({ areaName }) => areaName)
+    const aliasNotice = aliasNames.length > 0
+      ? ` This candidate district also covers ${aliasNames.join(', ')}.`
+      : ''
+    const reviewNotice = district.requiresHumanReview
+      ? ' It still requires human review and has not been published.'
+      : ' It has not been published.'
+    return `This location is in ${district.districtName} candidate coverage.${aliasNotice}${reviewNotice} ParkKing did not calculate a parking legality answer here.`
+  }
+
+  return `This location is in published ${district.districtName} coverage, but the active dataset is ${activeDistrictName}. ParkKing did not calculate a parking legality answer while a different district dataset is active.`
+}
+
 export const buildParkingCoverageState = (params: {
   location: [number, number] | null
   districtBounds: MapBounds | null
   districtName: string
+  activeDistrictId?: string | null
+  coverageCatalog?: RuntimeCoverageCatalog | null
 }): ParkingCoverageState => {
   if (!params.location) {
     return { eligibleLocation: null, notice: null }
   }
-  if (
-    !params.districtBounds ||
-    isLocationWithinBounds(params.location, params.districtBounds)
-  ) {
+
+  const activeCoverageDistrict =
+    params.coverageCatalog && params.activeDistrictId
+      ? findCoverageDistrictById(params.coverageCatalog, params.activeDistrictId)
+      : null
+  const isInsideActiveDistrict = activeCoverageDistrict
+    ? isLocationInCoverageDistrict(activeCoverageDistrict, params.location)
+    : !params.districtBounds ||
+      isLocationWithinBounds(params.location, params.districtBounds)
+
+  if (isInsideActiveDistrict) {
     return { eligibleLocation: params.location, notice: null }
   }
 
+  const matchedDistrict = params.coverageCatalog
+    ? findCoverageDistrictByLocation(params.coverageCatalog, params.location)
+    : null
+
   return {
     eligibleLocation: null,
-    notice: `This location is outside the active ${params.districtName} dataset. ParkKing did not calculate a parking legality answer here. Switch to a published district dataset when coverage becomes available.`,
+    notice: matchedDistrict
+      ? buildKnownDistrictNotice(matchedDistrict, params.districtName)
+      : `This location is outside the active ${params.districtName} dataset. ParkKing did not calculate a parking legality answer here. Switch to a published district dataset when coverage becomes available.`,
   }
 }

@@ -18,6 +18,8 @@ jobs:
         run: npm ci
       - name: Validate configs
         run: npm run ops:validate-configs
+      - name: Validate runtime coverage catalog
+        run: npm run ops:validate-coverage-catalog
       - name: Validate reviewed answer cases
         run: npm run ops:validate-answer-cases
       - name: Validate Render blueprint

@@ -37,6 +37,8 @@
     "ops:unpack-sources": "tsx scripts/ops/unpackSources.ts",
     "ops:unpack-taoyuan-sources": "tsx scripts/ops/unpackSources.ts --sourceDir data/sources/taoyuan",
     "ops:coverage-status": "tsx scripts/ops/coverageStatus.ts",
+    "ops:build-coverage-catalog": "tsx scripts/ops/buildRuntimeCoverageCatalog.ts",
+    "ops:validate-coverage-catalog": "tsx scripts/ops/validateRuntimeCoverageCatalog.ts",
     "ops:validate-taoyuan-boundaries": "tsx scripts/ops/validateTaoyuanBoundaries.ts",
     "ops:sync-public-data": "tsx scripts/ops/syncPublicData.ts",
     "ops:smoke-public-data": "tsx scripts/ops/smokePublicData.ts",

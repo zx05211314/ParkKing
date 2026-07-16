@@ -2,10 +2,10 @@ import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-type PublishStage = 'production' | 'candidate' | 'source-only'
-type AnswerCapability = 'full-rule-pipeline' | 'paid-curb-reference-only'
+export type PublishStage = 'production' | 'candidate' | 'source-only'
+export type AnswerCapability = 'full-rule-pipeline' | 'paid-curb-reference-only'
 
-interface CoverageDistrict {
+export interface CoverageDistrict {
   districtId: string
   districtName: string
   boundaryFeatureId: string
@@ -14,7 +14,7 @@ interface CoverageDistrict {
   requiresHumanReview: boolean
 }
 
-interface CoverageAlias {
+export interface CoverageAlias {
   areaId: string
   areaName: string
   parentDistrictId: string
@@ -22,7 +22,7 @@ interface CoverageAlias {
   standaloneBoundaryRequired: boolean
 }
 
-interface CoverageRegion {
+export interface CoverageRegion {
   regionId: string
   regionName: string
   expectedDistrictCount: number

@@ -41,6 +41,7 @@ import { useSyncStatus } from './ui/useSyncStatus'
 import { useSyncRecoveryEffects } from './ui/useSyncRecoveryEffects'
 import { useMapFocusState } from './ui/useMapFocusState'
 import { buildParkingCoverageState } from './ui/parkingCoverage'
+import { useRuntimeCoverageCatalog } from './ui/useRuntimeCoverageCatalog'
 import { useInteractionRefs } from './ui/useInteractionRefs'
 import { useAppRefs } from './ui/useAppRefs'
 import { useSavedPlanShareActions } from './ui/useSavedPlanShareActions'
@@ -277,6 +278,7 @@ function App() {
 
   const dataBaseUrl = getDataBaseUrl()
   const dataSourceLabel = dataBaseUrl ? `Remote (${dataBaseUrl})` : 'Local'
+  const { catalog: runtimeCoverageCatalog } = useRuntimeCoverageCatalog()
   const {
     mapPrefetchRef,
     geocodeRequestIdRef,
@@ -346,6 +348,8 @@ function App() {
     location: searchLocation,
     districtBounds,
     districtName,
+    activeDistrictId: datasetId,
+    coverageCatalog: runtimeCoverageCatalog,
   })
   const parkingSearchLocation = parkingCoverageState.eligibleLocation
   const {
