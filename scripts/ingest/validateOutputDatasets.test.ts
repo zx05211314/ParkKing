@@ -98,5 +98,25 @@ describe('validateOutputDatasets', () => {
       maxX: 121.6,
       maxY: 25.1,
     })
+
+    await writeFeatureCollection(
+      path.join(generatedDir, 'candidates_inferred.geojson'),
+      {
+        type: 'LineString',
+        coordinates: [
+          [121.59, 25.05],
+          [121.63, 25.05],
+        ],
+      },
+    )
+    const ownershipErrors: string[] = []
+    await validateOutputDatasets({
+      config: config as never,
+      paths: resolveValidateOutputPaths(config as never),
+      errors: ownershipErrors,
+    })
+    expect(ownershipErrors).toContain(
+      '[candidates_inferred] 1 feature(s) have representative centers outside district boundary. Sample IDs: feature-1. Re-run inferred candidate ingest.',
+    )
   })
 })

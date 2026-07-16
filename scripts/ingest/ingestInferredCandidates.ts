@@ -25,28 +25,13 @@ import {
   pickCandidateProperties,
   shouldIncludeRoadClass,
 } from './ingestCandidateClassification'
-import { extractLines, midpointForLine } from './ingestCandidateGeometry'
+import {
+  centerFromLineGeometry,
+  extractLines,
+  midpointForLine,
+} from './ingestCandidateGeometry'
 import { countNearbyZonePoints, loadZonePoints } from './ingestCandidateZones'
 import { filterToBoundary, loadBoundary, readDataset, writeGeoJson } from './utils'
-
-const centerFromCandidateGeometry = (
-  geometry: LineString | MultiLineString,
-): [number, number] | null => {
-  const positions = geometry.type === 'LineString'
-    ? geometry.coordinates
-    : geometry.coordinates.flat()
-  if (positions.length === 0) {
-    return null
-  }
-  const [longitude, latitude] = positions.reduce(
-    ([longitudeSum, latitudeSum], position) => [
-      longitudeSum + (position[0] ?? 0),
-      latitudeSum + (position[1] ?? 0),
-    ],
-    [0, 0],
-  )
-  return [longitude / positions.length, latitude / positions.length]
-}
 
 export const filterCandidatesToBoundaryOwnership = (
   collection: FeatureCollection<LineString | MultiLineString>,
@@ -62,7 +47,7 @@ export const filterCandidatesToBoundaryOwnership = (
       ) {
         return false
       }
-      const center = centerFromCandidateGeometry(feature.geometry)
+      const center = centerFromLineGeometry(feature.geometry)
       return center
         ? booleanPointInPolygon(point(center), boundary)
         : false
