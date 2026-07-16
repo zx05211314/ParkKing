@@ -54,6 +54,28 @@ describe('coverageCatalog', () => {
     ).toThrow('Invalid runtime coverage catalog')
   })
 
+  it('rejects reference metadata that claims legal-answer eligibility', () => {
+    expect(() =>
+      parseRuntimeCoverageCatalog({
+        ...catalog,
+        districts: [
+          {
+            ...district,
+            referenceData: {
+              kind: 'PAID_CURB_SEGMENT_TEXT',
+              url: '/data/reference/taoyuan-paid-curb.json',
+              recordCount: 1,
+              sourceSha256: 'a'.repeat(64),
+              geometryAvailable: false,
+              legalAnswerEligible: true,
+              requiresHumanReview: true,
+            },
+          },
+        ],
+      }),
+    ).toThrow('Invalid runtime coverage catalog')
+  })
+
   it('uses polygon geometry instead of accepting every point in the bbox', () => {
     expect(isLocationInCoverageDistrict(district, [121.45, 25.15])).toBe(true)
     expect(isLocationInCoverageDistrict(district, [121.4, 25.1])).toBe(true)

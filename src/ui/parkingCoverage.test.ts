@@ -73,6 +73,15 @@ const catalog: RuntimeCoverageCatalog = {
       publishStage: 'source-only',
       answerCapability: 'paid-curb-reference-only',
       requiresHumanReview: true,
+      referenceData: {
+        kind: 'PAID_CURB_SEGMENT_TEXT',
+        url: '/data/reference/taoyuan-paid-curb.json',
+        recordCount: 270,
+        sourceSha256: 'a'.repeat(64),
+        geometryAvailable: false,
+        legalAnswerEligible: false,
+        requiresHumanReview: true,
+      },
       boundaryBBox: [121.2, 24.9, 121.4, 25.1],
       boundaryGeometry: {
         type: 'Polygon',
@@ -170,6 +179,7 @@ describe('parkingCoverage', () => {
     expect(state.eligibleLocation).toBeNull()
     expect(state.notice).toContain('Taoyuan, Taoyuan City')
     expect(state.notice).toContain('paid-curb reference sources only')
+    expect(state.notice).toContain('270 official source rows')
     expect(state.notice).toContain('no parking legality answer')
   })
 })

@@ -9,9 +9,14 @@ import type {
   Polygon,
 } from 'geojson'
 import {
+  getPaidCurbReferenceUrl,
+  parsePaidCurbReferencePack,
+} from '../../src/data/paidCurbReference'
+import {
   parseRuntimeCoverageCatalog,
   type RuntimeCoverageCatalog,
   type RuntimeCoverageDistrict,
+  type RuntimeCoverageReferenceData,
 } from '../../src/data/coverageCatalog'
 import { EPSG_4326 } from '../ingest/ingestCrs'
 import { readDataset } from '../ingest/ingestDatasetRead'
@@ -24,6 +29,8 @@ const DEFAULT_MANIFEST = 'configs/coverage.expansion.json'
 const DEFAULT_TAOYUAN_BOUNDARIES =
   'data/sources/taoyuan/town_boundaries/town_boundaries.shp'
 const DEFAULT_OUTPUT = 'public/data/coverage.json'
+const DEFAULT_TAOYUAN_REFERENCE =
+  'public/data/reference/taoyuan-paid-curb.json'
 const DEFAULT_SIMPLIFY_TOLERANCE = 0.00002
 
 const REGION_BOUNDARY_ID_KEYS: Record<string, string[]> = {
@@ -38,6 +45,10 @@ interface DistrictConfigSource {
 
 export interface RuntimeCoverageCatalogBuildOptions {
   simplifyTolerance?: number
+  referencesByBoundaryFeatureId?: ReadonlyMap<
+    string,
+    RuntimeCoverageReferenceData
+  >
 }
 
 const readJson = async <T>(filePath: string): Promise<T> =>
@@ -120,6 +131,9 @@ export const buildRuntimeCoverageCatalog = (
         region.regionId,
         district.boundaryFeatureId,
       )
+      const referenceData = options.referencesByBoundaryFeatureId?.get(
+        district.boundaryFeatureId,
+      )
       districts.push({
         regionId: region.regionId,
         regionName: region.regionName,
@@ -132,12 +146,31 @@ export const buildRuntimeCoverageCatalog = (
         aliases: region.aliases
           .filter(({ parentDistrictId }) => parentDistrictId === district.districtId)
           .map(({ areaId, areaName }) => ({ areaId, areaName })),
+        ...(referenceData ? { referenceData } : {}),
         ...normalizeBoundary(source, simplifyTolerance),
       })
     }
   }
 
   return parseRuntimeCoverageCatalog({ schemaVersion: 1, districts })
+}
+
+export const loadTaoyuanCoverageReferences = async (filePath: string) => {
+  const pack = parsePaidCurbReferencePack(await readJson<unknown>(filePath))
+  return new Map<string, RuntimeCoverageReferenceData>(
+    pack.districts.map((district) => [
+      district.boundaryFeatureId,
+      {
+        kind: pack.evidenceKind,
+        url: getPaidCurbReferenceUrl(),
+        recordCount: district.recordCount,
+        sourceSha256: pack.source.sha256,
+        geometryAvailable: false,
+        legalAnswerEligible: false,
+        requiresHumanReview: true,
+      },
+    ]),
+  )
 }
 
 const resolveTaipeiBoundarySource = async (
@@ -217,10 +250,21 @@ const run = async () => {
     ),
   })
   const toleranceArg = getArgValue(process.argv, '--simplify-tolerance')
+  const referencesByBoundaryFeatureId = manifest.regions.some(
+    ({ regionId }) => regionId === 'taoyuan',
+  )
+    ? await loadTaoyuanCoverageReferences(
+        path.resolve(
+          getArgValue(process.argv, '--taoyuan-reference') ??
+            DEFAULT_TAOYUAN_REFERENCE,
+        ),
+      )
+    : undefined
   const catalog = buildRuntimeCoverageCatalog(manifest, collections, {
     simplifyTolerance: toleranceArg
       ? Number(toleranceArg)
       : DEFAULT_SIMPLIFY_TOLERANCE,
+    referencesByBoundaryFeatureId,
   })
   await fs.mkdir(path.dirname(outputPath), { recursive: true })
   await fs.writeFile(outputPath, `${JSON.stringify(catalog)}\n`, 'utf-8')

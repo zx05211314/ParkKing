@@ -11,6 +11,16 @@ export interface RuntimeCoverageAlias {
   areaName: string
 }
 
+export interface RuntimeCoverageReferenceData {
+  kind: 'PAID_CURB_SEGMENT_TEXT'
+  url: string
+  recordCount: number
+  sourceSha256: string
+  geometryAvailable: false
+  legalAnswerEligible: false
+  requiresHumanReview: true
+}
+
 export interface RuntimeCoverageDistrict {
   regionId: string
   regionName: string
@@ -21,6 +31,7 @@ export interface RuntimeCoverageDistrict {
   answerCapability: CoverageAnswerCapability
   requiresHumanReview: boolean
   aliases: RuntimeCoverageAlias[]
+  referenceData?: RuntimeCoverageReferenceData
   boundaryBBox: [number, number, number, number]
   boundaryGeometry: Polygon | MultiPolygon
 }
@@ -63,6 +74,20 @@ const isAlias = (value: unknown): value is RuntimeCoverageAlias =>
   typeof value.areaId === 'string' &&
   typeof value.areaName === 'string'
 
+const isReferenceData = (
+  value: unknown,
+): value is RuntimeCoverageReferenceData =>
+  isRecord(value) &&
+  value.kind === 'PAID_CURB_SEGMENT_TEXT' &&
+  typeof value.url === 'string' &&
+  Number.isSafeInteger(value.recordCount) &&
+  Number(value.recordCount) >= 0 &&
+  typeof value.sourceSha256 === 'string' &&
+  /^[a-f0-9]{64}$/.test(value.sourceSha256) &&
+  value.geometryAvailable === false &&
+  value.legalAnswerEligible === false &&
+  value.requiresHumanReview === true
+
 const isDistrict = (value: unknown): value is RuntimeCoverageDistrict =>
   isRecord(value) &&
   typeof value.regionId === 'string' &&
@@ -75,6 +100,7 @@ const isDistrict = (value: unknown): value is RuntimeCoverageDistrict =>
   typeof value.requiresHumanReview === 'boolean' &&
   Array.isArray(value.aliases) &&
   value.aliases.every(isAlias) &&
+  (value.referenceData === undefined || isReferenceData(value.referenceData)) &&
   isBoundaryBBox(value.boundaryBBox) &&
   isBoundaryGeometry(value.boundaryGeometry)
 

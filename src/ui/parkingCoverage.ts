@@ -33,7 +33,10 @@ const buildKnownDistrictNotice = (
   activeDistrictName: string,
 ) => {
   if (district.publishStage === 'source-only') {
-    return `This location is in ${district.districtName}, ${district.regionName}. ParkKing currently has paid-curb reference sources only for this area; curb-marking and sign rules are not available, so no parking legality answer was calculated.`
+    const countNotice = district.referenceData
+      ? ` (${district.referenceData.recordCount} official source rows, without geometry)`
+      : ''
+    return `This location is in ${district.districtName}, ${district.regionName}. ParkKing currently has paid-curb reference sources only for this area${countNotice}; curb-marking and sign rules are not available, so no parking legality answer was calculated.`
   }
 
   if (district.publishStage === 'candidate') {
