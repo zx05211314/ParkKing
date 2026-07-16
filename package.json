@@ -76,6 +76,7 @@
     "ops:query-parking-answer": "tsx scripts/ops/queryParkingAnswer.ts",
     "ops:validate-answer-cases": "tsx scripts/ops/validateAnswerCases.ts",
     "ops:write-answer-cases": "tsx scripts/ops/writeAnswerCases.ts",
+    "ops:refresh-reviewed-case-hashes": "tsx scripts/ops/refreshReviewedAnswerCaseHashes.ts",
     "ops:p0-readiness": "tsx scripts/ops/p0Readiness.ts",
     "ops:p0-prepare-review": "tsx scripts/ops/p0PrepareReview.ts",
     "ops:p0-promote-review": "tsx scripts/ops/p0PromoteReview.ts",

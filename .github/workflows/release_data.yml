@@ -60,6 +60,11 @@ jobs:
         run: npm run ops:release-data-preflight
       - name: Ingest and publish
         run: npm run ops:workflow-publish-ingest -- --configs-env RELEASE_CONFIGS_GLOB --allow-warn-env RELEASE_ALLOW_WARN --override-env RELEASE_OVERRIDE_REASON
+      - name: Re-pin reviewed answer cases
+        run: npm run ops:refresh-reviewed-case-hashes -- --execute --out .tmp/reviewed-answer-case-repin.md --json-out .tmp/reviewed-answer-case-repin.json
+      - name: Summarize reviewed answer-case repin
+        if: always()
+        run: npm run ops:append-workflow-summary -- --append-file .tmp/reviewed-answer-case-repin.md
       - name: Build production UI
         run: npm run build
       - name: Bundle budget
@@ -106,4 +111,6 @@ jobs:
             .tmp/render-deployment-handoff.json
             .tmp/release-handoff-readiness.md
             .tmp/release-handoff-readiness.json
+            .tmp/reviewed-answer-case-repin.md
+            .tmp/reviewed-answer-case-repin.json
           if-no-files-found: warn
