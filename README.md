@@ -231,11 +231,14 @@ Current routing strategy:
 Current parking answer strategy:
 1. Browser pinned-location answers first call `/api/parking-answer` or `VITE_PARKING_ANSWER_URL`.
 2. The browser checks `/ready` before exact service requests; degraded readiness is shown in the pinned-answer panel while the local loaded dataset fallback remains available.
-3. The service loads the generated district pack, applies reviewed sign overrides, parking-space evidence, inferred candidates when requested, zone rules, and ranking trust.
-4. The response includes `schemaVersion`, dataset hash, primary answer, alternatives, evidence, caveats, and the same trust summary rendered in the UI.
-5. The service caches evaluated segments per `datasetDir` and `hhmm` for the process lifetime.
-6. `/health` returns service config liveness; `/ready` verifies required generated layers for the configured default and allowed districts, including parseable sign overrides and inferred candidates, and returns HTTP 503 when any are missing or malformed.
-7. If no configured API is available in a static deployment, the UI falls back to the local loaded dataset answer path instead of hiding the pinned answer card.
+3. Before either answer path runs, the browser checks the pinned location against the active district polygon in `/data/coverage.json` (falling back to dataset bounds if the catalog is unavailable). Out-of-coverage locations remain visible on the map but do not receive a parking answer or recommendation from another district's data.
+4. Address and map-pin selection use that same polygon catalog to switch only to production districts present in the published registry; candidate and source-only areas are never selected as active datasets.
+5. Known non-active areas report their actual coverage stage: Taipei candidates remain blocked pending human review, Shipai is identified through Beitou, and Taoyuan reports paid-curb-reference-only capability without claiming curb legality.
+6. The service loads the generated district pack, applies reviewed sign overrides, parking-space evidence, inferred candidates when requested, zone rules, and ranking trust.
+7. The response includes `schemaVersion`, dataset hash, primary answer, alternatives, evidence, caveats, and the same trust summary rendered in the UI.
+8. The service caches evaluated segments per `datasetDir` and `hhmm` for the process lifetime.
+9. `/health` returns service config liveness; `/ready` verifies required generated layers for the configured default and allowed districts, including parseable sign overrides and inferred candidates, and returns HTTP 503 when any are missing or malformed.
+10. If no configured API is available in a static deployment, the UI falls back to the local loaded dataset answer path instead of hiding the pinned answer card.
 
 Current saved-plan sync strategy:
 1. Trip-board state loads from browser storage immediately.
@@ -335,6 +338,46 @@ without changing the production publish glob.
    `npm run ingest:all -- --configs "configs/expansion/songshan.json" --dry-run --report-only --allow-warn --override "songshan expansion candidate baseline bootstrap"`
 4. Promote the config to `configs/prod/<id>.json` only after review evidence and pinned answer cases are ready.
 
+Taipei-wide expansion is tracked in `configs/coverage.expansion.json`. The 12 official
+districts now have either production or expansion configs; Shipai is represented through
+its parent Beitou district and is not treated as a separate administrative district. Check
+the contract with `npm run ops:coverage-status`. Rebuild the browser-safe 25-district
+boundary/status catalog from the downloaded official sources with
+`npm run ops:build-coverage-catalog`, then verify it against the manifest with
+`npm run ops:validate-coverage-catalog`. Candidate and source-only entries in this catalog
+are geographic status metadata only; they do not enter the published dataset registry.
+
+Taoyuan is intentionally source-only until equivalent curb-legality inputs exist. Fetch and
+unpack its official administrative boundaries and fare metadata with
+`npm run ops:fetch-taoyuan-sources` and `npm run ops:unpack-taoyuan-sources`, then verify
+all 13 boundaries and build the deterministic text-reference pack with
+`npm run ops:build-taoyuan-expansion`. This writes
+`public/data/reference/taoyuan-paid-curb.json` and a Taoyuan District source-text review
+bundle under `.tmp/taoyuan-human-review/`. The current official XML contains 944 records,
+including 270 for Taoyuan District, but no geometry. Human approval of this CSV confirms
+source transcription only and never confirms parking legality. Rebuilds refresh the
+`.template.csv` file but preserve an existing review CSV. Check structure, source hash,
+and pending counts with `npm run ops:taoyuan-review-status`; require every row to be
+explicitly approved with `npm run ops:taoyuan-review-gate`. With TDX
+credentials in `TDX_CLIENT_ID` and `TDX_CLIENT_SECRET`, run
+`npm run ops:fetch-taoyuan-paid-curb` to normalize paid curb segment geometry/reference
+points. The output uses `PAID_CURB_SEGMENT` with `legalAnswerEligible: false`; it must not be
+renamed to `parking_spaces.geojson` or used to produce a general legal parking answer.
+Run `npm run ops:taoyuan-expansion-readiness:report` to verify the 13 official boundaries,
+944-row text pack, 270-row source-text review, optional saved/credentialed TDX geometry,
+and the non-legal safety contract in one report. The report exits successfully when the
+only blockers are expected human or external inputs. Use
+`npm run ops:taoyuan-expansion-readiness:strict` when a milestone must remain non-zero
+until source text is fully approved and a valid TDX spatial-reference artifact exists.
+CI uses the tracked runtime coverage catalog as explicit derived boundary evidence; local
+and strict runs default to the unpacked official shapefile instead of silently falling back.
+Even strict readiness only approves a spatial reference layer; legal-answer eligibility
+remains false. The credential-free
+[Taoyuan roadside fee dataset](https://data.gov.tw/dataset/149456) exposes text/fare fields
+but no coordinates, so address text must not be converted into synthetic geometry.
+When a source-only Taoyuan address is pinned, the app can filter this official text by
+Chinese road name; the results are text matches, not proximity or legality matches.
+
 Legacy per-district raw source scaffold:
    `npm run ops:new-district -- --districtId <id> --districtName "<Name>" --sourceRoot "data/raw/<id>"`
 1. Validate inputs:
@@ -369,6 +412,9 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   `npm run ops:district-readiness-matrix`
 - Human review bundle index for `.tmp/*-human-review` handoff packets:
   `npm run ops:human-review-index -- --out .tmp/human-review-index.md --json-out .tmp/human-review-index.json`
+  Area-scoped aliases such as Shipai resolve their district and artifact names from the QA
+  manifest. Specialized source-text bundles such as Taoyuan are listed separately with their
+  dedicated status and approval-gate commands; they are never treated as P0 legal-answer QA.
 - Package districts that still need human review into zip handoff files:
   `npm run ops:package-human-reviews -- --district daan,zhongshan`
   For expansion candidates that are not yet promoted to `configs/prod`, pass
@@ -461,6 +507,10 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   `npm run ops:p2-status`
   This writes `.tmp/p2-status.md` and `.tmp/p2-status.json` by combining current readiness, strict readiness, returned-review intake, review gate, handoff audit, and the latest reviewer zip paths under `.tmp/human-review-packages`. It exits cleanly when the only blocker is pending human review, and exits non-zero only for automation blockers that need code/data repair. When called with expansion candidate configs, for example `npm run ops:p2-status -- --expansion-district songshan --configs "configs/expansion/*.json" --skip-p1 --report-only`, it propagates the inferred `configs/expansion` root into readiness and review-gate commands. For mixed prod/candidate configs, pass `--config-root configs/expansion` explicitly so review-gate finalize commands target the candidate files.
   CI also uploads the same P2 status and review diagnostics with explicit `--report-only` flags so Daan/Zhongshan expansion blockers are visible without blocking the current Xinyi release gate; unhandled CLI errors still fail the workflow.
+- State-driven P2 candidate advance for any single expansion district:
+  `npm run ops:p2-candidate-advance -- --district songshan`
+  `npm run ops:p2-candidate-advance:execute -- --district songshan`
+  This derives the mixed `configs/prod/xinyi.json,configs/expansion/<district>.json` scope from the district ID, then follows the current state. It creates a missing human-review handoff, stops when real review evidence is required, validates/finalizes evidence that already passes the gate, and continues into expansion-config promotion in execute mode. It never fills or approves reviewer fields. Promotion deliberately stops before production ingest and prints the validated follow-up commands. Reports are written to `.tmp/p2-candidate-advance.md` and `.tmp/p2-candidate-advance.json`.
 - Current Songshan P2 candidate shortcuts:
   `npm run ops:p2-songshan-status -- --report-only`
   `npm run ops:p2-songshan-human-review-handoff -- --report-only`
@@ -472,7 +522,7 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   `npm run ops:p2-songshan-finalize-ready:execute`
   `npm run ops:p2-songshan-promote`
   `npm run ops:p2-songshan-promote:execute`
-  These wrap the mixed Xinyi production plus Songshan expansion config set (`configs/prod/xinyi.json,configs/expansion/songshan.json`) and force `--config-root configs/expansion`, so review-gate/finalize commands write Songshan answer cases under `configs/expansion` until `ops:p2-songshan-promote:execute` deliberately copies reviewed files into `configs/prod`. These shortcuts do not bypass human review; they only remove the long repeated command arguments.
+  These backward-compatible shortcuts wrap the mixed Xinyi production plus Songshan expansion config set (`configs/prod/xinyi.json,configs/expansion/songshan.json`) and force `--config-root configs/expansion`, so review-gate/finalize commands write Songshan answer cases under `configs/expansion` until `ops:p2-songshan-promote:execute` deliberately copies reviewed files into `configs/prod`. New candidate districts should use `ops:p2-candidate-advance` instead of adding another district-specific script set. These shortcuts do not bypass human review; they only remove the long repeated command arguments.
 - P2 human review handoff for Daan/Zhongshan:
   `npm run ops:p2-human-review-handoff`
   This packages the current `ready-for-review` bundles, writes `.tmp/p2-human-review-handoff.md` and `.tmp/p2-human-review-handoff.json`, and leaves the expansion readiness strict gate blocked until a human fills valid review rows. CI runs this as a report-only handoff helper and uploads `.tmp/human-review-packages/**` with the P2 status artifact.
@@ -491,6 +541,8 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
 - P3 reviewed release readiness for all reviewed/published districts:
   `npm run ops:p3-release-readiness`
   This discovers reviewed districts from `configs/prod/*.answer-cases.json`, runs the strict district readiness matrix, runs reviewed generated-pack smoke with reviewed cases required for each reviewed district, probes the registry-scoped HTTP parking-answer API path for reviewed packs, then writes and validates a district-scoped release package only after those prerequisite checks pass. The markdown report prints the release ID, zip path, manifest path, districts, file count, and total bytes for handoff. The current reviewed release set is Xinyi, Daan, and Zhongshan. Use `npm run ops:package-release:reviewed` and `npm run ops:validate-release-package:reviewed` when you only need the reviewed release archive and validation report; those shortcuts discover the same reviewed district set from answer-case files instead of hard-coding district ids. The `Release Data Package` workflow also runs reviewed UI answer smoke in LIST and MAP modes before this release gate, so published release assets are checked against the front-end answer flow as well as data/API gates.
+  Fresh official sources can change the content-addressed dataset hash without changing a reviewed answer. After release ingest, the workflow runs `npm run ops:refresh-reviewed-case-hashes -- --execute`; it temporarily ignores the old hash only while rerunning every exact reviewed assertion, updates only `datasetHash` when all districts preserve answer/evidence/primary-segment semantics, and writes `.tmp/reviewed-answer-case-repin.md/json`. One semantic failure blocks every hash write and the release.
+  Manual workflow dispatches keep answer-case review fallback disabled by default. When the source QA CSVs are intentionally not stored in the repository, dispatch with `allowAnswerCaseReviewFallback=true` or run `npm run ops:release-data-dispatch -- --repo <owner/repo> --ref <branch> --allow-answer-case-review-fallback true`; the district matrix may then use committed reviewed answer cases as review evidence, while the same release gate still requires exact generated-pack and parking-answer API smokes for every reviewed district.
 - Deploy readiness gate for the reviewed release package:
   `npm run ops:release-handoff-readiness`
   This runs build, P3 release readiness, deploy readiness, and Render deployment handoff sequentially, then fails if the P3, deploy, and handoff JSON files do not point at the same release ID. The deploy readiness gate installs the latest `dist/releases` zip/manifest pair into `.tmp/deploy-readiness/public/data/generated`, verifies the built `dist/data/generated` registry and per-district `LATEST.json` hashes match that installed release, runs reviewed generated-pack and parking-answer API smokes against the installed release root, then starts the production app server against the same installed release root. The app-server smoke verifies `/api/parking-answer/ready` exposes per-district dataset hashes for post-deploy verification, probes the mounted same-origin geocode, route, sync, and parking-answer health/ready endpoints, and runs a sync issue-report roundtrip before the app server is accepted. It writes `.tmp/deploy-readiness.md` and `.tmp/deploy-readiness.json` for release handoff artifacts. Use this before assigning release asset URLs to Render so stale `dist` assets, bad package installs, release ID mismatches, or same-origin API readiness failures are caught locally.
@@ -567,12 +619,17 @@ Use `ops:human-review-index` before sending Daan, Zhongshan, or future review pa
 it scans `.tmp/*-human-review`, verifies each bundle has the source CSV, manifest, checklist,
 GeoJSON, and handoff CSV, then prints the remaining P0 review requirements plus the exact finalize
 command to run after `reviewStatus`, `reviewNote`, and `createdAt` are filled from observed evidence.
+The same index identifies source-text-only review contracts separately, reports their latest
+dedicated status snapshot, and prints their own gate instead of inventing missing P0 QA artifacts.
 `createdAt` / `reviewedAt` must be an ISO timestamp with timezone, for example
 `2026-05-22T12:00:00.000Z`.
 Use `ops:package-human-reviews -- --district <ids>` to create zip handoff packets under
 `.tmp/human-review-packages` for bundles that are still `ready-for-review`; it skips bundles that
 are already ready to finalize and requires `--district` or `--all` so scratch bundles are not
-packaged accidentally. Each packet includes `review/handoff-audit.md/json` plus
+packaged accidentally. Area-scoped bundles use their bundle id for the zip filename and archive
+root while retaining the owning district id for validation/finalize commands, so `shipai` and
+`beitou` can be packaged together without overwriting or sharing the wrong audit. Each packet
+includes `review/handoff-audit.md/json` plus
 `review/priority-review.md/csv/json` so the reviewer can start from the minimum row-level issues
 and priority rows without running local tooling first.
 If the reviewer fills `reviewStatus`, `reviewNote`, and `createdAt` in a single-district
@@ -657,7 +714,15 @@ primary segment pins, evidence kind, and final confidence. CI, nightly, publish,
 workflows now also run parking-answer API smoke plus same-origin API service probes so geocode,
 routing, sync, and parking-answer `/health` and `/ready` routes are exercised before merge or
 release. Those gates also run the sync issue-report write/read roundtrip, so the production
-feedback capture endpoint is exercised before merge or release. CI, nightly, and publish use
+feedback capture endpoint is exercised before merge or release.
+
+`datasetHash` is content-addressed from the district boundary and runtime GeoJSON layers. Metadata
+also records `datasetSourceHash` and `generatorHash`: review gates compare those values against the
+current source/config inputs and transitive ingest implementation, while release, runtime cache,
+and reviewed-answer pins use the content hash. Volatile reports such as
+`intersections_report.json.generatedAt` do not participate in dataset identity.
+
+CI, nightly, and publish use
 `--start-preview` after build to verify the actual Vite-mounted routes, and they run
 `ops:bundle-budget` after production build so heavy map/geospatial chunks stay off the initial
 preload path; ingest dry-run uses the
@@ -721,6 +786,8 @@ Generate manual QA candidates from the latest district pack or generated folder:
 - `npm run ops:sample-qa -- --district xinyi --topN 50 --riskMode Neutral --radius 600`
 - `npm run ops:sample-qa -- --district xinyi --strategy review --hhmm 21:00 --radius 5000 --topN 80 --out .tmp/xinyi-review.csv`
 - `npm run ops:sample-qa -- --district songshan --strategy review --config-root configs/expansion --out .tmp/songshan-review.csv`
+- `npm run ops:sample-qa -- --district songshan --strategy review --config-root configs/expansion --include-segment candidate-8529-1-L --out .tmp/songshan-review.csv` (pins the requested segment family and all evaluated `part-*` rows)
+- `npm run ops:sample-qa -- --district beitou --strategy review --config-root configs/expansion --anchor-lat 25.114 --anchor-lng 121.515 --radius 1500 --out .tmp/shipai-review.csv` (centers ranking and radius filtering on Shipai)
 - `npm run ops:sample-qa -- --all --topN 50`
 
 Default output path:

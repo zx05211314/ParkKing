@@ -15,6 +15,7 @@ import {
   resolveValidationConfig,
 } from './readConfigResolution'
 import { resolveOverrideReportsPath } from './overrideReportsPath'
+import { readGeneratorContractHash } from './ingestGeneratorContract'
 import type { IngestConfig, ResolvedConfig } from './readConfigTypes'
 
 export type { IngestConfig, ResolvedConfig, SourceFileMeta } from './readConfigTypes'
@@ -38,7 +39,8 @@ export const readConfig = async (argv: string[] = process.argv): Promise<Resolve
   const sourceFiles = await collectSourceFiles(inputs, [
     resolveOverrideReportsPath(districtId),
   ])
-  const { configHash, datasetHash } = buildConfigHashes(raw, sourceFiles)
+  const { configHash, datasetSourceHash } = buildConfigHashes(raw, sourceFiles)
+  const generatorHash = await readGeneratorContractHash()
 
   return {
     districtId,
@@ -46,7 +48,8 @@ export const readConfig = async (argv: string[] = process.argv): Promise<Resolve
     boundary: resolveBoundaryConfig(parsed),
     configPath,
     configHash,
-    datasetHash,
+    datasetSourceHash,
+    generatorHash,
     inputs,
     outputs,
     ...resolveDerivedConfigSections(parsed),

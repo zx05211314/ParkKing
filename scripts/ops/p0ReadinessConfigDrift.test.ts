@@ -21,7 +21,8 @@ describe('p0ReadinessConfigDrift', () => {
       current: {
         districtId: 'xinyi',
         configHash: 'current-config-hash',
-        datasetHash: 'current-dataset-hash',
+        datasetSourceHash: 'current-dataset-hash',
+        generatorHash: 'generator-hash',
         sourceFiles: [sourceFile],
         signOverrides: {
           matchToleranceMeters: 15,
@@ -30,7 +31,8 @@ describe('p0ReadinessConfigDrift', () => {
       runtime: {
         districtId: 'xinyi',
         configHash: 'runtime-config-hash',
-        datasetHash: 'runtime-dataset-hash',
+        datasetSourceHash: 'runtime-dataset-hash',
+        generatorHash: 'generator-hash',
         sourceFiles: [sourceFile],
         signOverrideMatchToleranceMeters: 15,
       },
@@ -51,6 +53,7 @@ describe('p0ReadinessConfigDrift', () => {
         districtId: 'xinyi',
         configHash: 'current-config-hash',
         datasetHash: 'runtime-dataset-hash',
+        generatorHash: 'generator-hash',
         sourceFiles: [{ ...sourceFile, size: sourceFile.size + 1 }],
         signOverrides: {
           matchToleranceMeters: 15,
@@ -75,6 +78,28 @@ describe('p0ReadinessConfigDrift', () => {
       extra: ['C:\\repo\\new.shp'],
       changed: [],
     })
+  })
+
+  it('requires a new review packet when the generator changes', () => {
+    const warnings = buildP0ReviewConfigDriftWarnings({
+      manifest: {
+        districtId: 'xinyi',
+        generatorHash: 'reviewed-generator',
+      },
+      current: {
+        districtId: 'xinyi',
+        configHash: 'config-hash',
+        datasetSourceHash: 'source-hash',
+        generatorHash: 'current-generator',
+        sourceFiles: [sourceFile],
+        signOverrides: { matchToleranceMeters: 15 },
+      },
+      runtime: null,
+    })
+
+    expect(warnings).toEqual([
+      expect.stringContaining('Ingest behavior changed; regenerate the review packet.'),
+    ])
   })
 
   it('matches cross-platform source paths by stable key and content hash', () => {

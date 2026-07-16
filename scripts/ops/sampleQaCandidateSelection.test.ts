@@ -219,4 +219,69 @@ describe('selectQaCandidateRows', () => {
     expect(getQaReviewBucket(markedOverride)).toBe('marked_space_park')
     expect(getQaReviewBucket(noStopOverride)).toBe('no_stop')
   })
+
+  it('pins required segments ahead of ranked review sampling', () => {
+    const segments = [
+      buildSegment({
+        id: 'high',
+        rankScore: 10,
+        path: [[121.5, 25.05], [121.5002, 25.0502]],
+      }),
+      buildSegment({
+        id: 'required-low',
+        rankScore: -10,
+        source: 'INFERRED_CENTERLINE_OFFSET',
+        sourceType: 'INFERRED',
+        allowedNow: 'PARK',
+        tier: 'YELLOW',
+        reasonCodes: ['COVERAGE_LOW'],
+        path: [[121.6, 25.06], [121.6002, 25.0602]],
+      }),
+    ]
+
+    const rows = selectQaCandidateRows({
+      districtId: 'songshan',
+      segments,
+      topN: 2,
+      strategy: 'review',
+      requiredSegmentIds: ['required-low'],
+    })
+
+    expect(rows.map((row) => row.segmentId)).toEqual(['required-low', 'high'])
+    expect(rows[0]?.reviewBucket).toBe('inferred')
+  })
+
+  it('rejects missing required segments', () => {
+    expect(() =>
+      selectQaCandidateRows({
+        districtId: 'songshan',
+        segments: [],
+        topN: 1,
+        requiredSegmentIds: ['missing'],
+      }),
+    ).toThrow('Required segments not found: missing')
+  })
+
+  it('expands a required parent id to every evaluated part', () => {
+    const segments = ['part-2', 'part-1', 'part-3'].map((part, index) =>
+      buildSegment({
+        id: `candidate-critical-${part}`,
+        rankScore: 10 - index,
+        path: [[121.5 + index * 0.001, 25.05], [121.5002 + index * 0.001, 25.0502]],
+      }),
+    )
+
+    const rows = selectQaCandidateRows({
+      districtId: 'songshan',
+      segments,
+      topN: 3,
+      requiredSegmentIds: ['candidate-critical', 'candidate-critical-part-1'],
+    })
+
+    expect(rows.map((row) => row.segmentId)).toEqual([
+      'candidate-critical-part-1',
+      'candidate-critical-part-2',
+      'candidate-critical-part-3',
+    ])
+  })
 })

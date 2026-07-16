@@ -21,6 +21,8 @@ export interface QaCandidateManifest {
     districtId: string | null
     districtName: string | null
     datasetHash: string | null
+    datasetSourceHash: string | null
+    generatorHash: string | null
     configHash: string | null
     generatedAt: string | null
     sourceUpdatedAt: string | null
@@ -37,6 +39,8 @@ export interface QaCandidateManifest {
     seed: number
     strategy: QaCandidateStrategy
     hhmm: string
+    requiredSegmentIds: string[]
+    anchorLocation: [number, number] | null
   }
   rows: {
     total: number
@@ -167,6 +171,8 @@ export const buildQaCandidateManifest = (params: {
   seed: number
   strategy: QaCandidateStrategy
   hhmm: string
+  requiredSegmentIds?: string[]
+  anchorLocation?: [number, number] | null
   createdAt?: string
 }): QaCandidateManifest => {
   const csvPath = path.resolve(params.csvPath)
@@ -181,6 +187,8 @@ export const buildQaCandidateManifest = (params: {
       districtId: params.datasetMeta?.districtId ?? null,
       districtName: params.datasetMeta?.districtName ?? null,
       datasetHash: params.datasetMeta?.datasetHash ?? null,
+      datasetSourceHash: params.datasetMeta?.datasetSourceHash ?? null,
+      generatorHash: params.datasetMeta?.generatorHash ?? null,
       configHash: params.datasetMeta?.configHash ?? null,
       generatedAt: params.datasetMeta?.generatedAt ?? null,
       sourceUpdatedAt: params.datasetMeta?.sourceUpdatedAt ?? null,
@@ -197,6 +205,8 @@ export const buildQaCandidateManifest = (params: {
       seed: params.seed,
       strategy: params.strategy,
       hhmm: params.hhmm,
+      requiredSegmentIds: params.requiredSegmentIds ?? [],
+      anchorLocation: params.anchorLocation ?? null,
     },
     rows: summarizeRows(params.rows),
     review: {

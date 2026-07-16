@@ -31,6 +31,19 @@ interface FocusCenter {
   center: [number, number]
 }
 
+export const buildPinnedLocationFocus = (params: {
+  searchLocation: [number, number] | null
+}): FocusCenter | null => {
+  if (!params.searchLocation) {
+    return null
+  }
+  const [longitude, latitude] = params.searchLocation
+  return {
+    key: `pinned:${longitude.toFixed(6)},${latitude.toFixed(6)}`,
+    center: params.searchLocation,
+  }
+}
+
 interface UseMapFocusStateOptions {
   selectedSegment: FocusableSegment | null
   selectedRoutePath: RoutePathEntry | null
@@ -131,6 +144,11 @@ export const useMapFocusState = ({
     }
   }, [searchAnchor])
 
+  const pinnedLocationFocusCenter = useMemo(
+    () => buildPinnedLocationFocus({ searchLocation }),
+    [searchLocation],
+  )
+
   const addressRecommendationFocusBounds = useMemo(() => {
     if (!searchAnchor) {
       return null
@@ -165,9 +183,10 @@ export const useMapFocusState = ({
     selectedFocusCenter ??
     (selectedRouteFocusBounds ||
     selectedFocusBounds ||
-    addressRecommendationFocusBounds
+    addressRecommendationFocusBounds ||
+    searchFocusBounds
       ? null
-      : searchFocusCenter)
+      : searchFocusCenter ?? pinnedLocationFocusCenter)
 
   return {
     activeFocusBounds,

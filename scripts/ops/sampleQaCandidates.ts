@@ -41,6 +41,8 @@ export const sampleQaCandidates = async (
       strategy: resolved.strategy,
       hhmm: resolved.hhmm,
       datasetRoots: resolved.datasetRoots,
+      requiredSegmentIds: resolved.requiredSegmentIds,
+      anchorLocation: resolved.anchorLocation,
     })
     const outPath = await writeQaCandidates({
       districtId,
@@ -63,6 +65,8 @@ export const sampleQaCandidates = async (
       seed: resolved.seed,
       strategy: resolved.strategy,
       hhmm: resolved.hhmm,
+      requiredSegmentIds: resolved.requiredSegmentIds,
+      anchorLocation: resolved.anchorLocation,
     })
     const manifestPath = await writeQaCandidateManifest({
       districtId,
@@ -108,6 +112,8 @@ const run = async () => {
     seed: args.seed,
     strategy: args.strategy,
     hhmm: args.hhmm,
+    requiredSegmentIds: args.requiredSegmentIds,
+    anchorLocation: args.anchorLocation,
   })
   results.forEach((result) => {
     console.log(

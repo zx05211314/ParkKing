@@ -302,6 +302,8 @@ const parseManifestSummary = (
     csvPath: getString(getRecordValue(record, 'csvPath')),
     datasetBaseDir: getString(getRecordValue(dataset, 'baseDir')),
     datasetHash: getString(getRecordValue(dataset, 'datasetHash')),
+    datasetSourceHash: getString(getRecordValue(dataset, 'datasetSourceHash')),
+    generatorHash: getString(getRecordValue(dataset, 'generatorHash')),
     configHash: getString(getRecordValue(dataset, 'configHash')),
     generatedAt: getString(getRecordValue(dataset, 'generatedAt')),
     publishedAt: getString(getRecordValue(dataset, 'publishedAt')),

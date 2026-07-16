@@ -194,6 +194,49 @@ describe('sampleQaCandidates', () => {
     ])
   })
 
+  it('parses required segment ids from repeated and comma-separated flags', () => {
+    const parsed = parseArgs([
+      'node',
+      'sampleQaCandidates',
+      '--district',
+      'demo',
+      '--include-segment',
+      'candidate-a,candidate-b',
+      '--segment-id',
+      'candidate-a',
+    ])
+
+    expect(parsed.requiredSegmentIds).toEqual(['candidate-a', 'candidate-b'])
+  })
+
+  it('parses a validated review anchor as longitude and latitude', () => {
+    const parsed = parseArgs([
+      'node',
+      'sampleQaCandidates',
+      '--district',
+      'beitou',
+      '--anchor-lat',
+      '25.114',
+      '--anchor-lng',
+      '121.515',
+    ])
+
+    expect(parsed.anchorLocation).toEqual([121.515, 25.114])
+  })
+
+  it('rejects an incomplete review anchor', () => {
+    expect(() =>
+      parseArgs([
+        'node',
+        'sampleQaCandidates',
+        '--district',
+        'beitou',
+        '--anchor-lat',
+        '25.114',
+      ]),
+    ).toThrow('anchor-lat and anchor-lng must be provided together')
+  })
+
   it('writes deterministic CSV with reason keys and maps URLs', async () => {
     const base = await fs.mkdtemp(path.join(tmpdir(), 'qa-sampler-test-'))
     const publicRoot = path.join(base, 'public', 'data', 'generated')

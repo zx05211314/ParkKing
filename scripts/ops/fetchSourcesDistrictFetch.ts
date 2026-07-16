@@ -21,7 +21,7 @@ export const fetchDistrictSources = async (params: {
   }
 
   const resolvedDestinations = resolveSourceDestinations(sources, params.manifestDir)
-  const { configDistrictId, configHash } = await resolveDistrictSourceContext({
+  const { configDistrictId, configHash, sourceOnly } = await resolveDistrictSourceContext({
     manifest: params.districtManifest,
     manifestDir: params.manifestDir,
     resolvedDestinations,
@@ -48,6 +48,7 @@ export const fetchDistrictSources = async (params: {
     districtId: configDistrictId,
     fetchedAt: new Date().toISOString(),
     configHash,
+    sourceOnly,
     files: fileEntries,
   })
   validateProvenanceManifest(provenance)

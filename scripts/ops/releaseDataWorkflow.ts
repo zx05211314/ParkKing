@@ -189,6 +189,24 @@ const getGitHubReleaseByTag = async (params: {
   return (await response.json()) as GitHubRelease
 }
 
+const getLatestGitHubRelease = async (params: {
+  repository: string
+  token: string
+  fetchImpl: FetchImpl
+}) => {
+  const response = await params.fetchImpl(
+    githubApiUrl(params.repository, '/releases/latest'),
+    {
+      headers: buildGitHubApiHeaders(params.token),
+    },
+  )
+  if (response.status === 404) {
+    return null
+  }
+  await assertGitHubResponse(response, 'GitHub latest release lookup')
+  return (await response.json()) as GitHubRelease
+}
+
 const createGitHubRelease = async (params: {
   repository: string
   releaseId: string
@@ -325,6 +343,13 @@ const publishReleaseDataAssetsWithApi = async (params: {
 }) => {
   const fetchImpl = params.fetchImpl ?? fetch
   const assets = await listReleaseAssetPaths(params.releaseDir, params.assetPaths)
+  const latestBeforePublish = params.makeLatest
+    ? null
+    : await getLatestGitHubRelease({
+        repository: params.repository,
+        token: params.token,
+        fetchImpl,
+      })
   let release = await getGitHubReleaseByTag({
     repository: params.repository,
     tag: params.tag,
@@ -380,6 +405,25 @@ const publishReleaseDataAssetsWithApi = async (params: {
       token: params.token,
       fetchImpl,
     })
+  }
+  if (
+    !params.makeLatest &&
+    latestBeforePublish &&
+    latestBeforePublish.id !== release.id
+  ) {
+    const latestAfterPublish = await getLatestGitHubRelease({
+      repository: params.repository,
+      token: params.token,
+      fetchImpl,
+    })
+    if (latestAfterPublish?.id === release.id) {
+      await updateGitHubReleaseLatest({
+        repository: params.repository,
+        releaseId: latestBeforePublish.id,
+        token: params.token,
+        fetchImpl,
+      })
+    }
   }
 }
 

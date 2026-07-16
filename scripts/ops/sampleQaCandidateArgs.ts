@@ -37,6 +37,42 @@ const parseDatasetRoots = (argv: string[]) => {
     .filter(Boolean)
 }
 
+const parseRequiredSegmentIds = (argv: string[]) => {
+  const values = parseArgValues(
+    argv,
+    '--include-segment',
+    '--includeSegment',
+    '--segment-id',
+    '--segmentId',
+  )
+  return [...new Set(
+    values
+      .flatMap((value) => value.split(','))
+      .map((value) => value.trim())
+      .filter(Boolean),
+  )]
+}
+
+const parseAnchorLocation = (argv: string[]): [number, number] | null => {
+  const latValue = parseArgValue(argv, '--anchor-lat') ?? parseArgValue(argv, '--anchorLat')
+  const lngValue = parseArgValue(argv, '--anchor-lng') ?? parseArgValue(argv, '--anchorLng')
+  if (latValue === null && lngValue === null) {
+    return null
+  }
+  if (latValue === null || lngValue === null) {
+    throw new Error('anchor-lat and anchor-lng must be provided together')
+  }
+  const lat = Number(latValue)
+  const lng = Number(lngValue)
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+    throw new Error('anchor-lat must be a finite latitude between -90 and 90')
+  }
+  if (!Number.isFinite(lng) || lng < -180 || lng > 180) {
+    throw new Error('anchor-lng must be a finite longitude between -180 and 180')
+  }
+  return [lng, lat]
+}
+
 const parsePositiveNumber = (
   value: string | null,
   fallback: number,
@@ -128,5 +164,7 @@ export const parseArgs = (argv: string[]): CliArgs => {
       : 1,
     strategy: parseStrategy(parseArgValue(argv, '--strategy')),
     hhmm: parseHHMM(parseArgValue(argv, '--hhmm') ?? parseArgValue(argv, '--time')),
+    requiredSegmentIds: parseRequiredSegmentIds(argv),
+    anchorLocation: parseAnchorLocation(argv),
   }
 }

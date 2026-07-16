@@ -12,6 +12,7 @@ export const buildProvenanceManifest = (params: {
   districtId: string
   fetchedAt: string
   configHash: string
+  sourceOnly?: boolean
   files: ProvenanceFileEntry[]
 }): ProvenanceManifest => {
   return {
@@ -19,6 +20,7 @@ export const buildProvenanceManifest = (params: {
     districtId: params.districtId,
     fetchedAt: params.fetchedAt,
     configHash: params.configHash,
+    ...(params.sourceOnly ? { sourceOnly: true } : {}),
     files: [...params.files].sort((a, b) => a.relativePath.localeCompare(b.relativePath)),
   }
 }

@@ -44,6 +44,10 @@ describe('validateConfigs', () => {
       datasetHash: 'hash-1',
       cases: [],
     }
+    const coverageManifest = {
+      schemaVersion: 1,
+      regions: [],
+    }
 
     await fs.writeFile(
       path.join(configsDir, 'valid.json'),
@@ -65,6 +69,11 @@ describe('validateConfigs', () => {
       JSON.stringify(answerCases, null, 2),
       'utf-8',
     )
+    await fs.writeFile(
+      path.join(configsDir, 'coverage.expansion.json'),
+      JSON.stringify(coverageManifest, null, 2),
+      'utf-8',
+    )
 
     const result = await validateConfigs({ configsDir })
     const issueByFile = new Map(
@@ -74,6 +83,7 @@ describe('validateConfigs', () => {
     expect(issueByFile.get('valid.json')?.errors.length).toBe(0)
     expect(issueByFile.get('invalid.json')?.errors.length).toBeGreaterThan(0)
     expect(issueByFile.has('sources.prod.taipei.json')).toBe(false)
+    expect(issueByFile.has('coverage.expansion.json')).toBe(false)
     expect(issueByFile.has('xinyi.answer-cases.json')).toBe(false)
     expect(result.hasErrors).toBe(true)
   })

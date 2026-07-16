@@ -1,88 +1,88 @@
 {
-  "baselineCreatedAt": "2026-06-24T03:04:53.315Z",
-  "baselineDatasetHash": "cb6b30b4a56c2a3220882a8fbdcb9a363f2bbc3d8f819121a045ab86fb40854f",
+  "baselineCreatedAt": "2026-07-16T13:00:14.324Z",
+  "baselineDatasetHash": "65f757b9972d1a1b37d9ae25e038720e6891e0b2b37d7bedd24001be569bf24a",
   "baselineSchemaVersion": 1,
-  "baselineSourceMetaSha256": "35aac7f79a8b8d4c19615fab2ab11f945fa3ff4dec5964e032588576f3560449",
+  "baselineSourceMetaSha256": "279f14c2f03cb8c424e94c8c51be74823f37c5cea50ff64d5ecf1ee9e5d799ae",
   "baselineDistrictName": "Daan",
-  "generatedAt": "2026-06-24T03:04:53.315Z",
+  "generatedAt": "2026-07-16T13:00:14.325Z",
   "districtId": "daan",
-  "datasetHash": "cb6b30b4a56c2a3220882a8fbdcb9a363f2bbc3d8f819121a045ab86fb40854f",
+  "datasetHash": "65f757b9972d1a1b37d9ae25e038720e6891e0b2b37d7bedd24001be569bf24a",
   "counts": {
     "segments": 19507,
     "intersections": 246,
-    "inferredCandidates": 1846,
+    "inferredCandidates": 1699,
     "signOverrides": 10,
     "signOverrideUnmatchedNamedCount": 0
   },
   "distributions": {
     "day": {
-      "RED|NO_STOP": 30490,
-      "YELLOW|TEMP_STOP": 4094,
+      "RED|NO_STOP": 30336,
+      "YELLOW|TEMP_STOP": 3901,
       "GREEN|PARK": 3,
       "YELLOW|PARK": 4
     },
     "night": {
-      "RED|NO_STOP": 30490,
-      "YELLOW|PARK": 3352,
+      "RED|NO_STOP": 30336,
+      "YELLOW|PARK": 3159,
       "GREEN|PARK": 735,
       "YELLOW|TEMP_STOP": 14
     }
   },
   "performance": {
     "day": {
-      "evalFirstMsMedian": 1398,
-      "evalSecondMsMedian": 1381
+      "evalFirstMsMedian": 1728,
+      "evalSecondMsMedian": 1677
     },
     "night": {
-      "evalFirstMsMedian": 1376,
-      "evalSecondMsMedian": 1343
+      "evalFirstMsMedian": 1464,
+      "evalSecondMsMedian": 1360
     }
   },
   "reasonCodes": {
     "day": {
       "top": {
-        "DATA_FRESHNESS_STALE": 27588,
-        "RULE_RED_NO_STOP": 26048,
-        "RULE_YELLOW_DAY_NO_PARK": 8498,
-        "ZONE_CROSSWALK": 7287,
-        "DATA_FRESHNESS_UNKNOWN": 7003,
-        "COVERAGE_LOW": 7001,
-        "INFERRED_CAPPED": 7001,
-        "INFERRED_RISK_HIGH_ZONE_DENSITY": 6176,
-        "ZONE_HYDRANT": 5143,
-        "ZONE_INTERSECTION": 1210,
+        "DATA_FRESHNESS_STALE": 27589,
+        "RULE_RED_NO_STOP": 26049,
+        "RULE_YELLOW_DAY_NO_PARK": 8150,
+        "ZONE_CROSSWALK": 7164,
+        "DATA_FRESHNESS_UNKNOWN": 6655,
+        "COVERAGE_LOW": 6653,
+        "INFERRED_CAPPED": 6653,
+        "INFERRED_RISK_HIGH_ZONE_DENSITY": 5946,
+        "ZONE_HYDRANT": 5125,
+        "ZONE_INTERSECTION": 1201,
         "PARKING_SPACE_EVIDENCE": 1018,
-        "ZONE_BUS_STOP": 538,
+        "ZONE_BUS_STOP": 517,
         "UNKNOWN_MARKING": 26,
         "OVERRIDE_APPLIED": 19,
         "OVERRIDE_STATUS_LEGAL": 13,
         "OVERRIDE_STATUS_ILLEGAL": 6
       },
       "other": 0,
-      "total": 34591,
+      "total": 34244,
       "coveragePct": 100
     },
     "night": {
       "top": {
-        "DATA_FRESHNESS_STALE": 27588,
-        "RULE_RED_NO_STOP": 26048,
-        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 8498,
-        "ZONE_CROSSWALK": 7287,
-        "DATA_FRESHNESS_UNKNOWN": 7003,
-        "COVERAGE_LOW": 7001,
-        "INFERRED_CAPPED": 7001,
-        "INFERRED_RISK_HIGH_ZONE_DENSITY": 6176,
-        "ZONE_HYDRANT": 5143,
-        "ZONE_INTERSECTION": 1210,
+        "DATA_FRESHNESS_STALE": 27589,
+        "RULE_RED_NO_STOP": 26049,
+        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 8150,
+        "ZONE_CROSSWALK": 7164,
+        "DATA_FRESHNESS_UNKNOWN": 6655,
+        "COVERAGE_LOW": 6653,
+        "INFERRED_CAPPED": 6653,
+        "INFERRED_RISK_HIGH_ZONE_DENSITY": 5946,
+        "ZONE_HYDRANT": 5125,
+        "ZONE_INTERSECTION": 1201,
         "PARKING_SPACE_EVIDENCE": 1018,
-        "ZONE_BUS_STOP": 538,
+        "ZONE_BUS_STOP": 517,
         "UNKNOWN_MARKING": 26,
         "OVERRIDE_APPLIED": 19,
         "OVERRIDE_STATUS_LEGAL": 13,
         "OVERRIDE_STATUS_ILLEGAL": 6
       },
       "other": 0,
-      "total": 34591,
+      "total": 34244,
       "coveragePct": 100
     }
   }

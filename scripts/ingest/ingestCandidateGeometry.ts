@@ -1,4 +1,4 @@
-import type { Geometry, Position } from 'geojson'
+import type { Geometry, LineString, MultiLineString, Position } from 'geojson'
 
 type LngLat = [number, number]
 
@@ -92,6 +92,28 @@ export const midpointForLine = (coords: [number, number][]) => {
   }
   const mid = coords[Math.floor(coords.length / 2)]
   return mid ? ([mid[0], mid[1]] as [number, number]) : null
+}
+
+export const centerFromLineGeometry = (
+  geometry: LineString | MultiLineString,
+): LngLat | null => {
+  const positions = geometry.type === 'LineString'
+    ? geometry.coordinates
+    : geometry.coordinates.flat()
+  const coordinates = positions
+    .map((position) => toLngLat(position))
+    .filter((position): position is LngLat => Boolean(position))
+  if (coordinates.length === 0) {
+    return null
+  }
+  const [longitude, latitude] = coordinates.reduce(
+    ([longitudeSum, latitudeSum], coordinate) => [
+      longitudeSum + coordinate[0],
+      latitudeSum + coordinate[1],
+    ],
+    [0, 0],
+  )
+  return [longitude / coordinates.length, latitude / coordinates.length]
 }
 
 export const extractRepresentativePoint = (

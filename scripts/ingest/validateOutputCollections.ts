@@ -1,4 +1,14 @@
-import type { Feature, FeatureCollection, Geometry } from 'geojson'
+import { booleanPointInPolygon, point } from '@turf/turf'
+import type {
+  Feature,
+  FeatureCollection,
+  Geometry,
+  LineString,
+  MultiLineString,
+  MultiPolygon,
+  Polygon,
+} from 'geojson'
+import { centerFromLineGeometry } from './ingestCandidateGeometry'
 
 export interface BBox {
   minX: number
@@ -131,6 +141,36 @@ export const validateCollection = (
   if (outOfBounds > 0) {
     errors.push(
       `[${dataset}] ${outOfBounds} feature(s) fall outside district boundary bbox. Check boundary clip step.`,
+    )
+  }
+}
+
+export const validateCandidateBoundaryOwnership = (
+  collection: FeatureCollection,
+  boundary: Feature<Polygon | MultiPolygon>,
+  errors: string[],
+) => {
+  const outsideIds: string[] = []
+  collection.features.forEach((feature, index) => {
+    if (
+      !feature.geometry ||
+      (feature.geometry.type !== 'LineString' &&
+        feature.geometry.type !== 'MultiLineString')
+    ) {
+      return
+    }
+    const center = centerFromLineGeometry(
+      feature.geometry as LineString | MultiLineString,
+    )
+    if (!center || !booleanPointInPolygon(point(center), boundary)) {
+      outsideIds.push(String(feature.properties?.id ?? `feature-${index + 1}`))
+    }
+  })
+
+  if (outsideIds.length > 0) {
+    errors.push(
+      `[candidates_inferred] ${outsideIds.length} feature(s) have representative centers outside district boundary. ` +
+        `Sample IDs: ${outsideIds.slice(0, 5).join(', ')}. Re-run inferred candidate ingest.`,
     )
   }
 }

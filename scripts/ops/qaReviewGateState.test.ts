@@ -152,7 +152,7 @@ describe('buildQaReviewGate', () => {
       districtId: 'xinyi',
       csvPath: inputPath,
       dataset: {
-        datasetHash: config.datasetHash,
+        datasetHash: config.datasetSourceHash,
         configHash: config.configHash,
       },
       params: {},
@@ -162,7 +162,7 @@ describe('buildQaReviewGate', () => {
       reviewsPath,
       [
         'sourceRowNumber,districtId,segmentId,reviewBucket,sourceDatasetHash,sourceConfigHash,sourceRowsTotal,reviewStatus,reviewNote,createdAt',
-        `2,xinyi,seg-1,marked_space_park,${config.datasetHash},${config.configHash},1,LEGAL,field checked,2026-04-20T00:00:00.000Z`,
+        `2,xinyi,seg-1,marked_space_park,${config.datasetSourceHash},${config.configHash},1,LEGAL,field checked,2026-04-20T00:00:00.000Z`,
       ].join('\n'),
       'utf-8',
     )
@@ -186,7 +186,7 @@ describe('buildQaReviewGate', () => {
 
     expect(gateResult.pass).toBe(true)
     expect(gateResult.summary.manifest?.csvPath).toBe(mergedPath)
-    expect(gateResult.summary.manifest?.datasetHash).toBe(config.datasetHash)
+    expect(gateResult.summary.manifest?.datasetHash).toBe(config.datasetSourceHash)
     expect(gateResult.summary.manifest?.configHash).toBe(config.configHash)
     expect(gateResult.preflight?.matchedSegmentOverrides).toBe(1)
     await expect(fs.readFile(path.join(outDir, 'xinyi.jsonl'), 'utf-8')).resolves.toContain(
@@ -514,10 +514,53 @@ describe('buildQaReviewGate', () => {
     expect(result.exports).toHaveLength(0)
     expect(
       result.errors.some((error) =>
-        error.startsWith('Review manifest dataset hash stale-dataset-hash does not match current dataset hash '),
+        error.startsWith('Review manifest source hash stale-dataset-hash does not match current source hash '),
       ),
     ).toBe(true)
     await expect(fs.access(path.join(outDir, 'xinyi.jsonl'))).rejects.toThrow()
+  })
+
+  it('fails before export when the reviewed generator contract is stale', async () => {
+    const { configPath, inputPath, outDir } = await buildFixture()
+    const config = await readConfig(['node', 'test', '--config', configPath])
+    await fs.writeFile(
+      inputPath,
+      [
+        'districtId,segmentId,reviewBucket,reviewStatus,reviewNote,createdAt',
+        'xinyi,seg-1,marked_space_park,LEGAL,field checked,2026-04-20T00:00:00.000Z',
+      ].join('\n'),
+      'utf-8',
+    )
+    await writeAdjacentManifest(inputPath, {
+      schemaVersion: 1,
+      districtId: 'xinyi',
+      csvPath: inputPath,
+      dataset: {
+        datasetHash: 'runtime-content-hash',
+        datasetSourceHash: config.datasetSourceHash,
+        generatorHash: 'stale-generator-hash',
+        configHash: config.configHash,
+      },
+      params: {},
+      rows: { total: 1 },
+    })
+
+    const result = await buildQaReviewGate({
+      inputPath,
+      configPath,
+      outDir,
+      minReviewed: 1,
+    })
+
+    expect(result.pass).toBe(false)
+    expect(result.exports).toHaveLength(0)
+    expect(
+      result.errors.some((error) =>
+        error.startsWith(
+          'Review manifest generator hash stale-generator-hash does not match current generator hash ',
+        ),
+      ),
+    ).toBe(true)
   })
 
   it('fails report input before export when reviewed reports are invalid', async () => {

@@ -41,6 +41,11 @@ describe('readConfigSections', () => {
       } as never).minCounts.overridesApplied,
     ).toBe(2)
     expect(resolveOpsConfig({} as never).thresholds.maxNewReasonCodePct).toBe(5)
+    expect(
+      resolveOpsConfig({
+        ops: { thresholds: { counts: { signOverrideUnmatchedNamedCount: 0 } } },
+      } as never).thresholds.counts.signOverrideUnmatchedNamedCount,
+    ).toBe(0)
     expect(resolveDerivedConfigSections({} as never).crs.default).toBe('EPSG:3826')
   })
 })

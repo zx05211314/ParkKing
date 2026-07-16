@@ -22,6 +22,10 @@ export interface DatasetMeta {
   generatedAt?: string
   sourceUpdatedAt?: string
   datasetHash?: string
+  datasetHashSchemaVersion?: number
+  datasetHashFiles?: Record<string, string>
+  datasetSourceHash?: string
+  generatorHash?: string
   configHash?: string
   publishedAt?: string
   publishMode?: string

@@ -334,9 +334,18 @@ describe('releaseDataWorkflow', () => {
     )
 
     const calls: Array<{ url: string; init?: RequestInit }> = []
+    let latestLookupCount = 0
     const fetchImpl: typeof fetch = async (input, init) => {
       const url = String(input)
       calls.push({ url, init })
+      if (url.endsWith('/repos/owner/repo/releases/latest')) {
+        latestLookupCount += 1
+        return Response.json(
+          latestLookupCount === 1
+            ? { id: 122, tag_name: 'data-previous' }
+            : { id: 123, tag_name: 'data-release-a' },
+        )
+      }
       if (url.endsWith('/repos/owner/repo/releases/tags/data-release-a')) {
         return new Response('not found', { status: 404 })
       }
@@ -350,6 +359,9 @@ describe('releaseDataWorkflow', () => {
         init?.method === 'POST'
       ) {
         return Response.json({ id: 456 }, { status: 201 })
+      }
+      if (url.endsWith('/repos/owner/repo/releases/122') && init?.method === 'PATCH') {
+        return Response.json({ id: 122 })
       }
       throw new Error(`Unexpected request ${init?.method ?? 'GET'} ${url}`)
     }
@@ -381,6 +393,70 @@ describe('releaseDataWorkflow', () => {
     expect(
       calls.filter((call) => call.url.startsWith('https://uploads.github.com/')),
     ).toHaveLength(2)
+    expect(latestLookupCount).toBe(2)
+    expect(
+      calls.find(
+        (call) =>
+          call.url.endsWith('/repos/owner/repo/releases/122') &&
+          call.init?.method === 'PATCH',
+      ),
+    ).toMatchObject({
+      init: expect.objectContaining({
+        body: JSON.stringify({ make_latest: 'true' }),
+      }),
+    })
+  })
+
+  it('does not restore the prior latest release when another release won the race', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'release-data-latest-race-'))
+    const notesPath = path.join(base, 'readiness.md')
+    await fs.writeFile(notesPath, '# Ready\n', 'utf-8')
+    await fs.writeFile(path.join(base, 'park-king-data_release-a.zip'), 'zip', 'utf-8')
+    await fs.writeFile(
+      path.join(base, 'release_manifest_release-a.json'),
+      '{}',
+      'utf-8',
+    )
+
+    let latestLookupCount = 0
+    const calls: Array<{ url: string; init?: RequestInit }> = []
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const url = String(input)
+      calls.push({ url, init })
+      if (url.endsWith('/repos/owner/repo/releases/latest')) {
+        latestLookupCount += 1
+        return Response.json(
+          latestLookupCount === 1
+            ? { id: 122, tag_name: 'data-previous' }
+            : { id: 124, tag_name: 'data-concurrent' },
+        )
+      }
+      if (url.endsWith('/repos/owner/repo/releases/tags/data-release-a')) {
+        return new Response('not found', { status: 404 })
+      }
+      if (url.endsWith('/repos/owner/repo/releases') && init?.method === 'POST') {
+        return Response.json({ id: 123 }, { status: 201 })
+      }
+      if (url.startsWith('https://uploads.github.com/')) {
+        return Response.json({ id: 456 }, { status: 201 })
+      }
+      throw new Error(`Unexpected request ${init?.method ?? 'GET'} ${url}`)
+    }
+
+    await publishReleaseDataAssets({
+      releaseId: 'release-a',
+      tag: 'data-release-a',
+      targetSha: 'abc123',
+      makeLatest: false,
+      repository: 'owner/repo',
+      token: 'token',
+      releaseDir: base,
+      readinessMarkdownPath: notesPath,
+      fetchImpl,
+    })
+
+    expect(latestLookupCount).toBe(2)
+    expect(calls.some((call) => call.init?.method === 'PATCH')).toBe(false)
   })
 
   it('clobbers existing GitHub release assets through the REST API', async () => {

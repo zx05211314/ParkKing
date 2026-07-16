@@ -18,7 +18,27 @@ describe('sampleQaCandidateRequest', () => {
       seed: 1,
       strategy: 'ranked',
       hhmm: '13:00',
+      requiredSegmentIds: [],
+      anchorLocation: null,
     })
+  })
+
+  it('keeps a custom anchor in resolved sampling params', () => {
+    expect(
+      resolveSampleQaCandidateParams({
+        districtId: 'beitou',
+        anchorLocation: [121.515, 25.114],
+      }).anchorLocation,
+    ).toEqual([121.515, 25.114])
+  })
+
+  it('keeps required segment ids in resolved sampling params', () => {
+    expect(
+      resolveSampleQaCandidateParams({
+        districtId: 'songshan',
+        requiredSegmentIds: ['candidate-a'],
+      }).requiredSegmentIds,
+    ).toEqual(['candidate-a'])
   })
 
   it('accepts review strategy and custom evaluation time', () => {

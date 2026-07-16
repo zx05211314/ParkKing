@@ -4,6 +4,7 @@ import type { FavoriteAddressRole } from './recentAddresses'
 export const FALLBACK_DATASET_OPTIONS = [
   { id: 'xinyi', label: 'Xinyi' },
   { id: 'daan', label: 'Daan' },
+  { id: 'zhongshan', label: 'Zhongshan' },
 ]
 
 export const FAVORITE_ROLE_LABELS: Record<FavoriteAddressRole, string> = {

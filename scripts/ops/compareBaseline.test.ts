@@ -2,6 +2,45 @@ import { describe, expect, it } from 'vitest'
 import { compareWithBaseline, type BaselineMetrics, type CurrentMetrics } from './compareBaseline'
 
 describe('compareWithBaseline', () => {
+  it('enforces absolute count limits without a baseline', () => {
+    const current: CurrentMetrics = {
+      datasetHash: 'hash-1',
+      schemaVersion: 1,
+      counts: {
+        segments: 1,
+        intersections: 1,
+        inferredCandidates: 1,
+        signOverrides: 1,
+        signOverrideUnmatchedNamedCount: 1,
+      },
+      distributions: { day: {}, night: {} },
+      performance: { day: { evalFirstMs: 1 }, night: { evalFirstMs: 1 } },
+      reasonCodes: {
+        day: { counts: {}, total: 0, coveragePct: 0 },
+        night: { counts: {}, total: 0, coveragePct: 0 },
+      },
+    }
+
+    const warnings = compareWithBaseline(current, null, {
+      counts: {
+        segments: 20,
+        intersections: 20,
+        inferredCandidates: 20,
+        signOverrides: 20,
+        signOverrideUnmatchedNamedCount: 0,
+      },
+      tierDistributionMaxDeltaPct: 30,
+      perfRegressionMaxDeltaPct: 30,
+      maxReasonCodeDeltaPct: 20,
+      maxNewReasonCodePct: 5,
+    })
+
+    expect(warnings.map((warning) => warning.severity)).toContain('FAIL')
+    expect(warnings.map((warning) => warning.metric?.label)).toContain(
+      'signOverrideUnmatchedNamedCount',
+    )
+  })
+
   it('flags count and perf regressions over thresholds', () => {
     const baseline: BaselineMetrics = {
       baselineCreatedAt: '2026-02-02T00:00:00Z',

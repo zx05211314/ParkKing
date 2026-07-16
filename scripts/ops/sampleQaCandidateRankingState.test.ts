@@ -103,4 +103,35 @@ describe('sampleQaCandidateRankingState', () => {
     expect(ranked[0]?.allowedNow).toBe('PARK')
     expect(ranked[0]?.reasonCodes).toContain('RULE_YELLOW_NIGHT_PARK_POSSIBLE')
   })
+
+  it('uses a custom anchor instead of the district boundary center', () => {
+    const segments: Segment[] = [
+      {
+        id: 'shipai',
+        name: 'Shipai',
+        curbMarking: 'YELLOW',
+        confidence: 'HIGH',
+        sourceReliability: 'HIGH',
+        dataFreshnessDays: 0,
+        sourceType: 'CURB',
+        source: 'CURB_MARKED',
+        path: [[121.515, 25.114], [121.5152, 25.1142]],
+      },
+    ]
+
+    const ranked = rankQaCandidateSegments({
+      segments,
+      busStops: emptyPoints(),
+      hydrants: emptyPoints(),
+      intersections: emptyPoints(),
+      crosswalks: emptyCrosswalks(),
+      meta: { boundaryCenter: [121.516, 25.153] },
+      anchorLocation: [121.515, 25.114],
+      riskMode: 'NEUTRAL',
+      radiusMeters: 100,
+    })
+
+    expect(ranked).toHaveLength(1)
+    expect(ranked[0]?.id).toBe('shipai')
+  })
 })

@@ -25,6 +25,7 @@ describe('compareBaselineMetrics', () => {
         intersections: 20,
         inferredCandidates: 20,
         signOverrides: 20,
+        signOverrideUnmatchedNamedCount: 0,
       },
     )
     expect(warnings.map((warning) => warning.code)).toEqual([
@@ -35,6 +36,39 @@ describe('compareBaselineMetrics', () => {
       'segments',
       'signOverrideUnmatchedNamedCount',
     ])
+    expect(warnings[1]).toMatchObject({
+      severity: 'FAIL',
+      threshold: { maximum: 0 },
+    })
+  })
+
+  it('enforces unmatched named overrides as an absolute limit', () => {
+    const warnings = compareCounts(
+      {
+        segments: 100,
+        intersections: 50,
+        inferredCandidates: 20,
+        signOverrides: 10,
+        signOverrideUnmatchedNamedCount: 2,
+      },
+      {
+        segments: 100,
+        intersections: 50,
+        inferredCandidates: 20,
+        signOverrides: 10,
+        signOverrideUnmatchedNamedCount: 2,
+      },
+      {
+        segments: 20,
+        intersections: 20,
+        inferredCandidates: 20,
+        signOverrides: 20,
+        signOverrideUnmatchedNamedCount: 0,
+      },
+    )
+
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0].message).toContain('exceeds maximum 0')
   })
 
   it('flags the worst tier distribution delta beyond the threshold', () => {

@@ -126,6 +126,9 @@ describe('publishReleaseDataFromHandoff', () => {
     const fetchImpl: typeof fetch = async (input, init) => {
       const url = String(input)
       calls.push({ url, init })
+      if (url.endsWith('/repos/owner/repo/releases/latest')) {
+        return new Response('not found', { status: 404 })
+      }
       if (url.endsWith('/repos/owner/repo/releases/tags/data-20260531_abc1234')) {
         return new Response('not found', { status: 404 })
       }

@@ -40,6 +40,8 @@ import { useTripBoardManagementActions } from './ui/useTripBoardManagementAction
 import { useSyncStatus } from './ui/useSyncStatus'
 import { useSyncRecoveryEffects } from './ui/useSyncRecoveryEffects'
 import { useMapFocusState } from './ui/useMapFocusState'
+import { buildParkingCoverageState } from './ui/parkingCoverage'
+import { useRuntimeCoverageCatalog } from './ui/useRuntimeCoverageCatalog'
 import { useInteractionRefs } from './ui/useInteractionRefs'
 import { useAppRefs } from './ui/useAppRefs'
 import { useSavedPlanShareActions } from './ui/useSavedPlanShareActions'
@@ -68,6 +70,9 @@ import {
 } from './ui/segmentActionFilter'
 import { readSharedAppState } from './ui/shareState'
 import { getDataBaseUrl } from './data/datasetResolver'
+import { buildPinnedCoverageBoundary } from './data/coverageDisplay'
+import { findCoverageDistrictByLocation } from './data/coverageCatalog'
+import { usePaidCurbReferenceState } from './ui/usePaidCurbReferenceState'
 import type { RiskMode } from './domain/ranking/policy'
 import {
   getLatestReportsBySegment,
@@ -277,6 +282,10 @@ function App() {
   const dataBaseUrl = getDataBaseUrl()
   const dataSourceLabel = dataBaseUrl ? `Remote (${dataBaseUrl})` : 'Local'
   const {
+    catalog: runtimeCoverageCatalog,
+    status: runtimeCoverageCatalogStatus,
+  } = useRuntimeCoverageCatalog()
+  const {
     mapPrefetchRef,
     geocodeRequestIdRef,
     routeRequestIdRef,
@@ -341,6 +350,34 @@ function App() {
     selectedRouteProfile,
     userLocation,
   })
+  const parkingCoverageState = buildParkingCoverageState({
+    location: searchLocation,
+    districtBounds,
+    districtName,
+    activeDistrictId: datasetId,
+    coverageCatalog: runtimeCoverageCatalog,
+  })
+  const parkingSearchLocation = parkingCoverageState.eligibleLocation
+  const paidCurbCoverageDistrict = useMemo(() => {
+    if (!runtimeCoverageCatalog || !searchLocation) {
+      return null
+    }
+    const district = findCoverageDistrictByLocation(
+      runtimeCoverageCatalog,
+      searchLocation,
+    )
+    return district?.publishStage === 'source-only' && district.referenceData
+      ? district
+      : null
+  }, [runtimeCoverageCatalog, searchLocation])
+  const paidCurbReferenceState = usePaidCurbReferenceState({
+    districtId: paidCurbCoverageDistrict?.districtId ?? null,
+    referenceData: paidCurbCoverageDistrict?.referenceData ?? null,
+  })
+  const pinnedCoverageBoundary = useMemo(
+    () => buildPinnedCoverageBoundary(runtimeCoverageCatalog, searchLocation),
+    [runtimeCoverageCatalog, searchLocation],
+  )
   const {
     currentShareUrl,
     buildShareUrlForState,
@@ -557,7 +594,7 @@ function App() {
     markedSpacesOnly,
     deferredFilterQuery,
     filterQuery,
-    searchLocation,
+    searchLocation: parkingSearchLocation,
     recommendationRankMode,
     routeEtaBySegmentId,
     parkingSpaces,
@@ -566,7 +603,7 @@ function App() {
   })
   const clientParkingAnswer = useClientParkingAnswerState({
     segments,
-    searchLocation,
+    searchLocation: parkingSearchLocation,
     nowHHMM,
     zoneIndex,
     includeInferred,
@@ -576,7 +613,7 @@ function App() {
   })
   const parkingAnswerServiceState = useParkingAnswerServiceState({
     districtId: datasetId,
-    searchLocation,
+    searchLocation: parkingSearchLocation,
     nowHHMM,
     includeInferred,
     riskMode,
@@ -634,7 +671,7 @@ function App() {
       recommendationRankMode,
       routeEtaStatus,
       routeEtaError,
-      searchLocation,
+      searchLocation: parkingSearchLocation,
       searchLocationLabel,
       displaySegments,
   })
@@ -891,6 +928,8 @@ function App() {
     addressQuery,
     datasetId,
     datasetOptions,
+    coverageCatalog: runtimeCoverageCatalog,
+    coverageCatalogStatus: runtimeCoverageCatalogStatus,
     districtBounds,
     datasetMetaFile: 'dataset_meta.json',
     geocodeRequestIdRef,
@@ -1094,6 +1133,13 @@ function App() {
     parkingAnswer,
     parkingAnswerServiceStatus: parkingAnswerServiceState.status,
     parkingAnswerServiceError: parkingAnswerServiceState.error,
+    parkingCoverageNotice: parkingCoverageState.notice,
+    parkingCoverageReferenceState: paidCurbCoverageDistrict
+      ? paidCurbReferenceState
+      : null,
+    parkingCoverageReferenceAddressLabel: paidCurbCoverageDistrict
+      ? searchLocationLabel
+      : null,
     parkingAnswerReport,
     nearbySnapshot,
     bestAddressRecommendation,
@@ -1113,7 +1159,7 @@ function App() {
     routeEtaBySegmentId,
     reportsBySegment,
     navigationOrigin,
-    searchLocation,
+    searchLocation: parkingSearchLocation,
     bestRecommendationIndex,
     alternativeRecommendationOffset,
     onRecommendationRankModeChange: handleRecommendationRankModeChange,
@@ -1238,6 +1284,7 @@ function App() {
     recommendedSegmentIds,
     searchLocation,
     searchLocationLabel,
+    coverageBoundary: pinnedCoverageBoundary,
     selectedCenter,
     selectedArrivalKind,
     selectedArrivalLabel,

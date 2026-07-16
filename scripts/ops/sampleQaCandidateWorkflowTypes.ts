@@ -18,6 +18,7 @@ export interface SampleQaCandidateWorkflowParams {
   riskMode: RiskMode
   radiusMeters: number
   hhmm?: string
+  anchorLocation?: [number, number] | null
 }
 
 export type SampleQaCandidateSegmentParams = Pick<
@@ -36,6 +37,7 @@ export interface SampleQaCandidateRankingParams
     | 'riskMode'
     | 'radiusMeters'
     | 'hhmm'
+    | 'anchorLocation'
   > {
   segments: Segment[]
 }

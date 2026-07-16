@@ -142,6 +142,8 @@ describe('buildQaReviewSummary', () => {
       dataset: {
         baseDir: 'public/data/generated/xinyi',
         datasetHash: 'dataset-hash',
+        datasetSourceHash: 'source-hash',
+        generatorHash: 'generator-hash',
         configHash: 'config-hash',
         generatedAt: '2026-04-20T00:00:00.000Z',
         publishedAt: '2026-04-21T00:00:00.000Z',
@@ -162,6 +164,8 @@ describe('buildQaReviewSummary', () => {
       path: manifestPath,
       districtId: 'xinyi',
       datasetHash: 'dataset-hash',
+      datasetSourceHash: 'source-hash',
+      generatorHash: 'generator-hash',
       configHash: 'config-hash',
       strategy: 'review',
       hhmm: '21:00',

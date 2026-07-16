@@ -53,6 +53,9 @@ const REVIEW_BUCKETS: QaReviewBucket[] = [
 export const getQaReviewBucket = (segment: EvaluatedSegment) =>
   REVIEW_BUCKETS.find((bucket) => bucket.matches(segment))?.id ?? 'ranked_fill'
 
+const normalizeSegmentFamilyId = (value: string) =>
+  value.replace(/-part-\d+$/i, '')
+
 const selectReviewCandidates = (
   segments: EvaluatedSegment[],
   topN: number,
@@ -117,19 +120,64 @@ export const selectQaCandidateRows = (params: {
   shuffle?: boolean
   seed?: number
   strategy?: QaCandidateStrategy
+  requiredSegmentIds?: string[]
 }): QaCandidateRow[] => {
   const ordered = params.shuffle
     ? shuffleDeterministic([...params.segments], params.seed ?? 1)
     : params.segments
-
-  if (params.strategy === 'review') {
-    return selectReviewCandidates(ordered, params.topN).map(
-      ({ segment, reviewBucket }) =>
-        toQaCandidateRow(params.districtId, segment, reviewBucket),
-    )
+  const requiredIds = [...new Set(
+    (params.requiredSegmentIds ?? []).map((value) => value.trim()).filter(Boolean),
+  )]
+  const segmentsById = new Map(params.segments.map((segment) => [segment.id, segment]))
+  const requiredFamilies = requiredIds.map((id) => {
+    const exact = segmentsById.get(id)
+    if (exact) {
+      return [exact]
+    }
+    return params.segments
+      .filter((segment) => normalizeSegmentFamilyId(segment.id) === id)
+      .sort((left, right) => left.id.localeCompare(right.id))
+  })
+  const missingIds = requiredIds.filter((_id, index) => requiredFamilies[index]?.length === 0)
+  if (missingIds.length > 0) {
+    throw new Error(`Required segments not found: ${missingIds.join(', ')}`)
   }
 
-  return ordered
-    .slice(0, params.topN)
-    .map((segment) => toQaCandidateRow(params.districtId, segment, 'ranked'))
+  const seenRequiredIds = new Set<string>()
+  const requiredSegments = requiredFamilies.flat().filter((segment) => {
+    if (seenRequiredIds.has(segment.id)) {
+      return false
+    }
+    seenRequiredIds.add(segment.id)
+    return true
+  })
+  if (requiredSegments.length > params.topN) {
+    throw new Error(
+      `Required segment expansion ${requiredSegments.length} exceeds topN ${params.topN}`,
+    )
+  }
+  const requiredIdSet = new Set(requiredSegments.map((segment) => segment.id))
+  const remaining = ordered.filter((segment) => !requiredIdSet.has(segment.id))
+  const remainingCount = params.topN - requiredSegments.length
+
+  const requiredRows = requiredSegments.map((segment) =>
+    toQaCandidateRow(
+      params.districtId,
+      segment,
+      params.strategy === 'review' ? getQaReviewBucket(segment) : 'ranked',
+    ),
+  )
+
+  if (params.strategy === 'review') {
+    return requiredRows.concat(selectReviewCandidates(remaining, remainingCount).map(
+      ({ segment, reviewBucket }) =>
+        toQaCandidateRow(params.districtId, segment, reviewBucket),
+    ))
+  }
+
+  return requiredRows.concat(
+    remaining
+      .slice(0, remainingCount)
+      .map((segment) => toQaCandidateRow(params.districtId, segment, 'ranked')),
+  )
 }

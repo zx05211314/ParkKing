@@ -5,8 +5,46 @@ import { describe, expect, it } from 'vitest'
 import {
   buildAnswerCasesFromReviewRows,
   parseWriteAnswerCasesArgs,
+  validateAnswerCaseCoverage,
   writeAnswerCases,
 } from './writeAnswerCases'
+import type {
+  CoveragePublishStage,
+  RuntimeCoverageCatalog,
+  RuntimeCoverageDistrict,
+} from '../../src/data/coverageCatalog'
+
+const buildRectDistrict = (params: {
+  districtId: string
+  bbox: RuntimeCoverageDistrict['boundaryBBox']
+  publishStage?: CoveragePublishStage
+}): RuntimeCoverageDistrict => {
+  const [west, south, east, north] = params.bbox
+  return {
+    regionId: 'taipei',
+    regionName: 'Taipei City',
+    districtId: params.districtId,
+    districtName: params.districtId,
+    boundaryFeatureId: params.districtId,
+    publishStage: params.publishStage ?? 'production',
+    answerCapability: 'full-rule-pipeline',
+    requiresHumanReview: params.publishStage === 'candidate',
+    aliases: [],
+    boundaryBBox: params.bbox,
+    boundaryGeometry: {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [west, south],
+          [east, south],
+          [east, north],
+          [west, north],
+          [west, south],
+        ],
+      ],
+    },
+  }
+}
 
 describe('writeAnswerCases', () => {
   it('parses CLI options', () => {
@@ -26,6 +64,8 @@ describe('writeAnswerCases', () => {
         '21:00',
         '--radius',
         '25',
+        '--coverage-catalog',
+        '.tmp/coverage.json',
         '--no-validate',
       ]),
     ).toEqual({
@@ -35,6 +75,7 @@ describe('writeAnswerCases', () => {
       districtId: 'xinyi',
       hhmm: '21:00',
       searchRadiusMeters: 25,
+      coverageCatalogPath: '.tmp/coverage.json',
       validate: false,
     })
   })
@@ -102,11 +143,46 @@ describe('writeAnswerCases', () => {
     })
   })
 
+  it('rejects reviewed cases outside their runtime district boundary', () => {
+    const catalog: RuntimeCoverageCatalog = {
+      schemaVersion: 1,
+      districts: [
+        buildRectDistrict({
+          districtId: 'zhongshan',
+          bbox: [121.5, 25.05, 121.54, 25.09],
+        }),
+        buildRectDistrict({
+          districtId: 'songshan',
+          bbox: [121.54, 25.05, 121.58, 25.09],
+          publishStage: 'candidate',
+        }),
+      ],
+    }
+
+    expect(
+      validateAnswerCaseCoverage({
+        districtId: 'zhongshan',
+        catalog,
+        cases: [
+          {
+            id: 'zhongshan-cross-boundary',
+            lng: 121.56,
+            lat: 25.07,
+            expectedKind: 'PARK',
+          },
+        ],
+      }),
+    ).toEqual([
+      'Answer case zhongshan-cross-boundary is outside zhongshan runtime coverage; location matches songshan.',
+    ])
+  })
+
   it('writes a source-controlled answer case file from a review CSV', async () => {
     const base = await fs.mkdtemp(path.join(os.tmpdir(), 'write-answer-cases-'))
     const datasetDir = path.join(base, 'dataset')
     const inputPath = path.join(base, 'review.csv')
     const outPath = path.join(base, 'xinyi.answer-cases.json')
+    const coverageCatalogPath = path.join(base, 'coverage.json')
     await fs.mkdir(datasetDir, { recursive: true })
     await fs.writeFile(
       path.join(datasetDir, 'dataset_meta.json'),
@@ -121,12 +197,26 @@ describe('writeAnswerCases', () => {
       ].join('\n'),
       'utf-8',
     )
+    await fs.writeFile(
+      coverageCatalogPath,
+      JSON.stringify({
+        schemaVersion: 1,
+        districts: [
+          buildRectDistrict({
+            districtId: 'xinyi',
+            bbox: [121.5, 25, 121.6, 25.1],
+          }),
+        ],
+      }),
+      'utf-8',
+    )
 
     const result = await writeAnswerCases({
       inputPath,
       datasetDir,
       outPath,
       districtId: 'xinyi',
+      coverageCatalogPath,
       validate: false,
     })
     const output = JSON.parse(await fs.readFile(outPath, 'utf-8')) as {

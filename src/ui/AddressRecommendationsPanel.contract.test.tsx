@@ -39,6 +39,7 @@ const baseProps: AddressRecommendationsPanelProps = {
     'Local feedback is adjusting 2 nearby options.',
   parkingAnswerServiceStatus: 'ready',
   parkingAnswerServiceError: null,
+  parkingCoverageNotice: null,
   parkingAnswer: {
     kind: 'PARK',
     label: 'Parking is allowed at the nearest mapped curb for this time.',
@@ -348,6 +349,59 @@ describe('AddressRecommendationsPanel contract', () => {
 
     expect(html).toContain('Exact answer unavailable')
     expect(html).toContain('Service: Parking answer request failed with 500.')
+  })
+
+  it('blocks cross-district answers and recommendations outside active coverage', () => {
+    const html = renderToStaticMarkup(
+      <AddressRecommendationsPanel
+        {...baseProps}
+        parkingCoverageNotice="This location is outside the active Xinyi dataset. ParkKing did not calculate a parking legality answer here."
+      />,
+    )
+
+    expect(html).toContain('Outside active coverage')
+    expect(html).toContain('NOT EVALUATED')
+    expect(html).toContain(
+      'No parking recommendation was calculated from another district',
+    )
+    expect(html).toContain('Parking recommendations are hidden')
+    expect(html).not.toContain('Park allowed at nearest mapped curb')
+  })
+
+  it('shows non-spatial Taoyuan source text without restoring recommendations', () => {
+    const html = renderToStaticMarkup(
+      <AddressRecommendationsPanel
+        {...baseProps}
+        parkingCoverageNotice="This location is in Taoyuan source-only coverage. No parking legality answer was calculated."
+        parkingCoverageReferenceAddressLabel="桃園市桃園區縣府路1號"
+        parkingCoverageReferenceState={{
+          status: 'ready',
+          sourceUrl: '/data/reference/taoyuan-paid-curb.json',
+          error: null,
+          district: {
+            districtId: 'taoyuan-district',
+            districtName: 'Taoyuan',
+            boundaryFeatureId: '68000010',
+            recordCount: 1,
+            records: [
+              {
+                parkingSegmentId: '169',
+                description: '縣府路園區',
+                fareDescription: '20元/30分鐘',
+                hasChargingPoint: false,
+                sourceTownName: '桃園區',
+              },
+            ],
+          },
+        }}
+      />,
+    )
+
+    expect(html).toContain('Official paid-curb source text')
+    expect(html).toContain('縣府路園區')
+    expect(html).toContain('not spatial matches')
+    expect(html).toContain('Parking recommendations are hidden')
+    expect(html).not.toContain('Park allowed at nearest mapped curb')
   })
 
   it('renders a direct no-stop decision for blocked pinned curbs', () => {

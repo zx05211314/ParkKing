@@ -9,6 +9,7 @@ import type { ResolvedConfig } from './readConfig'
 import {
   assertCoordRanges,
   bboxFromGeometry,
+  validateCandidateBoundaryOwnership,
   validateCollection,
   type BBox,
 } from './validateOutputCollections'
@@ -142,6 +143,14 @@ export const validateOutputDatasets = async (params: {
       dataset.minCount,
       errors,
     )
+    if (
+      dataset.label === 'candidates_inferred' &&
+      boundaryFeature?.geometry &&
+      (boundaryFeature.geometry.type === 'Polygon' ||
+        boundaryFeature.geometry.type === 'MultiPolygon')
+    ) {
+      validateCandidateBoundaryOwnership(collection, boundaryFeature, errors)
+    }
   }
 
   return { boundaryBBox }

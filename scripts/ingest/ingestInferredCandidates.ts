@@ -1,5 +1,19 @@
-import { featureCollection, lineOffset, lineString } from '@turf/turf'
-import type { Feature, Geometry, LineString, MultiLineString } from 'geojson'
+import {
+  booleanPointInPolygon,
+  featureCollection,
+  lineOffset,
+  lineString,
+  point,
+} from '@turf/turf'
+import type {
+  Feature,
+  FeatureCollection,
+  Geometry,
+  LineString,
+  MultiLineString,
+  MultiPolygon,
+  Polygon,
+} from 'geojson'
 import { fileURLToPath } from 'node:url'
 import { readConfig, type ResolvedConfig } from './readConfig'
 import {
@@ -11,9 +25,35 @@ import {
   pickCandidateProperties,
   shouldIncludeRoadClass,
 } from './ingestCandidateClassification'
-import { extractLines, midpointForLine } from './ingestCandidateGeometry'
+import {
+  centerFromLineGeometry,
+  extractLines,
+  midpointForLine,
+} from './ingestCandidateGeometry'
 import { countNearbyZonePoints, loadZonePoints } from './ingestCandidateZones'
 import { filterToBoundary, loadBoundary, readDataset, writeGeoJson } from './utils'
+
+export const filterCandidatesToBoundaryOwnership = (
+  collection: FeatureCollection<LineString | MultiLineString>,
+  boundary: Feature<Polygon | MultiPolygon>,
+) => {
+  const intersecting = filterToBoundary(collection, boundary)
+  return featureCollection(
+    intersecting.features.filter((feature) => {
+      if (
+        !feature.geometry ||
+        (feature.geometry.type !== 'LineString' &&
+          feature.geometry.type !== 'MultiLineString')
+      ) {
+        return false
+      }
+      const center = centerFromLineGeometry(feature.geometry)
+      return center
+        ? booleanPointInPolygon(point(center), boundary)
+        : false
+    }) as Array<Feature<LineString | MultiLineString>>,
+  )
+}
 
 export const ingestInferredCandidates = async (config: ResolvedConfig) => {
   if (config.inputs.candidates_inferred) {
@@ -32,7 +72,10 @@ export const ingestInferredCandidates = async (config: ResolvedConfig) => {
       }
     })
     const boundary = await loadBoundary(config)
-    const filtered = filterToBoundary(collection, boundary)
+    const filtered = filterCandidatesToBoundaryOwnership(
+      collection as FeatureCollection<LineString | MultiLineString>,
+      boundary,
+    )
     const reduced = filtered.features.map((feature) => ({
       ...feature,
       properties: pickCandidateProperties(feature.properties ?? null),
@@ -42,7 +85,10 @@ export const ingestInferredCandidates = async (config: ResolvedConfig) => {
       'candidates_inferred.geojson',
       featureCollection(reduced),
     )
-    console.log('Copied candidates_inferred.geojson')
+    console.log(
+      `Copied candidates_inferred.geojson (${filtered.features.length} retained, ` +
+        `${collection.features.length - filtered.features.length} outside district ownership removed)`,
+    )
     return
   }
 
@@ -140,7 +186,10 @@ export const ingestInferredCandidates = async (config: ResolvedConfig) => {
     })
   })
 
-  const filtered = filterToBoundary(featureCollection(candidates), boundary)
+  const filtered = filterCandidatesToBoundaryOwnership(
+    featureCollection(candidates),
+    boundary,
+  )
   const reduced = filtered.features.map((feature) => ({
     ...feature,
     properties: pickCandidateProperties(feature.properties ?? null),
@@ -151,7 +200,10 @@ export const ingestInferredCandidates = async (config: ResolvedConfig) => {
     'candidates_inferred.geojson',
     featureCollection(reduced),
   )
-  console.log('Generated candidates_inferred.geojson')
+  console.log(
+    `Generated candidates_inferred.geojson (${filtered.features.length} retained, ` +
+      `${candidates.length - filtered.features.length} outside district ownership removed)`,
+  )
 }
 
 const run = async () => {

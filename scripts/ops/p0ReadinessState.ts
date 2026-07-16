@@ -203,6 +203,8 @@ const getSourceFiles = (record: Record<string, unknown>) => {
       path: getString(entry, 'path') ?? '',
       mtimeMs: getNumber(entry, 'mtimeMs') ?? 0,
       size: getNumber(entry, 'size') ?? 0,
+      sourceKey: getString(entry, 'sourceKey') ?? undefined,
+      contentHash: getString(entry, 'contentHash') ?? undefined,
     }))
     .filter((entry) => entry.path)
 }
@@ -227,6 +229,8 @@ const buildReviewPackProvenanceWarnings = async (
   const districtId = getString(meta, 'districtId')
   const configHash = getString(meta, 'configHash')
   const datasetHash = getString(meta, 'datasetHash')
+  const datasetSourceHash = getString(meta, 'datasetSourceHash')
+  const generatorHash = getString(meta, 'generatorHash')
   if (manifest.districtId && districtId && manifest.districtId !== districtId) {
     warnings.push(
       `Review manifest district ${manifest.districtId} does not match runtime pack district ${districtId}.`,
@@ -240,6 +244,20 @@ const buildReviewPackProvenanceWarnings = async (
   if (manifest.datasetHash && datasetHash && manifest.datasetHash !== datasetHash) {
     warnings.push(
       `Review manifest dataset hash ${manifest.datasetHash} does not match runtime pack dataset hash ${datasetHash}.`,
+    )
+  }
+  if (
+    manifest.datasetSourceHash &&
+    datasetSourceHash &&
+    manifest.datasetSourceHash !== datasetSourceHash
+  ) {
+    warnings.push(
+      `Review manifest source hash ${manifest.datasetSourceHash} does not match runtime pack source hash ${datasetSourceHash}.`,
+    )
+  }
+  if (manifest.generatorHash && generatorHash && manifest.generatorHash !== generatorHash) {
+    warnings.push(
+      `Review manifest generator hash ${manifest.generatorHash} does not match runtime pack generator hash ${generatorHash}.`,
     )
   }
   return warnings
@@ -278,6 +296,8 @@ const buildReviewConfigDriftWarnings = async (
           districtId: getString(meta, 'districtId'),
           configHash: getString(meta, 'configHash'),
           datasetHash: getString(meta, 'datasetHash'),
+          datasetSourceHash: getString(meta, 'datasetSourceHash'),
+          generatorHash: getString(meta, 'generatorHash'),
           sourceFiles: getSourceFiles(meta),
           signOverrideMatchToleranceMeters: getNumber(
             meta,

@@ -13,7 +13,16 @@ import {
 describe('ingestCoordinateTransforms', () => {
   it('detects CRS from PRJ text and falls back cleanly', () => {
     expect(detectCrsFromPrj('GEOGCS["WGS_1984"]', EPSG_3826)).toBe(EPSG_4326)
+    expect(detectCrsFromPrj('GEOGCS["GCS_TWD97[2020]",DATUM["D_TWD_1997"]]', EPSG_3826)).toBe(
+      EPSG_4326,
+    )
     expect(detectCrsFromPrj('PROJCS["TWD97 / TM2 zone 121"]', EPSG_4326)).toBe(EPSG_3826)
+    expect(
+      detectCrsFromPrj(
+        'PROJCS["TWD97 / TM2 zone 121",GEOGCS["TWD97",DATUM["D_TWD_1997"]]]',
+        EPSG_4326,
+      ),
+    ).toBe(EPSG_3826)
     expect(detectCrsFromPrj(null, EPSG_4326)).toBe(EPSG_4326)
   })
 

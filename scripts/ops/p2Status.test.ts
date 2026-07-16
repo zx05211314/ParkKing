@@ -277,44 +277,44 @@ describe('p2Status', () => {
     expect(markdown).not.toContain('Daan/Zhongshan reviewer CSVs')
   })
 
-  it('recommends Songshan candidate shortcuts for the mixed candidate scope', async () => {
-    const songshanInputs = {
+  it('recommends generic candidate advance shortcuts for a mixed candidate scope', async () => {
+    const candidateInputs = {
       ...readiness().inputs,
       currentDistrictId: 'xinyi',
-      expansionDistrictIds: ['songshan'],
-      configGlob: 'configs/prod/xinyi.json,configs/expansion/songshan.json',
+      expansionDistrictIds: ['nangang'],
+      configGlob: 'configs/prod/xinyi.json,configs/expansion/nangang.json',
       configRoot: 'configs/expansion',
       skipP1: true,
     }
-    const songshanDistricts = [expansionDistrict('songshan', 'fill-human-review')]
+    const candidateDistricts = [expansionDistrict('nangang', 'fill-human-review')]
     const result = await runP2Status(
       {
         currentDistrictId: 'xinyi',
-        expansionDistrictIds: ['songshan'],
-        configGlob: 'configs/prod/xinyi.json,configs/expansion/songshan.json',
+        expansionDistrictIds: ['nangang'],
+        configGlob: 'configs/prod/xinyi.json,configs/expansion/nangang.json',
         configRoot: 'configs/expansion',
         skipP1: true,
       },
       runners({
         loose: readiness({
-          inputs: songshanInputs,
+          inputs: candidateInputs,
           p1Release: null,
-          expansionDistricts: songshanDistricts,
+          expansionDistricts: candidateDistricts,
         }),
         strict: readiness({
           pass: false,
           status: 'BLOCKED',
           inputs: {
-            ...songshanInputs,
+            ...candidateInputs,
             requireReadyToFinalize: true,
           },
           p1Release: null,
-          expansionDistricts: songshanDistricts,
-          blockers: ['expansion districts not ready to finalize: songshan'],
+          expansionDistricts: candidateDistricts,
+          blockers: ['expansion districts not ready to finalize: nangang'],
         }),
         gate: reviewGate({
-          selectedDistricts: ['songshan'],
-          errors: ['Require-ready-to-finalize failed; not ready for finalize: songshan'],
+          selectedDistricts: ['nangang'],
+          errors: ['Require-ready-to-finalize failed; not ready for finalize: nangang'],
         }),
       }),
     )
@@ -322,12 +322,14 @@ describe('p2Status', () => {
     const markdown = renderP2Status(result)
     const nextCommands = nextCommandsSection(markdown)
     expect(markdown).toContain(
-      'songshan: none found; run `npm run ops:p2-songshan-human-review-handoff`',
+      'nangang: none found; run `npm run ops:p2-candidate-advance -- --district nangang`',
     )
-    expect(nextCommands).toContain('npm run ops:p2-songshan-human-review-handoff')
-    expect(nextCommands).toContain('npm run ops:p2-songshan-review-diagnostics')
-    expect(nextCommands).toContain('npm run ops:p2-songshan-review-intake')
-    expect(nextCommands).toContain('npm run ops:p2-songshan-review-gate')
+    expect(nextCommands).toContain(
+      'npm run ops:p2-candidate-advance -- --district nangang',
+    )
+    expect(nextCommands).toContain(
+      'npm run ops:p2-candidate-advance:execute -- --district nangang',
+    )
     expect(nextCommands).not.toContain('npm run ops:p0-advance-reviews --')
   })
 
@@ -600,10 +602,10 @@ describe('p2Status', () => {
     expect(result.status).toBe('EXPANSION_READY')
     expect(result.finalizedDistricts).toEqual([])
     expect(markdown).toContain(
-      'npm run ops:p2-songshan-promote',
+      'npm run ops:p2-candidate-advance -- --district songshan',
     )
     expect(markdown).toContain(
-      'npm run ops:p2-songshan-promote:execute',
+      'npm run ops:p2-candidate-advance:execute -- --district songshan',
     )
     expect(markdown).not.toContain(
       'npm run ops:p2-promote-expansion -- --district songshan',

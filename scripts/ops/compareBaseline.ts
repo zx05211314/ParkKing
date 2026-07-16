@@ -1,4 +1,5 @@
 import {
+  compareCountLimits,
   compareCounts,
   compareDistributions,
   comparePerformance,
@@ -21,7 +22,10 @@ export const compareWithBaseline = (
 ): Warning[] => {
   const warnings = buildBaselineComparisonPrelude(current, baseline)
   if (!baseline) {
-    return warnings
+    return [
+      ...warnings,
+      ...compareCountLimits(current.counts, null, thresholds.counts),
+    ]
   }
 
   return [

@@ -105,9 +105,7 @@ const DEFAULT_PUBLISH_GATE_SUMMARY_PATH = path.join(
 )
 const DEFAULT_REVIEW_ROOT = '.tmp'
 const DEFAULT_TIMEOUT_MS = 25_000
-const SONGSHAN_CANDIDATE_CONFIG_GLOB =
-  'configs/prod/xinyi.json,configs/expansion/songshan.json'
-const SONGSHAN_CANDIDATE_CONFIG_ROOT = 'configs/expansion'
+const DEFAULT_CANDIDATE_CONFIG_ROOT = 'configs/expansion'
 
 const defaultRunners: P2StatusRunners = {
   runP2ExpansionReadiness,
@@ -444,19 +442,38 @@ const matchesDefaultP2ShortcutScope = (inputs: P2StatusInputs) =>
     (districtId, index) => districtId === DEFAULT_EXPANSION_DISTRICTS[index],
   )
 
-const matchesSongshanP2ShortcutScope = (inputs: P2StatusInputs) =>
-  inputs.currentDistrictId === DEFAULT_CURRENT_DISTRICT &&
-  inputs.root === DEFAULT_ROOT &&
-  inputs.dryRunRoot === DEFAULT_DRY_RUN_ROOT &&
-  inputs.registryPath === DEFAULT_REGISTRY_PATH &&
-  inputs.configGlob === SONGSHAN_CANDIDATE_CONFIG_GLOB &&
-  inputs.configRoot === SONGSHAN_CANDIDATE_CONFIG_ROOT &&
-  inputs.reviewRoot === DEFAULT_REVIEW_ROOT &&
-  inputs.publishGateSummaryPath === DEFAULT_PUBLISH_GATE_SUMMARY_PATH &&
-  inputs.timeoutMs === DEFAULT_TIMEOUT_MS &&
-  inputs.skipP1 &&
-  inputs.expansionDistrictIds.length === 1 &&
-  inputs.expansionDistrictIds[0] === 'songshan'
+const candidateShortcutDistrict = (inputs: P2StatusInputs) => {
+  const districtId = inputs.expansionDistrictIds[0]
+  if (!districtId) {
+    return null
+  }
+  const normalizePath = (value: string) => value.replace(/\\/gu, '/')
+  const expectedConfigGlob = [
+    `configs/prod/${inputs.currentDistrictId}.json`,
+    `${DEFAULT_CANDIDATE_CONFIG_ROOT}/${districtId}.json`,
+  ].join(',')
+  return inputs.currentDistrictId === DEFAULT_CURRENT_DISTRICT &&
+    inputs.root === DEFAULT_ROOT &&
+    inputs.dryRunRoot === DEFAULT_DRY_RUN_ROOT &&
+    normalizePath(inputs.registryPath) === normalizePath(DEFAULT_REGISTRY_PATH) &&
+    normalizePath(inputs.configGlob) === expectedConfigGlob &&
+    normalizePath(inputs.configRoot) === DEFAULT_CANDIDATE_CONFIG_ROOT &&
+    inputs.reviewRoot === DEFAULT_REVIEW_ROOT &&
+    inputs.publishGateSummaryPath !== null &&
+    normalizePath(inputs.publishGateSummaryPath) ===
+      normalizePath(DEFAULT_PUBLISH_GATE_SUMMARY_PATH) &&
+    inputs.timeoutMs === DEFAULT_TIMEOUT_MS &&
+    inputs.skipP1 &&
+    inputs.expansionDistrictIds.length === 1
+    ? districtId
+    : null
+}
+
+const candidateAdvanceCommand = (
+  districtId: string,
+  execute = false,
+) =>
+  `npm run ops:p2-candidate-advance${execute ? ':execute' : ''} -- --district ${quoteCommandArg(districtId)}`
 
 const publishGateCommandArgs = (inputs: P2StatusInputs) =>
   inputs.publishGateSummaryPath === null
@@ -534,10 +551,10 @@ const publishReviewedExpansionCommands = (result: P2StatusResult) => {
   return districts.flatMap((districtId) => [
     ...(result.inputs.configRoot === DEFAULT_CONFIG_ROOT
       ? []
-      : matchesSongshanP2ShortcutScope(result.inputs) && districtId === 'songshan'
+      : candidateShortcutDistrict(result.inputs) === districtId
         ? [
-            '- npm run ops:p2-songshan-promote',
-            '- npm run ops:p2-songshan-promote:execute',
+            `- ${candidateAdvanceCommand(districtId)}`,
+            `- ${candidateAdvanceCommand(districtId, true)}`,
           ]
         : [
             `- npm run ops:p2-promote-expansion -- --district ${quoteCommandArg(districtId)}`,
@@ -558,15 +575,16 @@ const nextCommandLines = (result: P2StatusResult) => {
   }
   if (result.readyFinalizeDistricts.length > 0 || result.readyToFinalize) {
     const finalizeCommands = finalizeCommandLines(result)
-    if (matchesSongshanP2ShortcutScope(result.inputs)) {
+    const candidateDistrictId = candidateShortcutDistrict(result.inputs)
+    if (candidateDistrictId) {
       return [
-        '- npm run ops:p2-songshan-finalize-ready',
+        `- ${candidateAdvanceCommand(candidateDistrictId)}`,
         ...(finalizeCommands.length > 0
           ? finalizeCommands
           : [
-              '- Review the `ops:p2-songshan-finalize-ready` report for district finalize commands.',
+              '- Review the candidate advance report for district finalize commands.',
             ]),
-        '- npm run ops:p2-songshan-finalize-ready:execute',
+        `- ${candidateAdvanceCommand(candidateDistrictId, true)}`,
         `- ${p2StrictReadinessCommand(result)}`,
       ]
     }
@@ -614,13 +632,12 @@ const nextCommandLines = (result: P2StatusResult) => {
       '- npm run ops:p2-expansion-readiness:strict',
     ]
   }
-  if (matchesSongshanP2ShortcutScope(result.inputs)) {
+  const candidateDistrictId = candidateShortcutDistrict(result.inputs)
+  if (candidateDistrictId) {
     return [
-      '- npm run ops:p2-songshan-human-review-handoff',
-      '- npm run ops:p2-songshan-review-diagnostics',
+      `- ${candidateAdvanceCommand(candidateDistrictId)}`,
       `- Fill reviewStatus/reviewNote/createdAt in returned ${formatList(result.pendingHumanReviewDistricts)} reviewer CSVs.`,
-      '- npm run ops:p2-songshan-review-intake',
-      '- npm run ops:p2-songshan-review-gate',
+      `- ${candidateAdvanceCommand(candidateDistrictId, true)}`,
     ]
   }
   if (!matchesDefaultP2ShortcutScope(result.inputs)) {
@@ -678,8 +695,9 @@ const humanReviewHandoffCommand = (result: P2StatusResult) => {
   if (matchesDefaultP2ShortcutScope(result.inputs)) {
     return 'npm run ops:p2-human-review-handoff'
   }
-  if (matchesSongshanP2ShortcutScope(result.inputs)) {
-    return 'npm run ops:p2-songshan-human-review-handoff'
+  const candidateDistrictId = candidateShortcutDistrict(result.inputs)
+  if (candidateDistrictId) {
+    return candidateAdvanceCommand(candidateDistrictId)
   }
   return p0AdvanceCommand(result, [
     '--out',

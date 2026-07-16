@@ -11,10 +11,12 @@ import type {
 } from 'geojson'
 import type { EvaluatedSegment } from '../ui/types'
 import type { Zone } from '../domain/zones/zoneTypes'
+import type { PinnedCoverageBoundary } from '../data/coverageDisplay'
 import { expandBounds, type MapBounds } from './bounds'
 import type { RouteProfile } from './routing'
 import { createBasemapStyle } from './style'
 import { initializeMapViewContent } from './mapViewSetup'
+import { shouldApplyDatasetMapFocus } from './mapFocusPriority'
 
 interface SelectedParkingSpaceMarker {
   key: string
@@ -30,6 +32,11 @@ interface RecommendedParkingTargetMarker {
   anchor: [number, number]
   shortLabel: string
   active: boolean
+}
+
+const EMPTY_COVERAGE_BOUNDARY_DATA: FeatureCollection<Polygon | MultiPolygon> = {
+  type: 'FeatureCollection',
+  features: [],
 }
 
 export interface MapViewProps {
@@ -54,6 +61,7 @@ export interface MapViewProps {
   recommendedSegmentIds?: string[]
   searchLocation?: [number, number] | null
   searchLocationLabel?: string | null
+  coverageBoundary?: PinnedCoverageBoundary | null
   arrivalLocation?: [number, number] | null
   arrivalLocationKind?: 'SEGMENT' | 'PARKING_SPACE' | null
   arrivalLocationLabel?: string | null
@@ -232,6 +240,7 @@ export const MapView = ({
   recommendedSegmentIds = [],
   searchLocation = null,
   searchLocationLabel = null,
+  coverageBoundary = null,
   arrivalLocation = null,
   arrivalLocationKind = null,
   arrivalLocationLabel = null,
@@ -261,6 +270,11 @@ export const MapView = ({
   const lastDistrictBoundsKeyRef = useRef<string | null>(null)
   const lastFocusBoundsKeyRef = useRef<string | null>(null)
   const lastFocusCenterKeyRef = useRef<string | null>(null)
+  const coverageBoundaryDataRef = useRef(
+    coverageBoundary?.data ?? EMPTY_COVERAGE_BOUNDARY_DATA,
+  )
+  coverageBoundaryDataRef.current =
+    coverageBoundary?.data ?? EMPTY_COVERAGE_BOUNDARY_DATA
   const basemapStyle = useMemo(() => createBasemapStyle(), [])
 
   useEffect(() => {
@@ -365,6 +379,7 @@ export const MapView = ({
     map.on('load', () => {
       initializeMapViewContent(map, {
         zonesData,
+        coverageBoundaryData: coverageBoundaryDataRef.current,
         intersectionZonesData,
         crosswalkZonesData,
         parkingSpacesData,
@@ -396,12 +411,16 @@ export const MapView = ({
       map.remove()
       mapRef.current = null
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- map instance is initialized once; follow-up effects update layer data.
-  }, [basemapStyle, center])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- center changes are handled by the focus-aware effect below without recreating the map.
+  }, [basemapStyle])
 
   useEffect(() => {
     const map = mapRef.current
     if (!map) {
+      return
+    }
+
+    if (!shouldApplyDatasetMapFocus({ focusBoundsKey, focusCenterKey })) {
       return
     }
 
@@ -410,7 +429,7 @@ export const MapView = ({
       duration: 600,
       essential: true,
     })
-  }, [center])
+  }, [center, focusBoundsKey, focusCenterKey])
 
   useEffect(() => {
     const map = mapRef.current
@@ -423,7 +442,7 @@ export const MapView = ({
       return
     }
 
-    if (focusBoundsKey || focusCenterKey) {
+    if (!shouldApplyDatasetMapFocus({ focusBoundsKey, focusCenterKey })) {
       return
     }
 
@@ -498,6 +517,18 @@ export const MapView = ({
       map.setFilter('segments-highlight', ['==', ['get', 'id'], selectedId ?? ''])
     }
   }, [segmentsData, selectedId])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) {
+      return
+    }
+
+    const source = map.getSource('coverage-boundary') as GeoJSONSource | undefined
+    if (source) {
+      source.setData(coverageBoundaryDataRef.current)
+    }
+  }, [coverageBoundary])
 
   useEffect(() => {
     const map = mapRef.current
@@ -759,9 +790,23 @@ export const MapView = ({
       data-parking-space-count={parkingSpaces.features.length}
       data-segment-count={segments.length}
       data-zone-count={zones.length}
+      data-coverage-district={coverageBoundary?.districtId ?? undefined}
+      data-coverage-stage={coverageBoundary?.publishStage ?? undefined}
     >
       <div ref={mapContainer} className="map-root" />
       <div className="map-overlay-controls">
+        {coverageBoundary ? (
+          <div
+            className={`map-coverage-status ${coverageBoundary.publishStage}`}
+            aria-label={`${coverageBoundary.districtName} coverage boundary: ${coverageBoundary.stageLabel}`}
+          >
+            <span className="map-coverage-status-dot" aria-hidden="true" />
+            <span>
+              <strong>{coverageBoundary.districtName}</strong> boundary -{' '}
+              {coverageBoundary.stageLabel}
+            </span>
+          </div>
+        ) : null}
         <div className="map-click-hint">Click map to check parking here</div>
         <button
           type="button"

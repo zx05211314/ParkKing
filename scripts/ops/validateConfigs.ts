@@ -8,9 +8,14 @@ import { normalizeConfigPath } from './validateConfigPaths'
 import type { ConfigIssue, ValidateOptions } from './validateConfigTypes'
 import { validateConfigIssue } from './validateConfigValidation'
 
-const isDistrictConfigPath = (filePath: string) =>
-  !path.basename(filePath).toLowerCase().startsWith('sources.') &&
-  !path.basename(filePath).toLowerCase().endsWith('.answer-cases.json')
+const isDistrictConfigPath = (filePath: string) => {
+  const fileName = path.basename(filePath).toLowerCase()
+  return (
+    !fileName.startsWith('sources.') &&
+    !fileName.startsWith('coverage.') &&
+    !fileName.endsWith('.answer-cases.json')
+  )
+}
 
 export const validateConfigs = async (options: ValidateOptions = {}) => {
   const discoveredFiles = options.configsGlob

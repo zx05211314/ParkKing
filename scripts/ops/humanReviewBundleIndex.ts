@@ -76,12 +76,31 @@ export interface HumanReviewBundleIndexResult {
   reviewRoot: string
   publishGateSummaryPath: string | null
   entries: HumanReviewBundleEntry[]
+  specializedEntries?: SpecializedHumanReviewBundleEntry[]
   finalizeReadyCount: number
   notReadyForFinalize: string[]
   warnings: string[]
   errors: string[]
   hasWarnings: boolean
   hasErrors: boolean
+}
+
+export interface SpecializedHumanReviewBundleEntry {
+  bundleId: string
+  bundleDir: string
+  districtId: string
+  contract: 'source-text'
+  status: 'approved' | 'pending' | 'needs-resolution' | 'invalid' | 'unknown'
+  reviewPath: string
+  manifestPath: string
+  statusPath: string
+  expectedRows: number | null
+  actualRows: number | null
+  pendingRows: number | null
+  statusCommand: string
+  gateCommand: string
+  warnings: string[]
+  errors: string[]
 }
 
 const getArgValue = (argv: string[], ...flags: string[]) => {
@@ -186,6 +205,19 @@ const getRecordString = (record: Record<string, unknown>, key: string) => {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 }
 
+const getRecordNumber = (record: Record<string, unknown>, key: string) => {
+  const value = record[key]
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+const getRecordBoolean = (record: Record<string, unknown>, key: string) => {
+  const value = record[key]
+  return typeof value === 'boolean' ? value : null
+}
+
+const readJsonRecord = async (targetPath: string) =>
+  toRecord(JSON.parse(await fs.readFile(targetPath, 'utf-8')) as unknown)
+
 const readSourceManifestMeta = async (manifestPath: string) => {
   try {
     const raw = await fs.readFile(manifestPath, 'utf-8')
@@ -248,6 +280,165 @@ const expectedFiles = async (bundleDir: string, bundleId: string) => ({
 const quoteArg = (value: string) => `"${value.replace(/"/g, '\\"')}"`
 
 type ExpectedFiles = Awaited<ReturnType<typeof expectedFiles>>
+
+interface BundleDiscovery {
+  bundleDir: string
+  bundleId: string
+  qaArtifactId: string | null
+  sourceTextManifestPath: string | null
+}
+
+const discoverBundle = async (bundleDir: string): Promise<BundleDiscovery> => {
+  const bundleName = path.basename(bundleDir)
+  const bundleId = bundleName.endsWith(HUMAN_REVIEW_SUFFIX)
+    ? bundleName.slice(0, -HUMAN_REVIEW_SUFFIX.length)
+    : bundleName
+  const canonicalManifest = path.join(bundleDir, `${bundleId}-review.manifest.json`)
+  if (await fileExists(canonicalManifest)) {
+    return {
+      bundleDir,
+      bundleId,
+      qaArtifactId: bundleId,
+      sourceTextManifestPath: null,
+    }
+  }
+
+  const manifestPaths = (
+    await fg('*-review.manifest.json', {
+      cwd: bundleDir,
+      absolute: true,
+      onlyFiles: true,
+    })
+  ).sort()
+  for (const manifestPath of manifestPaths) {
+    try {
+      const manifest = await readJsonRecord(manifestPath)
+      const allowedStatuses = Array.isArray(manifest.allowedStatuses)
+        ? manifest.allowedStatuses
+        : []
+      if (allowedStatuses.includes('APPROVED_SOURCE_TEXT')) {
+        return {
+          bundleDir,
+          bundleId,
+          qaArtifactId: null,
+          sourceTextManifestPath: manifestPath,
+        }
+      }
+      if (Object.keys(toRecord(manifest.dataset)).length > 0) {
+        return {
+          bundleDir,
+          bundleId,
+          qaArtifactId: path.basename(manifestPath, '-review.manifest.json'),
+          sourceTextManifestPath: null,
+        }
+      }
+    } catch {
+      // The normal bundle validator will surface malformed canonical manifests.
+    }
+  }
+  if (
+    (await fileExists(path.join(bundleDir, `${bundleId}-review.csv`))) ||
+    (await fileExists(path.join(bundleDir, `${bundleId}-next-review.csv`)))
+  ) {
+    return {
+      bundleDir,
+      bundleId,
+      qaArtifactId: bundleId,
+      sourceTextManifestPath: null,
+    }
+  }
+  return {
+    bundleDir,
+    bundleId,
+    qaArtifactId: null,
+    sourceTextManifestPath: null,
+  }
+}
+
+const buildSourceTextBundleEntry = async (
+  discovery: BundleDiscovery & { sourceTextManifestPath: string },
+): Promise<SpecializedHumanReviewBundleEntry> => {
+  const manifestPath = discovery.sourceTextManifestPath
+  const manifest = await readJsonRecord(manifestPath)
+  const districtId = getRecordString(manifest, 'districtId') ?? discovery.bundleId
+  const reviewFileName =
+    getRecordString(manifest, 'reviewCsv') ?? `${districtId}-paid-curb-review.csv`
+  const reviewPath = path.join(discovery.bundleDir, reviewFileName)
+  const statusPath = path.join(discovery.bundleDir, 'status.json')
+  const expectedRows = getRecordNumber(manifest, 'reviewRecordCount')
+  const actualRows = await readCsvRowCount(reviewPath)
+  const warnings: string[] = []
+  const errors: string[] = []
+  if (!(await fileExists(reviewPath))) {
+    errors.push(`missing source-text review CSV: ${reviewPath}`)
+  }
+
+  let structureValid: boolean | null = null
+  let complete: boolean | null = null
+  let approved: boolean | null = null
+  let pendingRows: number | null = null
+  if (await fileExists(statusPath)) {
+    try {
+      const status = await readJsonRecord(statusPath)
+      const counts = toRecord(status.statusCounts)
+      structureValid = getRecordBoolean(status, 'structureValid')
+      complete = getRecordBoolean(status, 'complete')
+      approved = getRecordBoolean(status, 'approved')
+      pendingRows = getRecordNumber(counts, 'PENDING')
+      const statusDistrictId = getRecordString(status, 'districtId')
+      const statusExpectedRows = getRecordNumber(status, 'expectedRows')
+      const statusActualRows = getRecordNumber(status, 'actualRows')
+      if (statusDistrictId !== districtId) {
+        errors.push(
+          `source-text status district ${statusDistrictId ?? '-'} does not match ${districtId}`,
+        )
+      }
+      if (
+        statusExpectedRows !== expectedRows ||
+        statusActualRows !== actualRows
+      ) {
+        errors.push('source-text status row counts do not match the current review artifacts')
+      }
+    } catch (error) {
+      errors.push(
+        `source-text status could not be read: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+  } else {
+    warnings.push(`dedicated status snapshot is missing: ${statusPath}`)
+  }
+
+  const status =
+    errors.length > 0 || structureValid === false
+      ? 'invalid'
+      : approved
+        ? 'approved'
+        : complete
+          ? 'needs-resolution'
+          : structureValid
+            ? 'pending'
+            : 'unknown'
+  const commandSuffix =
+    `-- --district ${quoteArg(districtId)} ` +
+    `--review-dir ${quoteArg(discovery.bundleDir)}`
+  return {
+    bundleId: discovery.bundleId,
+    bundleDir: discovery.bundleDir,
+    districtId,
+    contract: 'source-text',
+    status,
+    reviewPath,
+    manifestPath,
+    statusPath,
+    expectedRows,
+    actualRows,
+    pendingRows,
+    statusCommand: `npm run ops:taoyuan-review-status ${commandSuffix}`,
+    gateCommand: `npm run ops:taoyuan-review-gate ${commandSuffix}`,
+    warnings,
+    errors,
+  }
+}
 
 const toMergedCsvPath = (sourcePath: string) => {
   const ext = path.extname(sourcePath)
@@ -334,12 +525,13 @@ const buildBundleEntry = async (
   bundleDir: string,
   configRoot: string,
   publishGateWarnCodesByDistrict: Map<string, string[]>,
+  artifactId?: string,
 ): Promise<HumanReviewBundleEntry> => {
   const bundleName = path.basename(bundleDir)
   const bundleId = bundleName.endsWith(HUMAN_REVIEW_SUFFIX)
     ? bundleName.slice(0, -HUMAN_REVIEW_SUFFIX.length)
     : bundleName
-  const files = await expectedFiles(bundleDir, bundleId)
+  const files = await expectedFiles(bundleDir, artifactId ?? bundleId)
   const fileStates = Object.fromEntries(
     await Promise.all(
       Object.entries(files).map(async ([key, targetPath]) => [
@@ -552,6 +744,7 @@ export const runHumanReviewBundleIndex = async (
       reviewRoot,
       publishGateSummaryPath,
       entries: [],
+      specializedEntries: [],
       finalizeReadyCount: 0,
       notReadyForFinalize: [],
       warnings,
@@ -574,6 +767,7 @@ export const runHumanReviewBundleIndex = async (
   }
 
   const districtIds = new Set(options.districtIds ?? [])
+  const discoveries = await Promise.all(bundleDirs.map(discoverBundle))
   let publishGateWarnCodesByDistrict = new Map<string, string[]>()
   try {
     publishGateWarnCodesByDistrict =
@@ -585,12 +779,62 @@ export const runHumanReviewBundleIndex = async (
   }
   const entries = (
     await Promise.all(
-      bundleDirs.map((bundleDir) =>
-        buildBundleEntry(bundleDir, configRoot, publishGateWarnCodesByDistrict),
-      ),
+      discoveries
+        .filter(
+          (discovery): discovery is BundleDiscovery & { qaArtifactId: string } =>
+            discovery.qaArtifactId !== null,
+        )
+        .map((discovery) =>
+          buildBundleEntry(
+            discovery.bundleDir,
+            configRoot,
+            publishGateWarnCodesByDistrict,
+            discovery.qaArtifactId,
+          ),
+        ),
     )
   ).filter((entry) => matchesDistrictFilter(entry, districtIds))
-  if (entries.length === 0 && districtIds.size > 0) {
+  const specializedEntries = (
+    await Promise.all(
+      discoveries
+        .filter(
+          (
+            discovery,
+          ): discovery is BundleDiscovery & {
+            sourceTextManifestPath: string
+          } => discovery.sourceTextManifestPath !== null,
+        )
+        .map((discovery) => buildSourceTextBundleEntry(discovery)),
+    )
+  ).filter(
+    (entry) =>
+      districtIds.size === 0 ||
+      districtIds.has(entry.districtId) ||
+      districtIds.has(entry.bundleId),
+  )
+  const unsupportedBundles = discoveries.filter(
+    (discovery) =>
+      discovery.qaArtifactId === null &&
+      discovery.sourceTextManifestPath === null &&
+      (districtIds.size === 0 || districtIds.has(discovery.bundleId)),
+  )
+  unsupportedBundles.forEach((discovery) => {
+    warnings.push(
+      `Skipped unsupported human review bundle ${discovery.bundleId}: ${discovery.bundleDir}`,
+    )
+  })
+  specializedEntries.forEach((entry) => {
+    if (entry.status !== 'approved' && entry.errors.length === 0) {
+      warnings.push(
+        `[${entry.districtId}] specialized source-text review is ${entry.status}; run ${entry.statusCommand}`,
+      )
+    }
+  })
+  if (
+    entries.length === 0 &&
+    specializedEntries.length === 0 &&
+    districtIds.size > 0
+  ) {
     warnings.push(
       `No human review bundle directories matched districts: ${Array.from(districtIds).join(', ')}`,
     )
@@ -601,20 +845,29 @@ export const runHumanReviewBundleIndex = async (
   const entryErrors = entries.flatMap((entry) =>
     entry.errors.map((error) => `[${entry.districtId}] ${error}`),
   )
-  const allWarnings = [...warnings, ...entryWarnings]
-  const allErrors = [...errors, ...entryErrors]
+  const specializedWarnings = specializedEntries.flatMap((entry) =>
+    entry.warnings.map((warning) => `[${entry.districtId}] ${warning}`),
+  )
+  const specializedErrors = specializedEntries.flatMap((entry) =>
+    entry.errors.map((error) => `[${entry.districtId}] ${error}`),
+  )
+  const allWarnings = [...warnings, ...entryWarnings, ...specializedWarnings]
+  const allErrors = [...errors, ...entryErrors, ...specializedErrors]
   const readyStatuses = new Set<HumanReviewBundleStatus>([
     'review-complete',
     'ready-to-finalize',
   ])
   const notReadyForFinalize = entries
     .filter((entry) => !readyStatuses.has(entry.status))
-    .map((entry) => entry.districtId)
+    .map((entry) =>
+      entry.bundleId === entry.districtId ? entry.districtId : entry.bundleId,
+    )
 
   return {
     reviewRoot,
     publishGateSummaryPath,
     entries,
+    specializedEntries,
     finalizeReadyCount: entries.length - notReadyForFinalize.length,
     notReadyForFinalize,
     warnings: allWarnings,
@@ -641,22 +894,26 @@ const statusLine = (result: HumanReviewBundleIndexResult) =>
 export const renderHumanReviewBundleIndex = (
   result: HumanReviewBundleIndexResult,
 ) => {
+  const specializedEntries = result.specializedEntries ?? []
   const lines = [
     `Human review bundle index: ${statusLine(result)}`,
     `Review root: ${result.reviewRoot}`,
     `Publish gate summary: ${result.publishGateSummaryPath ?? '-'}`,
-    `Bundles: ${result.entries.length}`,
+    `Bundles: ${result.entries.length + specializedEntries.length}`,
+    `P0 QA bundles: ${result.entries.length}`,
+    `Specialized review bundles: ${specializedEntries.length}`,
     `Finalize-ready bundles: ${result.finalizeReadyCount}/${result.entries.length}`,
     `Not ready for finalize: ${result.notReadyForFinalize.join(', ') || 'none'}`,
     '',
-    '| District | Status | Handoff rows | Handoff valid | Source valid | Pending source rows | Source minimum new reviews | Missing statuses | Bucket minimums |',
-    '| --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |',
+    '| Bundle | District | Status | Handoff rows | Handoff valid | Source valid | Pending source rows | Source minimum new reviews | Missing statuses | Bucket minimums |',
+    '| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |',
   ]
 
   result.entries.forEach((entry) => {
     lines.push(
       [
-        `| ${entry.districtId}`,
+        `| ${entry.bundleId}`,
+        entry.districtId,
         entry.status,
         formatCount(entry.handoffRows),
         formatCount(entry.handoffValidReviewedRows),
@@ -669,9 +926,36 @@ export const renderHumanReviewBundleIndex = (
     )
   })
 
+  if (specializedEntries.length > 0) {
+    lines.push('')
+    lines.push('Specialized review contracts:')
+    lines.push('')
+    lines.push('| District | Contract | Status | Rows | Pending |')
+    lines.push('| --- | --- | --- | ---: | ---: |')
+    specializedEntries.forEach((entry) => {
+      lines.push(
+        `| ${entry.districtId} | ${entry.contract} | ${entry.status} | ${formatCount(entry.actualRows)}/${formatCount(entry.expectedRows)} | ${formatCount(entry.pendingRows)} |`,
+      )
+    })
+    lines.push('')
+    specializedEntries.forEach((entry) => {
+      lines.push(`- ${entry.districtId}: ${entry.bundleDir}`)
+      lines.push(`  Review CSV: ${entry.reviewPath}`)
+      lines.push(`  Status snapshot: ${entry.statusPath}`)
+      lines.push(`  Refresh status: ${entry.statusCommand}`)
+      lines.push(`  Approval gate: ${entry.gateCommand}`)
+      entry.errors.forEach((error) => lines.push(`  ERROR: ${error}`))
+      entry.warnings.forEach((warning) => lines.push(`  WARN: ${warning}`))
+    })
+  }
+
   lines.push('')
   result.entries.forEach((entry) => {
-    lines.push(`- ${entry.districtId}: ${entry.bundleDir}`)
+    const entryLabel =
+      entry.bundleId === entry.districtId
+        ? entry.districtId
+        : `${entry.bundleId} (district ${entry.districtId})`
+    lines.push(`- ${entryLabel}: ${entry.bundleDir}`)
     lines.push(`  Source CSV: ${entry.sourcePath}`)
     lines.push(`  Handoff CSV: ${entry.files.handoffCsv.path}`)
     lines.push(

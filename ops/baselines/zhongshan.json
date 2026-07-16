@@ -1,85 +1,85 @@
 {
-  "baselineCreatedAt": "2026-06-24T03:05:22.103Z",
-  "baselineDatasetHash": "e353deb575c5207ae09039e0ec3e31b8a3df35fcd90a44494770ebf9049b8a78",
+  "baselineCreatedAt": "2026-07-16T13:00:47.423Z",
+  "baselineDatasetHash": "2c97f35f346eab5959eb9444d063a8977b98c9a7c9a4922c6e6a9a6207ea2a6d",
   "baselineSchemaVersion": 1,
-  "baselineSourceMetaSha256": "64dd0e5521ab2e184fc645793ce0f893e0d91beeab12a7bff6409c52a373b7cb",
+  "baselineSourceMetaSha256": "585ec7e9c92d647c495fa3bb13852287923d05555a7291ddc53960b9e11555ff",
   "baselineDistrictName": "Zhongshan",
-  "generatedAt": "2026-06-24T03:05:22.103Z",
+  "generatedAt": "2026-07-16T13:00:47.423Z",
   "districtId": "zhongshan",
-  "datasetHash": "e353deb575c5207ae09039e0ec3e31b8a3df35fcd90a44494770ebf9049b8a78",
+  "datasetHash": "2c97f35f346eab5959eb9444d063a8977b98c9a7c9a4922c6e6a9a6207ea2a6d",
   "counts": {
     "segments": 15071,
     "intersections": 267,
-    "inferredCandidates": 2758,
-    "signOverrides": 10,
+    "inferredCandidates": 2607,
+    "signOverrides": 8,
     "signOverrideUnmatchedNamedCount": 0
   },
   "distributions": {
     "day": {
-      "RED|NO_STOP": 28732,
-      "YELLOW|TEMP_STOP": 4873,
+      "RED|NO_STOP": 28587,
+      "YELLOW|TEMP_STOP": 4693,
       "GREEN|PARK": 4,
-      "YELLOW|PARK": 3
+      "YELLOW|PARK": 1
     },
     "night": {
-      "RED|NO_STOP": 28732,
+      "RED|NO_STOP": 28587,
       "GREEN|PARK": 476,
-      "YELLOW|PARK": 4404
+      "YELLOW|PARK": 4222
     }
   },
   "performance": {
     "day": {
-      "evalFirstMsMedian": 1587,
-      "evalSecondMsMedian": 1591
+      "evalFirstMsMedian": 1932,
+      "evalSecondMsMedian": 1820
     },
     "night": {
-      "evalFirstMsMedian": 1578,
-      "evalSecondMsMedian": 1578
+      "evalFirstMsMedian": 1729,
+      "evalSecondMsMedian": 1625
     }
   },
   "reasonCodes": {
     "day": {
       "top": {
-        "DATA_FRESHNESS_STALE": 23484,
-        "RULE_RED_NO_STOP": 22412,
-        "RULE_YELLOW_DAY_NO_PARK": 11188,
-        "DATA_FRESHNESS_UNKNOWN": 10128,
-        "COVERAGE_LOW": 10112,
-        "INFERRED_CAPPED": 10112,
-        "INFERRED_RISK_HIGH_ZONE_DENSITY": 9212,
-        "ZONE_CROSSWALK": 8852,
-        "ZONE_HYDRANT": 5503,
-        "ZONE_INTERSECTION": 1582,
-        "ZONE_BUS_STOP": 683,
+        "DATA_FRESHNESS_STALE": 23483,
+        "RULE_RED_NO_STOP": 22411,
+        "RULE_YELLOW_DAY_NO_PARK": 10864,
+        "DATA_FRESHNESS_UNKNOWN": 9802,
+        "COVERAGE_LOW": 9786,
+        "INFERRED_CAPPED": 9786,
+        "INFERRED_RISK_HIGH_ZONE_DENSITY": 9018,
+        "ZONE_CROSSWALK": 8740,
+        "ZONE_HYDRANT": 5450,
+        "ZONE_INTERSECTION": 1569,
+        "ZONE_BUS_STOP": 673,
         "PARKING_SPACE_EVIDENCE": 666,
-        "OVERRIDE_APPLIED": 12,
-        "OVERRIDE_STATUS_LEGAL": 7,
-        "OVERRIDE_STATUS_ILLEGAL": 5
+        "OVERRIDE_APPLIED": 10,
+        "OVERRIDE_STATUS_ILLEGAL": 5,
+        "OVERRIDE_STATUS_LEGAL": 5
       },
       "other": 0,
-      "total": 33612,
+      "total": 33285,
       "coveragePct": 100
     },
     "night": {
       "top": {
-        "DATA_FRESHNESS_STALE": 23484,
-        "RULE_RED_NO_STOP": 22412,
-        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 11188,
-        "DATA_FRESHNESS_UNKNOWN": 10128,
-        "COVERAGE_LOW": 10112,
-        "INFERRED_CAPPED": 10112,
-        "INFERRED_RISK_HIGH_ZONE_DENSITY": 9212,
-        "ZONE_CROSSWALK": 8852,
-        "ZONE_HYDRANT": 5503,
-        "ZONE_INTERSECTION": 1582,
-        "ZONE_BUS_STOP": 683,
+        "DATA_FRESHNESS_STALE": 23483,
+        "RULE_RED_NO_STOP": 22411,
+        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 10864,
+        "DATA_FRESHNESS_UNKNOWN": 9802,
+        "COVERAGE_LOW": 9786,
+        "INFERRED_CAPPED": 9786,
+        "INFERRED_RISK_HIGH_ZONE_DENSITY": 9018,
+        "ZONE_CROSSWALK": 8740,
+        "ZONE_HYDRANT": 5450,
+        "ZONE_INTERSECTION": 1569,
+        "ZONE_BUS_STOP": 673,
         "PARKING_SPACE_EVIDENCE": 666,
-        "OVERRIDE_APPLIED": 12,
-        "OVERRIDE_STATUS_LEGAL": 7,
-        "OVERRIDE_STATUS_ILLEGAL": 5
+        "OVERRIDE_APPLIED": 10,
+        "OVERRIDE_STATUS_ILLEGAL": 5,
+        "OVERRIDE_STATUS_LEGAL": 5
       },
       "other": 0,
-      "total": 33612,
+      "total": 33285,
       "coveragePct": 100
     }
   }

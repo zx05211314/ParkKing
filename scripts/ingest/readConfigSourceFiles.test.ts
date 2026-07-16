@@ -37,7 +37,7 @@ describe('readConfigSourceFiles', () => {
     expect(buildConfigHashes('raw-config', sourceFiles).configHash).toBe(
       hashString('raw-config'),
     )
-    expect(buildConfigHashes('raw-config', sourceFiles).datasetHash).toHaveLength(64)
+    expect(buildConfigHashes('raw-config', sourceFiles).datasetSourceHash).toHaveLength(64)
   })
 
   it('throws when an input file is missing', async () => {

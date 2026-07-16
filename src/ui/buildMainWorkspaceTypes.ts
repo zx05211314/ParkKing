@@ -30,6 +30,7 @@ export interface BuildMainWorkspacePropsOptions {
   recommendedSegmentIds: MainWorkspaceProps['mapViewProps']['recommendedSegmentIds']
   searchLocation: MainWorkspaceProps['mapViewProps']['searchLocation']
   searchLocationLabel: MainWorkspaceProps['mapViewProps']['searchLocationLabel']
+  coverageBoundary: MainWorkspaceProps['mapViewProps']['coverageBoundary']
   selectedCenter: MainWorkspaceProps['mapViewProps']['arrivalLocation']
   selectedArrivalKind: MainWorkspaceProps['selectedArrivalKind']
   selectedArrivalLabel: string | null

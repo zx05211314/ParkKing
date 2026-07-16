@@ -10,6 +10,7 @@ import type {
 import type { Map, MapLayerMouseEvent } from 'maplibre-gl'
 
 interface InitializeMapViewContentOptions {
+  coverageBoundaryData: FeatureCollection<Polygon | MultiPolygon> | null
   zonesData: FeatureCollection<Polygon | MultiPolygon>
   intersectionZonesData: FeatureCollection<Polygon | MultiPolygon>
   crosswalkZonesData: FeatureCollection<Polygon | MultiPolygon>
@@ -46,6 +47,7 @@ const bindPointerCursor = (map: Map, layerId: string) => {
 export const initializeMapViewContent = (
   map: Map,
   {
+    coverageBoundaryData,
     zonesData,
     intersectionZonesData,
     crosswalkZonesData,
@@ -67,6 +69,55 @@ export const initializeMapViewContent = (
     onPickLocationRef,
   }: InitializeMapViewContentOptions,
 ) => {
+  map.addSource('coverage-boundary', {
+    type: 'geojson',
+    data: coverageBoundaryData ?? {
+      type: 'FeatureCollection',
+      features: [],
+    },
+  })
+
+  map.addLayer({
+    id: 'coverage-boundary-fill',
+    type: 'fill',
+    source: 'coverage-boundary',
+    paint: {
+      'fill-color': [
+        'match',
+        ['get', 'publishStage'],
+        'production',
+        '#2aa86b',
+        'candidate',
+        '#d38a16',
+        'source-only',
+        '#2385a7',
+        '#8f98a8',
+      ],
+      'fill-opacity': 0.08,
+    },
+  })
+
+  map.addLayer({
+    id: 'coverage-boundary-outline',
+    type: 'line',
+    source: 'coverage-boundary',
+    paint: {
+      'line-width': 2.25,
+      'line-color': [
+        'match',
+        ['get', 'publishStage'],
+        'production',
+        '#54d693',
+        'candidate',
+        '#f5b52e',
+        'source-only',
+        '#57c5e8',
+        '#b3bccb',
+      ],
+      'line-opacity': 0.9,
+    },
+  })
+
   map.addSource('zones', {
     type: 'geojson',
     data: zonesData,
