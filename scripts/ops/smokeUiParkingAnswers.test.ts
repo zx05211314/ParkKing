@@ -7,6 +7,7 @@ import {
   buildSmokeUiDatasetMetaUrl,
   buildSmokeUiParkingAnswerCaseUrl,
   buildSmokeUiParkingAnswerExpectations,
+  detectSmokeUiLoadingIndicators,
   getDatasetHashFromMeta,
   getSmokeProfileCleanupDelayMs,
   isRetryableSmokeProfileCleanupError,
@@ -82,7 +83,7 @@ describe('smokeUiParkingAnswers', () => {
     })
   })
 
-  it('bounds suite duration and only retries fully missing pages once', () => {
+  it('bounds suite duration and retries fully missing or explicitly loading pages once', () => {
     expect(resolveSmokeUiSuiteTimeoutMs(5000)).toBe(10000)
     expect(resolveSmokeUiSuiteTimeoutMs(5000, 12000)).toBe(12000)
     expect(
@@ -104,8 +105,26 @@ describe('smokeUiParkingAnswers', () => {
         attempt: 0,
         requiredText: ['one', 'two'],
         missingText: ['two'],
+        loadingIndicators: ['map loading'],
+      }),
+    ).toBe(true)
+    expect(
+      shouldRetrySmokeUiCase({
+        attempt: 0,
+        requiredText: ['one', 'two'],
+        missingText: ['two'],
+        loadingIndicators: [],
       }),
     ).toBe(false)
+  })
+
+  it('detects only explicit dataset and map loading states', () => {
+    expect(
+      detectSmokeUiLoadingIndicators(
+        'Status: loading\nLoading parking data...\nLoading map...',
+      ),
+    ).toEqual(['parking data loading', 'map loading'])
+    expect(detectSmokeUiLoadingIndicators('Status: ready')).toEqual([])
   })
 
   it('parses self-managed preview mode', () => {
@@ -356,15 +375,20 @@ describe('smokeUiParkingAnswers', () => {
           }),
           pass: false,
           missingText: ['Pinned location answer'],
+          loadingIndicators: ['map loading'] as const,
+          attemptCount: 2,
         },
       ],
     }
 
     expect(validateSmokeUiParkingAnswersSummary(summary)).toEqual([
-      'answer case xinyi-reviewed-legal-seg-8953-part-2 missing UI text: Pinned location answer',
+      'answer case xinyi-reviewed-legal-seg-8953-part-2 missing UI text: Pinned location answer; page still reported: map loading',
     ])
     expect(renderSmokeUiParkingAnswersSummary(summary)).toContain(
       'CASE xinyi-reviewed-legal-seg-8953-part-2: FAIL missing "Pinned location answer"',
+    )
+    expect(renderSmokeUiParkingAnswersSummary(summary)).toContain(
+      'attempts 2; page still reported map loading',
     )
   })
 
