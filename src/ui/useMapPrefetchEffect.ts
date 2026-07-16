@@ -1,14 +1,17 @@
 import { useEffect, type MutableRefObject } from 'react'
+import type { DatasetLoadStatus } from './mapViewReadiness'
 
 export type AppViewMode = 'LIST' | 'MAP'
 
 export const shouldPreloadMapView = (
   activeView: AppViewMode,
+  datasetStatus: DatasetLoadStatus,
   mapPrefetchStarted: boolean,
-) => activeView === 'MAP' && !mapPrefetchStarted
+) => activeView === 'MAP' && datasetStatus === 'ready' && !mapPrefetchStarted
 
 export const useMapPrefetchEffect = (
   activeView: AppViewMode,
+  datasetStatus: DatasetLoadStatus,
   mapPrefetchRef: MutableRefObject<boolean>,
   preloadMapView: () => Promise<unknown>,
 ) => {
@@ -16,11 +19,11 @@ export const useMapPrefetchEffect = (
     if (typeof window === 'undefined') {
       return
     }
-    if (!shouldPreloadMapView(activeView, mapPrefetchRef.current)) {
+    if (!shouldPreloadMapView(activeView, datasetStatus, mapPrefetchRef.current)) {
       return
     }
 
     mapPrefetchRef.current = true
     preloadMapView().catch(() => {})
-  }, [activeView, mapPrefetchRef, preloadMapView])
+  }, [activeView, datasetStatus, mapPrefetchRef, preloadMapView])
 }

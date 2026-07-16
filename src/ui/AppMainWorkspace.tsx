@@ -6,10 +6,15 @@ import {
 } from 'react'
 import type { MapViewProps } from '../map/MapView'
 import { MapErrorBoundary } from './MapErrorBoundary'
+import {
+  shouldMountMapView,
+  type DatasetLoadStatus,
+} from './mapViewReadiness'
 import { SegmentList } from './SegmentList'
 
 interface AppMainWorkspaceProps {
   activeView: 'LIST' | 'MAP'
+  datasetStatus: DatasetLoadStatus
   mapViewComponent: LazyExoticComponent<ComponentType<MapViewProps>>
   mapRetryKey: number
   onMapRetry: () => void
@@ -26,9 +31,19 @@ interface AppMainWorkspaceProps {
   listProps: ComponentProps<typeof SegmentList>
 }
 
-const MapSkeleton = () => (
-  <div className="map-skeleton">
-    <div className="map-skeleton-title">Loading map?</div>
+const MapSkeleton = ({
+  datasetStatus = 'ready',
+}: {
+  datasetStatus?: AppMainWorkspaceProps['datasetStatus']
+}) => (
+  <div className="map-skeleton" role="status" aria-live="polite">
+    <div className="map-skeleton-title">
+      {datasetStatus === 'error'
+        ? 'Parking data unavailable'
+        : datasetStatus === 'loading'
+          ? 'Loading parking data...'
+          : 'Loading map...'}
+    </div>
     <div className="map-skeleton-grid">
       <div className="map-skeleton-block" />
       <div className="map-skeleton-block" />
@@ -39,6 +54,7 @@ const MapSkeleton = () => (
 
 export const AppMainWorkspace = ({
   activeView,
+  datasetStatus,
   mapViewComponent: MapViewComponent,
   mapRetryKey,
   onMapRetry,
@@ -59,9 +75,13 @@ export const AppMainWorkspace = ({
       <>
         <section className="map-panel">
           <MapErrorBoundary onRetry={onMapRetry} resetKey={mapRetryKey}>
-            <Suspense fallback={<MapSkeleton />}>
-              <MapViewComponent {...mapViewProps} />
-            </Suspense>
+            {shouldMountMapView(datasetStatus) ? (
+              <Suspense fallback={<MapSkeleton />}>
+                <MapViewComponent {...mapViewProps} />
+              </Suspense>
+            ) : (
+              <MapSkeleton datasetStatus={datasetStatus} />
+            )}
           </MapErrorBoundary>
           <div className="map-legend">
             <div>
