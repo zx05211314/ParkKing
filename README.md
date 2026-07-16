@@ -363,6 +363,16 @@ credentials in `TDX_CLIENT_ID` and `TDX_CLIENT_SECRET`, run
 `npm run ops:fetch-taoyuan-paid-curb` to normalize paid curb segment geometry/reference
 points. The output uses `PAID_CURB_SEGMENT` with `legalAnswerEligible: false`; it must not be
 renamed to `parking_spaces.geojson` or used to produce a general legal parking answer.
+Run `npm run ops:taoyuan-expansion-readiness:report` to verify the 13 official boundaries,
+944-row text pack, 270-row source-text review, optional saved/credentialed TDX geometry,
+and the non-legal safety contract in one report. The report exits successfully when the
+only blockers are expected human or external inputs. Use
+`npm run ops:taoyuan-expansion-readiness:strict` when a milestone must remain non-zero
+until source text is fully approved and a valid TDX spatial-reference artifact exists.
+Even strict readiness only approves a spatial reference layer; legal-answer eligibility
+remains false. The credential-free
+[Taoyuan roadside fee dataset](https://data.gov.tw/dataset/149456) exposes text/fare fields
+but no coordinates, so address text must not be converted into synthetic geometry.
 When a source-only Taoyuan address is pinned, the app can filter this official text by
 Chinese road name; the results are text matches, not proximity or legality matches.
 
