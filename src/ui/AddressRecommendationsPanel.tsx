@@ -15,6 +15,8 @@ export function AddressRecommendationsPanel({
   parkingAnswerServiceStatus,
   parkingAnswerServiceError,
   parkingCoverageNotice,
+  parkingCoverageReferenceState,
+  parkingCoverageReferenceAddressLabel,
   parkingAnswerReport,
   nearbySnapshot,
   bestAddressRecommendation,
@@ -79,6 +81,10 @@ export function AddressRecommendationsPanel({
         parkingAnswerServiceStatus={parkingAnswerServiceStatus}
         parkingAnswerServiceError={parkingAnswerServiceError}
         parkingCoverageNotice={parkingCoverageNotice}
+        parkingCoverageReferenceState={parkingCoverageReferenceState}
+        parkingCoverageReferenceAddressLabel={
+          parkingCoverageReferenceAddressLabel
+        }
         parkingAnswerReport={parkingAnswerReport}
         formatDistanceMeters={formatDistanceMeters}
         onParkingAnswerReport={onParkingAnswerReport}

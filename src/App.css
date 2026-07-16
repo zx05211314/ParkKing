@@ -528,6 +528,157 @@
   color: #fff3cc;
 }
 
+.paid-curb-reference-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(95, 211, 206, 0.3);
+  border-radius: 14px;
+  background:
+    linear-gradient(145deg, rgba(11, 45, 48, 0.9), rgba(14, 20, 30, 0.96)),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 8px,
+      rgba(95, 211, 206, 0.04) 8px,
+      rgba(95, 211, 206, 0.04) 9px
+    );
+}
+
+.paid-curb-reference-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  color: #f4ffff;
+}
+
+.paid-curb-reference-heading strong,
+.paid-curb-reference-heading span {
+  display: block;
+}
+
+.paid-curb-reference-heading span {
+  margin-top: 2px;
+  color: #a8c8c8;
+  font-size: 11px;
+}
+
+.paid-curb-reference-heading .paid-curb-reference-badge {
+  margin: 0;
+  padding: 5px 8px;
+  border: 1px solid rgba(95, 211, 206, 0.36);
+  border-radius: 999px;
+  color: #9ff4ed;
+  background: rgba(95, 211, 206, 0.1);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+}
+
+.paid-curb-reference-warning,
+.paid-curb-reference-status,
+.paid-curb-reference-empty {
+  color: #dce8e8;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.paid-curb-reference-warning {
+  padding: 8px 9px;
+  border-left: 3px solid #f5b52e;
+  border-radius: 4px 10px 10px 4px;
+  color: #fff0c2;
+  background: rgba(88, 58, 12, 0.3);
+}
+
+.paid-curb-reference-status {
+  padding: 10px 12px;
+  border: 1px solid rgba(95, 211, 206, 0.22);
+  border-radius: 12px;
+  background: rgba(11, 45, 48, 0.5);
+}
+
+.paid-curb-reference-status.reference-error {
+  border-color: rgba(240, 77, 77, 0.3);
+  color: #ffd5d5;
+  background: rgba(70, 20, 20, 0.45);
+}
+
+.paid-curb-reference-search {
+  display: grid;
+  gap: 5px;
+  color: #b9cece;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.paid-curb-reference-search input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(95, 211, 206, 0.28);
+  border-radius: 10px;
+  color: #f4ffff;
+  background: rgba(5, 17, 22, 0.72);
+}
+
+.paid-curb-reference-search input:focus-visible {
+  outline: 2px solid rgba(95, 211, 206, 0.8);
+  outline-offset: 2px;
+}
+
+.paid-curb-reference-results {
+  display: grid;
+  gap: 7px;
+}
+
+.paid-curb-reference-result-count {
+  color: #9ff4ed;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.paid-curb-reference-row {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border: 1px solid rgba(220, 232, 232, 0.13);
+  border-radius: 11px;
+  background: rgba(5, 17, 22, 0.46);
+}
+
+.paid-curb-reference-row-title {
+  color: #f4ffff;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.paid-curb-reference-row-meta {
+  color: #9ab5b5;
+  font-size: 10px;
+}
+
+.paid-curb-reference-fare {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #dce8e8;
+  font-size: 11px;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.paid-curb-reference-source-link {
+  width: fit-content;
+  color: #9ff4ed;
+  font-size: 11px;
+  font-weight: 800;
+  text-underline-offset: 3px;
+}
+
 .address-recommendations-heading {
   display: grid;
   gap: 2px;

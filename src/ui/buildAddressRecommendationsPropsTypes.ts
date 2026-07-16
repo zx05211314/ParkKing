@@ -14,6 +14,8 @@ export interface BuildAddressRecommendationsPropsOptions {
   parkingAnswerServiceStatus: AddressRecommendationsProps['parkingAnswerServiceStatus']
   parkingAnswerServiceError: AddressRecommendationsProps['parkingAnswerServiceError']
   parkingCoverageNotice: AddressRecommendationsProps['parkingCoverageNotice']
+  parkingCoverageReferenceState?: AddressRecommendationsProps['parkingCoverageReferenceState']
+  parkingCoverageReferenceAddressLabel?: AddressRecommendationsProps['parkingCoverageReferenceAddressLabel']
   parkingAnswerReport: AddressRecommendationsProps['parkingAnswerReport']
   nearbySnapshot: AddressRecommendationsProps['nearbySnapshot']
   bestAddressRecommendation: AddressRecommendationsProps['bestAddressRecommendation']

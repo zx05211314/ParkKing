@@ -360,6 +360,8 @@ credentials in `TDX_CLIENT_ID` and `TDX_CLIENT_SECRET`, run
 `npm run ops:fetch-taoyuan-paid-curb` to normalize paid curb segment geometry/reference
 points. The output uses `PAID_CURB_SEGMENT` with `legalAnswerEligible: false`; it must not be
 renamed to `parking_spaces.geojson` or used to produce a general legal parking answer.
+When a source-only Taoyuan address is pinned, the app can filter this official text by
+Chinese road name; the results are text matches, not proximity or legality matches.
 
 Legacy per-district raw source scaffold:
    `npm run ops:new-district -- --districtId <id> --districtName "<Name>" --sourceRoot "data/raw/<id>"`

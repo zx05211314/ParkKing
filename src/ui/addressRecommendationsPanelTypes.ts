@@ -11,6 +11,7 @@ import type {
   SegmentRouteEtaLike,
 } from './addressRecommendationDisplayTypes'
 import type { NearbySnapshot } from './recommendationDisplaySnapshot'
+import type { PaidCurbReferenceState } from './usePaidCurbReferenceState'
 
 export interface AddressRecommendationsPanelProps {
   hasPinnedAddress: boolean
@@ -22,6 +23,8 @@ export interface AddressRecommendationsPanelProps {
   parkingAnswerServiceStatus: ParkingAnswerServiceStatus
   parkingAnswerServiceError: string | null
   parkingCoverageNotice: string | null
+  parkingCoverageReferenceState?: PaidCurbReferenceState | null
+  parkingCoverageReferenceAddressLabel?: string | null
   parkingAnswerReport: SegmentReport | null
   nearbySnapshot: NearbySnapshot | null
   bestAddressRecommendation: RecommendationSegmentLike | null
@@ -90,6 +93,8 @@ export type AddressParkingAnswerSummaryProps = Pick<
   | 'parkingAnswerServiceStatus'
   | 'parkingAnswerServiceError'
   | 'parkingCoverageNotice'
+  | 'parkingCoverageReferenceState'
+  | 'parkingCoverageReferenceAddressLabel'
   | 'parkingAnswerReport'
   | 'formatDistanceMeters'
   | 'onParkingAnswerReport'

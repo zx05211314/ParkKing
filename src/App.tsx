@@ -71,6 +71,8 @@ import {
 import { readSharedAppState } from './ui/shareState'
 import { getDataBaseUrl } from './data/datasetResolver'
 import { buildPinnedCoverageBoundary } from './data/coverageDisplay'
+import { findCoverageDistrictByLocation } from './data/coverageCatalog'
+import { usePaidCurbReferenceState } from './ui/usePaidCurbReferenceState'
 import type { RiskMode } from './domain/ranking/policy'
 import {
   getLatestReportsBySegment,
@@ -356,6 +358,22 @@ function App() {
     coverageCatalog: runtimeCoverageCatalog,
   })
   const parkingSearchLocation = parkingCoverageState.eligibleLocation
+  const paidCurbCoverageDistrict = useMemo(() => {
+    if (!runtimeCoverageCatalog || !searchLocation) {
+      return null
+    }
+    const district = findCoverageDistrictByLocation(
+      runtimeCoverageCatalog,
+      searchLocation,
+    )
+    return district?.publishStage === 'source-only' && district.referenceData
+      ? district
+      : null
+  }, [runtimeCoverageCatalog, searchLocation])
+  const paidCurbReferenceState = usePaidCurbReferenceState({
+    districtId: paidCurbCoverageDistrict?.districtId ?? null,
+    referenceData: paidCurbCoverageDistrict?.referenceData ?? null,
+  })
   const pinnedCoverageBoundary = useMemo(
     () => buildPinnedCoverageBoundary(runtimeCoverageCatalog, searchLocation),
     [runtimeCoverageCatalog, searchLocation],
@@ -1116,6 +1134,12 @@ function App() {
     parkingAnswerServiceStatus: parkingAnswerServiceState.status,
     parkingAnswerServiceError: parkingAnswerServiceState.error,
     parkingCoverageNotice: parkingCoverageState.notice,
+    parkingCoverageReferenceState: paidCurbCoverageDistrict
+      ? paidCurbReferenceState
+      : null,
+    parkingCoverageReferenceAddressLabel: paidCurbCoverageDistrict
+      ? searchLocationLabel
+      : null,
     parkingAnswerReport,
     nearbySnapshot,
     bestAddressRecommendation,

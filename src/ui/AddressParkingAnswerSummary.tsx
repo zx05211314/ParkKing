@@ -6,6 +6,7 @@ import {
 } from '../feedback/reports'
 import type { AddressParkingAnswerSummaryProps } from './addressRecommendationsPanelTypes'
 import { buildParkingAnswerTrustSummary } from './parkingAnswerPresentation'
+import { PaidCurbReferencePanel } from './PaidCurbReferencePanel'
 
 const ANSWER_LABELS = {
   PARK: 'Park allowed at nearest mapped curb',
@@ -52,6 +53,8 @@ export function AddressParkingAnswerSummary({
   parkingAnswerServiceStatus,
   parkingAnswerServiceError,
   parkingCoverageNotice,
+  parkingCoverageReferenceState,
+  parkingCoverageReferenceAddressLabel,
   parkingAnswerReport,
   formatDistanceMeters,
   onParkingAnswerReport,
@@ -64,23 +67,32 @@ export function AddressParkingAnswerSummary({
 
   if (parkingCoverageNotice) {
     return (
-      <div className="address-parking-answer answer-no-data">
-        <div className="address-parking-answer-header">
-          <div>
-            <div className="address-best-option-label">Pinned location answer</div>
-            <div className="address-parking-answer-title">
-              Outside active coverage
+      <>
+        <div className="address-parking-answer answer-no-data">
+          <div className="address-parking-answer-header">
+            <div>
+              <div className="address-best-option-label">Pinned location answer</div>
+              <div className="address-parking-answer-title">
+                Outside active coverage
+              </div>
             </div>
+            <div className="address-parking-answer-kind">NOT EVALUATED</div>
           </div>
-          <div className="address-parking-answer-kind">NOT EVALUATED</div>
+          <div className="address-parking-answer-action">
+            Decision: No parking recommendation was calculated from another district's data.
+          </div>
+          <div className="address-parking-answer-caveat">
+            Coverage: {parkingCoverageNotice}
+          </div>
         </div>
-        <div className="address-parking-answer-action">
-          Decision: No parking recommendation was calculated from another district's data.
-        </div>
-        <div className="address-parking-answer-caveat">
-          Coverage: {parkingCoverageNotice}
-        </div>
-      </div>
+        {parkingCoverageReferenceState ? (
+          <PaidCurbReferencePanel
+            key={parkingCoverageReferenceAddressLabel ?? ''}
+            state={parkingCoverageReferenceState}
+            addressLabel={parkingCoverageReferenceAddressLabel ?? null}
+          />
+        ) : null}
+      </>
     )
   }
 
