@@ -3,6 +3,7 @@ import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import type { Server } from 'node:http'
+import { gzipSync } from 'node:zlib'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   resolveParkKingAppServerConfig,
@@ -106,6 +107,54 @@ describe('ParkKing app server', () => {
     const spaResponse = await fetch(`${baseUrl}/district/xinyi`)
     await expect(spaResponse.text()).resolves.toBe('<main>ParkKing app</main>')
     expect(spaResponse.headers.get('content-type')).toContain('text/html')
+  })
+
+  it('streams precompressed GeoJSON when the client accepts gzip', async () => {
+    const staticDir = await makeStaticDir()
+    const dataDir = path.join(staticDir, 'data')
+    const body = JSON.stringify({
+      type: 'FeatureCollection',
+      features: Array.from({ length: 500 }, () => ({ type: 'Feature' })),
+    })
+    const filePath = path.join(dataDir, 'parking_spaces.geojson')
+    await fs.mkdir(dataDir, { recursive: true })
+    await fs.writeFile(filePath, body)
+    await fs.writeFile(`${filePath}.gz`, gzipSync(body))
+    const baseUrl = await startTestServer(baseConfig(staticDir))
+
+    const response = await fetch(`${baseUrl}/data/parking_spaces.geojson`, {
+      headers: { 'Accept-Encoding': 'gzip' },
+    })
+
+    await expect(response.text()).resolves.toBe(body)
+    expect(response.headers.get('content-encoding')).toBe('gzip')
+    expect(response.headers.get('content-type')).toContain('application/geo+json')
+    expect(response.headers.get('vary')).toBe('Accept-Encoding')
+    expect(Number(response.headers.get('content-length'))).toBeLessThan(
+      Buffer.byteLength(body),
+    )
+  })
+
+  it('serves the original representation when gzip is explicitly disabled', async () => {
+    const staticDir = await makeStaticDir()
+    const dataDir = path.join(staticDir, 'data')
+    const body = JSON.stringify({
+      type: 'FeatureCollection',
+      features: Array.from({ length: 500 }, () => ({ type: 'Feature' })),
+    })
+    const filePath = path.join(dataDir, 'parking_spaces.geojson')
+    await fs.mkdir(dataDir, { recursive: true })
+    await fs.writeFile(filePath, body)
+    await fs.writeFile(`${filePath}.gz`, gzipSync(body))
+    const baseUrl = await startTestServer(baseConfig(staticDir))
+
+    const response = await fetch(`${baseUrl}/data/parking_spaces.geojson`, {
+      headers: { 'Accept-Encoding': 'gzip;q=0, identity' },
+    })
+
+    await expect(response.text()).resolves.toBe(body)
+    expect(response.headers.get('content-encoding')).toBeNull()
+    expect(Number(response.headers.get('content-length'))).toBe(Buffer.byteLength(body))
   })
 
   it('does not hide unknown API routes behind the SPA fallback', async () => {

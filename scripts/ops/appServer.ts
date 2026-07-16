@@ -1,6 +1,8 @@
 import * as fs from 'node:fs/promises'
+import { createReadStream } from 'node:fs'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import path from 'node:path'
+import { pipeline } from 'node:stream/promises'
 import { pathToFileURL } from 'node:url'
 import {
   createGeocodeProxyMiddleware,
@@ -57,12 +59,14 @@ export interface ParkKingAppServerOptions {
 const MIME_TYPES: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
   '.gif': 'image/gif',
+  '.geojson': 'application/geo+json; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
   '.ico': 'image/x-icon',
   '.jpeg': 'image/jpeg',
   '.jpg': 'image/jpeg',
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.jsonl': 'application/x-ndjson; charset=utf-8',
   '.map': 'application/json; charset=utf-8',
   '.png': 'image/png',
   '.svg': 'image/svg+xml; charset=utf-8',
@@ -264,6 +268,58 @@ const cacheControlForFile = (staticDir: string, filePath: string) => {
   return 'public, max-age=300'
 }
 
+export const acceptsGzipEncoding = (value: string | string[] | undefined) => {
+  const entries = (Array.isArray(value) ? value.join(',') : value ?? '')
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean)
+
+  let gzipQuality: number | null = null
+  let wildcardQuality: number | null = null
+  for (const entry of entries) {
+    const [encoding, ...parameters] = entry.split(';').map((part) => part.trim())
+    if (encoding !== 'gzip' && encoding !== '*') {
+      continue
+    }
+    const qualityParameter = parameters.find((parameter) => parameter.startsWith('q='))
+    const parsedQuality = qualityParameter
+      ? Number.parseFloat(qualityParameter.slice(2))
+      : 1
+    const quality = Number.isFinite(parsedQuality) ? parsedQuality : 0
+    if (encoding === 'gzip') {
+      gzipQuality = quality
+    } else {
+      wildcardQuality = quality
+    }
+  }
+
+  return (gzipQuality ?? wildcardQuality ?? 0) > 0
+}
+
+const resolveStaticRepresentation = async (
+  req: IncomingMessage,
+  filePath: string,
+) => {
+  if (acceptsGzipEncoding(req.headers['accept-encoding'])) {
+    const gzipPath = `${filePath}.gz`
+    const gzipStat = await fs.stat(gzipPath).catch(() => null)
+    if (gzipStat?.isFile()) {
+      return {
+        filePath: gzipPath,
+        contentLength: gzipStat.size,
+        contentEncoding: 'gzip' as const,
+      }
+    }
+  }
+
+  const fileStat = await fs.stat(filePath)
+  return {
+    filePath,
+    contentLength: fileStat.size,
+    contentEncoding: null,
+  }
+}
+
 const serveStaticFile = async (
   req: IncomingMessage,
   res: ServerResponse,
@@ -285,15 +341,32 @@ const serveStaticFile = async (
     return
   }
 
-  const body = await fs.readFile(filePath)
+  const representation = await resolveStaticRepresentation(req, filePath)
   res.statusCode = 200
   res.setHeader(
     'Content-Type',
     MIME_TYPES[path.extname(filePath).toLowerCase()] ?? 'application/octet-stream',
   )
   res.setHeader('Cache-Control', cacheControlForFile(config.staticDir, filePath))
-  res.setHeader('Content-Length', String(body.byteLength))
-  res.end(req.method === 'HEAD' ? undefined : body)
+  res.setHeader('Vary', 'Accept-Encoding')
+  res.setHeader('Content-Length', String(representation.contentLength))
+  if (representation.contentEncoding) {
+    res.setHeader('Content-Encoding', representation.contentEncoding)
+  }
+  if (req.method === 'HEAD') {
+    res.end()
+    return
+  }
+
+  try {
+    await pipeline(createReadStream(representation.filePath), res)
+  } catch (error) {
+    if (!res.headersSent) {
+      writeJson(res, 500, { error: 'Failed to read static file.' })
+    } else {
+      res.destroy(error instanceof Error ? error : undefined)
+    }
+  }
 }
 
 const staticReadinessIssues = async (config: ParkKingAppServerConfig) => {

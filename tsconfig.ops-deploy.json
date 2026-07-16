@@ -39,6 +39,8 @@
     "scripts/ops/assertBrowserEnvBundle.ts",
     "scripts/ops/assertBrowserEnvBundle.test.ts",
     "scripts/ops/packageRelease*.ts",
+    "scripts/ops/precompressStaticData.ts",
+    "scripts/ops/precompressStaticData.test.ts",
     "scripts/ops/p1ReleaseReadiness.ts",
     "scripts/ops/p1ReleaseReadiness.test.ts",
     "scripts/ops/p3ReleaseReadiness.ts",
