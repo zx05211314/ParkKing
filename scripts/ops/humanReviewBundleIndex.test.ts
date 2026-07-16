@@ -281,6 +281,91 @@ describe('humanReviewBundleIndex', () => {
     expect(result.entries.map((entry) => entry.districtId)).toEqual(['zhongshan'])
   })
 
+  it('discovers a QA artifact when the handoff directory uses an area alias', async () => {
+    const root = await makeTempRoot()
+    const bundleDir = await writeBundleFiles(
+      root,
+      'beitou',
+      [
+        'districtId,segmentId,reviewBucket,reviewStatus,reviewNote,createdAt',
+        'beitou,s1,marked_space_park,,,',
+        '',
+      ].join('\n'),
+      [
+        'sourceRowNumber,districtId,segmentId,reviewBucket,reviewStatus,reviewNote,createdAt',
+        '2,beitou,s1,marked_space_park,,,',
+        '',
+      ].join('\n'),
+    )
+    const aliasDir = path.join(root, 'shipai-human-review')
+    await fs.rename(bundleDir, aliasDir)
+
+    const result = await runHumanReviewBundleIndex({
+      reviewRoot: root,
+      districtIds: ['shipai'],
+      publishGateSummaryPath: null,
+    })
+
+    expect(result.hasErrors).toBe(false)
+    expect(result.entries).toHaveLength(1)
+    expect(result.entries[0]).toMatchObject({
+      bundleId: 'shipai',
+      districtId: 'beitou',
+      status: 'ready-for-review',
+    })
+    expect(result.entries[0]?.files.sourceCsv.path).toBe(path.join(aliasDir, 'beitou-review.csv'))
+    expect(result.notReadyForFinalize).toEqual(['shipai'])
+  })
+
+  it('reports source-text review bundles through their specialized gate', async () => {
+    const root = await makeTempRoot()
+    const bundleDir = path.join(root, 'taoyuan-human-review')
+    const reviewFileName = 'taoyuan-district-paid-curb-review.csv'
+    await writeText(
+      path.join(bundleDir, reviewFileName),
+      ['parking_segment_id,source_text_review_status', 'segment-1,', ''].join('\n'),
+    )
+    await writeJson(path.join(bundleDir, 'taoyuan-district-paid-curb-review.manifest.json'), {
+      schemaVersion: 1,
+      districtId: 'taoyuan-district',
+      reviewRecordCount: 1,
+      allowedStatuses: ['APPROVED_SOURCE_TEXT', 'NEEDS_CORRECTION', 'UNCLEAR'],
+      reviewCsv: reviewFileName,
+    })
+    await writeJson(path.join(bundleDir, 'status.json'), {
+      districtId: 'taoyuan-district',
+      structureValid: true,
+      complete: false,
+      approved: false,
+      expectedRows: 1,
+      actualRows: 1,
+      statusCounts: { PENDING: 1 },
+    })
+
+    const result = await runHumanReviewBundleIndex({
+      reviewRoot: root,
+      publishGateSummaryPath: null,
+    })
+    const rendered = renderHumanReviewBundleIndex(result)
+
+    expect(result.hasErrors).toBe(false)
+    expect(result.entries).toEqual([])
+    expect(result.specializedEntries).toEqual([
+      expect.objectContaining({
+        bundleId: 'taoyuan',
+        districtId: 'taoyuan-district',
+        contract: 'source-text',
+        status: 'pending',
+        expectedRows: 1,
+        actualRows: 1,
+        pendingRows: 1,
+      }),
+    ])
+    expect(rendered).toContain('Specialized review bundles: 1')
+    expect(rendered).toContain('ops:taoyuan-review-gate')
+    expect(rendered).not.toContain('missing handoffCsv')
+  })
+
   it('adds a publish WARN override only for baseline bootstrap warnings', async () => {
     const root = await makeTempRoot()
     const summaryPath = path.join(root, 'publish_gate_summary.json')

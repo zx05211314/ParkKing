@@ -400,6 +400,9 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   `npm run ops:district-readiness-matrix`
 - Human review bundle index for `.tmp/*-human-review` handoff packets:
   `npm run ops:human-review-index -- --out .tmp/human-review-index.md --json-out .tmp/human-review-index.json`
+  Area-scoped aliases such as Shipai resolve their district and artifact names from the QA
+  manifest. Specialized source-text bundles such as Taoyuan are listed separately with their
+  dedicated status and approval-gate commands; they are never treated as P0 legal-answer QA.
 - Package districts that still need human review into zip handoff files:
   `npm run ops:package-human-reviews -- --district daan,zhongshan`
   For expansion candidates that are not yet promoted to `configs/prod`, pass
@@ -602,6 +605,8 @@ Use `ops:human-review-index` before sending Daan, Zhongshan, or future review pa
 it scans `.tmp/*-human-review`, verifies each bundle has the source CSV, manifest, checklist,
 GeoJSON, and handoff CSV, then prints the remaining P0 review requirements plus the exact finalize
 command to run after `reviewStatus`, `reviewNote`, and `createdAt` are filled from observed evidence.
+The same index identifies source-text-only review contracts separately, reports their latest
+dedicated status snapshot, and prints their own gate instead of inventing missing P0 QA artifacts.
 `createdAt` / `reviewedAt` must be an ISO timestamp with timezone, for example
 `2026-05-22T12:00:00.000Z`.
 Use `ops:package-human-reviews -- --district <ids>` to create zip handoff packets under
