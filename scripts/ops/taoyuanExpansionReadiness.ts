@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseCsv } from 'csv-parse/sync'
+import { parseRuntimeCoverageCatalog } from '../../src/data/coverageCatalog'
 import { parsePaidCurbReferencePack } from '../../src/data/paidCurbReference'
 import { EPSG_4326 } from '../ingest/ingestCrs'
 import { readDataset } from '../ingest/ingestDatasetRead'
@@ -38,6 +39,7 @@ type SpatialAcquisition =
 export interface TaoyuanExpansionReadinessOptions {
   districtId?: string
   boundaryPath?: string
+  boundaryCatalogPath?: string | null
   referencePath?: string
   reviewPath?: string
   reviewManifestPath?: string
@@ -52,6 +54,7 @@ export interface TaoyuanExpansionReadinessOptions {
 
 interface BoundarySummary {
   path: string
+  source: 'official-dataset' | 'runtime-coverage-catalog'
   valid: boolean
   districtCount: number
   errors: string[]
@@ -124,6 +127,11 @@ export const parseTaoyuanExpansionReadinessArgs = (
 ): TaoyuanExpansionReadinessOptions => ({
   districtId: getArgValue(argv, '--district') ?? DEFAULT_DISTRICT,
   boundaryPath: getArgValue(argv, '--boundary') ?? DEFAULT_BOUNDARY,
+  boundaryCatalogPath: getArgValue(
+    argv,
+    '--boundary-catalog',
+    '--boundaryCatalog',
+  ),
   referencePath: getArgValue(argv, '--reference') ?? DEFAULT_REFERENCE,
   reviewPath: getArgValue(argv, '--review') ?? DEFAULT_REVIEW,
   reviewManifestPath:
@@ -261,6 +269,9 @@ export const runTaoyuanExpansionReadiness = async (
 ): Promise<TaoyuanExpansionReadinessResult> => {
   const districtId = options.districtId ?? DEFAULT_DISTRICT
   const boundaryPath = path.resolve(options.boundaryPath ?? DEFAULT_BOUNDARY)
+  const boundaryCatalogPath = options.boundaryCatalogPath
+    ? path.resolve(options.boundaryCatalogPath)
+    : null
   const referencePath = path.resolve(options.referencePath ?? DEFAULT_REFERENCE)
   const reviewPath = path.resolve(options.reviewPath ?? DEFAULT_REVIEW)
   const reviewManifestPath = path.resolve(
@@ -280,18 +291,50 @@ export const runTaoyuanExpansionReadiness = async (
   const nextActions: string[] = []
 
   const boundary: BoundarySummary = {
-    path: boundaryPath,
+    path: boundaryCatalogPath ?? boundaryPath,
+    source: boundaryCatalogPath
+      ? 'runtime-coverage-catalog'
+      : 'official-dataset',
     valid: false,
     districtCount: 0,
     errors: [],
   }
   try {
-    const result = validateTaoyuanBoundaryCollection(
-      await readDataset(boundaryPath, EPSG_4326),
-    )
-    boundary.valid = result.valid
-    boundary.districtCount = result.rows.length
+    const catalog = boundaryCatalogPath
+      ? parseRuntimeCoverageCatalog(await readJson(boundaryCatalogPath))
+      : null
+    const catalogDistricts =
+      catalog?.districts.filter(({ regionId }) => regionId === 'taoyuan') ?? []
+    const collection = catalog
+      ? {
+          type: 'FeatureCollection' as const,
+          features: catalogDistricts.map((district) => ({
+            type: 'Feature' as const,
+            properties: {
+              COUNTYCODE: '68000',
+              TOWNCODE: district.boundaryFeatureId,
+              TOWNID: district.districtId,
+              TOWNENG: district.districtName,
+            },
+            geometry: district.boundaryGeometry,
+          })),
+        }
+      : await readDataset(boundaryPath, EPSG_4326)
+    const result = validateTaoyuanBoundaryCollection(collection)
     boundary.errors.push(...result.errors)
+    catalogDistricts.forEach((district) => {
+      if (
+        district.publishStage !== 'source-only' ||
+        district.answerCapability !== 'paid-curb-reference-only' ||
+        district.requiresHumanReview !== true
+      ) {
+        boundary.errors.push(
+          `${district.districtId}: runtime boundary must remain source-only, paid-curb-reference-only, and require human review.`,
+        )
+      }
+    })
+    boundary.valid = boundary.errors.length === 0
+    boundary.districtCount = result.rows.length
   } catch (error) {
     boundary.errors.push(error instanceof Error ? error.message : String(error))
   }
@@ -483,7 +526,7 @@ export const renderTaoyuanExpansionReadiness = (
   '',
   '## Evidence layers',
   '',
-  `- Boundary: ${result.boundary.valid ? 'valid' : 'invalid'}; districts=${result.boundary.districtCount}; ${result.boundary.path}`,
+  `- Boundary: ${result.boundary.valid ? 'valid' : 'invalid'}; source=${result.boundary.source}; districts=${result.boundary.districtCount}; ${result.boundary.path}`,
   `- Text reference: ${result.reference.valid ? 'valid' : 'invalid'}; source rows=${result.reference.sourceRecordCount ?? '-'}; district rows=${result.reference.districtRecordCount ?? '-'}; ${result.reference.path}`,
   `- Source-text review: ${result.sourceTextReview.approved ? 'approved' : result.sourceTextReview.structureValid ? 'pending' : result.sourceTextReview.exists ? 'invalid' : 'missing'}; rows=${result.sourceTextReview.actualRows ?? '-'}/${result.sourceTextReview.expectedRows ?? '-'}; pending=${result.sourceTextReview.pendingRows ?? '-'}; ${result.sourceTextReview.path}`,
   `- TDX spatial reference: ${result.spatial.valid ? 'valid' : result.spatial.exists ? 'invalid' : 'missing'}; acquisition=${result.spatial.acquisition}; features=${result.spatial.featureCount}; segment geometries=${result.spatial.segmentGeometryCount}; representative points=${result.spatial.representativePointCount}; ${result.spatial.path}`,

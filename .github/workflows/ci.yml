@@ -21,7 +21,7 @@ jobs:
       - name: Validate runtime coverage catalog
         run: npm run ops:validate-coverage-catalog
       - name: Taoyuan expansion readiness report
-        run: npm run ops:taoyuan-expansion-readiness:report
+        run: npm run ops:taoyuan-expansion-readiness:ci
       - name: Summarize Taoyuan expansion readiness
         if: always()
         run: npm run ops:append-workflow-summary -- --append-file .tmp/taoyuan-expansion-readiness.md

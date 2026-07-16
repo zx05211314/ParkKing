@@ -160,7 +160,7 @@ describe('taoyuanExpansionReadiness', () => {
       'utf-8',
     )
     const reportIndex = workflow.indexOf(
-      'run: npm run ops:taoyuan-expansion-readiness:report',
+      'run: npm run ops:taoyuan-expansion-readiness:ci',
     )
     const summaryIndex = workflow.indexOf(
       'run: npm run ops:append-workflow-summary -- --append-file .tmp/taoyuan-expansion-readiness.md',
@@ -184,6 +184,8 @@ describe('taoyuanExpansionReadiness', () => {
         'taoyuan-district',
         '--boundary',
         '.tmp/boundary.geojson',
+        '--boundary-catalog',
+        '.tmp/coverage.json',
         '--reference',
         '.tmp/reference.json',
         '--review',
@@ -204,6 +206,7 @@ describe('taoyuanExpansionReadiness', () => {
     ).toMatchObject({
       districtId: 'taoyuan-district',
       boundaryPath: '.tmp/boundary.geojson',
+      boundaryCatalogPath: '.tmp/coverage.json',
       referencePath: '.tmp/reference.json',
       reviewPath: '.tmp/review.csv',
       reviewManifestPath: '.tmp/review.manifest.json',
@@ -214,6 +217,56 @@ describe('taoyuanExpansionReadiness', () => {
       jsonOutPath: '.tmp/readiness.json',
       json: true,
     })
+  })
+
+  it('validates tracked runtime boundaries without an unpacked shapefile', async () => {
+    const fixture = await createFixture({})
+    const result = await runTaoyuanExpansionReadiness({
+      ...fixture,
+      boundaryPath: path.join(path.dirname(fixture.boundaryPath), 'missing.shp'),
+      boundaryCatalogPath: path.resolve('public/data/coverage.json'),
+      env: {},
+    })
+
+    expect(result.boundary).toMatchObject({
+      valid: true,
+      source: 'runtime-coverage-catalog',
+      districtCount: 13,
+    })
+    expect(result.automationErrors).toEqual([])
+  })
+
+  it('rejects a runtime boundary promoted beyond reference-only evidence', async () => {
+    const fixture = await createFixture({})
+    const catalog = JSON.parse(
+      await fs.readFile(path.resolve('public/data/coverage.json'), 'utf-8'),
+    ) as {
+      districts: Array<{ regionId: string; publishStage: string }>
+    }
+    const district = catalog.districts.find(
+      ({ regionId }) => regionId === 'taoyuan',
+    )
+    if (!district) {
+      throw new Error('Fixture catalog has no Taoyuan district')
+    }
+    district.publishStage = 'production'
+    const boundaryCatalogPath = path.join(
+      path.dirname(fixture.boundaryPath),
+      'unsafe-coverage.json',
+    )
+    await writeJson(boundaryCatalogPath, catalog)
+
+    const result = await runTaoyuanExpansionReadiness({
+      ...fixture,
+      boundaryCatalogPath,
+      env: {},
+    })
+
+    expect(result.status).toBe('automation-error')
+    expect(result.boundary.valid).toBe(false)
+    expect(result.automationErrors.join('\n')).toContain(
+      'runtime boundary must remain source-only',
+    )
   })
 
   it('reports human and external input blockers without failing report mode', async () => {

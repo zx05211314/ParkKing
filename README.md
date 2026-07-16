@@ -369,6 +369,8 @@ and the non-legal safety contract in one report. The report exits successfully w
 only blockers are expected human or external inputs. Use
 `npm run ops:taoyuan-expansion-readiness:strict` when a milestone must remain non-zero
 until source text is fully approved and a valid TDX spatial-reference artifact exists.
+CI uses the tracked runtime coverage catalog as explicit derived boundary evidence; local
+and strict runs default to the unpacked official shapefile instead of silently falling back.
 Even strict readiness only approves a spatial reference layer; legal-answer eligibility
 remains false. The credential-free
 [Taoyuan roadside fee dataset](https://data.gov.tw/dataset/149456) exposes text/fare fields
