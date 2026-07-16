@@ -14,6 +14,7 @@ export function AddressRecommendationsPanel({
   parkingAnswer,
   parkingAnswerServiceStatus,
   parkingAnswerServiceError,
+  parkingCoverageNotice,
   parkingAnswerReport,
   nearbySnapshot,
   bestAddressRecommendation,
@@ -55,9 +56,11 @@ export function AddressRecommendationsPanel({
     return null
   }
 
-  const recommendationEmptyMessage = parkingAnswer?.primary
-    ? 'Exact curb answer is shown above. Route-ranked parking targets are unavailable with the current filters or route data.'
-    : addressRecommendationEmptyMessage
+  const recommendationEmptyMessage = parkingCoverageNotice
+    ? 'Parking recommendations are hidden because the pinned location is outside the active dataset.'
+    : parkingAnswer?.primary
+      ? 'Exact curb answer is shown above. Route-ranked parking targets are unavailable with the current filters or route data.'
+      : addressRecommendationEmptyMessage
 
   return (
     <div className="address-recommendations">
@@ -75,11 +78,14 @@ export function AddressRecommendationsPanel({
         parkingAnswer={parkingAnswer}
         parkingAnswerServiceStatus={parkingAnswerServiceStatus}
         parkingAnswerServiceError={parkingAnswerServiceError}
+        parkingCoverageNotice={parkingCoverageNotice}
         parkingAnswerReport={parkingAnswerReport}
         formatDistanceMeters={formatDistanceMeters}
         onParkingAnswerReport={onParkingAnswerReport}
       />
-      {!bestAddressRecommendation || !bestAddressRecommendationTarget ? (
+      {parkingCoverageNotice ||
+      !bestAddressRecommendation ||
+      !bestAddressRecommendationTarget ? (
         <div className="control-meta">{recommendationEmptyMessage}</div>
       ) : (
         <>

@@ -231,11 +231,12 @@ Current routing strategy:
 Current parking answer strategy:
 1. Browser pinned-location answers first call `/api/parking-answer` or `VITE_PARKING_ANSWER_URL`.
 2. The browser checks `/ready` before exact service requests; degraded readiness is shown in the pinned-answer panel while the local loaded dataset fallback remains available.
-3. The service loads the generated district pack, applies reviewed sign overrides, parking-space evidence, inferred candidates when requested, zone rules, and ranking trust.
-4. The response includes `schemaVersion`, dataset hash, primary answer, alternatives, evidence, caveats, and the same trust summary rendered in the UI.
-5. The service caches evaluated segments per `datasetDir` and `hhmm` for the process lifetime.
-6. `/health` returns service config liveness; `/ready` verifies required generated layers for the configured default and allowed districts, including parseable sign overrides and inferred candidates, and returns HTTP 503 when any are missing or malformed.
-7. If no configured API is available in a static deployment, the UI falls back to the local loaded dataset answer path instead of hiding the pinned answer card.
+3. Before either answer path runs, the browser checks the pinned location against the active dataset boundary bounds. Out-of-coverage locations remain visible on the map but do not receive a parking answer or recommendation from another district's data.
+4. The service loads the generated district pack, applies reviewed sign overrides, parking-space evidence, inferred candidates when requested, zone rules, and ranking trust.
+5. The response includes `schemaVersion`, dataset hash, primary answer, alternatives, evidence, caveats, and the same trust summary rendered in the UI.
+6. The service caches evaluated segments per `datasetDir` and `hhmm` for the process lifetime.
+7. `/health` returns service config liveness; `/ready` verifies required generated layers for the configured default and allowed districts, including parseable sign overrides and inferred candidates, and returns HTTP 503 when any are missing or malformed.
+8. If no configured API is available in a static deployment, the UI falls back to the local loaded dataset answer path instead of hiding the pinned answer card.
 
 Current saved-plan sync strategy:
 1. Trip-board state loads from browser storage immediately.

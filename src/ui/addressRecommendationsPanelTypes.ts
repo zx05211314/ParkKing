@@ -21,6 +21,7 @@ export interface AddressRecommendationsPanelProps {
   parkingAnswer: ParkingAnswer | null
   parkingAnswerServiceStatus: ParkingAnswerServiceStatus
   parkingAnswerServiceError: string | null
+  parkingCoverageNotice: string | null
   parkingAnswerReport: SegmentReport | null
   nearbySnapshot: NearbySnapshot | null
   bestAddressRecommendation: RecommendationSegmentLike | null
@@ -88,6 +89,7 @@ export type AddressParkingAnswerSummaryProps = Pick<
   | 'parkingAnswer'
   | 'parkingAnswerServiceStatus'
   | 'parkingAnswerServiceError'
+  | 'parkingCoverageNotice'
   | 'parkingAnswerReport'
   | 'formatDistanceMeters'
   | 'onParkingAnswerReport'

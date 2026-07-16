@@ -13,6 +13,7 @@ export interface BuildAddressRecommendationsPropsOptions {
   parkingAnswer: AddressRecommendationsProps['parkingAnswer']
   parkingAnswerServiceStatus: AddressRecommendationsProps['parkingAnswerServiceStatus']
   parkingAnswerServiceError: AddressRecommendationsProps['parkingAnswerServiceError']
+  parkingCoverageNotice: AddressRecommendationsProps['parkingCoverageNotice']
   parkingAnswerReport: AddressRecommendationsProps['parkingAnswerReport']
   nearbySnapshot: AddressRecommendationsProps['nearbySnapshot']
   bestAddressRecommendation: AddressRecommendationsProps['bestAddressRecommendation']

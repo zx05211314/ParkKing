@@ -51,6 +51,7 @@ export function AddressParkingAnswerSummary({
   parkingAnswer,
   parkingAnswerServiceStatus,
   parkingAnswerServiceError,
+  parkingCoverageNotice,
   parkingAnswerReport,
   formatDistanceMeters,
   onParkingAnswerReport,
@@ -60,6 +61,28 @@ export function AddressParkingAnswerSummary({
     parkingAnswerServiceStatus,
     parkingAnswerServiceError,
   )
+
+  if (parkingCoverageNotice) {
+    return (
+      <div className="address-parking-answer answer-no-data">
+        <div className="address-parking-answer-header">
+          <div>
+            <div className="address-best-option-label">Pinned location answer</div>
+            <div className="address-parking-answer-title">
+              Outside active coverage
+            </div>
+          </div>
+          <div className="address-parking-answer-kind">NOT EVALUATED</div>
+        </div>
+        <div className="address-parking-answer-action">
+          Decision: No parking recommendation was calculated from another district's data.
+        </div>
+        <div className="address-parking-answer-caveat">
+          Coverage: {parkingCoverageNotice}
+        </div>
+      </div>
+    )
+  }
 
   if (!parkingAnswer) {
     return serviceNotice ? (

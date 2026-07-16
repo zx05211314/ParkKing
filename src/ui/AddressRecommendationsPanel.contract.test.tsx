@@ -39,6 +39,7 @@ const baseProps: AddressRecommendationsPanelProps = {
     'Local feedback is adjusting 2 nearby options.',
   parkingAnswerServiceStatus: 'ready',
   parkingAnswerServiceError: null,
+  parkingCoverageNotice: null,
   parkingAnswer: {
     kind: 'PARK',
     label: 'Parking is allowed at the nearest mapped curb for this time.',
@@ -348,6 +349,23 @@ describe('AddressRecommendationsPanel contract', () => {
 
     expect(html).toContain('Exact answer unavailable')
     expect(html).toContain('Service: Parking answer request failed with 500.')
+  })
+
+  it('blocks cross-district answers and recommendations outside active coverage', () => {
+    const html = renderToStaticMarkup(
+      <AddressRecommendationsPanel
+        {...baseProps}
+        parkingCoverageNotice="This location is outside the active Xinyi dataset. ParkKing did not calculate a parking legality answer here."
+      />,
+    )
+
+    expect(html).toContain('Outside active coverage')
+    expect(html).toContain('NOT EVALUATED')
+    expect(html).toContain(
+      'No parking recommendation was calculated from another district',
+    )
+    expect(html).toContain('Parking recommendations are hidden')
+    expect(html).not.toContain('Park allowed at nearest mapped curb')
   })
 
   it('renders a direct no-stop decision for blocked pinned curbs', () => {

@@ -40,6 +40,7 @@ import { useTripBoardManagementActions } from './ui/useTripBoardManagementAction
 import { useSyncStatus } from './ui/useSyncStatus'
 import { useSyncRecoveryEffects } from './ui/useSyncRecoveryEffects'
 import { useMapFocusState } from './ui/useMapFocusState'
+import { buildParkingCoverageState } from './ui/parkingCoverage'
 import { useInteractionRefs } from './ui/useInteractionRefs'
 import { useAppRefs } from './ui/useAppRefs'
 import { useSavedPlanShareActions } from './ui/useSavedPlanShareActions'
@@ -341,6 +342,12 @@ function App() {
     selectedRouteProfile,
     userLocation,
   })
+  const parkingCoverageState = buildParkingCoverageState({
+    location: searchLocation,
+    districtBounds,
+    districtName,
+  })
+  const parkingSearchLocation = parkingCoverageState.eligibleLocation
   const {
     currentShareUrl,
     buildShareUrlForState,
@@ -557,7 +564,7 @@ function App() {
     markedSpacesOnly,
     deferredFilterQuery,
     filterQuery,
-    searchLocation,
+    searchLocation: parkingSearchLocation,
     recommendationRankMode,
     routeEtaBySegmentId,
     parkingSpaces,
@@ -566,7 +573,7 @@ function App() {
   })
   const clientParkingAnswer = useClientParkingAnswerState({
     segments,
-    searchLocation,
+    searchLocation: parkingSearchLocation,
     nowHHMM,
     zoneIndex,
     includeInferred,
@@ -576,7 +583,7 @@ function App() {
   })
   const parkingAnswerServiceState = useParkingAnswerServiceState({
     districtId: datasetId,
-    searchLocation,
+    searchLocation: parkingSearchLocation,
     nowHHMM,
     includeInferred,
     riskMode,
@@ -634,7 +641,7 @@ function App() {
       recommendationRankMode,
       routeEtaStatus,
       routeEtaError,
-      searchLocation,
+      searchLocation: parkingSearchLocation,
       searchLocationLabel,
       displaySegments,
   })
@@ -1094,6 +1101,7 @@ function App() {
     parkingAnswer,
     parkingAnswerServiceStatus: parkingAnswerServiceState.status,
     parkingAnswerServiceError: parkingAnswerServiceState.error,
+    parkingCoverageNotice: parkingCoverageState.notice,
     parkingAnswerReport,
     nearbySnapshot,
     bestAddressRecommendation,
@@ -1113,7 +1121,7 @@ function App() {
     routeEtaBySegmentId,
     reportsBySegment,
     navigationOrigin,
-    searchLocation,
+    searchLocation: parkingSearchLocation,
     bestRecommendationIndex,
     alternativeRecommendationOffset,
     onRecommendationRankModeChange: handleRecommendationRankModeChange,
