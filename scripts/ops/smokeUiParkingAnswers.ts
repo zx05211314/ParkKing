@@ -46,6 +46,8 @@ export interface SmokeUiParkingAnswerCaseResult
   extends SmokeUiParkingAnswerCaseExpectation {
   pass: boolean
   missingText: string[]
+  loadingIndicators?: SmokeUiLoadingIndicator[]
+  attemptCount?: number
 }
 
 export interface SmokeUiParkingAnswersSummary {
@@ -61,6 +63,7 @@ export interface SmokeUiParkingAnswersSummary {
 }
 
 export type SmokeUiParkingAnswerView = 'LIST' | 'MAP'
+export type SmokeUiLoadingIndicator = 'parking data loading' | 'map loading'
 
 export interface WebSocketLike {
   send(data: string): void
@@ -675,6 +678,25 @@ export const readBodyText = async (client: CdpClient) => {
   return typeof value === 'string' ? value : ''
 }
 
+export const detectSmokeUiLoadingIndicators = (
+  bodyText: string,
+): SmokeUiLoadingIndicator[] => {
+  const normalizedBody = normalizeText(bodyText)
+  const indicators: SmokeUiLoadingIndicator[] = []
+
+  if (
+    normalizedBody.includes('loading parking data...') ||
+    normalizedBody.includes('status: loading')
+  ) {
+    indicators.push('parking data loading')
+  }
+  if (normalizedBody.includes('loading map...')) {
+    indicators.push('map loading')
+  }
+
+  return indicators
+}
+
 export const waitForRequiredText = async (params: {
   client: CdpClient
   requiredText: string[]
@@ -691,12 +713,16 @@ export const waitForRequiredText = async (params: {
       (text) => !normalizedBody.includes(normalizeText(text)),
     )
     if (missingText.length === 0) {
-      return { pass: true, missingText }
+      return { pass: true, missingText, loadingIndicators: [] }
     }
     await wait(250)
   }
 
-  return { pass: false, missingText }
+  return {
+    pass: false,
+    missingText,
+    loadingIndicators: detectSmokeUiLoadingIndicators(bodyText),
+  }
 }
 
 export const resolveSmokeUiSuiteTimeoutMs = (
@@ -708,10 +734,12 @@ export const shouldRetrySmokeUiCase = (params: {
   attempt: number
   requiredText: string[]
   missingText: string[]
+  loadingIndicators?: SmokeUiLoadingIndicator[]
 }) =>
   params.attempt === 0 &&
   params.requiredText.length > 0 &&
-  params.missingText.length === params.requiredText.length
+  (params.missingText.length === params.requiredText.length ||
+    (params.loadingIndicators?.length ?? 0) > 0)
 
 export const isSafeSmokeProfileDir = (profileDir: string) => {
   const resolvedProfile = path.resolve(profileDir)
@@ -859,10 +887,12 @@ export const validateSmokeUiParkingAnswersSummary = (
     : []),
   ...summary.results
     .filter((result) => !result.pass)
-    .map(
-      (result) =>
-        `answer case ${result.id} missing UI text: ${result.missingText.join('; ')}`,
-    ),
+    .map((result) => {
+      const loadingContext = result.loadingIndicators?.length
+        ? `; page still reported: ${result.loadingIndicators.join(', ')}`
+        : ''
+      return `answer case ${result.id} missing UI text: ${result.missingText.join('; ')}${loadingContext}`
+    }),
 ]
 
 export const renderSmokeUiParkingAnswersSummary = (
@@ -876,10 +906,17 @@ export const renderSmokeUiParkingAnswersSummary = (
     `Answer-case hash: ${summary.caseDatasetHash ?? 'none'}`,
     `Answer cases: ${summary.passCount}/${summary.caseCount} passed from ${summary.casesPath}`,
     ...summary.results.map((result) => {
+      const retryContext =
+        (result.attemptCount ?? 1) > 1
+          ? `; attempts ${result.attemptCount}`
+          : ''
+      const loadingContext = result.loadingIndicators?.length
+        ? `; page still reported ${result.loadingIndicators.join(', ')}`
+        : ''
       const status = result.pass
         ? 'PASS'
         : `FAIL missing "${result.missingText.join('" | "')}"`
-      return `CASE ${result.id}: ${status}; expected ${result.expectedKind}; evidence ${result.expectedEvidenceKind ?? '-'}`
+      return `CASE ${result.id}: ${status}; expected ${result.expectedKind}; evidence ${result.expectedEvidenceKind ?? '-'}${retryContext}${loadingContext}`
     }),
   ].join('\n')
 
@@ -957,11 +994,13 @@ export const runSmokeUiParkingAnswers = async (
     const suiteDeadline = Date.now() + suiteTimeoutMs
     for (const expectation of expectations) {
       let outcome: Awaited<ReturnType<typeof waitForRequiredText>> | null = null
+      let attemptCount = 0
       for (let attempt = 0; attempt < 2; attempt += 1) {
         const remainingSuiteMs = suiteDeadline - Date.now()
         if (remainingSuiteMs <= 0) {
           break
         }
+        attemptCount = attempt + 1
         await client.send('Page.navigate', { url: expectation.url })
         outcome = await waitForRequiredText({
           client,
@@ -974,6 +1013,7 @@ export const runSmokeUiParkingAnswers = async (
             attempt,
             requiredText: expectation.requiredText,
             missingText: outcome.missingText,
+            loadingIndicators: outcome.loadingIndicators,
           })
         ) {
           break
@@ -982,7 +1022,7 @@ export const runSmokeUiParkingAnswers = async (
       if (!outcome) {
         break
       }
-      results.push({ ...expectation, ...outcome })
+      results.push({ ...expectation, ...outcome, attemptCount })
       if (
         !outcome.pass &&
         outcome.missingText.length === expectation.requiredText.length
