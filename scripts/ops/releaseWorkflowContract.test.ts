@@ -206,6 +206,7 @@ describe('release workflow contracts', () => {
     expectWorkflowInputs(workflow, [
       'configsGlob',
       'allowWarn',
+      'allowAnswerCaseReviewFallback',
       'overrideReason',
       'tag',
       'latest',

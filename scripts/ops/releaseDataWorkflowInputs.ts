@@ -52,7 +52,11 @@ export const resolveReleaseDataWorkflowInputs = (
       : normalizeBooleanText(env.PARKKING_INPUT_ALLOW_WARN),
     releaseAllowBaselineAdopt: isDataTagPush ? 'true' : 'false',
     releaseAllowReviewedCaseHashMismatch: isDataTagPush ? 'true' : 'false',
-    releaseAllowAnswerCaseReviewFallback: isDataTagPush ? 'true' : 'false',
+    releaseAllowAnswerCaseReviewFallback: isDataTagPush
+      ? 'true'
+      : normalizeBooleanText(
+          env.PARKKING_INPUT_ALLOW_ANSWER_CASE_REVIEW_FALLBACK,
+        ),
     releaseOverrideReason: isDataTagPush
       ? TAG_TRIGGER_ALLOW_WARN_OVERRIDE_REASON
       : normalizeText(env.PARKKING_INPUT_OVERRIDE_REASON),

@@ -23,6 +23,7 @@ export interface ReleaseDataDispatchOptions {
   workflow: string
   configsGlob: string
   allowWarn: boolean
+  allowAnswerCaseReviewFallback: boolean
   overrideReason: string
   tag: string
   latest: boolean
@@ -33,6 +34,7 @@ export interface ReleaseDataDispatchOptions {
 type ReleaseDataDispatchInputs = WorkflowDispatchInputs & {
   configsGlob: string
   allowWarn: string
+  allowAnswerCaseReviewFallback: string
   overrideReason: string
   tag: string
   latest: string
@@ -72,6 +74,11 @@ export const parseReleaseDataDispatchArgs = (
     workflow: getArgValue(argv, '--workflow') ?? DEFAULT_WORKFLOW,
     configsGlob: getArgValue(argv, '--configs-glob') ?? DEFAULT_CONFIGS_GLOB,
     allowWarn,
+    allowAnswerCaseReviewFallback: parseBooleanArg(
+      argv,
+      '--allow-answer-case-review-fallback',
+      false,
+    ),
     overrideReason,
     tag: getArgValue(argv, '--tag') ?? '',
     latest: parseBooleanArg(argv, '--latest', false),
@@ -85,6 +92,9 @@ const buildReleaseDataDispatchInputs = (
 ): ReleaseDataDispatchInputs => ({
   configsGlob: options.configsGlob,
   allowWarn: String(options.allowWarn),
+  allowAnswerCaseReviewFallback: String(
+    options.allowAnswerCaseReviewFallback,
+  ),
   overrideReason: options.overrideReason,
   tag: options.tag,
   latest: String(options.latest),
@@ -111,6 +121,7 @@ export const renderReleaseDataDispatchPlan = (
   `- Workflow: ${options.workflow}`,
   `- Configs glob: ${options.configsGlob}`,
   `- Allow warnings: ${options.allowWarn}`,
+  `- Allow reviewed answer-case fallback: ${options.allowAnswerCaseReviewFallback}`,
   `- Override reason: ${options.overrideReason || '(none)'}`,
   `- Tag: ${options.tag || '(workflow default)'}`,
   `- Mark latest: ${options.latest}`,
@@ -151,6 +162,7 @@ const run = async () => {
         'Options:',
         '  --configs-glob <glob>       Defaults to configs/prod/*.json',
         '  --allow-warn [true|false]   Allows WARN anomalies; requires --override-reason when true',
+        '  --allow-answer-case-review-fallback [true|false]  Uses committed reviewed answer cases when QA CSVs are unavailable',
         '  --override-reason <text>    Human reason for allow-warn release dispatches',
         '  --tag <tag>                 Optional release tag; workflow defaults to data-<release-id>',
         '  --latest [true|false]       Marks the data release as latest',

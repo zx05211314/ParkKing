@@ -35,6 +35,7 @@ describe('releaseDataWorkflowInputs', () => {
         PARKKING_INPUT_CONFIGS_GLOB: 'configs/dev/*.json',
         PARKKING_INPUT_TAG: 'data-manual',
         PARKKING_INPUT_ALLOW_WARN: 'false',
+        PARKKING_INPUT_ALLOW_ANSWER_CASE_REVIEW_FALLBACK: 'true',
         PARKKING_INPUT_OVERRIDE_REASON: 'manual override',
         PARKKING_INPUT_LATEST: 'true',
       }),
@@ -43,11 +44,21 @@ describe('releaseDataWorkflowInputs', () => {
       releaseAllowWarn: 'false',
       releaseAllowBaselineAdopt: 'false',
       releaseAllowReviewedCaseHashMismatch: 'false',
-      releaseAllowAnswerCaseReviewFallback: 'false',
+      releaseAllowAnswerCaseReviewFallback: 'true',
       releaseOverrideReason: 'manual override',
       releaseTagInput: 'data-manual',
       releaseIdInput: 'manual',
       releaseLatest: 'true',
+    })
+  })
+
+  it('keeps answer-case review fallback disabled by default for dispatches', () => {
+    expect(
+      resolveReleaseDataWorkflowInputs({
+        PARKKING_WORKFLOW_EVENT_NAME: 'workflow_dispatch',
+      }),
+    ).toMatchObject({
+      releaseAllowAnswerCaseReviewFallback: 'false',
     })
   })
 

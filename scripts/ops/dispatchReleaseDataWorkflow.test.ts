@@ -13,6 +13,7 @@ const baseOptions: ReleaseDataDispatchOptions = {
   workflow: 'release_data.yml',
   configsGlob: 'configs/prod/*.json',
   allowWarn: false,
+  allowAnswerCaseReviewFallback: false,
   overrideReason: '',
   tag: '',
   latest: false,
@@ -31,6 +32,7 @@ describe('dispatch release data workflow', () => {
         inputs: {
           configsGlob: 'configs/prod/*.json',
           allowWarn: 'false',
+          allowAnswerCaseReviewFallback: 'false',
           overrideReason: '',
           tag: '',
           latest: 'false',
@@ -46,6 +48,8 @@ describe('dispatch release data workflow', () => {
       '--ref',
       'codex/p1-p2-readiness-checkpoint',
       '--allow-warn',
+      'true',
+      '--allow-answer-case-review-fallback',
       'true',
       '--override-reason',
       'reviewed by owner',
@@ -63,12 +67,14 @@ describe('dispatch release data workflow', () => {
       repo: 'zx05211314/ParkKing',
       ref: 'codex/p1-p2-readiness-checkpoint',
       allowWarn: true,
+      allowAnswerCaseReviewFallback: true,
       overrideReason: 'reviewed by owner',
       tag: 'data-custom',
       latest: true,
       dryRun: true,
     })
     expect(plan).toContain('"allowWarn": "true"')
+    expect(plan).toContain('"allowAnswerCaseReviewFallback": "true"')
     expect(plan).toContain('"tag": "data-custom"')
     expect(plan).not.toContain('secret-token')
   })
