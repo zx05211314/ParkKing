@@ -37,6 +37,22 @@ const parseDatasetRoots = (argv: string[]) => {
     .filter(Boolean)
 }
 
+const parseRequiredSegmentIds = (argv: string[]) => {
+  const values = parseArgValues(
+    argv,
+    '--include-segment',
+    '--includeSegment',
+    '--segment-id',
+    '--segmentId',
+  )
+  return [...new Set(
+    values
+      .flatMap((value) => value.split(','))
+      .map((value) => value.trim())
+      .filter(Boolean),
+  )]
+}
+
 const parsePositiveNumber = (
   value: string | null,
   fallback: number,
@@ -128,5 +144,6 @@ export const parseArgs = (argv: string[]): CliArgs => {
       : 1,
     strategy: parseStrategy(parseArgValue(argv, '--strategy')),
     hhmm: parseHHMM(parseArgValue(argv, '--hhmm') ?? parseArgValue(argv, '--time')),
+    requiredSegmentIds: parseRequiredSegmentIds(argv),
   }
 }

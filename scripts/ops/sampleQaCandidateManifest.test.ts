@@ -86,6 +86,7 @@ describe('buildQaCandidateManifest', () => {
       seed: 1,
       strategy: 'review',
       hhmm: '21:00',
+      requiredSegmentIds: ['candidate-critical'],
       createdAt: '2026-04-25T01:00:00.000Z',
     })
 
@@ -95,6 +96,7 @@ describe('buildQaCandidateManifest', () => {
       topN: 80,
       strategy: 'review',
       hhmm: '21:00',
+      requiredSegmentIds: ['candidate-critical'],
     })
     expect(manifest.rows.bucketCounts).toEqual({
       marked_space_park: 1,

@@ -18,7 +18,17 @@ describe('sampleQaCandidateRequest', () => {
       seed: 1,
       strategy: 'ranked',
       hhmm: '13:00',
+      requiredSegmentIds: [],
     })
+  })
+
+  it('keeps required segment ids in resolved sampling params', () => {
+    expect(
+      resolveSampleQaCandidateParams({
+        districtId: 'songshan',
+        requiredSegmentIds: ['candidate-a'],
+      }).requiredSegmentIds,
+    ).toEqual(['candidate-a'])
   })
 
   it('accepts review strategy and custom evaluation time', () => {

@@ -36,6 +36,7 @@ export const buildQaCandidates = async (params: {
   strategy?: QaCandidateStrategy
   hhmm?: string
   datasetRoots?: string[]
+  requiredSegmentIds?: string[]
 }): Promise<QaCandidateRow[]> => {
   const packet = await buildQaCandidatePacket(params)
   return packet.rows
@@ -51,6 +52,7 @@ export const buildQaCandidatePacket = async (params: {
   strategy?: QaCandidateStrategy
   hhmm?: string
   datasetRoots?: string[]
+  requiredSegmentIds?: string[]
 }): Promise<QaCandidatePacket> => {
   const dataset = await loadQaCandidateDataset({
     districtId: params.districtId,
@@ -78,6 +80,7 @@ export const buildQaCandidatePacket = async (params: {
     shuffle: params.shuffle,
     seed: params.seed,
     strategy: params.strategy,
+    requiredSegmentIds: params.requiredSegmentIds,
   })
   const hydratedRows = await hydrateQaRowsWithStoredOverrides(rows, params.districtId)
   return {

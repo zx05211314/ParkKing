@@ -29,6 +29,7 @@ export interface CliArgs {
   seed: number
   strategy: QaCandidateStrategy
   hhmm: string
+  requiredSegmentIds: string[]
 }
 
 export type QaCandidateStrategy = 'ranked' | 'review'

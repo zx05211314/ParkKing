@@ -24,6 +24,7 @@ export interface SampleQaCandidateParams {
   strategy?: QaCandidateStrategy
   hhmm?: string
   datasetRoots?: string[]
+  requiredSegmentIds?: string[]
 }
 
 export interface ResolvedSampleQaCandidateParams {
@@ -41,6 +42,7 @@ export interface ResolvedSampleQaCandidateParams {
   strategy: QaCandidateStrategy
   hhmm: string
   datasetRoots: string[]
+  requiredSegmentIds: string[]
 }
 
 export const resolveSampleQaCandidateParams = (
@@ -60,6 +62,7 @@ export const resolveSampleQaCandidateParams = (
   strategy: params.strategy ?? 'ranked',
   hhmm: params.hhmm ?? DEFAULT_QA_HHMM,
   datasetRoots: params.datasetRoots ?? DEFAULT_DATASET_ROOTS,
+  requiredSegmentIds: params.requiredSegmentIds ?? [],
 })
 
 export const resolveSampleQaCandidateDistrictIds = async ({
