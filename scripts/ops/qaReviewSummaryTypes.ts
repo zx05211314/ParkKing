@@ -74,6 +74,8 @@ export interface QaReviewPacketManifestSummary {
   csvPath: string | null
   datasetBaseDir: string | null
   datasetHash: string | null
+  datasetSourceHash: string | null
+  generatorHash: string | null
   configHash: string | null
   generatedAt: string | null
   publishedAt: string | null

@@ -48,6 +48,8 @@ describe('buildQaCandidateManifest', () => {
         districtId: 'xinyi',
         districtName: 'Xinyi',
         datasetHash: 'hash-a',
+        datasetSourceHash: 'source-hash-a',
+        generatorHash: 'generator-hash-a',
         configHash: 'hash-b',
         generatedAt: '2026-04-25T00:00:00.000Z',
         counts: {
@@ -92,6 +94,8 @@ describe('buildQaCandidateManifest', () => {
     })
 
     expect(manifest.dataset.datasetHash).toBe('hash-a')
+    expect(manifest.dataset.datasetSourceHash).toBe('source-hash-a')
+    expect(manifest.dataset.generatorHash).toBe('generator-hash-a')
     expect(manifest.dataset.inputCounts.parkingSpaces).toBe(4)
     expect(manifest.params).toMatchObject({
       topN: 80,

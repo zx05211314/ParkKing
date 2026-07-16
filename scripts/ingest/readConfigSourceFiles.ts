@@ -134,8 +134,8 @@ export const buildConfigHashes = (raw: string, sourceFiles: SourceFileMeta[]) =>
         ),
     }))
     .sort((left, right) => left.sourceKey.localeCompare(right.sourceKey))
-  const datasetHash = hashString(
+  const datasetSourceHash = hashString(
     JSON.stringify({ configHash, sourceFiles: stableSourceFiles }),
   )
-  return { configHash, datasetHash }
+  return { configHash, datasetSourceHash }
 }

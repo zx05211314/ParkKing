@@ -85,6 +85,10 @@ describe('fixture passthrough ingest', () => {
     const parsed = JSON.parse(outputMeta) as Record<string, unknown>
     expect(parsed.districtId).toBe('xinyi-fixture')
     expect(parsed.metricsSchemaVersion).toBe(1)
+    expect(parsed.datasetHash).not.toBe(resolved.datasetSourceHash)
+    expect(parsed.datasetSourceHash).toBe(resolved.datasetSourceHash)
+    expect(parsed.generatorHash).toBe(resolved.generatorHash)
+    expect(parsed.datasetHashSchemaVersion).toBe(1)
     expect(parsed.segmentsCount).toBe(4)
     expect(parsed.parkingSpacesCount).toBe(2)
     expect(parsed.signOverridesCount).toBe(3)

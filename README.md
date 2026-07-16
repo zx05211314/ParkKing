@@ -682,7 +682,15 @@ primary segment pins, evidence kind, and final confidence. CI, nightly, publish,
 workflows now also run parking-answer API smoke plus same-origin API service probes so geocode,
 routing, sync, and parking-answer `/health` and `/ready` routes are exercised before merge or
 release. Those gates also run the sync issue-report write/read roundtrip, so the production
-feedback capture endpoint is exercised before merge or release. CI, nightly, and publish use
+feedback capture endpoint is exercised before merge or release.
+
+`datasetHash` is content-addressed from the district boundary and runtime GeoJSON layers. Metadata
+also records `datasetSourceHash` and `generatorHash`: review gates compare those values against the
+current source/config inputs and transitive ingest implementation, while release, runtime cache,
+and reviewed-answer pins use the content hash. Volatile reports such as
+`intersections_report.json.generatedAt` do not participate in dataset identity.
+
+CI, nightly, and publish use
 `--start-preview` after build to verify the actual Vite-mounted routes, and they run
 `ops:bundle-budget` after production build so heavy map/geospatial chunks stay off the initial
 preload path; ingest dry-run uses the

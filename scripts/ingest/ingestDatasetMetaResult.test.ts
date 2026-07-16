@@ -9,7 +9,8 @@ const createConfig = (): ResolvedConfig =>
     boundary: { names: ['Xinyi'] },
     configPath: 'C:/config.json',
     configHash: 'config-hash',
-    datasetHash: 'dataset-hash',
+    datasetSourceHash: 'dataset-source-hash',
+    generatorHash: 'generator-hash',
     inputs: {},
     outputs: {
       generatedDir: 'C:/generated/xinyi',
@@ -86,6 +87,11 @@ describe('ingestDatasetMetaResult', () => {
         files: { 'dataset_meta.json': { sha256: 'abc123', bytes: 1024 } },
         totalBytes: 1024,
       },
+      datasetIdentity: {
+        datasetHash: 'content-hash',
+        datasetHashSchemaVersion: 1,
+        datasetHashFiles: { 'red_yellow.geojson': 'abc123' },
+      },
       parkingSpacesBBox: {
         minX: 121.5,
         minY: 25.0,
@@ -124,6 +130,10 @@ describe('ingestDatasetMetaResult', () => {
 
     expect(result.generatedAt).toBe('2026-03-21T00:00:00.000Z')
     expect(result.metricsSchemaVersion).toBe(1)
+    expect(result.datasetHash).toBe('content-hash')
+    expect(result.datasetSourceHash).toBe('dataset-source-hash')
+    expect(result.generatorHash).toBe('generator-hash')
+    expect(result.datasetHashFiles).toEqual({ 'red_yellow.geojson': 'abc123' })
     expect(result.counts.zones).toBe(8)
     expect(result.signOverrideMatchToleranceMeters).toBe(6)
     expect(result.signOverrideMatchedSegmentCount).toBe(1)

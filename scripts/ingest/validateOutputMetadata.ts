@@ -1,6 +1,10 @@
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { PACK_FILES } from './hashFiles'
+import {
+  buildDatasetIdentity,
+  DATASET_HASH_SCHEMA_VERSION,
+} from './ingestDatasetIdentity'
 
 export const validateMeta = (meta: Record<string, unknown>, errors: string[]) => {
   const required = [
@@ -12,6 +16,10 @@ export const validateMeta = (meta: Record<string, unknown>, errors: string[]) =>
     'configPath',
     'configHash',
     'datasetHash',
+    'datasetHashSchemaVersion',
+    'datasetHashFiles',
+    'datasetSourceHash',
+    'generatorHash',
     'sourceFiles',
   ]
   required.forEach((key) => {
@@ -143,6 +151,44 @@ export const validateMetaFiles = async (
     } catch {
       errors.push(`[dataset_meta] files lists ${fileName} but it is missing on disk`)
     }
+  }
+
+  const districtId =
+    typeof meta.districtId === 'string' && meta.districtId.trim().length > 0
+      ? meta.districtId
+      : null
+  if (!districtId) {
+    return
+  }
+
+  try {
+    const identity = await buildDatasetIdentity(baseDir, districtId)
+    if (meta.datasetHashSchemaVersion !== DATASET_HASH_SCHEMA_VERSION) {
+      errors.push(
+        `[dataset_meta] datasetHashSchemaVersion must be ${DATASET_HASH_SCHEMA_VERSION}`,
+      )
+    }
+    if (meta.datasetHash !== identity.datasetHash) {
+      errors.push(
+        `[dataset_meta] datasetHash ${String(meta.datasetHash)} does not match runtime pack content ${identity.datasetHash}`,
+      )
+    }
+    const declaredFiles = meta.datasetHashFiles
+    const declaredFileMap =
+      declaredFiles && typeof declaredFiles === 'object' && !Array.isArray(declaredFiles)
+        ? (declaredFiles as Record<string, unknown>)
+        : null
+    const expectedEntries = Object.entries(identity.datasetHashFiles)
+    if (
+      !declaredFileMap ||
+      Object.keys(declaredFileMap).length !== expectedEntries.length ||
+      expectedEntries.some(([fileName, sha256]) => declaredFileMap[fileName] !== sha256)
+    ) {
+      errors.push('[dataset_meta] datasetHashFiles do not match runtime pack content')
+    }
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    errors.push(`[dataset_meta] unable to verify runtime pack identity: ${reason}`)
   }
 }
 

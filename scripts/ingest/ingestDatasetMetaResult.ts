@@ -1,6 +1,7 @@
 import type { ResolvedConfig } from './readConfig'
 import type { HashSummary } from './hashFiles'
 import type { BBox } from './ingestGeoBounds'
+import type { DatasetIdentity } from './ingestDatasetIdentity'
 
 export const METRICS_SCHEMA_VERSION = 1
 
@@ -36,6 +37,7 @@ type BuildDatasetMetaResultOptions = {
   counts: Counts
   districtName: string
   fileHashes: HashSummary
+  datasetIdentity: DatasetIdentity
   parkingSpacesBBox: BBox | null
   intersectionsBBox: BBox | null
   crosswalksBBox: BBox | null
@@ -56,6 +58,7 @@ export const buildDatasetMetaResult = ({
   counts,
   districtName,
   fileHashes,
+  datasetIdentity,
   parkingSpacesBBox,
   intersectionsBBox,
   crosswalksBBox,
@@ -78,7 +81,11 @@ export const buildDatasetMetaResult = ({
     generatedAt: new Date().toISOString(),
     configPath: config.configPath,
     configHash: config.configHash,
-    datasetHash: config.datasetHash,
+    datasetHash: datasetIdentity.datasetHash,
+    datasetHashSchemaVersion: datasetIdentity.datasetHashSchemaVersion,
+    datasetHashFiles: datasetIdentity.datasetHashFiles,
+    datasetSourceHash: config.datasetSourceHash,
+    generatorHash: config.generatorHash,
     segmentsCount: qualityMetrics.segmentsCount,
     parkingSpacesCount: counts.parkingSpaces,
     overridesAppliedCount: counts.overridesApplied,

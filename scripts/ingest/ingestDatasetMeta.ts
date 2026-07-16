@@ -3,6 +3,7 @@ import type { ResolvedConfig } from './readConfig'
 import { hashFiles, PACK_FILE_LIST } from './hashFiles'
 import { bboxFromCollection, centerFromBBox } from './ingestGeoBounds'
 import { resolveDatasetMetaPaths, readDatasetMetaCounts } from './ingestDatasetMetaFiles'
+import { buildDatasetIdentity } from './ingestDatasetIdentity'
 import { buildDatasetMetaResult } from './ingestDatasetMetaResult'
 import {
   buildQualityMetrics,
@@ -19,6 +20,10 @@ export const buildDatasetMeta = async (config: ResolvedConfig) => {
   const districtName =
     config.districtName ?? config.districtId ?? path.basename(config.outputs.generatedDir)
   const fileHashes = await hashFiles(config.outputs.generatedDir, PACK_FILE_LIST)
+  const datasetIdentity = await buildDatasetIdentity(
+    config.outputs.generatedDir,
+    config.districtId,
+  )
   const paths = resolveDatasetMetaPaths(config.outputs.generatedDir, config.districtId)
   const counts = await readDatasetMetaCounts(paths)
 
@@ -64,6 +69,7 @@ export const buildDatasetMeta = async (config: ResolvedConfig) => {
     counts,
     districtName,
     fileHashes,
+    datasetIdentity,
     parkingSpacesBBox,
     intersectionsBBox,
     crosswalksBBox,

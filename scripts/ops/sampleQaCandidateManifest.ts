@@ -21,6 +21,8 @@ export interface QaCandidateManifest {
     districtId: string | null
     districtName: string | null
     datasetHash: string | null
+    datasetSourceHash: string | null
+    generatorHash: string | null
     configHash: string | null
     generatedAt: string | null
     sourceUpdatedAt: string | null
@@ -185,6 +187,8 @@ export const buildQaCandidateManifest = (params: {
       districtId: params.datasetMeta?.districtId ?? null,
       districtName: params.datasetMeta?.districtName ?? null,
       datasetHash: params.datasetMeta?.datasetHash ?? null,
+      datasetSourceHash: params.datasetMeta?.datasetSourceHash ?? null,
+      generatorHash: params.datasetMeta?.generatorHash ?? null,
       configHash: params.datasetMeta?.configHash ?? null,
       generatedAt: params.datasetMeta?.generatedAt ?? null,
       sourceUpdatedAt: params.datasetMeta?.sourceUpdatedAt ?? null,

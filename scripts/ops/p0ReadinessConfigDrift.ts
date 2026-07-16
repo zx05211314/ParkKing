@@ -5,12 +5,15 @@ export interface P0ReviewManifestDriftSource {
   districtId?: string | null
   configHash?: string | null
   datasetHash?: string | null
+  datasetSourceHash?: string | null
+  generatorHash?: string | null
 }
 
 export interface P0CurrentConfigDriftSource {
   districtId: string
   configHash: string
-  datasetHash: string
+  datasetSourceHash: string
+  generatorHash: string
   sourceFiles: SourceFileMeta[]
   signOverrides: {
     matchToleranceMeters: number
@@ -21,6 +24,8 @@ export interface P0RuntimePackDriftSource {
   districtId?: string | null
   configHash?: string | null
   datasetHash?: string | null
+  datasetSourceHash?: string | null
+  generatorHash?: string | null
   sourceFiles?: SourceFileMeta[] | null
   signOverrideMatchToleranceMeters?: number | null
 }
@@ -152,9 +157,25 @@ export const buildP0ReviewConfigDriftWarnings = ({
       formatHashMismatch('config hash', manifest.configHash, current.configHash, suffix),
     )
   }
-  if (manifest.datasetHash && manifest.datasetHash !== current.datasetHash) {
+  const manifestSourceHash = manifest.datasetSourceHash ?? manifest.datasetHash
+  if (manifestSourceHash && manifestSourceHash !== current.datasetSourceHash) {
     warnings.push(
-      formatHashMismatch('dataset hash', manifest.datasetHash, current.datasetHash, suffix),
+      formatHashMismatch(
+        'source hash',
+        manifestSourceHash,
+        current.datasetSourceHash,
+        suffix,
+      ),
+    )
+  }
+  if (manifest.generatorHash && manifest.generatorHash !== current.generatorHash) {
+    warnings.push(
+      formatHashMismatch(
+        'generator hash',
+        manifest.generatorHash,
+        current.generatorHash,
+        'Ingest behavior changed; regenerate the review packet.',
+      ),
     )
   }
 

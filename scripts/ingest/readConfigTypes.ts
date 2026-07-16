@@ -94,7 +94,8 @@ export interface ResolvedConfig {
   }
   configPath: string
   configHash: string
-  datasetHash: string
+  datasetSourceHash: string
+  generatorHash: string
   inputs: IngestConfig['inputs']
   outputs: {
     generatedDir: string

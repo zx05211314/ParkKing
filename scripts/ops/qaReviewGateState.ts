@@ -30,9 +30,15 @@ const buildManifestConfigErrors = (
       `Review manifest config hash ${manifest.configHash} does not match current config hash ${config.configHash}. Treat this as stale provenance unless you have confirmed the current config drift is non-data-affecting.`,
     )
   }
-  if (manifest.datasetHash && manifest.datasetHash !== config.datasetHash) {
+  const manifestSourceHash = manifest.datasetSourceHash ?? manifest.datasetHash
+  if (manifestSourceHash && manifestSourceHash !== config.datasetSourceHash) {
     errors.push(
-      `Review manifest dataset hash ${manifest.datasetHash} does not match current dataset hash ${config.datasetHash}. Treat this as stale provenance unless you have confirmed the current config drift is non-data-affecting.`,
+      `Review manifest source hash ${manifestSourceHash} does not match current source hash ${config.datasetSourceHash}. Treat this as stale provenance unless you have confirmed the current config drift is non-data-affecting.`,
+    )
+  }
+  if (manifest.generatorHash && manifest.generatorHash !== config.generatorHash) {
+    errors.push(
+      `Review manifest generator hash ${manifest.generatorHash} does not match current generator hash ${config.generatorHash}. Regenerate and review the packet because ingest behavior changed.`,
     )
   }
   return errors

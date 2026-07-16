@@ -49,6 +49,7 @@ describe('readConfig', () => {
     expect(config.outputs.generatedDir).toMatch(/data[\\/]generated[\\/]xinyi-test$/)
     expect(config.sourceFiles).toHaveLength(5)
     expect(config.configHash).toHaveLength(64)
-    expect(config.datasetHash).toHaveLength(64)
+    expect(config.datasetSourceHash).toHaveLength(64)
+    expect(config.generatorHash).toHaveLength(64)
   })
 })
