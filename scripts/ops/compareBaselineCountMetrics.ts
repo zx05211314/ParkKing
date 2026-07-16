@@ -21,10 +21,6 @@ export const compareCounts = (
     { key: 'intersections', label: 'intersections' },
     { key: 'inferredCandidates', label: 'inferredCandidates' },
     { key: 'signOverrides', label: 'signOverrides' },
-    {
-      key: 'signOverrideUnmatchedNamedCount',
-      label: 'signOverrideUnmatchedNamedCount',
-    },
   ]
 
   entries.forEach(({ key, label }) => {
@@ -49,5 +45,33 @@ export const compareCounts = (
     }
   })
 
+  warnings.push(...compareCountLimits(current, baseline, thresholds))
+
   return warnings
+}
+
+export const compareCountLimits = (
+  current: CurrentMetrics['counts'],
+  baseline: BaselineMetrics['counts'] | null,
+  thresholds: OpsThresholds['counts'],
+): Warning[] => {
+  const unmatchedLimit = thresholds.signOverrideUnmatchedNamedCount
+  const unmatchedCount = current.signOverrideUnmatchedNamedCount
+  if (unmatchedLimit !== undefined && unmatchedCount > unmatchedLimit) {
+    return [
+      {
+        severity: 'FAIL',
+        code: 'COUNT_DELTA',
+        message: `signOverrideUnmatchedNamedCount ${unmatchedCount} exceeds maximum ${unmatchedLimit}`,
+        metric: {
+          label: 'signOverrideUnmatchedNamedCount',
+          baseline: baseline?.signOverrideUnmatchedNamedCount ?? null,
+          current: unmatchedCount,
+        },
+        threshold: { maximum: unmatchedLimit },
+      },
+    ]
+  }
+
+  return []
 }

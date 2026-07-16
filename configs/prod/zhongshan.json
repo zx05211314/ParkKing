@@ -45,7 +45,8 @@
         "segments": 20,
         "intersections": 20,
         "inferredCandidates": 30,
-        "signOverrides": 30
+        "signOverrides": 30,
+        "signOverrideUnmatchedNamedCount": 0
       },
       "tierDistributionMaxDeltaPct": 15,
       "perfRegressionMaxDeltaPct": 30,
