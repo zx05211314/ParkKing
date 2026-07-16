@@ -409,6 +409,8 @@ describe('releaseDataWorkflow', () => {
 
   it('does not restore the prior latest release when another release won the race', async () => {
     const base = await fs.mkdtemp(path.join(tmpdir(), 'release-data-latest-race-'))
+    const notesPath = path.join(base, 'readiness.md')
+    await fs.writeFile(notesPath, '# Ready\n', 'utf-8')
     await fs.writeFile(path.join(base, 'park-king-data_release-a.zip'), 'zip', 'utf-8')
     await fs.writeFile(
       path.join(base, 'release_manifest_release-a.json'),
@@ -449,6 +451,7 @@ describe('releaseDataWorkflow', () => {
       repository: 'owner/repo',
       token: 'token',
       releaseDir: base,
+      readinessMarkdownPath: notesPath,
       fetchImpl,
     })
 
