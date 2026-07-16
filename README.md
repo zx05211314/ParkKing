@@ -747,6 +747,7 @@ Generate manual QA candidates from the latest district pack or generated folder:
 - `npm run ops:sample-qa -- --district xinyi --strategy review --hhmm 21:00 --radius 5000 --topN 80 --out .tmp/xinyi-review.csv`
 - `npm run ops:sample-qa -- --district songshan --strategy review --config-root configs/expansion --out .tmp/songshan-review.csv`
 - `npm run ops:sample-qa -- --district songshan --strategy review --config-root configs/expansion --include-segment candidate-8529-1-L --out .tmp/songshan-review.csv` (pins the requested segment family and all evaluated `part-*` rows)
+- `npm run ops:sample-qa -- --district beitou --strategy review --config-root configs/expansion --anchor-lat 25.114 --anchor-lng 121.515 --radius 1500 --out .tmp/shipai-review.csv` (centers ranking and radius filtering on Shipai)
 - `npm run ops:sample-qa -- --all --topN 50`
 
 Default output path:

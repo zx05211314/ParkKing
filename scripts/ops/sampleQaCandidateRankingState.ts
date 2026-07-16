@@ -29,7 +29,7 @@ export const rankQaCandidateSegments = (
     evaluateSegmentWithZones(segment, hhmm, zoneIndex),
   )
 
-  const anchor = toQaAnchorLocation(params.meta)
+  const anchor = params.anchorLocation ?? toQaAnchorLocation(params.meta)
   const withDistance = evaluated.map((segment) => ({
     ...segment,
     distanceMeters: distanceMeters(anchor, getPathMidpoint(segment.path)),

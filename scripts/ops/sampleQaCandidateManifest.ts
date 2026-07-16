@@ -38,6 +38,7 @@ export interface QaCandidateManifest {
     strategy: QaCandidateStrategy
     hhmm: string
     requiredSegmentIds: string[]
+    anchorLocation: [number, number] | null
   }
   rows: {
     total: number
@@ -169,6 +170,7 @@ export const buildQaCandidateManifest = (params: {
   strategy: QaCandidateStrategy
   hhmm: string
   requiredSegmentIds?: string[]
+  anchorLocation?: [number, number] | null
   createdAt?: string
 }): QaCandidateManifest => {
   const csvPath = path.resolve(params.csvPath)
@@ -200,6 +202,7 @@ export const buildQaCandidateManifest = (params: {
       strategy: params.strategy,
       hhmm: params.hhmm,
       requiredSegmentIds: params.requiredSegmentIds ?? [],
+      anchorLocation: params.anchorLocation ?? null,
     },
     rows: summarizeRows(params.rows),
     review: {

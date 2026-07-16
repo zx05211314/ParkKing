@@ -25,6 +25,7 @@ export interface SampleQaCandidateParams {
   hhmm?: string
   datasetRoots?: string[]
   requiredSegmentIds?: string[]
+  anchorLocation?: [number, number] | null
 }
 
 export interface ResolvedSampleQaCandidateParams {
@@ -43,6 +44,7 @@ export interface ResolvedSampleQaCandidateParams {
   hhmm: string
   datasetRoots: string[]
   requiredSegmentIds: string[]
+  anchorLocation: [number, number] | null
 }
 
 export const resolveSampleQaCandidateParams = (
@@ -63,6 +65,7 @@ export const resolveSampleQaCandidateParams = (
   hhmm: params.hhmm ?? DEFAULT_QA_HHMM,
   datasetRoots: params.datasetRoots ?? DEFAULT_DATASET_ROOTS,
   requiredSegmentIds: params.requiredSegmentIds ?? [],
+  anchorLocation: params.anchorLocation ?? null,
 })
 
 export const resolveSampleQaCandidateDistrictIds = async ({

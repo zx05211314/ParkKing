@@ -87,6 +87,7 @@ describe('buildQaCandidateManifest', () => {
       strategy: 'review',
       hhmm: '21:00',
       requiredSegmentIds: ['candidate-critical'],
+      anchorLocation: [121.515, 25.114],
       createdAt: '2026-04-25T01:00:00.000Z',
     })
 
@@ -97,6 +98,7 @@ describe('buildQaCandidateManifest', () => {
       strategy: 'review',
       hhmm: '21:00',
       requiredSegmentIds: ['candidate-critical'],
+      anchorLocation: [121.515, 25.114],
     })
     expect(manifest.rows.bucketCounts).toEqual({
       marked_space_park: 1,

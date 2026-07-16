@@ -30,6 +30,7 @@ export interface CliArgs {
   strategy: QaCandidateStrategy
   hhmm: string
   requiredSegmentIds: string[]
+  anchorLocation: [number, number] | null
 }
 
 export type QaCandidateStrategy = 'ranked' | 'review'

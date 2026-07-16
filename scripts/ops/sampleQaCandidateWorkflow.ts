@@ -16,5 +16,6 @@ export const buildRankedQaCandidateSegments = (
     riskMode: params.riskMode,
     radiusMeters: params.radiusMeters,
     hhmm: params.hhmm,
+    anchorLocation: params.anchorLocation,
   })
 }

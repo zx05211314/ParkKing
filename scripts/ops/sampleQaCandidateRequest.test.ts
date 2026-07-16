@@ -19,7 +19,17 @@ describe('sampleQaCandidateRequest', () => {
       strategy: 'ranked',
       hhmm: '13:00',
       requiredSegmentIds: [],
+      anchorLocation: null,
     })
+  })
+
+  it('keeps a custom anchor in resolved sampling params', () => {
+    expect(
+      resolveSampleQaCandidateParams({
+        districtId: 'beitou',
+        anchorLocation: [121.515, 25.114],
+      }).anchorLocation,
+    ).toEqual([121.515, 25.114])
   })
 
   it('keeps required segment ids in resolved sampling params', () => {

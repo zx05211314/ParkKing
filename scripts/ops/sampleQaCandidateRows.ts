@@ -37,6 +37,7 @@ export const buildQaCandidates = async (params: {
   hhmm?: string
   datasetRoots?: string[]
   requiredSegmentIds?: string[]
+  anchorLocation?: [number, number] | null
 }): Promise<QaCandidateRow[]> => {
   const packet = await buildQaCandidatePacket(params)
   return packet.rows
@@ -53,6 +54,7 @@ export const buildQaCandidatePacket = async (params: {
   hhmm?: string
   datasetRoots?: string[]
   requiredSegmentIds?: string[]
+  anchorLocation?: [number, number] | null
 }): Promise<QaCandidatePacket> => {
   const dataset = await loadQaCandidateDataset({
     districtId: params.districtId,
@@ -72,6 +74,7 @@ export const buildQaCandidatePacket = async (params: {
     radiusMeters: params.radiusMeters,
     riskMode: params.riskMode,
     hhmm: params.hhmm,
+    anchorLocation: params.anchorLocation,
   })
   const rows = selectQaCandidateRows({
     districtId: params.districtId,
