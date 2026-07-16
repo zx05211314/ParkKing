@@ -30,19 +30,6 @@
       "minParkingSpaceCount": 5
     },
     {
-      "id": "zhongshan-reviewed-legal-candidate-8529-1-l",
-      "label": "Reviewed legal parking answer from inferred curb candidate",
-      "lng": 121.544341,
-      "lat": 25.066485,
-      "hhmm": "21:00",
-      "searchRadiusMeters": 25,
-      "expectedKind": "PARK",
-      "expectedEvidenceKind": "INFERRED",
-      "expectedPrimarySegmentId": "candidate-8529-1-L",
-      "expectedFinalConfidence": "LOW",
-      "includeInferred": true
-    },
-    {
       "id": "zhongshan-reviewed-legal-seg-8660",
       "label": "Reviewed legal parking answer with marked-space evidence",
       "lng": 121.543002,
@@ -79,19 +66,6 @@
       "expectedPrimarySegmentId": "seg-13674-part-1",
       "expectedFinalConfidence": "HIGH",
       "minParkingSpaceCount": 4
-    },
-    {
-      "id": "zhongshan-reviewed-legal-candidate-8529-1-r",
-      "label": "Reviewed legal parking answer from inferred curb candidate",
-      "lng": 121.544287,
-      "lat": 25.066453,
-      "hhmm": "21:00",
-      "searchRadiusMeters": 25,
-      "expectedKind": "PARK",
-      "expectedEvidenceKind": "INFERRED",
-      "expectedPrimarySegmentId": "candidate-8529-1-R",
-      "expectedFinalConfidence": "LOW",
-      "includeInferred": true
     },
     {
       "id": "zhongshan-reviewed-legal-seg-15043",

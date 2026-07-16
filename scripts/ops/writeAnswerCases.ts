@@ -6,6 +6,13 @@ import {
   runSmokeExactParkingAnswers,
   type SmokeExactParkingAnswerCase,
 } from './smokeExactParkingAnswers'
+import {
+  findCoverageDistrictById,
+  findCoverageDistrictByLocation,
+  isLocationInCoverageDistrict,
+  parseRuntimeCoverageCatalog,
+  type RuntimeCoverageCatalog,
+} from '../../src/data/coverageCatalog'
 
 export interface WriteAnswerCasesArgs {
   inputPath: string | null
@@ -14,6 +21,7 @@ export interface WriteAnswerCasesArgs {
   districtId: string | null
   hhmm: string | null
   searchRadiusMeters: number | null
+  coverageCatalogPath: string
   validate: boolean
 }
 
@@ -24,6 +32,7 @@ export interface WriteAnswerCasesParams {
   districtId?: string | null
   hhmm?: string | null
   searchRadiusMeters?: number | null
+  coverageCatalogPath?: string
   validate?: boolean
 }
 
@@ -48,6 +57,7 @@ interface ReviewManifestSummary {
 
 const DEFAULT_HHMM = '21:00'
 const DEFAULT_SEARCH_RADIUS_METERS = 25
+const DEFAULT_COVERAGE_CATALOG_PATH = 'public/data/coverage.json'
 
 const getArgValue = (argv: string[], ...flags: string[]) => {
   for (const flag of flags) {
@@ -81,6 +91,13 @@ export const parseWriteAnswerCasesArgs = (argv: string[]): WriteAnswerCasesArgs 
   districtId: getArgValue(argv, '--district', '--districtId', '--district-id'),
   hhmm: getArgValue(argv, '--hhmm'),
   searchRadiusMeters: parseNumberArg(argv, '--radius', '--searchRadiusMeters'),
+  coverageCatalogPath:
+    getArgValue(
+      argv,
+      '--coverage-catalog',
+      '--coverageCatalog',
+      '--coverage-catalog-path',
+    ) ?? DEFAULT_COVERAGE_CATALOG_PATH,
   validate: !hasFlag(argv, '--no-validate'),
 })
 
@@ -297,6 +314,37 @@ const readReviewRows = async (inputPath: string) =>
     trim: true,
   }) as Record<string, unknown>[]
 
+const loadCoverageCatalog = async (catalogPath: string) =>
+  parseRuntimeCoverageCatalog(
+    JSON.parse(await fs.readFile(catalogPath, 'utf-8')) as unknown,
+  )
+
+export const validateAnswerCaseCoverage = (params: {
+  cases: SmokeExactParkingAnswerCase[]
+  districtId: string
+  catalog: RuntimeCoverageCatalog
+}) => {
+  const district = findCoverageDistrictById(params.catalog, params.districtId)
+  if (!district) {
+    return [`Runtime coverage catalog is missing district ${params.districtId}.`]
+  }
+
+  return params.cases.flatMap((answerCase) => {
+    const location: [number, number] = [answerCase.lng, answerCase.lat]
+    if (isLocationInCoverageDistrict(district, location)) {
+      return []
+    }
+    const matchedDistrict = findCoverageDistrictByLocation(
+      params.catalog,
+      location,
+    )
+    return [
+      `Answer case ${answerCase.id} is outside ${params.districtId} runtime coverage` +
+        `${matchedDistrict ? `; location matches ${matchedDistrict.districtId}` : ''}.`,
+    ]
+  })
+}
+
 const writeValidatedCasesFile = async (params: {
   outPath: string
   serialized: string
@@ -407,6 +455,37 @@ export const writeAnswerCases = async (
     }
   }
 
+  const coverageCatalogPath = path.resolve(
+    params.coverageCatalogPath ?? DEFAULT_COVERAGE_CATALOG_PATH,
+  )
+  let coverageErrors: string[]
+  try {
+    coverageErrors = validateAnswerCaseCoverage({
+      cases,
+      districtId,
+      catalog: await loadCoverageCatalog(coverageCatalogPath),
+    })
+  } catch (error) {
+    coverageErrors = [
+      `Unable to validate answer-case coverage from ${coverageCatalogPath}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    ]
+  }
+  if (coverageErrors.length > 0) {
+    return {
+      pass: false,
+      inputPath,
+      datasetDir,
+      outPath,
+      districtId,
+      datasetHash,
+      casesWritten: 0,
+      validated: false,
+      errors: coverageErrors,
+    }
+  }
+
   const payload = {
     schemaVersion: 1,
     districtId,
@@ -475,6 +554,7 @@ const run = async () => {
     districtId: args.districtId,
     hhmm: args.hhmm,
     searchRadiusMeters: args.searchRadiusMeters,
+    coverageCatalogPath: args.coverageCatalogPath,
     validate: args.validate,
   })
   console.log(formatWriteAnswerCases(result))
