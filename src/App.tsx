@@ -278,7 +278,10 @@ function App() {
 
   const dataBaseUrl = getDataBaseUrl()
   const dataSourceLabel = dataBaseUrl ? `Remote (${dataBaseUrl})` : 'Local'
-  const { catalog: runtimeCoverageCatalog } = useRuntimeCoverageCatalog()
+  const {
+    catalog: runtimeCoverageCatalog,
+    status: runtimeCoverageCatalogStatus,
+  } = useRuntimeCoverageCatalog()
   const {
     mapPrefetchRef,
     geocodeRequestIdRef,
@@ -902,6 +905,8 @@ function App() {
     addressQuery,
     datasetId,
     datasetOptions,
+    coverageCatalog: runtimeCoverageCatalog,
+    coverageCatalogStatus: runtimeCoverageCatalogStatus,
     districtBounds,
     datasetMetaFile: 'dataset_meta.json',
     geocodeRequestIdRef,

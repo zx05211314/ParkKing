@@ -4,6 +4,7 @@ export type CoveragePublishStage = 'production' | 'candidate' | 'source-only'
 export type CoverageAnswerCapability =
   | 'full-rule-pipeline'
   | 'paid-curb-reference-only'
+export type RuntimeCoverageCatalogStatus = 'loading' | 'ready' | 'error'
 
 export interface RuntimeCoverageAlias {
   areaId: string

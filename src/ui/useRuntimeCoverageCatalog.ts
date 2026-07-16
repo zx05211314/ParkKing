@@ -3,9 +3,8 @@ import {
   getRuntimeCoverageCatalogUrl,
   parseRuntimeCoverageCatalog,
   type RuntimeCoverageCatalog,
+  type RuntimeCoverageCatalogStatus,
 } from '../data/coverageCatalog'
-
-export type RuntimeCoverageCatalogStatus = 'loading' | 'ready' | 'error'
 
 interface RuntimeCoverageCatalogState {
   catalog: RuntimeCoverageCatalog | null

@@ -11,6 +11,8 @@ export const useAddressSearchActions = ({
   addressQuery,
   datasetId,
   datasetOptions,
+  coverageCatalog,
+  coverageCatalogStatus,
   districtBounds,
   datasetMetaFile,
   geocodeRequestIdRef,
@@ -33,11 +35,13 @@ export const useAddressSearchActions = ({
       return resolveDistrictForLocationHelper({
         datasetMetaFile,
         datasetOptions,
+        coverageCatalog,
+        coverageCatalogStatus,
         location,
         fallbackToFirst: options.fallbackToFirst,
       })
     },
-    [datasetMetaFile, datasetOptions],
+    [coverageCatalog, coverageCatalogStatus, datasetMetaFile, datasetOptions],
   )
 
   const {

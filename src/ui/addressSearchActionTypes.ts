@@ -1,6 +1,10 @@
 import type { Dispatch, FormEvent, MutableRefObject, SetStateAction } from 'react'
 import type { MapBounds } from '../map/bounds'
 import type { GeocodeResult } from '../map/geocoder'
+import type {
+  RuntimeCoverageCatalog,
+  RuntimeCoverageCatalogStatus,
+} from '../data/coverageCatalog'
 
 export type GeocodeStatus = 'idle' | 'searching' | 'ready' | 'error'
 export type SearchAnchor = { key: string; result: GeocodeResult }
@@ -11,6 +15,8 @@ export interface UseAddressSearchActionsOptions {
   addressQuery: string
   datasetId: string | null
   datasetOptions: DatasetOption[]
+  coverageCatalog: RuntimeCoverageCatalog | null
+  coverageCatalogStatus: RuntimeCoverageCatalogStatus
   districtBounds: MapBounds | null
   datasetMetaFile: string
   geocodeRequestIdRef: MutableRefObject<number>
