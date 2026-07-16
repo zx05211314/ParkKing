@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "npm run ops:assert-no-node-imports && tsc -b && vite build && npm run ops:assert-browser-env",
+    "build": "npm run ops:assert-no-node-imports && tsc -b && vite build && npm run ops:precompress-static-data && npm run ops:assert-browser-env",
     "ops:typecheck-deploy": "tsc -p tsconfig.ops-deploy.json",
     "start": "tsx scripts/ops/appServer.ts",
     "ingest": "tsx scripts/ingest/runAll.ts",
@@ -26,6 +26,7 @@
     "ops:validate-configs": "tsx scripts/ops/validateConfigs.ts",
     "ops:assert-no-node-imports": "tsx scripts/ops/assertNoNodeImports.ts",
     "ops:assert-browser-env": "tsx scripts/ops/assertBrowserEnvBundle.ts",
+    "ops:precompress-static-data": "tsx scripts/ops/precompressStaticData.ts",
     "ops:geocode-proxy": "tsx scripts/ops/geocodeProxy.ts",
     "ops:routing-proxy": "tsx scripts/ops/routingProxy.ts",
     "ops:parking-answer-api": "tsx scripts/ops/parkingAnswerService.ts",
