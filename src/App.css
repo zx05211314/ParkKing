@@ -1585,6 +1585,54 @@
   z-index: 2;
 }
 
+.map-coverage-status {
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  gap: 8px;
+  max-width: 250px;
+  padding: 8px 11px;
+  border: 1px solid rgba(84, 214, 147, 0.48);
+  border-radius: 12px;
+  background: rgba(10, 18, 16, 0.9);
+  color: #dff8eb;
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: right;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+}
+
+.map-coverage-status.candidate {
+  border-color: rgba(245, 181, 46, 0.56);
+  background: rgba(24, 18, 9, 0.91);
+  color: #fff0bd;
+}
+
+.map-coverage-status.source-only {
+  border-color: rgba(87, 197, 232, 0.56);
+  background: rgba(8, 20, 26, 0.91);
+  color: #daf5ff;
+}
+
+.map-coverage-status-dot {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #54d693;
+  box-shadow: 0 0 0 3px rgba(84, 214, 147, 0.16);
+}
+
+.map-coverage-status.candidate .map-coverage-status-dot {
+  background: #f5b52e;
+  box-shadow: 0 0 0 3px rgba(245, 181, 46, 0.16);
+}
+
+.map-coverage-status.source-only .map-coverage-status-dot {
+  background: #57c5e8;
+  box-shadow: 0 0 0 3px rgba(87, 197, 232, 0.16);
+}
+
 .map-action-button {
   background: rgba(12, 16, 24, 0.88);
   border: 1px solid rgba(120, 130, 150, 0.45);

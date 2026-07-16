@@ -70,6 +70,7 @@ import {
 } from './ui/segmentActionFilter'
 import { readSharedAppState } from './ui/shareState'
 import { getDataBaseUrl } from './data/datasetResolver'
+import { buildPinnedCoverageBoundary } from './data/coverageDisplay'
 import type { RiskMode } from './domain/ranking/policy'
 import {
   getLatestReportsBySegment,
@@ -355,6 +356,10 @@ function App() {
     coverageCatalog: runtimeCoverageCatalog,
   })
   const parkingSearchLocation = parkingCoverageState.eligibleLocation
+  const pinnedCoverageBoundary = useMemo(
+    () => buildPinnedCoverageBoundary(runtimeCoverageCatalog, searchLocation),
+    [runtimeCoverageCatalog, searchLocation],
+  )
   const {
     currentShareUrl,
     buildShareUrlForState,
@@ -1255,6 +1260,7 @@ function App() {
     recommendedSegmentIds,
     searchLocation,
     searchLocationLabel,
+    coverageBoundary: pinnedCoverageBoundary,
     selectedCenter,
     selectedArrivalKind,
     selectedArrivalLabel,
