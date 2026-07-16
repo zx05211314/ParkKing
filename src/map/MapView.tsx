@@ -15,6 +15,7 @@ import { expandBounds, type MapBounds } from './bounds'
 import type { RouteProfile } from './routing'
 import { createBasemapStyle } from './style'
 import { initializeMapViewContent } from './mapViewSetup'
+import { shouldApplyDatasetMapFocus } from './mapFocusPriority'
 
 interface SelectedParkingSpaceMarker {
   key: string
@@ -396,12 +397,16 @@ export const MapView = ({
       map.remove()
       mapRef.current = null
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- map instance is initialized once; follow-up effects update layer data.
-  }, [basemapStyle, center])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- center changes are handled by the focus-aware effect below without recreating the map.
+  }, [basemapStyle])
 
   useEffect(() => {
     const map = mapRef.current
     if (!map) {
+      return
+    }
+
+    if (!shouldApplyDatasetMapFocus({ focusBoundsKey, focusCenterKey })) {
       return
     }
 
@@ -410,7 +415,7 @@ export const MapView = ({
       duration: 600,
       essential: true,
     })
-  }, [center])
+  }, [center, focusBoundsKey, focusCenterKey])
 
   useEffect(() => {
     const map = mapRef.current
@@ -423,7 +428,7 @@ export const MapView = ({
       return
     }
 
-    if (focusBoundsKey || focusCenterKey) {
+    if (!shouldApplyDatasetMapFocus({ focusBoundsKey, focusCenterKey })) {
       return
     }
 
