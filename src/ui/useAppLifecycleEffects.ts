@@ -10,6 +10,7 @@ export const useAppLifecycleEffects = ({
   nowHHMM,
   nowHHMMRef,
   activeView,
+  datasetStatus,
   mapPrefetchRef,
   preloadMapView,
   datasetId,
@@ -50,7 +51,7 @@ export const useAppLifecycleEffects = ({
   setSelectedTargetRouteEta,
 }: UseAppLifecycleEffectsOptions) => {
   useNowHHMMRefEffect(nowHHMM, nowHHMMRef)
-  useMapPrefetchEffect(activeView, mapPrefetchRef, preloadMapView)
+  useMapPrefetchEffect(activeView, datasetStatus, mapPrefetchRef, preloadMapView)
   usePersistedSettingsEffect({
     datasetId,
     radiusMeters,

@@ -16,6 +16,7 @@ import type {
 import type { SegmentActionFilter } from './segmentActionFilter'
 import type { EvaluatedSegment } from './types'
 import type { SegmentEvaluationStatus } from './useSegmentEvaluationState'
+import type { DatasetLoadStatus } from './mapViewReadiness'
 
 export interface ShareStatus {
   kind: 'success' | 'error'
@@ -35,6 +36,7 @@ export interface UseAppLifecycleEffectsOptions {
   nowHHMM: string
   nowHHMMRef: MutableRefObject<string>
   activeView: 'LIST' | 'MAP'
+  datasetStatus: DatasetLoadStatus
   mapPrefetchRef: MutableRefObject<boolean>
   preloadMapView: () => Promise<unknown>
   datasetId: string | null

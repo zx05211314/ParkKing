@@ -2,6 +2,7 @@ import type { MainWorkspaceProps } from './appPresentationBuilderTypes'
 
 export interface BuildMainWorkspacePropsOptions {
   activeView: MainWorkspaceProps['activeView']
+  datasetStatus: MainWorkspaceProps['datasetStatus']
   mapViewComponent: MainWorkspaceProps['mapViewComponent']
   mapRetryKey: MainWorkspaceProps['mapRetryKey']
   onMapRetry: MainWorkspaceProps['onMapRetry']

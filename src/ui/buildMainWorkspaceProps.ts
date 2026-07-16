@@ -7,6 +7,7 @@ export type { BuildMainWorkspacePropsOptions } from './buildMainWorkspaceTypes'
 
 export const buildMainWorkspaceProps = ({
   activeView,
+  datasetStatus,
   mapViewComponent,
   mapRetryKey,
   onMapRetry,
@@ -23,11 +24,13 @@ export const buildMainWorkspaceProps = ({
   ...options
 }: BuildMainWorkspacePropsOptions): MainWorkspaceProps => ({
   activeView,
+  datasetStatus,
   mapViewComponent,
   mapRetryKey,
   onMapRetry,
   mapViewProps: buildMapViewProps({
     activeView,
+    datasetStatus,
     mapViewComponent,
     mapRetryKey,
     onMapRetry,
@@ -54,6 +57,7 @@ export const buildMainWorkspaceProps = ({
   selectedArrivalKind,
   listProps: buildSegmentListProps({
     activeView,
+    datasetStatus,
     mapViewComponent,
     mapRetryKey,
     onMapRetry,

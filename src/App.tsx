@@ -508,6 +508,7 @@ function App() {
     nowHHMM,
     nowHHMMRef,
     activeView,
+    datasetStatus,
     mapPrefetchRef,
     preloadMapView,
     datasetId,
@@ -1262,6 +1263,7 @@ function App() {
   })
   const mainWorkspaceProps = buildMainWorkspaceProps({
     activeView,
+    datasetStatus,
     mapViewComponent: MapViewLazy,
     mapRetryKey,
     onMapRetry: handleMapRetry,
