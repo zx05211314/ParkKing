@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { tmpdir } from 'node:os'
+import { featureCollection, lineString, polygon } from '@turf/turf'
 import type { FeatureCollection } from 'geojson'
 import { ingestDistrictBounds } from './ingestDistrictBounds'
-import { ingestInferredCandidates } from './ingestInferredCandidates'
+import {
+  filterCandidatesToBoundaryOwnership,
+  ingestInferredCandidates,
+} from './ingestInferredCandidates'
 import { readConfig } from './readConfig'
 
 const readJson = async <T>(filePath: string): Promise<T> => {
@@ -13,6 +17,48 @@ const readJson = async <T>(filePath: string): Promise<T> => {
 }
 
 describe('ingestInferredCandidates', () => {
+  it('keeps only intersecting candidates whose center belongs to the district', () => {
+    const boundary = polygon([
+      [
+        [0, 0],
+        [10, 0],
+        [10, 10],
+        [0, 10],
+        [0, 0],
+      ],
+    ])
+    const inside = lineString(
+      [
+        [2, 2],
+        [8, 8],
+      ],
+      { id: 'inside' },
+    )
+    const crossingFromOutside = lineString(
+      [
+        [8, 5],
+        [14, 5],
+      ],
+      { id: 'outside-center' },
+    )
+    const fullyOutside = lineString(
+      [
+        [12, 2],
+        [14, 2],
+      ],
+      { id: 'outside' },
+    )
+
+    const filtered = filterCandidatesToBoundaryOwnership(
+      featureCollection([inside, crossingFromOutside, fullyOutside]),
+      boundary,
+    )
+
+    expect(filtered.features.map((feature) => feature.properties?.id)).toEqual([
+      'inside',
+    ])
+  })
+
   it('generates inferred candidates from polygon road surfaces', async () => {
     const repoRoot = process.cwd()
     const base = await fs.mkdtemp(path.join(tmpdir(), 'ingest-inferred-'))
