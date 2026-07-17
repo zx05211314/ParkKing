@@ -165,6 +165,9 @@ describe('packageHumanReviews', () => {
     expect(priorityCsvEntry?.getData().toString('utf-8')).toContain(
       'bundleId,districtId,status,minimumNewReviews,rank,handoffRowNumber',
     )
+    if (!packageEntry.priorityValidationCommand) {
+      throw new Error('expected priority validation command for canonical district')
+    }
     expect(packageEntry.priorityValidationCommand).toContain(
       'npm run ops:p0-validate-priority-review -- --district daan',
     )
@@ -233,7 +236,26 @@ describe('packageHumanReviews', () => {
     expect(manifest).toMatchObject({
       bundleId: 'shipai',
       districtId: 'beitou',
+      priorityValidationCommand: null,
+      finalizeCommand: null,
     })
+    expect(shipaiPackage.priorityValidationCommand).toBeNull()
+    const readme = zip
+      .getEntry('shipai/README.md')
+      ?.getData()
+      .toString('utf-8')
+    expect(readme).toContain(
+      'Do not finalize beitou from this area-alias bundle alone.',
+    )
+    expect(readme).toContain('Supplemental area review only')
+    expect(readme).not.toContain('ops:p0-validate-priority-review')
+    expect(readme).not.toContain('ops:p0-finalize-review')
+    expect(renderPackageHumanReviews(result)).toContain(
+      'Supplemental area review only; no independent validation/finalize command.',
+    )
+    expect(result.warnings).toEqual([
+      '[beitou] area alias shipai is supplemental review evidence for beitou and cannot finalize the parent district independently',
+    ])
   })
 
   it('blocks when no district filter or all flag is supplied', async () => {

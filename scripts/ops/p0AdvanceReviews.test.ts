@@ -182,6 +182,7 @@ describe('p0AdvanceReviews', () => {
     ).toBe('configs/expansion/daan.answer-cases.json')
     expect(result.entries).toEqual([
       {
+        bundleId: 'daan',
         districtId: 'daan',
         status: 'ready-for-review',
         nextAction: 'package-human-review',
@@ -258,6 +259,7 @@ describe('p0AdvanceReviews', () => {
         scannedFiles: 1,
         candidates: [
           {
+            bundleId: 'daan',
             districtId: 'daan',
             filePath: returnedCsv,
             totalRows: 1,
@@ -341,6 +343,7 @@ describe('p0AdvanceReviews', () => {
         scannedFiles: 1,
         candidates: [
           {
+            bundleId: 'daan',
             districtId: 'daan',
             filePath: returnedCsv,
             totalRows: 1,

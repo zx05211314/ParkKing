@@ -143,6 +143,7 @@ describe('p0FinalizeReadyReviews', () => {
     expect(result.ready[0]?.result).toBeNull()
     expect(result.skipped).toEqual([
       {
+        bundleId: 'zhongshan',
         districtId: 'zhongshan',
         status: 'ready-for-review',
         reason: 'human review handoff is not ready to finalize',
@@ -186,6 +187,44 @@ describe('p0FinalizeReadyReviews', () => {
       ),
     })
     expect(result.ready[0]?.result?.stage).toBe('done')
+  })
+
+  it('never finalizes an area-alias bundle as its parent district', async () => {
+    const root = await makeTempRoot()
+    const bundle = await writeBundle(root, 'beitou', readyRows('beitou'))
+    const aliasDir = path.join(root, 'shipai-human-review')
+    await fs.rename(bundle.bundleDir, aliasDir)
+    await writeJson(path.join(aliasDir, 'beitou-review.manifest.json'), {
+      districtId: 'beitou',
+      csvPath: bundle.sourcePath,
+      dataset: { datasetHash: 'beitou-hash' },
+      rows: { total: 4 },
+    })
+    let finalizeCalled = false
+
+    const result = await runP0FinalizeReadyReviews({
+      reviewRoot: root,
+      districtIds: ['shipai'],
+      publishGateSummaryPath: null,
+      execute: true,
+      finalize: async (params) => {
+        finalizeCalled = true
+        return finalizeResult(params)
+      },
+    })
+
+    expect(result.pass).toBe(false)
+    expect(result.ready).toEqual([])
+    expect(result.skipped).toEqual([
+      expect.objectContaining({
+        bundleId: 'shipai',
+        districtId: 'beitou',
+        reason:
+          'area alias review cannot finalize its parent district independently',
+      }),
+    ])
+    expect(result.errors).toContain('No review bundles are ready to finalize.')
+    expect(finalizeCalled).toBe(false)
   })
 
   it('blocks when no district filter or all flag is supplied', async () => {
