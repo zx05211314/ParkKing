@@ -29,14 +29,34 @@ const readDistrictIds = async (dataRoot: string) => {
     .sort()
 }
 
+const isMissingFileError = (error: unknown) =>
+  error instanceof Error &&
+  'code' in error &&
+  (error as NodeJS.ErrnoException).code === 'ENOENT'
+
 export const buildParkingAnswerIndexes = async (options: {
   dataRoot?: string
   indexRoot?: string
   loadSource?: typeof loadParkingAnswerPreparedIndexSource
+  allowMissingRegistry?: boolean
 }) => {
   const dataRoot = path.resolve(options.dataRoot ?? DEFAULT_DATA_ROOT)
   const indexRoot = path.resolve(options.indexRoot ?? DEFAULT_INDEX_ROOT)
-  const districtIds = await readDistrictIds(dataRoot)
+  let districtIds: string[]
+  try {
+    districtIds = await readDistrictIds(dataRoot)
+  } catch (error) {
+    if (options.allowMissingRegistry && isMissingFileError(error)) {
+      return {
+        dataRoot,
+        indexRoot,
+        results: [],
+        skipped: true as const,
+        skipReason: `Registry not found: ${path.join(dataRoot, 'registry.json')}`,
+      }
+    }
+    throw error
+  }
   if (districtIds.length === 0) {
     throw new Error(`No districts found in ${path.join(dataRoot, 'registry.json')}`)
   }
@@ -71,7 +91,7 @@ export const buildParkingAnswerIndexes = async (options: {
     })
   }
 
-  return { dataRoot, indexRoot, results }
+  return { dataRoot, indexRoot, results, skipped: false as const }
 }
 
 const run = async () => {
@@ -82,7 +102,13 @@ const run = async () => {
       getArgValue(process.argv, '--index-root', '--indexRoot') ??
       process.env.PARKKING_PARKING_ANSWER_INDEX_ROOT ??
       DEFAULT_INDEX_ROOT,
+    allowMissingRegistry: true,
   })
+  if (result.skipped) {
+    console.log('# Parking Answer Indexes: SKIPPED')
+    console.log(`- ${result.skipReason}`)
+    return
+  }
   console.log('# Parking Answer Indexes: PASS')
   console.log(`- Data root: ${result.dataRoot}`)
   console.log(`- Index root: ${result.indexRoot}`)

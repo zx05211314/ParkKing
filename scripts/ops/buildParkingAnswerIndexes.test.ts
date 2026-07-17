@@ -56,4 +56,22 @@ describe('buildParkingAnswerIndexes', () => {
       fs.readFile(path.join(indexRoot, 'xinyi.json'), 'utf-8'),
     ).resolves.toContain('"datasetHash":"hash-xinyi"')
   })
+
+  it('can skip a missing production registry in source-only CI builds', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'parking-answer-index-'))
+    const dataRoot = path.join(base, 'missing-data')
+    const indexRoot = path.join(base, 'indexes')
+
+    const result = await buildParkingAnswerIndexes({
+      dataRoot,
+      indexRoot,
+      allowMissingRegistry: true,
+    })
+
+    expect(result).toMatchObject({
+      skipped: true,
+      results: [],
+    })
+    await expect(fs.access(indexRoot)).rejects.toThrow()
+  })
 })
