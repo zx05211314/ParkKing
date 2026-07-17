@@ -115,6 +115,7 @@ const DEFAULT_FILTER = '__ui_smoke_no_match__'
 const DEFAULT_VIEW = 'LIST' as const satisfies SmokeUiParkingAnswerView
 const DEFAULT_PROFILE_CLEANUP_ATTEMPTS = 10
 const DEFAULT_PROFILE_CLEANUP_INITIAL_DELAY_MS = 250
+const MAP_MOUNT_MARKER = 'Click map to check parking here'
 const PROFILE_CLEANUP_RETRYABLE_ERROR_CODES = new Set([
   'EBUSY',
   'ENOTEMPTY',
@@ -364,7 +365,7 @@ export const buildSmokeUiParkingAnswerExpectations = (params: {
     requiredText.push(
       'Mode: Map + list',
       'Green: park ok',
-      'Click map to check parking here',
+      MAP_MOUNT_MARKER,
     )
   }
 
@@ -745,7 +746,10 @@ export const shouldRetrySmokeUiCase = (params: {
   params.attempt === 0 &&
   params.requiredText.length > 0 &&
   (params.missingText.length === params.requiredText.length ||
-    (params.loadingIndicators?.length ?? 0) > 0)
+    (params.loadingIndicators?.length ?? 0) > 0 ||
+    params.missingText.some(
+      (text) => normalizeText(text) === normalizeText(MAP_MOUNT_MARKER),
+    ))
 
 export const isSafeSmokeProfileDir = (profileDir: string) => {
   const resolvedProfile = path.resolve(profileDir)
