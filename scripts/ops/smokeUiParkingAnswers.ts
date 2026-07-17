@@ -63,7 +63,10 @@ export interface SmokeUiParkingAnswersSummary {
 }
 
 export type SmokeUiParkingAnswerView = 'LIST' | 'MAP'
-export type SmokeUiLoadingIndicator = 'parking data loading' | 'map loading'
+export type SmokeUiLoadingIndicator =
+  | 'parking data loading'
+  | 'map loading'
+  | 'map failed'
 
 export interface WebSocketLike {
   send(data: string): void
@@ -693,6 +696,9 @@ export const detectSmokeUiLoadingIndicators = (
   if (normalizedBody.includes('loading map...')) {
     indicators.push('map loading')
   }
+  if (normalizedBody.includes('map failed to load')) {
+    indicators.push('map failed')
+  }
 
   return indicators
 }
@@ -821,6 +827,23 @@ const waitForProcessExit = async (processToWaitFor: ChildProcess) => {
   })
 }
 
+export const buildChromeLaunchArgs = (params: {
+  cdpPort: number
+  profileDir: string
+}) => [
+  '--headless=new',
+  `--remote-debugging-port=${params.cdpPort}`,
+  `--user-data-dir=${params.profileDir}`,
+  '--no-first-run',
+  '--no-default-browser-check',
+  '--disable-background-networking',
+  '--disable-extensions',
+  '--disable-dev-shm-usage',
+  '--use-gl=swiftshader',
+  '--enable-unsafe-swiftshader',
+  'about:blank',
+]
+
 export const launchChrome = async (params: {
   chromePath: string
   cdpPort: number
@@ -830,20 +853,7 @@ export const launchChrome = async (params: {
   )
   const chrome = spawn(
     params.chromePath,
-    [
-      '--headless=new',
-      `--remote-debugging-port=${params.cdpPort}`,
-      `--user-data-dir=${profileDir}`,
-      '--no-first-run',
-      '--no-default-browser-check',
-      '--disable-background-networking',
-      '--disable-extensions',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--use-gl=swiftshader',
-      '--enable-unsafe-swiftshader',
-      'about:blank',
-    ],
+    buildChromeLaunchArgs({ cdpPort: params.cdpPort, profileDir }),
     { stdio: 'ignore' },
   )
 

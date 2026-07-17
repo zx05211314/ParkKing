@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SmokeExactParkingAnswerCase } from './smokeExactParkingAnswers'
 import {
   assertSmokeUiAppReachable,
+  buildChromeLaunchArgs,
   buildSmokeUiDatasetMetaUrl,
   buildSmokeUiParkingAnswerCaseUrl,
   buildSmokeUiParkingAnswerExpectations,
@@ -121,10 +122,21 @@ describe('smokeUiParkingAnswers', () => {
   it('detects only explicit dataset and map loading states', () => {
     expect(
       detectSmokeUiLoadingIndicators(
-        'Status: loading\nLoading parking data...\nLoading map...',
+        'Status: loading\nLoading parking data...\nLoading map...\nMap failed to load',
       ),
-    ).toEqual(['parking data loading', 'map loading'])
+    ).toEqual(['parking data loading', 'map loading', 'map failed'])
     expect(detectSmokeUiLoadingIndicators('Status: ready')).toEqual([])
+  })
+
+  it('keeps software WebGL enabled for headless map smoke', () => {
+    const args = buildChromeLaunchArgs({
+      cdpPort: 9333,
+      profileDir: 'C:\\tmp\\parkking-ui-smoke-test',
+    })
+
+    expect(args).toContain('--use-gl=swiftshader')
+    expect(args).toContain('--enable-unsafe-swiftshader')
+    expect(args).not.toContain('--disable-gpu')
   })
 
   it('parses self-managed preview mode', () => {
