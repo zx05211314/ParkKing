@@ -15,6 +15,7 @@ import {
 } from './releaseHandoffStatus'
 import {
   buildPublishReleaseDataFromHandoffPlan,
+  WORKFLOW_MANAGED_TAG_BLOCKER_PREFIX,
   type PublishReleaseDataFromHandoffPlan,
 } from './publishReleaseDataFromHandoff'
 import {
@@ -295,7 +296,7 @@ const buildExternalRequirements = (
   const requirements: string[] = []
   if (status.releaseLookup.published !== true) {
     requirements.push(
-      `Publish GitHub Release ${status.release.tag} with the local handoff assets, push the matching data tag, or run the Release Data Package workflow.`,
+      `Run Release Data Package for ${status.release.tag}, either by workflow dispatch or by pushing the matching data tag; do not manually create the release or upload local assets to this workflow-managed tag.`,
     )
     if (
       !environment.ghTokenPresent &&
@@ -309,7 +310,7 @@ const buildExternalRequirements = (
   }
   if (status.publishedManifest.pass === false) {
     requirements.push(
-      'Resolve published release manifest drift before Render verification: use the matching workflow handoff artifact or republish the local handoff assets after confirming data source drift.',
+      'Resolve published release manifest drift before Render verification: use the matching workflow handoff artifact or run a fresh release workflow after confirming data source drift.',
     )
   }
   requirements.push(
@@ -375,11 +376,16 @@ export const buildReleasePublishRequest = async (
   if (status.release.localAssetsPresent) {
     try {
       publishPlan = await buildPublishPlan(options, status)
+      const workflowManagedTagBlockers = publishPlan.blockers.filter((blocker) =>
+        blocker.startsWith(WORKFLOW_MANAGED_TAG_BLOCKER_PREFIX),
+      )
+      warnings.push(...workflowManagedTagBlockers)
       blockers.push(
         ...publishPlan.blockers.filter(
           (blocker) =>
             !blockers.includes(blocker) &&
-            !blocker.startsWith('Missing GH_TOKEN or GITHUB_TOKEN'),
+            !blocker.startsWith('Missing GH_TOKEN or GITHUB_TOKEN') &&
+            !blocker.startsWith(WORKFLOW_MANAGED_TAG_BLOCKER_PREFIX),
         ),
       )
     } catch (error) {
@@ -431,8 +437,11 @@ const commandBlock = (commands: string[]) => [
 
 export const renderReleasePublishRequest = (
   result: ReleasePublishRequestResult,
-) =>
-  [
+) => {
+  const workflowManagedTag =
+    result.publishPlan?.workflowManagedTag ??
+    result.status.release.tag.startsWith('data-')
+  return [
     `# Release Publish Request: ${result.state.toUpperCase()}`,
     '',
     '## Release',
@@ -461,19 +470,30 @@ export const renderReleasePublishRequest = (
     '| --- | ---: | --- | --- | --- |',
     ...formatAssetRows(result.assets),
     '',
-    '## Manual GitHub UI Publish',
-    '',
-    `- Open: ${result.manualPublish.githubNewReleaseUrl}`,
-    `- Tag: ${result.manualPublish.releaseTag}`,
-    `- Title: ${result.manualPublish.releaseTitle}`,
-    `- Upload asset directory: ${result.manualPublish.assetDirectory ?? '-'}`,
-    ...(result.manualPublish.uploadAssetPaths.length > 0
-      ? result.manualPublish.uploadAssetPaths.map(
-          (assetPath) => `- Upload file: ${assetPath}`,
-        )
-      : ['- Upload file: none']),
-    `- Expected release page after publish: ${result.manualPublish.expectedReleaseUrl}`,
-    '- After publishing, run the URL smoke commands below before assigning Render env vars.',
+    ...(workflowManagedTag
+      ? [
+          '## Workflow-Managed Release',
+          '',
+          `- Tag: ${result.manualPublish.releaseTag}`,
+          '- Do not create this GitHub Release or upload the local assets manually.',
+          '- Creating a data-* tag triggers Release Data Package; that workflow re-ingests sources and owns the final assets, handoff, manifest, and dataset hashes.',
+          '- Wait for the workflow to complete, then use its artifact and published URLs for Render.',
+        ]
+      : [
+          '## Manual GitHub UI Publish',
+          '',
+          `- Open: ${result.manualPublish.githubNewReleaseUrl}`,
+          `- Tag: ${result.manualPublish.releaseTag}`,
+          `- Title: ${result.manualPublish.releaseTitle}`,
+          `- Upload asset directory: ${result.manualPublish.assetDirectory ?? '-'}`,
+          ...(result.manualPublish.uploadAssetPaths.length > 0
+            ? result.manualPublish.uploadAssetPaths.map(
+                (assetPath) => `- Upload file: ${assetPath}`,
+              )
+            : ['- Upload file: none']),
+          `- Expected release page after publish: ${result.manualPublish.expectedReleaseUrl}`,
+          '- After publishing, run the URL smoke commands below before assigning Render env vars.',
+        ]),
     '',
     '## Environment',
     '',
@@ -487,17 +507,25 @@ export const renderReleasePublishRequest = (
     `- RENDER_API_KEY present: ${formatBool(result.environment.renderApiKeyPresent)}`,
     `- Render CLI available: ${formatBool(result.environment.renderCliAvailable)}`,
     '',
-    '## Exact Local Publish',
-    '',
-    ...commandBlock([
-      '$env:GH_TOKEN="<token with contents:write>"',
-      result.commands.exactLocalPublishDryRun,
-      result.commands.exactLocalPublish,
-    ]),
+    ...(workflowManagedTag
+      ? [
+          '## Local Publish Guard',
+          '',
+          '- Exact local publish is disabled for this workflow-managed data-* tag because the tag workflow can replace uploaded assets.',
+        ]
+      : [
+          '## Exact Local Publish',
+          '',
+          ...commandBlock([
+            '$env:GH_TOKEN="<token with contents:write>"',
+            result.commands.exactLocalPublishDryRun,
+            result.commands.exactLocalPublish,
+          ]),
+        ]),
     '',
     '## Workflow Publish Alternative',
     '',
-    'This workflow may generate a fresh release ID; use the workflow output URLs if you choose this path.',
+    'This workflow is authoritative and may generate fresh dataset hashes after source ingest; use its handoff artifact and output URLs.',
     '',
     ...commandBlock([
       '$env:GH_TOKEN="<token with workflow dispatch access>"',
@@ -507,7 +535,7 @@ export const renderReleasePublishRequest = (
     '',
     '## Tag Push Publish Alternative',
     '',
-    'This pushes the existing handoff tag so GitHub Actions publishes assets with the same release ID.',
+    'This pushes the existing handoff tag so GitHub Actions runs the authoritative release pipeline with the same release ID. Wait for it to finish before using release URLs.',
     '',
     ...commandBlock([result.commands.releaseTagPush]),
     '',
@@ -565,6 +593,7 @@ export const renderReleasePublishRequest = (
       ? result.warnings.map((warning) => `- ${warning}`)
       : ['- none']),
   ].join('\n')
+}
 
 export const writeReleasePublishRequestOutputs = async (
   result: ReleasePublishRequestResult,

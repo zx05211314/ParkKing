@@ -154,15 +154,14 @@ describe('releaseHandoffStatus', () => {
       'npm run ops:release-data-dispatch -- --repo zx05211314/ParkKing --ref main --dry-run',
     )
     expect(result.nextActions.join('\n')).toContain(
-      'npm run ops:release-data-publish-handoff -- --ref main',
+      'git tag data-release-a main; git push origin data-release-a',
     )
     expect(result.nextActions.join('\n')).toContain(
-      'git tag data-release-a main; git push origin data-release-a',
+      'use its uploaded render-deployment-handoff.json',
     )
     expect(result.commands.releasePublishEnv).toContain(
       '$env:GITHUB_REPOSITORY="zx05211314/ParkKing"',
     )
-    expect(result.nextActions.join('\n')).toContain('npm run ops:release-data-publish')
     expect(renderReleaseHandoffStatus(result)).toContain(
       '# Release Handoff Status: READY FOR RELEASE PUBLISH',
     )
@@ -273,7 +272,7 @@ describe('releaseHandoffStatus', () => {
     ])
     expect(result.nextActions).toEqual([
       'Do not set Render env vars from this local handoff yet.',
-      'Use the handoff artifact from the successful Release Data Package workflow, or republish the local handoff assets after confirming the data source drift is intended.',
+      'Use the handoff artifact from the successful Release Data Package workflow, or run a fresh release workflow after confirming the data source drift is intended.',
     ])
     expect(renderReleaseHandoffStatus(result)).toContain(
       '# Release Handoff Status: READY FOR RELEASE PUBLISH',

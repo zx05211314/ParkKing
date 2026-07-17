@@ -161,7 +161,10 @@ describe('renderDeploymentHandoff', () => {
       'GitHub Actions -> Render Live Verify',
     )
     expect(result.externalSteps.join('\n')).toContain(
-      'use the package and manifest URLs printed by that workflow run',
+      'use the completed workflow handoff',
+    )
+    expect(result.externalSteps.join('\n')).toContain(
+      'Do not manually create or upload assets',
     )
     expect(result.externalSteps.join('\n')).toContain(
       'Set Render environment variables exactly as listed',

@@ -4,6 +4,7 @@ import * as path from 'node:path'
 import { tmpdir } from 'node:os'
 import { createServer } from 'node:http'
 import {
+  assertReleaseDataPublishTagOwnership,
   buildReleaseDataConsoleLines,
   buildReleaseDataSummaryLines,
   buildReleaseAssetSmokeHeaders,
@@ -14,6 +15,31 @@ import {
 } from './releaseDataWorkflow'
 
 describe('releaseDataWorkflow', () => {
+  it('blocks local publishing to workflow-managed data tags', () => {
+    expect(() =>
+      assertReleaseDataPublishTagOwnership({
+        tag: 'data-20260529_abcd123',
+        githubActions: false,
+        allowWorkflowManagedTag: false,
+      }),
+    ).toThrow('is workflow-managed')
+
+    expect(() =>
+      assertReleaseDataPublishTagOwnership({
+        tag: 'data-20260529_abcd123',
+        githubActions: true,
+        allowWorkflowManagedTag: false,
+      }),
+    ).not.toThrow()
+    expect(() =>
+      assertReleaseDataPublishTagOwnership({
+        tag: 'manual-20260529_abcd123',
+        githubActions: false,
+        allowWorkflowManagedTag: false,
+      }),
+    ).not.toThrow()
+  })
+
   it('resolves release metadata from p3 readiness output', async () => {
     const base = await fs.mkdtemp(path.join(tmpdir(), 'release-data-meta-'))
     const readinessJsonPath = path.join(base, 'p3.json')

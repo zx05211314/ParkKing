@@ -360,8 +360,8 @@ export const buildRenderDeploymentHandoff = async (
     renderEnv: buildRenderDeploymentEnv(urls),
     externalSteps: [
       'Merge or deploy the branch that contains the release workflow and render.yaml changes.',
-      'Run GitHub Actions -> Release Data Package with configsGlob=configs/prod/*.json.',
-      `If publishing the local assets listed above manually, use release tag ${release.tag}. If using the workflow, leave tag blank unless you intentionally need a custom tag, then use the package and manifest URLs printed by that workflow run.`,
+      'Run GitHub Actions -> Release Data Package with configsGlob=configs/prod/*.json, or push the generated data-* tag and wait for that workflow to finish.',
+      `Do not manually create or upload assets to workflow-managed tag ${release.tag}. Creating that tag triggers Release Data Package, which re-ingests sources and may replace assets; use the completed workflow handoff, package URL, manifest URL, and dataset hashes as the authoritative contract.`,
       'Set Render environment variables exactly as listed in this handoff or the published workflow summary, plus a download token/header if the repository is private.',
       'Deploy the Render Blueprint.',
       `Run npm run ops:render-live-verify-dispatch -- --repo ${repository} --ref main --app-url <Render service URL> --manifest-url ${urls.manifestUrl} --dry-run, then rerun without --dry-run when GH_TOKEN/GITHUB_TOKEN is set; or use GitHub Actions -> Render Live Verify with useGithubToken=true only for private GitHub Release assets and skipSyncIssueRoundtrip=false unless the live environment intentionally rejects sync smoke writes.`,

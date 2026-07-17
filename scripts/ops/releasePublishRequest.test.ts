@@ -170,6 +170,10 @@ describe('releasePublishRequest', () => {
     expect(result.commands.exactLocalPublish).toBe(
       'npm run ops:release-data-publish-handoff -- --ref main',
     )
+    expect(result.publishPlan?.workflowManagedTag).toBe(true)
+    expect(result.warnings.join('\n')).toContain(
+      'must be published by Release Data Package',
+    )
     expect(result.manualPublish).toMatchObject({
       githubNewReleaseUrl: 'https://github.com/owner/repo/releases/new',
       expectedReleaseUrl:
@@ -184,14 +188,17 @@ describe('releasePublishRequest', () => {
     })
     const rendered = renderReleasePublishRequest(result)
     expect(rendered).toContain('# Release Publish Request: READY_FOR_RELEASE_PUBLISH')
-    expect(rendered).toContain('## Exact Local Publish')
-    expect(rendered).toContain('## Manual GitHub UI Publish')
+    expect(rendered).toContain('## Local Publish Guard')
+    expect(rendered).toContain('## Workflow-Managed Release')
+    expect(rendered).not.toContain('## Manual GitHub UI Publish')
     expect(rendered).toContain('## Tag Push Publish Alternative')
     expect(rendered).toContain(
       'git tag data-20260531_abc1234 main; git push origin data-20260531_abc1234',
     )
-    expect(rendered).toContain('https://github.com/owner/repo/releases/new')
     expect(rendered).toContain('Tag: data-20260531_abc1234')
+    expect(rendered).toContain(
+      'Do not create this GitHub Release or upload the local assets manually.',
+    )
     expect(rendered).toContain('PARKKING_RELEASE_PACKAGE_URL=')
     expect(rendered).toContain(
       'PARKKING_SYNC_CORS_ORIGINS=https://parkking.onrender.com',

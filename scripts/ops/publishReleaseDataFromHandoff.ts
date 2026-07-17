@@ -21,6 +21,8 @@ const DEFAULT_RELEASE_DIR = 'dist/releases'
 const DEFAULT_READINESS_MD = '.tmp/p3-release-readiness.md'
 const DEFAULT_REF = 'main'
 const DEFAULT_TIMEOUT_MS = 30000
+export const WORKFLOW_MANAGED_TAG_BLOCKER_PREFIX =
+  'Workflow-managed release tag '
 
 type FetchImpl = typeof fetch
 
@@ -34,6 +36,7 @@ export interface PublishReleaseDataFromHandoffOptions {
   dryRun: boolean
   smokeUrls: boolean
   allowShaMismatch: boolean
+  allowWorkflowManagedTag?: boolean
   timeoutMs: number
   token?: string | null
 }
@@ -53,6 +56,8 @@ export interface PublishReleaseDataFromHandoffPlan {
   dryRun: boolean
   smokeUrls: boolean
   tokenPresent: boolean
+  workflowManagedTag: boolean
+  workflowManagedTagOverride: boolean
   blockers: string[]
 }
 
@@ -86,6 +91,7 @@ export const parsePublishReleaseDataFromHandoffArgs = (
   dryRun: hasFlag(argv, '--dry-run'),
   smokeUrls: !hasFlag(argv, '--skip-smoke-urls'),
   allowShaMismatch: hasFlag(argv, '--allow-sha-mismatch'),
+  allowWorkflowManagedTag: hasFlag(argv, '--allow-workflow-managed-tag'),
   timeoutMs:
     parsePositiveInteger(getArgValue(argv, '--timeout-ms', '--timeoutMs'), 'timeout-ms') ??
     DEFAULT_TIMEOUT_MS,
@@ -122,6 +128,9 @@ const releaseShaSuffix = (releaseId: string) => {
   const match = /_([0-9a-f]{7,40})$/i.exec(releaseId)
   return match?.[1]?.toLowerCase() ?? null
 }
+
+export const isWorkflowManagedReleaseTag = (tag: string) =>
+  tag.startsWith('data-')
 
 const validateTargetSha = (params: {
   releaseId: string
@@ -200,9 +209,16 @@ export const buildPublishReleaseDataFromHandoffPlan = async (
     releaseDir: options.releaseDir,
   })
   const blockers: string[] = []
+  const workflowManagedTag = isWorkflowManagedReleaseTag(tag)
+  const workflowManagedTagOverride = options.allowWorkflowManagedTag === true
 
   if (!handoff.ready) {
     blockers.push('Render deployment handoff is not READY')
+  }
+  if (workflowManagedTag && !workflowManagedTagOverride) {
+    blockers.push(
+      `${WORKFLOW_MANAGED_TAG_BLOCKER_PREFIX}${tag} must be published by Release Data Package; creating or uploading this tag locally triggers the workflow and the workflow can replace local assets`,
+    )
   }
   const shaMismatch = validateTargetSha({
     releaseId,
@@ -231,6 +247,8 @@ export const buildPublishReleaseDataFromHandoffPlan = async (
     dryRun: options.dryRun,
     smokeUrls: options.smokeUrls,
     tokenPresent: Boolean(options.token),
+    workflowManagedTag,
+    workflowManagedTagOverride,
     blockers,
   }
 }
@@ -256,6 +274,10 @@ export const renderPublishReleaseDataFromHandoffPlan = (
     `- Mark latest: ${plan.latest}`,
     `- Smoke URLs after publish: ${plan.smokeUrls}`,
     `- Token present: ${plan.tokenPresent ? 'yes' : 'no'}`,
+    `- Workflow-managed tag: ${plan.workflowManagedTag ? 'yes' : 'no'}`,
+    `- Workflow-managed tag override: ${
+      plan.workflowManagedTagOverride ? 'yes' : 'no'
+    }`,
     '',
     '## Blockers',
     '',
@@ -329,6 +351,8 @@ const run = async () => {
         '  --latest [true|false]       Mark release as latest',
         '  --skip-smoke-urls           Do not smoke published package/manifest URLs',
         '  --allow-sha-mismatch        Skip release-id suffix vs target SHA guard',
+        '  --allow-workflow-managed-tag',
+        '                               Emergency override for data-* tags; the tag workflow may replace uploaded assets',
         '  --token-env <name>          Token env var; defaults to GH_TOKEN then GITHUB_TOKEN',
         '  --dry-run                   Print publish plan without uploading assets',
       ].join('\n'),

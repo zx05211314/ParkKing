@@ -703,13 +703,12 @@ export const buildReleaseHandoffStatus = async (
             `Or push the release tag to run Release Data Package without local tokens: ${commands.releaseTagPush}`,
             `Preview dispatch payload: ${commands.releaseDispatchDryRun}`,
             `Dispatch with token: ${commands.releaseDispatch}`,
-            `Or publish current local handoff assets with token: ${commands.releasePublishFromHandoff}`,
-            `Or publish current local artifacts with REST API: ${commands.releasePublishEnv.join('; ')}; ${commands.releasePublish}`,
+            'After the workflow completes, use its uploaded render-deployment-handoff.json and published manifest; workflow re-ingest may produce hashes that differ from the local preflight handoff.',
           ]
         : publishedManifest.pass === false
           ? [
               'Do not set Render env vars from this local handoff yet.',
-              'Use the handoff artifact from the successful Release Data Package workflow, or republish the local handoff assets after confirming the data source drift is intended.',
+              'Use the handoff artifact from the successful Release Data Package workflow, or run a fresh release workflow after confirming the data source drift is intended.',
             ]
         : !appUrl
           ? [
