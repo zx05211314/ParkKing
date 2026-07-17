@@ -35,6 +35,22 @@ export interface ReleaseDataMetadata {
   tag: string
 }
 
+export const assertReleaseDataPublishTagOwnership = (params: {
+  tag: string
+  githubActions: boolean
+  allowWorkflowManagedTag: boolean
+}) => {
+  if (
+    params.tag.startsWith('data-') &&
+    !params.githubActions &&
+    !params.allowWorkflowManagedTag
+  ) {
+    throw new Error(
+      `Release tag ${params.tag} is workflow-managed. Run Release Data Package or push the tag and wait for that workflow; set PARKKING_ALLOW_WORKFLOW_MANAGED_TAG_PUBLISH=true only for emergency recovery after disabling the tag workflow.`,
+    )
+  }
+}
+
 export interface ReleaseDataAssetUrlSmokeOptions {
   releaseId: string
   packageUrl: string
@@ -809,6 +825,12 @@ const runPublish = async () => {
   if (!releaseId || !tag || !targetSha) {
     throw new Error('PARKKING_RELEASE_ID, PARKKING_RELEASE_TAG, and GITHUB_SHA are required')
   }
+  assertReleaseDataPublishTagOwnership({
+    tag,
+    githubActions: process.env.GITHUB_ACTIONS === 'true',
+    allowWorkflowManagedTag:
+      process.env.PARKKING_ALLOW_WORKFLOW_MANAGED_TAG_PUBLISH === 'true',
+  })
   await publishReleaseDataAssets({
     releaseId,
     tag,

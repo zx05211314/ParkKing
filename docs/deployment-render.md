@@ -53,29 +53,41 @@ cases still validate answer kind, evidence, confidence, and UI text; hard data
 failures still block the release, and the later reviewed UI, P3,
 deploy-readiness, publish, and URL-smoke gates must still pass.
 
-If you need to publish the latest local `dist/releases` assets without the
-Actions UI, `ops:release-data-publish` can use the GitHub REST API directly when
-`GH_TOKEN` or `GITHUB_TOKEN` and `GITHUB_REPOSITORY` are set; otherwise it falls
-back to the GitHub CLI:
+`data-*` tags are workflow-managed. Do not manually create a GitHub Release or
+upload local assets to one of these tags: creating the tag starts Release Data
+Package, which re-ingests current sources and may replace any assets uploaded
+before it finishes. The completed workflow artifact, published manifest, and
+dataset hashes are authoritative.
+
+For a custom tag that does not match `data-*`, `ops:release-data-publish` can use
+the GitHub REST API directly when `GH_TOKEN` or `GITHUB_TOKEN` and
+`GITHUB_REPOSITORY` are set; otherwise it falls back to the GitHub CLI:
 
 ```powershell
 $env:GITHUB_REPOSITORY="zx05211314/ParkKing"
 $env:GH_TOKEN="<token with contents:write>"
 $env:PARKKING_RELEASE_ID="<release-id>"
-$env:PARKKING_RELEASE_TAG="data-<release-id>"
+$env:PARKKING_RELEASE_TAG="manual-<release-id>"
 $env:GITHUB_SHA="<target commit sha>"
 npm run ops:release-data-publish
 ```
 
-For the normal local handoff path, prefer the wrapper that reads
-`.tmp/render-deployment-handoff.json`, checks the release ID suffix against
-`git rev-parse <ref>`, and uploads only the copied handoff zip/manifest pair:
+The handoff wrapper reads `.tmp/render-deployment-handoff.json`, checks the
+release ID suffix against `git rev-parse <ref>`, and identifies the copied
+handoff zip/manifest pair. It blocks workflow-managed `data-*` tags by default.
+The override is only for emergency recovery after the tag-triggered workflow has
+been deliberately disabled:
 
 ```powershell
 $env:GH_TOKEN="<token with contents:write>"
 npm run ops:release-data-publish-handoff -- --ref main --dry-run
-npm run ops:release-data-publish-handoff -- --ref main
+npm run ops:release-data-publish-handoff -- --ref main --allow-workflow-managed-tag
 ```
+
+The lower-level `ops:release-data-publish` command applies the same local guard.
+Its emergency override is
+`PARKKING_ALLOW_WORKFLOW_MANAGED_TAG_PUBLISH=true`; GitHub Actions is allowed to
+publish these tags without an override.
 
 The handoff JSON points at copied assets under
 `.tmp/release-handoff-assets/<release-id>/`, so the wrapper can still publish

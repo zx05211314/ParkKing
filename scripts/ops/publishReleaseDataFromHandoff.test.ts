@@ -60,6 +60,7 @@ describe('publishReleaseDataFromHandoff', () => {
       dryRun: true,
       smokeUrls: true,
       allowShaMismatch: false,
+      allowWorkflowManagedTag: false,
     })
   })
 
@@ -86,11 +87,15 @@ describe('publishReleaseDataFromHandoff', () => {
       releaseId: fixture.releaseId,
       tag: fixture.tag,
       targetSha: 'abc1234ffff',
-      blockers: [],
+      workflowManagedTag: true,
+      workflowManagedTagOverride: false,
     })
+    expect(plan.blockers.join('\n')).toContain(
+      'must be published by Release Data Package',
+    )
     expect(plan.assetPaths).toEqual([fixture.zipPath, fixture.manifestPath])
     expect(renderPublishReleaseDataFromHandoffPlan(plan)).toContain(
-      '# Release Data Handoff Publish: DRY RUN',
+      '# Release Data Handoff Publish: BLOCKED',
     )
   })
 
@@ -157,6 +162,7 @@ describe('publishReleaseDataFromHandoff', () => {
         dryRun: false,
         smokeUrls: false,
         allowShaMismatch: false,
+        allowWorkflowManagedTag: true,
         timeoutMs: 1000,
         token: 'token',
       },
@@ -164,6 +170,7 @@ describe('publishReleaseDataFromHandoff', () => {
     )
 
     expect(result.published).toBe(true)
+    expect(result.plan.workflowManagedTagOverride).toBe(true)
     expect(result.smokePass).toBeNull()
     expect(
       calls.filter((call) => call.url.startsWith('https://uploads.github.com/')),
