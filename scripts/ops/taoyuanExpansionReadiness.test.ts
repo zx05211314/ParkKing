@@ -175,6 +175,29 @@ describe('taoyuanExpansionReadiness', () => {
     expect(workflow).toContain('.tmp/taoyuan-expansion-readiness.json')
   })
 
+  it('keeps credentialed TDX acquisition manual, non-publishing, and artifact-only', async () => {
+    const workflow = await fs.readFile(
+      path.resolve('.github/workflows/taoyuan_spatial_reference.yml'),
+      'utf-8',
+    )
+
+    expect(workflow).toContain('workflow_dispatch:')
+    expect(workflow).not.toMatch(/^\s+push:/m)
+    expect(workflow).toContain(
+      'TDX_CLIENT_ID: ${{ secrets.TDX_CLIENT_ID }}',
+    )
+    expect(workflow).toContain(
+      'TDX_CLIENT_SECRET: ${{ secrets.TDX_CLIENT_SECRET }}',
+    )
+    expect(workflow).toContain('npm run ops:fetch-taoyuan-paid-curb')
+    expect(workflow).toContain('--require-spatial')
+    expect(workflow).toContain('name: taoyuan-spatial-reference')
+    expect(workflow).toContain('paid_curb_segments.geojson')
+    expect(workflow).not.toContain('npm run ingest:')
+    expect(workflow).not.toContain('npm run ops:release')
+    expect(workflow).not.toContain('npm run ops:render')
+  })
+
   it('parses report and strict options', () => {
     expect(
       parseTaoyuanExpansionReadinessArgs([
@@ -197,6 +220,7 @@ describe('taoyuanExpansionReadiness', () => {
         '--tdx-input',
         '.tmp/tdx.json',
         '--require-ready',
+        '--require-spatial',
         '--out',
         '.tmp/readiness.md',
         '--json-out',
@@ -213,6 +237,7 @@ describe('taoyuanExpansionReadiness', () => {
       spatialPath: '.tmp/spatial.geojson',
       tdxInputPath: '.tmp/tdx.json',
       requireReady: true,
+      requireSpatial: true,
       outPath: '.tmp/readiness.md',
       jsonOutPath: '.tmp/readiness.json',
       json: true,
@@ -316,6 +341,42 @@ describe('taoyuanExpansionReadiness', () => {
     expect(result.gatePass).toBe(false)
     expect(result.spatial.acquisition).toBe('credentials')
     expect(result.nextActions).toContain('npm run ops:fetch-taoyuan-paid-curb')
+  })
+
+  it('gates a safe spatial artifact independently from local human-review files', async () => {
+    const fixture = await createFixture({ spatial: true })
+    const result = await runTaoyuanExpansionReadiness({
+      ...fixture,
+      env: {},
+      requireSpatial: true,
+    })
+
+    expect(result).toMatchObject({
+      status: 'human-review-required',
+      gatePass: true,
+      requireReady: false,
+      requireSpatial: true,
+      readyForSpatialReference: false,
+      legalAnswerEligible: false,
+      sourceTextReview: { approved: false },
+      spatial: { valid: true, featureCount: 1 },
+    })
+    expect(renderTaoyuanExpansionReadiness(result)).toContain(
+      'Spatial reference required: yes',
+    )
+  })
+
+  it('fails the spatial-only gate when TDX geometry is missing', async () => {
+    const fixture = await createFixture({ approved: true })
+    const result = await runTaoyuanExpansionReadiness({
+      ...fixture,
+      env: {},
+      requireSpatial: true,
+    })
+
+    expect(result.gatePass).toBe(false)
+    expect(result.requireSpatial).toBe(true)
+    expect(result.spatial.valid).toBe(false)
   })
 
   it('accepts reviewed text and safe TDX geometry as reference-only evidence', async () => {

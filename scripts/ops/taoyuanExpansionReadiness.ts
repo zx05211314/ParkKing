@@ -46,6 +46,7 @@ export interface TaoyuanExpansionReadinessOptions {
   spatialPath?: string
   tdxInputPath?: string | null
   requireReady?: boolean
+  requireSpatial?: boolean
   outPath?: string | null
   jsonOutPath?: string | null
   json?: boolean
@@ -98,6 +99,7 @@ export interface TaoyuanExpansionReadinessResult {
   status: ReadinessStatus
   gatePass: boolean
   requireReady: boolean
+  requireSpatial: boolean
   readyForSpatialReference: boolean
   legalAnswerEligible: false
   boundary: BoundarySummary
@@ -140,6 +142,7 @@ export const parseTaoyuanExpansionReadinessArgs = (
   spatialPath: getArgValue(argv, '--spatial') ?? DEFAULT_SPATIAL,
   tdxInputPath: getArgValue(argv, '--tdx-input', '--tdxInput'),
   requireReady: hasFlag(argv, '--require-ready', '--requireReady'),
+  requireSpatial: hasFlag(argv, '--require-spatial', '--requireSpatial'),
   outPath: getArgValue(argv, '--out'),
   jsonOutPath: getArgValue(argv, '--json-out', '--jsonOut'),
   json: hasFlag(argv, '--json'),
@@ -493,12 +496,14 @@ export const runTaoyuanExpansionReadiness = async (
             : 'external-input-required'
   const gatePass =
     automationErrors.length === 0 &&
-    (!options.requireReady || readyForSpatialReference)
+    (!options.requireReady || readyForSpatialReference) &&
+    (!options.requireSpatial || spatial.valid)
 
   return {
     status,
     gatePass,
     requireReady: Boolean(options.requireReady),
+    requireSpatial: Boolean(options.requireSpatial),
     readyForSpatialReference,
     legalAnswerEligible: false,
     boundary,
@@ -521,6 +526,7 @@ export const renderTaoyuanExpansionReadiness = (
   `- Status: ${result.status}`,
   `- Command gate: ${result.gatePass ? 'PASS' : 'FAIL'}`,
   `- Strict ready required: ${yesNo(result.requireReady)}`,
+  `- Spatial reference required: ${yesNo(result.requireSpatial)}`,
   `- Ready for spatial reference: ${yesNo(result.readyForSpatialReference)}`,
   `- Eligible for legal parking answers: ${yesNo(result.legalAnswerEligible)}`,
   '',

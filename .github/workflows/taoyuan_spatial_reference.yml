@@ -1,0 +1,41 @@
+name: Taoyuan Spatial Reference
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+      - name: Install
+        run: npm ci
+      - name: Acquire TDX paid-curb spatial reference
+        env:
+          TDX_CLIENT_ID: ${{ secrets.TDX_CLIENT_ID }}
+          TDX_CLIENT_SECRET: ${{ secrets.TDX_CLIENT_SECRET }}
+        run: npm run ops:fetch-taoyuan-paid-curb -- --out .tmp/taoyuan-spatial-reference/paid_curb_segments.geojson
+      - name: Verify non-legal spatial artifact
+        run: npm run ops:taoyuan-expansion-readiness -- --boundary-catalog public/data/coverage.json --spatial .tmp/taoyuan-spatial-reference/paid_curb_segments.geojson --require-spatial --out .tmp/taoyuan-spatial-reference/readiness.md --json-out .tmp/taoyuan-spatial-reference/readiness.json
+      - name: Summarize spatial reference
+        if: always()
+        run: npm run ops:append-workflow-summary -- --append-file .tmp/taoyuan-spatial-reference/readiness.md
+      - name: Upload spatial reference artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: taoyuan-spatial-reference
+          path: |
+            .tmp/taoyuan-spatial-reference/paid_curb_segments.geojson
+            .tmp/taoyuan-spatial-reference/readiness.md
+            .tmp/taoyuan-spatial-reference/readiness.json
+          if-no-files-found: warn
+          retention-days: 14
