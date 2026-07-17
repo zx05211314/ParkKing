@@ -373,7 +373,7 @@ export const buildReleasePublishRequest = async (
   const blockers = [...localBlockersFromStatus(status)]
   const warnings = [...status.warnings]
 
-  if (status.release.localAssetsPresent) {
+  if (status.release.localAssetsPresent && !status.readyForRenderLiveVerify) {
     try {
       publishPlan = await buildPublishPlan(options, status)
       const workflowManagedTagBlockers = publishPlan.blockers.filter((blocker) =>
