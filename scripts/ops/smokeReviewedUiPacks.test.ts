@@ -128,6 +128,9 @@ describe('smokeReviewedUiPacks', () => {
 
   it('bounds the full multi-district suite by default', () => {
     expect(resolveSmokeReviewedUiPacksSuiteTimeoutMs(5000)).toBe(15000)
+    expect(resolveSmokeReviewedUiPacksSuiteTimeoutMs(5000, undefined, 12)).toBe(
+      60000,
+    )
     expect(resolveSmokeReviewedUiPacksSuiteTimeoutMs(5000, 15000)).toBe(15000)
   })
 
@@ -285,6 +288,34 @@ describe('smokeReviewedUiPacks', () => {
     expect(renderSmokeReviewedUiPacksResult(result)).toContain(
       'Reviewed UI answer cases are required for generated district xinyi',
     )
+  })
+
+  it('reports a found case file when its UI smoke fails', async () => {
+    const root = await makeTempRoot()
+    const casesDir = path.join(root, 'cases')
+    await writePackMeta(root, 'xinyi')
+    const registryPath = await writeRegistry(root, ['xinyi'])
+    await fs.mkdir(casesDir, { recursive: true })
+    await fs.writeFile(path.join(casesDir, 'xinyi.answer-cases.json'), '{}')
+
+    const result = await runSmokeReviewedUiPacks(
+      {
+        root,
+        registryPath,
+        answerCasesDir: casesDir,
+        requiredReviewedCaseDistricts: ['xinyi'],
+      },
+      {
+        runSmokeUiParkingAnswers: async () => {
+          throw new Error('UI smoke timed out')
+        },
+      },
+    )
+    const rendered = renderSmokeReviewedUiPacksResult(result)
+
+    expect(result.hasErrors).toBe(true)
+    expect(rendered).toContain('found but UI smoke did not complete')
+    expect(rendered).not.toContain('missing required')
   })
 
   it('passes when optional districts have no reviewed UI case file', async () => {

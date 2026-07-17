@@ -143,6 +143,32 @@ describe('writeAnswerCases', () => {
     })
   })
 
+  it('uses the runtime segment midpoint without CSV coordinate rounding loss', () => {
+    const path = [
+      [121.5211826867464, 25.02966495907938],
+      [121.52127260474089, 25.029649481550873],
+    ] as [number, number][]
+    const cases = buildAnswerCasesFromReviewRows({
+      districtId: 'zhongzheng',
+      hhmm: '21:00',
+      searchRadiusMeters: 25,
+      segmentPaths: new Map([['seg-3673-part-2', path]]),
+      rows: [
+        {
+          districtId: 'zhongzheng',
+          segmentId: 'seg-3673-part-2',
+          lat: '25.029657',
+          lon: '121.521228',
+          reviewStatus: 'ILLEGAL',
+        },
+      ],
+    })
+
+    expect(cases[0]?.expectedPrimarySegmentId).toBe('seg-3673-part-2')
+    expect(cases[0]?.lng).toBeCloseTo(121.52122764574365, 12)
+    expect(cases[0]?.lat).toBeCloseTo(25.029657220315126, 12)
+  })
+
   it('rejects reviewed cases outside their runtime district boundary', () => {
     const catalog: RuntimeCoverageCatalog = {
       schemaVersion: 1,

@@ -128,6 +128,34 @@ describe('buildQaReviewSummary', () => {
     ])
   })
 
+  it('does not select multiple parts of the same normalized segment', async () => {
+    const inputPath = await writeCsv(
+      [
+        'districtId,segmentId,reviewBucket,allowedNow,reviewStatus',
+        'beitou,seg-1-part-1,marked_space_park,PARK,',
+        'beitou,seg-1-part-2,no_stop,NO_STOP,',
+        'beitou,seg-2,marked_space_park,PARK,',
+        'beitou,seg-3,no_stop,NO_STOP,',
+        'beitou,seg-4,no_stop,NO_STOP,',
+      ].join('\n'),
+    )
+
+    const summary = await buildQaReviewSummary({
+      inputPath,
+      minReviewed: 4,
+      requireStatuses: ['LEGAL', 'ILLEGAL'],
+      minReviewedBuckets: { marked_space_park: 2, no_stop: 2 },
+      nextReviewRowsLimit: 4,
+    })
+
+    expect(summary.nextReviewRows.map((row) => row.segmentId)).toEqual([
+      'seg-1-part-1',
+      'seg-2',
+      'seg-3',
+      'seg-4',
+    ])
+  })
+
   it('auto-loads the adjacent review manifest for traceability', async () => {
     const inputPath = await writeCsv(
       [

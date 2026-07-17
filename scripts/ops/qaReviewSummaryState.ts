@@ -226,17 +226,28 @@ const selectNextReviewRows = (
   }
   const selected: QaReviewNextRow[] = []
   const selectedRows = new Set<number>()
+  const selectedSegments = new Set<string>()
   const priorityBuckets = [
     ...requirements.missingBuckets,
     ...Object.keys(requirements.bucketMinimumsRemaining),
   ].filter((bucket, index, values) => values.indexOf(bucket) === index)
 
   const addCandidate = (candidate: QaReviewNextRow) => {
-    if (selected.length >= limit || selectedRows.has(candidate.rowNumber)) {
+    const segmentKey = candidate.segmentId
+      ? `${candidate.districtId}::${normalizeSegmentId(candidate.segmentId)}`
+      : null
+    if (
+      selected.length >= limit ||
+      selectedRows.has(candidate.rowNumber) ||
+      (segmentKey !== null && selectedSegments.has(segmentKey))
+    ) {
       return
     }
     selected.push(candidate)
     selectedRows.add(candidate.rowNumber)
+    if (segmentKey !== null) {
+      selectedSegments.add(segmentKey)
+    }
   }
 
   priorityBuckets.forEach((bucket) => {
