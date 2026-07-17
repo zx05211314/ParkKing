@@ -15,6 +15,7 @@ describe('renderBlueprintContract', () => {
     expect(result.checkedEnvVars).toContain('NODE_VERSION')
     expect(result.checkedEnvVars).toContain('PARKKING_RELEASE_PACKAGE_URL')
     expect(result.checkedEnvVars).toContain('PARKKING_PARKING_ANSWER_DATASET_ROOT')
+    expect(result.checkedEnvVars).toContain('PARKKING_PARKING_ANSWER_INDEX_ROOT')
     expect(result.checkedEnvVars).toContain('PARKKING_SYNC_CORS_ORIGINS')
     expect(result.checkedEnvVars).toContain('PARKKING_GEOCODER_REQUEST_TIMEOUT_MS')
     expect(result.checkedEnvVars).toContain('PARKKING_ROUTING_REQUEST_TIMEOUT_MS')

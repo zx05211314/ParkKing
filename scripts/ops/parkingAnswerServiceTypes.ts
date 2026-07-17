@@ -14,6 +14,7 @@ export interface ParkingAnswerServiceConfig {
   allowedDistricts: string[]
   defaultHhmm: string
   allowDatasetDirParam: boolean
+  preparedIndexRoot?: string | null
 }
 
 export interface ParkingAnswerServiceDistrictReadiness {

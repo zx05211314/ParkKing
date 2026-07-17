@@ -1,3 +1,5 @@
+import * as fs from 'node:fs/promises'
+import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { FeatureCollection, LineString, MultiLineString, Point } from 'geojson'
 import {
@@ -14,7 +16,11 @@ import {
 import { evaluateSegmentWithZones } from '../../src/domain/rules/evaluateSegment'
 import { resetClipCacheStats } from '../../src/domain/geometry/clipCache'
 import { makeZonesFromPOIs, ZONE_PARAMS_VERSION } from '../../src/domain/zones/makeZones'
-import { getZoneIndex } from '../../src/domain/zones/zoneIndex'
+import {
+  buildZoneIndex,
+  type ZoneIndex,
+} from '../../src/domain/zones/zoneIndex'
+import type { Zone } from '../../src/domain/zones/zoneTypes'
 import type { RiskMode } from '../../src/domain/ranking/rank'
 import type { EvaluatedSegment, Segment } from '../../src/ui/types'
 import {
@@ -27,7 +33,6 @@ import {
   buildParkingAnswerTrustSummary,
   type ParkingAnswerTrustSummary,
 } from '../../src/ui/parkingAnswerPresentation'
-import type { ZoneIndex } from '../../src/domain/zones/zoneIndex'
 
 export interface QueryParkingAnswerOptions extends ParkingAnswerOptions {
   datasetDir?: string
@@ -61,6 +66,17 @@ export interface PreparedSegmentsForAnswer {
   appliedSignOverridesCount: number | null
 }
 
+export interface ParkingAnswerPreparedIndexFile {
+  schemaVersion: 1
+  districtId: string
+  datasetHash: string
+  zoneParamsVersion: string
+  segments: Segment[]
+  zones: Zone[]
+  reviewedSignOverridesCount: number | null
+  appliedSignOverridesCount: number | null
+}
+
 export type QueryParkingAnswerLoader = (
   datasetDir: string,
   hhmm: string,
@@ -72,6 +88,7 @@ export type QueryParkingAnswerPreparedLoader = (
 
 const DEFAULT_DATASET_DIR = 'public/data/generated/xinyi'
 const DEFAULT_HHMM = '21:00'
+export const DEFAULT_PARKING_ANSWER_INDEX_ROOT = '.tmp/parking-answer-index'
 
 const getArgValue = (argv: string[], ...flags: string[]) => {
   for (const flag of flags) {
@@ -137,9 +154,9 @@ const requireLocation = (
   return [options.lng, options.lat]
 }
 
-export const loadPreparedSegmentsForAnswer = async (
+export const loadParkingAnswerPreparedIndexSource = async (
   datasetDir: string,
-): Promise<PreparedSegmentsForAnswer> => {
+): Promise<ParkingAnswerPreparedIndexFile> => {
   const [
     redYellow,
     busStops,
@@ -192,19 +209,83 @@ export const loadPreparedSegmentsForAnswer = async (
     parkingSpaces,
   )
   const zones = makeZonesFromPOIs(busStops, hydrants, intersections, crosswalks)
-  const zoneIndex = getZoneIndex(
-    zones,
-    meta.datasetHash ?? 'local',
-    ZONE_PARAMS_VERSION,
-  )
 
   return {
+    schemaVersion: 1,
+    districtId: path.basename(path.resolve(datasetDir)),
     datasetHash: meta.datasetHash ?? 'local',
+    zoneParamsVersion: ZONE_PARAMS_VERSION,
     reviewedSignOverridesCount: meta.signOverridesCount ?? null,
     appliedSignOverridesCount: meta.overridesAppliedCount ?? null,
     segments,
-    zoneIndex,
+    zones,
   }
+}
+
+const buildPreparedSegmentsForAnswer = ({
+  datasetHash,
+  zoneParamsVersion,
+  reviewedSignOverridesCount,
+  appliedSignOverridesCount,
+  segments,
+  zones,
+}: ParkingAnswerPreparedIndexFile): PreparedSegmentsForAnswer => ({
+  datasetHash,
+  reviewedSignOverridesCount,
+  appliedSignOverridesCount,
+  segments,
+  zoneIndex: buildZoneIndex(zones, datasetHash, zoneParamsVersion),
+})
+
+const loadPreparedIndexFile = async (
+  datasetDir: string,
+  indexRoot: string,
+): Promise<ParkingAnswerPreparedIndexFile> => {
+  const districtId = path.basename(path.resolve(datasetDir))
+  const indexPath = path.resolve(indexRoot, `${districtId}.json`)
+  const [raw, meta] = await Promise.all([
+    fs.readFile(indexPath, 'utf-8'),
+    loadGeoJson<DatasetMeta>('dataset_meta.json', { baseDir: datasetDir }),
+  ])
+  const parsed = JSON.parse(raw) as ParkingAnswerPreparedIndexFile
+  if (parsed.schemaVersion !== 1) {
+    throw new Error(`Unsupported parking answer index schema: ${indexPath}`)
+  }
+  if (parsed.districtId !== districtId) {
+    throw new Error(
+      `Parking answer index district ${parsed.districtId} does not match ${districtId}`,
+    )
+  }
+  if (parsed.datasetHash !== meta.datasetHash) {
+    throw new Error(
+      `Parking answer index hash ${parsed.datasetHash} does not match dataset ${String(meta.datasetHash)}`,
+    )
+  }
+  if (parsed.zoneParamsVersion !== ZONE_PARAMS_VERSION) {
+    throw new Error(
+      `Parking answer index zone params ${parsed.zoneParamsVersion} do not match ${ZONE_PARAMS_VERSION}`,
+    )
+  }
+  if (!Array.isArray(parsed.segments) || !Array.isArray(parsed.zones)) {
+    throw new Error(`Parking answer index is missing segments or zones: ${indexPath}`)
+  }
+  return parsed
+}
+
+export const loadPreparedSegmentsForAnswer = async (
+  datasetDir: string,
+): Promise<PreparedSegmentsForAnswer> => {
+  const configuredIndexRoot =
+    process.env.PARKKING_PARKING_ANSWER_INDEX_ROOT?.trim()
+  const indexRoot =
+    configuredIndexRoot ||
+    (process.env.NODE_ENV === 'production'
+      ? DEFAULT_PARKING_ANSWER_INDEX_ROOT
+      : null)
+  const prepared = indexRoot
+    ? await loadPreparedIndexFile(datasetDir, indexRoot)
+    : await loadParkingAnswerPreparedIndexSource(datasetDir)
+  return buildPreparedSegmentsForAnswer(prepared)
 }
 
 export const loadEvaluatedSegmentsForAnswer = async (

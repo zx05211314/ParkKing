@@ -111,6 +111,10 @@ services:
         value: "21:00"
       - key: PARKKING_PARKING_ANSWER_ALLOW_DATASET_DIR
         value: "false"
+      - key: PARKKING_PARKING_ANSWER_INDEX_ROOT
+        value: .tmp/parking-answer-index
+      - key: PARKKING_PARKING_ANSWER_CACHE_MAX_DISTRICTS
+        value: "1"
       - key: PARKKING_SYNC_PATH
         value: /api/sync
       - key: PARKKING_SYNC_FILE

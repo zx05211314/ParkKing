@@ -15,6 +15,7 @@ import {
   parsePositiveInteger,
 } from './parkingAnswerServiceParsing'
 import type { ParkingAnswerServiceConfig } from './parkingAnswerServiceTypes'
+import { DEFAULT_PARKING_ANSWER_INDEX_ROOT } from './queryParkingAnswer'
 
 export {
   DEFAULT_PARKING_ANSWER_ALLOWED_DISTRICTS,
@@ -111,5 +112,16 @@ export const resolveParkingAnswerServiceConfig = (
     allowDatasetDirParam: parseEnabled(
       env.PARKKING_PARKING_ANSWER_ALLOW_DATASET_DIR,
     ),
+    preparedIndexRoot: (() => {
+      const configured = normalizeParkingAnswerText(
+        env.PARKKING_PARKING_ANSWER_INDEX_ROOT,
+      )
+      if (configured) {
+        return resolve(cwd, configured)
+      }
+      return env.NODE_ENV === 'production'
+        ? resolve(cwd, DEFAULT_PARKING_ANSWER_INDEX_ROOT)
+        : null
+    })(),
   }
 }

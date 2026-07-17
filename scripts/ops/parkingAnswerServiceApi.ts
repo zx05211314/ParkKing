@@ -58,12 +58,21 @@ export const createCachedParkingAnswerLoader = (
 
 export const createCachedPreparedParkingAnswerLoader = (
   loadSegments: QueryParkingAnswerPreparedLoader = loadPreparedSegmentsForAnswer,
+  maxEntries = Number.parseInt(
+    process.env.PARKKING_PARKING_ANSWER_CACHE_MAX_DISTRICTS ??
+      (process.env.NODE_ENV === 'production' ? '1' : '2'),
+    10,
+  ),
 ): QueryParkingAnswerPreparedLoader => {
   const cache = new Map<string, Promise<PreparedSegmentsForAnswer>>()
+  const resolvedMaxEntries =
+    Number.isInteger(maxEntries) && maxEntries > 0 ? maxEntries : 1
 
   return (datasetDir) => {
     const cached = cache.get(datasetDir)
     if (cached) {
+      cache.delete(datasetDir)
+      cache.set(datasetDir, cached)
       return cached
     }
 
@@ -72,6 +81,13 @@ export const createCachedPreparedParkingAnswerLoader = (
       throw error
     })
     cache.set(datasetDir, loaded)
+    while (cache.size > resolvedMaxEntries) {
+      const oldestKey = cache.keys().next().value
+      if (typeof oldestKey !== 'string') {
+        break
+      }
+      cache.delete(oldestKey)
+    }
     return loaded
   }
 }
