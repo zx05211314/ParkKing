@@ -37,7 +37,19 @@ export const validateRuntimeCoverageCatalog = (
               ({ parentDistrictId }) =>
                 parentDistrictId === district.districtId,
             )
-            .map(({ areaId, areaName }) => ({ areaId, areaName })),
+            .map(
+              ({
+                areaId,
+                areaName,
+                coverageMode,
+                standaloneBoundaryRequired,
+              }) => ({
+                areaId,
+                areaName,
+                coverageMode,
+                standaloneBoundaryRequired,
+              }),
+            ),
         },
       ] as const),
     ),

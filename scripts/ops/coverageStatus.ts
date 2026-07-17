@@ -191,11 +191,19 @@ export const validateCoverageManifest = async (
         errors.push(`${region.regionId}: duplicate or missing alias areaId`)
       }
       aliasIds.add(alias.areaId)
+      if (!alias.areaName) {
+        errors.push(`${region.regionId}/${alias.areaId}: areaName is required`)
+      }
       if (!regionDistrictIds.has(alias.parentDistrictId)) {
         errors.push(`${region.regionId}/${alias.areaId}: parent district is missing`)
       }
       if (alias.coverageMode !== 'parent-district') {
         errors.push(`${region.regionId}/${alias.areaId}: unsupported coverageMode`)
+      }
+      if (typeof alias.standaloneBoundaryRequired !== 'boolean') {
+        errors.push(
+          `${region.regionId}/${alias.areaId}: standaloneBoundaryRequired must be boolean`,
+        )
       }
     }
 

@@ -71,7 +71,14 @@ describe('buildRuntimeCoverageCatalog', () => {
       districtId: 'beitou',
       publishStage: 'candidate',
       answerCapability: 'full-rule-pipeline',
-      aliases: [{ areaId: 'shipai', areaName: 'Shipai' }],
+      aliases: [
+        {
+          areaId: 'shipai',
+          areaName: 'Shipai',
+          coverageMode: 'parent-district',
+          standaloneBoundaryRequired: true,
+        },
+      ],
       boundaryBBox: [121.4, 25.1, 121.6, 25.3],
       boundaryGeometry: { type: 'Polygon' },
     })

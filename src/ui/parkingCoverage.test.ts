@@ -50,7 +50,14 @@ const catalog: RuntimeCoverageCatalog = {
       boundaryFeatureId: '63012',
       publishStage: 'candidate',
       requiresHumanReview: true,
-      aliases: [{ areaId: 'shipai', areaName: 'Shipai' }],
+      aliases: [
+        {
+          areaId: 'shipai',
+          areaName: 'Shipai',
+          coverageMode: 'parent-district',
+          standaloneBoundaryRequired: true,
+        },
+      ],
       boundaryBBox: [121.4, 25.1, 121.6, 25.3],
       boundaryGeometry: {
         type: 'Polygon',
@@ -163,7 +170,10 @@ describe('parkingCoverage', () => {
 
     expect(state.eligibleLocation).toBeNull()
     expect(state.notice).toContain('Beitou candidate coverage')
-    expect(state.notice).toContain('covers Shipai')
+    expect(state.notice).toContain('Shipai is tracked under Beitou')
+    expect(state.notice).toContain(
+      'this Beitou match does not confirm the point is inside Shipai',
+    )
     expect(state.notice).toContain('requires human review')
   })
 

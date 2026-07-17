@@ -43,7 +43,12 @@ const catalog: RuntimeCoverageCatalog = {
   schemaVersion: 1,
   districts: [
     buildDistrict('beitou', 'candidate', 121.5, [
-      { areaId: 'shipai', areaName: 'Shipai' },
+      {
+        areaId: 'shipai',
+        areaName: 'Shipai',
+        coverageMode: 'parent-district',
+        standaloneBoundaryRequired: true,
+      },
     ]),
     buildDistrict('taoyuan', 'source-only', 121.3),
   ],

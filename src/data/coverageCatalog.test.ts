@@ -17,7 +17,14 @@ const district: RuntimeCoverageDistrict = {
   publishStage: 'candidate',
   answerCapability: 'full-rule-pipeline',
   requiresHumanReview: true,
-  aliases: [{ areaId: 'shipai', areaName: 'Shipai' }],
+  aliases: [
+    {
+      areaId: 'shipai',
+      areaName: 'Shipai',
+      coverageMode: 'parent-district',
+      standaloneBoundaryRequired: true,
+    },
+  ],
   boundaryBBox: [121.4, 25.1, 121.6, 25.3],
   boundaryGeometry: {
     type: 'Polygon',
@@ -41,8 +48,27 @@ describe('coverageCatalog', () => {
   it('parses a valid catalog and preserves aliases', () => {
     const parsed = parseRuntimeCoverageCatalog(catalog)
     expect(parsed.districts[0]?.aliases).toEqual([
-      { areaId: 'shipai', areaName: 'Shipai' },
+      {
+        areaId: 'shipai',
+        areaName: 'Shipai',
+        coverageMode: 'parent-district',
+        standaloneBoundaryRequired: true,
+      },
     ])
+  })
+
+  it('rejects aliases that omit their boundary contract', () => {
+    expect(() =>
+      parseRuntimeCoverageCatalog({
+        ...catalog,
+        districts: [
+          {
+            ...district,
+            aliases: [{ areaId: 'shipai', areaName: 'Shipai' }],
+          },
+        ],
+      }),
+    ).toThrow('Invalid runtime coverage catalog')
   })
 
   it('rejects catalogs with unsupported stages', () => {

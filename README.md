@@ -233,7 +233,7 @@ Current parking answer strategy:
 2. The browser checks `/ready` before exact service requests; degraded readiness is shown in the pinned-answer panel while the local loaded dataset fallback remains available.
 3. Before either answer path runs, the browser checks the pinned location against the active district polygon in `/data/coverage.json` (falling back to dataset bounds if the catalog is unavailable). Out-of-coverage locations remain visible on the map but do not receive a parking answer or recommendation from another district's data.
 4. Address and map-pin selection use that same polygon catalog to switch only to production districts present in the published registry; candidate and source-only areas are never selected as active datasets.
-5. Known non-active areas report their actual coverage stage: Taipei candidates remain blocked pending human review, Shipai is identified through Beitou, and Taoyuan reports paid-curb-reference-only capability without claiming curb legality.
+5. Known non-active areas report their actual coverage stage: Taipei candidates remain blocked pending human review, Shipai is tracked under Beitou without claiming that a Beitou polygon match proves the point is inside Shipai, and Taoyuan reports paid-curb-reference-only capability without claiming curb legality.
 6. The service loads the generated district pack, applies reviewed sign overrides, parking-space evidence, inferred candidates when requested, zone rules, and ranking trust.
 7. The response includes `schemaVersion`, dataset hash, primary answer, alternatives, evidence, caveats, and the same trust summary rendered in the UI.
 8. The service caches evaluated segments per `datasetDir` and `hhmm` for the process lifetime.
@@ -340,8 +340,11 @@ without changing the production publish glob.
 
 Taipei-wide expansion is tracked in `configs/coverage.expansion.json`. The 12 official
 districts now have either production or expansion configs; Shipai is represented through
-its parent Beitou district and is not treated as a separate administrative district. Check
-the contract with `npm run ops:coverage-status`. Rebuild the browser-safe 25-district
+its parent Beitou district and is not treated as a separate administrative district. Its
+current QA bundle is a 1.5 km anchor sample, not an authoritative Shipai boundary, so the
+runtime catalog marks `standaloneBoundaryRequired: true` and the UI does not infer that
+every Beitou match is inside Shipai. Check the contract with `npm run ops:coverage-status`.
+Rebuild the browser-safe 25-district
 boundary/status catalog from the downloaded official sources with
 `npm run ops:build-coverage-catalog`, then verify it against the manifest with
 `npm run ops:validate-coverage-catalog`. Candidate and source-only entries in this catalog
