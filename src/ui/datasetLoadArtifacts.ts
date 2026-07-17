@@ -23,7 +23,7 @@ export interface DatasetArtifacts {
   crosswalks: FeatureCollection
   signOverrides: FeatureCollection
   inferredCandidates: FeatureCollection<LineString | MultiLineString>
-  meta: DatasetMeta | null
+  meta: DatasetMeta
 }
 
 export interface DatasetSupplementalInfo {
@@ -48,6 +48,12 @@ export const DATASET_FILES = {
 export const loadDatasetArtifacts = async (
   baseDir: string,
 ): Promise<DatasetArtifacts> => {
+  const meta = await loadGeoJson<DatasetMeta>(DATASET_FILES.meta, { baseDir })
+  const loadDeclaredArtifact = <T>(fileName: string, fallback: T) =>
+    meta.files?.[fileName]
+      ? loadGeoJson<T>(fileName, { baseDir })
+      : Promise.resolve(fallback)
+
   const [
     redYellow,
     busStops,
@@ -57,7 +63,6 @@ export const loadDatasetArtifacts = async (
     crosswalks,
     signOverrides,
     inferredCandidates,
-    meta,
   ] = await Promise.all([
     loadGeoJson<FeatureCollection<LineString | MultiLineString>>(
       DATASET_FILES.redYellow,
@@ -65,31 +70,29 @@ export const loadDatasetArtifacts = async (
     ),
     loadGeoJson<FeatureCollection<Point>>(DATASET_FILES.busStops, { baseDir }),
     loadGeoJson<FeatureCollection<Point>>(DATASET_FILES.hydrants, { baseDir }),
-    loadGeoJson<ParkingSpaceCollection>(DATASET_FILES.parkingSpaces, { baseDir }).catch(
-      () =>
-        ({
-          type: 'FeatureCollection',
-          features: [],
-        } as ParkingSpaceCollection),
+    loadDeclaredArtifact<ParkingSpaceCollection>(
+      DATASET_FILES.parkingSpaces,
+      {
+        type: 'FeatureCollection',
+        features: [],
+      } as ParkingSpaceCollection,
     ),
     loadGeoJson<FeatureCollection<Point>>(DATASET_FILES.intersections, { baseDir }),
-    loadGeoJson<FeatureCollection>(DATASET_FILES.crosswalks, { baseDir }).catch(
-      () => ({ type: 'FeatureCollection', features: [] } as FeatureCollection),
+    loadDeclaredArtifact<FeatureCollection>(
+      DATASET_FILES.crosswalks,
+      { type: 'FeatureCollection', features: [] } as FeatureCollection,
     ),
-    loadGeoJson<FeatureCollection>(DATASET_FILES.signOverrides, { baseDir }).catch(
-      () => ({ type: 'FeatureCollection', features: [] } as FeatureCollection),
+    loadDeclaredArtifact<FeatureCollection>(
+      DATASET_FILES.signOverrides,
+      { type: 'FeatureCollection', features: [] } as FeatureCollection,
     ),
-    loadGeoJson<FeatureCollection<LineString | MultiLineString>>(
+    loadDeclaredArtifact<FeatureCollection<LineString | MultiLineString>>(
       DATASET_FILES.inferredCandidates,
-      { baseDir },
-    ).catch(
-      () =>
-        ({
-          type: 'FeatureCollection',
-          features: [],
-        } as FeatureCollection<LineString | MultiLineString>),
+      {
+        type: 'FeatureCollection',
+        features: [],
+      } as FeatureCollection<LineString | MultiLineString>,
     ),
-    loadGeoJson<DatasetMeta>(DATASET_FILES.meta, { baseDir }).catch(() => null),
   ])
 
   return {

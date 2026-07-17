@@ -1,4 +1,5 @@
 import { getDatasetBaseDir } from './datasetResolver'
+import { fetchDatasetResource } from './loaders/fetchDatasetResource.browser'
 
 export const PACK_SCHEMA_VERSION = 1
 
@@ -46,6 +47,8 @@ const requiredFiles = [...PACK_FILES.required, 'dataset_meta.json']
 const optionalFiles = [...PACK_FILES.optional]
 
 const isBrowser = typeof window !== 'undefined' && typeof window.fetch === 'function'
+const errorReason = (error: unknown) =>
+  error instanceof Error ? error.message : String(error)
 
 const joinBase = (baseDir: string, fileName: string) => {
   if (baseDir.endsWith('/')) {
@@ -55,16 +58,24 @@ const joinBase = (baseDir: string, fileName: string) => {
 }
 
 const existsInBrowser = async (url: string) => {
-  try {
-    const response = await fetch(url, { method: 'HEAD' })
-    if (response.ok) {
-      return true
-    }
-    const fallback = await fetch(url, { method: 'GET' })
-    return fallback.ok
-  } catch {
-    return false
+  const probe = (method: 'HEAD' | 'GET') =>
+    fetchDatasetResource(url, {
+      init: {
+        method,
+        cache: 'no-store',
+        headers: method === 'GET' ? { Range: 'bytes=0-0' } : undefined,
+      },
+      allowHttpError: true,
+      read: async (response) => {
+        await response.body?.cancel().catch(() => undefined)
+        return response.ok
+      },
+    })
+
+  if (await probe('HEAD')) {
+    return true
   }
+  return probe('GET')
 }
 
 export const validateFileSet = async (
@@ -298,12 +309,10 @@ export const verifyPackHashes = async (
   for (const [fileName, entry] of entries) {
     const target = joinBase(baseDir, fileName)
     try {
-      const response = await fetch(target)
-      if (!response.ok) {
-        errors.push(`Failed to fetch ${fileName}`)
-        continue
-      }
-      const buffer = await response.arrayBuffer()
+      const buffer = await fetchDatasetResource(target, {
+        init: { cache: 'no-store' },
+        read: (response) => response.arrayBuffer(),
+      })
       const bytes = buffer.byteLength
       if (bytes !== entry.bytes) {
         errors.push(`Byte mismatch for ${fileName}`)
@@ -312,8 +321,8 @@ export const verifyPackHashes = async (
       if (sha256 !== entry.sha256) {
         errors.push(`SHA256 mismatch for ${fileName}`)
       }
-    } catch {
-      errors.push(`Hash check failed for ${fileName}`)
+    } catch (error) {
+      errors.push(`Hash check failed for ${fileName}: ${errorReason(error)}`)
     }
   }
 
@@ -338,18 +347,16 @@ export const verifyMetaSha256 = async (
 
   const target = joinBase(baseDir, 'dataset_meta.json')
   try {
-    const response = await fetch(target)
-    if (!response.ok) {
-      errors.push('Failed to fetch dataset_meta.json')
-      return { valid: false, errors, warnings }
-    }
-    const buffer = await response.arrayBuffer()
+    const buffer = await fetchDatasetResource(target, {
+      init: { cache: 'no-store' },
+      read: (response) => response.arrayBuffer(),
+    })
     const sha256 = await sha256Buffer(buffer)
     if (sha256 !== expectedSha256) {
       errors.push('dataset_meta.json sha256 mismatch')
     }
-  } catch {
-    errors.push('Meta hash verification failed')
+  } catch (error) {
+    errors.push(`Meta hash verification failed: ${errorReason(error)}`)
   }
 
   return {

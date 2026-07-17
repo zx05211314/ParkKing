@@ -1,4 +1,5 @@
 import { getDatasetBaseDir } from '../datasetResolver'
+import { fetchDatasetResource } from './fetchDatasetResource.browser'
 
 interface LoadGeoJsonOptions {
   baseDir?: string
@@ -21,9 +22,8 @@ export const loadGeoJson = async <T>(
   const url = baseDir.startsWith('http')
     ? new URL(filePath, baseDir.endsWith('/') ? baseDir : `${baseDir}/`).toString()
     : joinUrl(baseDir, filePath)
-  const response = await fetch(url, { cache: 'no-store' })
-  if (!response.ok) {
-    throw new Error(`Failed to load ${url}: ${response.status}`)
-  }
-  return response.json() as Promise<T>
+  return fetchDatasetResource<T>(url, {
+    init: { cache: 'no-store' },
+    read: (response) => response.json() as Promise<T>,
+  })
 }
