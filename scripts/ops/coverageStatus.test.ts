@@ -117,4 +117,45 @@ describe('coverageStatus', () => {
       'taoyuan: reference-only coverage cannot be publishable',
     )
   })
+
+  it('rejects aliases without an explicit standalone-boundary contract', async () => {
+    const root = await fs.mkdtemp(path.join(tmpdir(), 'coverage-alias-invalid-'))
+    await writeConfig(root, 'configs/expansion/beitou.json', 'beitou', '63012')
+    const manifest = {
+      schemaVersion: 1,
+      regions: [
+        {
+          regionId: 'taipei',
+          regionName: 'Taipei City',
+          expectedDistrictCount: 1,
+          answerCapability: 'full-rule-pipeline',
+          districts: [
+            {
+              districtId: 'beitou',
+              districtName: 'Beitou',
+              boundaryFeatureId: '63012',
+              publishStage: 'candidate',
+              configPath: 'configs/expansion/beitou.json',
+              requiresHumanReview: true,
+            },
+          ],
+          aliases: [
+            {
+              areaId: 'shipai',
+              areaName: 'Shipai',
+              parentDistrictId: 'beitou',
+              coverageMode: 'parent-district',
+            },
+          ],
+          blockers: [],
+        },
+      ],
+    } as unknown as CoverageManifest
+
+    const result = await validateCoverageManifest(manifest, root)
+    expect(result.valid).toBe(false)
+    expect(result.errors).toContain(
+      'taipei/shipai: standaloneBoundaryRequired must be boolean',
+    )
+  })
 })

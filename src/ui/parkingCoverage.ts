@@ -40,10 +40,13 @@ const buildKnownDistrictNotice = (
   }
 
   if (district.publishStage === 'candidate') {
-    const aliasNames = district.aliases.map(({ areaName }) => areaName)
-    const aliasNotice = aliasNames.length > 0
-      ? ` This candidate district also covers ${aliasNames.join(', ')}.`
-      : ''
+    const aliasNotice = district.aliases
+      .map(({ areaName, standaloneBoundaryRequired }) =>
+        standaloneBoundaryRequired
+          ? ` ${areaName} is tracked under ${district.districtName} and still needs a standalone reviewed boundary; this ${district.districtName} match does not confirm the point is inside ${areaName}.`
+          : ` ${areaName} is listed as a parent-district alias.`,
+      )
+      .join('')
     const reviewNotice = district.requiresHumanReview
       ? ' It still requires human review and has not been published.'
       : ' It has not been published.'

@@ -9,6 +9,8 @@ export type RuntimeCoverageCatalogStatus = 'loading' | 'ready' | 'error'
 export interface RuntimeCoverageAlias {
   areaId: string
   areaName: string
+  coverageMode: 'parent-district'
+  standaloneBoundaryRequired: boolean
 }
 
 export interface RuntimeCoverageReferenceData {
@@ -72,7 +74,9 @@ const isBoundaryGeometry = (
 const isAlias = (value: unknown): value is RuntimeCoverageAlias =>
   isRecord(value) &&
   typeof value.areaId === 'string' &&
-  typeof value.areaName === 'string'
+  typeof value.areaName === 'string' &&
+  value.coverageMode === 'parent-district' &&
+  typeof value.standaloneBoundaryRequired === 'boolean'
 
 const isReferenceData = (
   value: unknown,
