@@ -15,6 +15,19 @@ describe('buildParkingAnswerIndexes', () => {
     )
   })
 
+  it('rebuilds indexes after CI fixture ingest before production-mode smoke', async () => {
+    const workflow = await fs.readFile('.github/workflows/ci.yml', 'utf-8')
+    const ingestPosition = workflow.indexOf('name: Ingest CI fixtures')
+    const indexPosition = workflow.indexOf(
+      'name: Build parking answer indexes for CI fixtures',
+    )
+    const smokePosition = workflow.indexOf('name: Smoke API service probes')
+
+    expect(ingestPosition).toBeGreaterThanOrEqual(0)
+    expect(indexPosition).toBeGreaterThan(ingestPosition)
+    expect(smokePosition).toBeGreaterThan(indexPosition)
+  })
+
   it('writes one prepared index per registry district', async () => {
     const base = await fs.mkdtemp(path.join(tmpdir(), 'parking-answer-index-'))
     const dataRoot = path.join(base, 'data')
