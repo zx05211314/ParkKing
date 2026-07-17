@@ -117,6 +117,14 @@ describe('smokeUiParkingAnswers', () => {
         loadingIndicators: [],
       }),
     ).toBe(false)
+    expect(
+      shouldRetrySmokeUiCase({
+        attempt: 0,
+        requiredText: ['one', 'Click map to check parking here'],
+        missingText: ['Click map to check parking here'],
+        loadingIndicators: [],
+      }),
+    ).toBe(true)
   })
 
   it('detects only explicit dataset and map loading states', () => {
