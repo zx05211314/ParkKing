@@ -196,11 +196,12 @@ const hasValidSpatialCoordinates = (
   )
 }
 
-const validateSpatialReference = (value: unknown) => {
+export const validateTaoyuanSpatialReference = (value: unknown) => {
   const root = toRecord(value)
   const metadata = toRecord(root.metadata)
   const features = Array.isArray(root.features) ? root.features : []
   const errors: string[] = []
+  const parkingSegmentIds = new Set<string>()
   let segmentGeometryCount = 0
   let representativePointCount = 0
 
@@ -230,26 +231,54 @@ const validateSpatialReference = (value: unknown) => {
     if (properties.evidenceKind !== 'PAID_CURB_SEGMENT') {
       errors.push(`Spatial feature ${index + 1} has invalid evidenceKind.`)
     }
+    if (properties.sourceDataset !== 'TDX OnStreet ParkingSegment v1') {
+      errors.push(`Spatial feature ${index + 1} has invalid sourceDataset.`)
+    }
     if (
       typeof properties.parkingSegmentId !== 'string' ||
       properties.parkingSegmentId.trim().length === 0
     ) {
       errors.push(`Spatial feature ${index + 1} has no parkingSegmentId.`)
+    } else if (parkingSegmentIds.has(properties.parkingSegmentId.trim())) {
+      errors.push(`Spatial feature ${index + 1} has a duplicate parkingSegmentId.`)
+    } else {
+      parkingSegmentIds.add(properties.parkingSegmentId.trim())
     }
     if (properties.legalAnswerEligible !== false) {
       errors.push(
         `Spatial feature ${index + 1} must keep legalAnswerEligible false.`,
-      )
+    )
     }
     if (properties.geometryPrecision === 'SEGMENT_GEOMETRY') {
       segmentGeometryCount += 1
+      if (
+        geometry.type !== 'LineString' &&
+        geometry.type !== 'MultiLineString'
+      ) {
+        errors.push(
+          `Spatial feature ${index + 1} segment geometry must be a line.`,
+        )
+      }
     } else if (properties.geometryPrecision === 'REPRESENTATIVE_POINT') {
       representativePointCount += 1
+      if (geometry.type !== 'Point') {
+        errors.push(
+          `Spatial feature ${index + 1} representative geometry must be a point.`,
+        )
+      }
     } else {
       errors.push(`Spatial feature ${index + 1} has invalid geometryPrecision.`)
     }
   })
 
+  if (
+    !Number.isSafeInteger(metadata.sourceRecordCount) ||
+    Number(metadata.sourceRecordCount) < features.length
+  ) {
+    errors.push(
+      'Spatial reference metadata sourceRecordCount is missing or invalid.',
+    )
+  }
   if (!Number.isSafeInteger(metadata.featureCount)) {
     errors.push('Spatial reference metadata featureCount is missing or invalid.')
   } else if (metadata.featureCount !== features.length) {
@@ -450,7 +479,7 @@ export const runTaoyuanExpansionReadiness = async (
   }
   if (spatialExists) {
     try {
-      const result = validateSpatialReference(await readJson(spatialPath))
+      const result = validateTaoyuanSpatialReference(await readJson(spatialPath))
       spatial.valid = result.valid
       spatial.featureCount = result.featureCount
       spatial.segmentGeometryCount = result.segmentGeometryCount

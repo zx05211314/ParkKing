@@ -35,6 +35,7 @@
     "ops:fetch-sources": "tsx scripts/ops/fetchSources.ts",
     "ops:fetch-taoyuan-sources": "tsx scripts/ops/fetchSources.ts --manifest configs/sources.expansion.taoyuan.json",
     "ops:fetch-taoyuan-paid-curb": "tsx scripts/ops/fetchTaoyuanPaidCurbSegments.ts",
+    "ops:install-taoyuan-spatial-reference": "tsx scripts/ops/installTaoyuanSpatialReference.ts",
     "ops:unpack-sources": "tsx scripts/ops/unpackSources.ts",
     "ops:unpack-taoyuan-sources": "tsx scripts/ops/unpackSources.ts --sourceDir data/sources/taoyuan",
     "ops:coverage-status": "tsx scripts/ops/coverageStatus.ts",
