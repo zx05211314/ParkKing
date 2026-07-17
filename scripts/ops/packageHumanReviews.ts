@@ -60,8 +60,8 @@ export interface PackagedHumanReviewEntry {
   status: string
   zipPath: string
   files: PackagedHumanReviewFile[]
-  priorityValidationCommand: string
-  finalizeCommand: string
+  priorityValidationCommand: string | null
+  finalizeCommand: string | null
 }
 
 export interface SkippedHumanReviewPackageEntry {
@@ -140,6 +140,9 @@ const readyForHumanReview = (entry: HumanReviewBundleEntry) =>
   entry.status === 'ready-for-review'
 
 const skippedReason = (entry: HumanReviewBundleEntry) => {
+  if (!entry.canFinalizeIndependently) {
+    return 'area alias review is supplemental and cannot finalize its parent district independently'
+  }
   if (entry.status === 'ready-to-finalize' || entry.status === 'review-complete') {
     return 'human review is already sufficient; use ops:p0-finalize-ready-reviews'
   }
@@ -230,8 +233,11 @@ const buildPackageFiles = (entry: HumanReviewBundleEntry): PackageSourceFile[] =
 const buildPriorityValidationCommand = (
   entry: HumanReviewBundleEntry,
   reviewsPath = '<path-to-filled-priority-review.csv>',
-) =>
-  [
+): string | null => {
+  if (!entry.canFinalizeIndependently) {
+    return null
+  }
+  return [
     'npm run ops:p0-validate-priority-review --',
     '--district',
     entry.districtId,
@@ -249,6 +255,7 @@ const buildPriorityValidationCommand = (
         ]
       : []),
   ].join(' ')
+}
 
 const buildPackageReadme = (
   entry: HumanReviewBundleEntry,
@@ -258,6 +265,7 @@ const buildPackageReadme = (
   const priorityRows = districtAuditResult
     ? buildReviewHandoffPriorityRows(districtAuditResult).length
     : null
+  const priorityValidationCommand = buildPriorityValidationCommand(entry)
   return [
     `# Human Review Handoff: ${entry.bundleId}`,
     '',
@@ -278,25 +286,43 @@ const buildPackageReadme = (
     '',
     '## Review Options',
     '',
-    `- Full handoff path: fill \`review/${entry.districtId}-next-review.csv\`, then run the full handoff finalize command below.`,
-    '- Priority path: fill only `review/priority-review.csv`, run the priority validation command below, then run the finalize command printed by that validation.',
-    '- Do not run the full handoff finalize command unless the full handoff CSV has been filled.',
+    `- Full handoff path: fill \`review/${entry.districtId}-next-review.csv\`${
+      entry.canFinalizeIndependently
+        ? ', then run the full handoff finalize command below.'
+        : ` and return it as supplemental ${entry.bundleId} evidence for ${entry.districtId}.`
+    }`,
+    ...(priorityValidationCommand
+      ? [
+          '- Priority path: fill only `review/priority-review.csv`, run the priority validation command below, then run the finalize command printed by that validation.',
+          '- Do not run the full handoff finalize command unless the full handoff CSV has been filled.',
+        ]
+      : [
+          `- Supplemental area review only: this bundle cannot validate or finalize ${entry.districtId} independently.`,
+        ]),
     '',
-    '## Validate Priority Review',
-    '',
-    'Run this command from the repo root after `review/priority-review.csv` is filled:',
-    '',
-    '```powershell',
-    buildPriorityValidationCommand(entry),
-    '```',
-    '',
+    ...(priorityValidationCommand
+      ? [
+          '## Validate Priority Review',
+          '',
+          'Run this command from the repo root after `review/priority-review.csv` is filled:',
+          '',
+          '```powershell',
+          priorityValidationCommand,
+          '```',
+          '',
+        ]
+      : []),
     '## After Review',
     '',
-    'Run this command from the repo root only after the full handoff CSV is filled:',
+    entry.canFinalizeIndependently
+      ? 'Run this command from the repo root only after the full handoff CSV is filled:'
+      : `Do not finalize ${entry.districtId} from this area-alias bundle alone.`,
     '',
-    '```powershell',
-    entry.finalizeCommand,
-    '```',
+    ...(entry.finalizeCommand
+      ? ['```powershell', entry.finalizeCommand, '```']
+      : [
+          `This reviewed ${entry.bundleId} bundle must be consolidated with the canonical ${entry.districtId} review before district promotion.`,
+        ]),
     '',
   ].join('\n')
 }
@@ -531,7 +557,7 @@ export const runPackageHumanReviews = async (
     skipped,
     auditResult,
     errors,
-    warnings,
+    warnings: [...new Set(warnings)],
   }
 }
 
@@ -560,8 +586,16 @@ export const renderPackageHumanReviews = (result: PackageHumanReviewsResult) => 
         : `${entry.bundleId} (district ${entry.districtId})`
     lines.push(`- ${label}: ${entry.zipPath}`)
     lines.push(`  Copied source/review files: ${entry.files.length}`)
-    lines.push(`  Validate priority review: ${entry.priorityValidationCommand}`)
-    lines.push(`  After review: ${entry.finalizeCommand}`)
+    if (entry.priorityValidationCommand) {
+      lines.push(`  Validate priority review: ${entry.priorityValidationCommand}`)
+    }
+    if (entry.finalizeCommand) {
+      lines.push(`  After review: ${entry.finalizeCommand}`)
+    } else {
+      lines.push(
+        '  Supplemental area review only; no independent validation/finalize command.',
+      )
+    }
   })
 
   lines.push('', '## Skipped')

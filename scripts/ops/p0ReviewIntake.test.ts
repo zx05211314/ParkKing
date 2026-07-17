@@ -17,6 +17,53 @@ const writeText = async (targetPath: string, body: string) => {
   await fs.writeFile(targetPath, body, 'utf-8')
 }
 
+const writeScopedBundle = async (
+  root: string,
+  bundleId: string,
+  districtId: string,
+) => {
+  const bundleDir = path.join(root, `${bundleId}-human-review`)
+  const sourcePath = path.join(bundleDir, `${districtId}-review.csv`)
+  await writeText(
+    sourcePath,
+    [
+      'districtId,segmentId,reviewBucket,reviewStatus,reviewNote,createdAt',
+      `${districtId},s1,marked_space_park,,,`,
+      '',
+    ].join('\n'),
+  )
+  await writeText(
+    path.join(bundleDir, `${districtId}-next-review.csv`),
+    [
+      'districtId,sourceRowNumber,segmentId,reviewBucket,reviewStatus,reviewNote,createdAt',
+      `${districtId},2,s1,marked_space_park,,,`,
+      '',
+    ].join('\n'),
+  )
+  await writeText(
+    path.join(bundleDir, `${districtId}-next-review.md`),
+    '# review\n',
+  )
+  await writeText(
+    path.join(bundleDir, `${districtId}-next-review.geojson`),
+    '{}\n',
+  )
+  await writeText(
+    path.join(bundleDir, `${districtId}-review.review.md`),
+    '# source\n',
+  )
+  await writeText(
+    path.join(bundleDir, `${districtId}-review.manifest.json`),
+    `${JSON.stringify({
+      districtId,
+      csvPath: sourcePath,
+      dataset: { datasetHash: `${bundleId}-hash` },
+      rows: { total: 1 },
+    })}\n`,
+  )
+  return bundleDir
+}
+
 describe('p0ReviewIntake', () => {
   it('parses options', () => {
     expect(
@@ -288,6 +335,44 @@ describe('p0ReviewIntake', () => {
       isCanonicalHandoff: false,
       nextAction: 'validate-priority-review',
     })
+  })
+
+  it('keeps parent-district and area-alias intake scoped to separate bundles', async () => {
+    const root = await makeTempRoot()
+    const beitouDir = await writeScopedBundle(root, 'beitou', 'beitou')
+    const shipaiDir = await writeScopedBundle(root, 'shipai', 'beitou')
+
+    const parent = await runP0ReviewIntake({
+      reviewRoot: root,
+      scanDirs: [root],
+      districtIds: ['beitou'],
+      publishGateSummaryPath: null,
+      actionableOnly: true,
+    })
+    const alias = await runP0ReviewIntake({
+      reviewRoot: root,
+      scanDirs: [root],
+      districtIds: ['shipai'],
+      publishGateSummaryPath: null,
+      actionableOnly: true,
+    })
+
+    expect(parent.candidates).toEqual([
+      expect.objectContaining({
+        bundleId: 'beitou',
+        districtId: 'beitou',
+        filePath: path.join(beitouDir, 'beitou-next-review.csv'),
+        isCanonicalHandoff: true,
+      }),
+    ])
+    expect(alias.candidates).toEqual([
+      expect.objectContaining({
+        bundleId: 'shipai',
+        districtId: 'beitou',
+        filePath: path.join(shipaiDir, 'beitou-next-review.csv'),
+        isCanonicalHandoff: true,
+      }),
+    ])
   })
 
   it('blocks without a district filter', async () => {

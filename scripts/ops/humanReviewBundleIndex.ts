@@ -49,6 +49,7 @@ export interface HumanReviewBundleEntry {
   districtId: string
   bundleDir: string
   bundleId: string
+  canFinalizeIndependently: boolean
   sourcePath: string
   status: HumanReviewBundleStatus
   publishGateWarnCodes: string[]
@@ -67,7 +68,7 @@ export interface HumanReviewBundleEntry {
   missingBuckets: string[]
   bucketMinimumsRemaining: Record<string, number>
   finalizeInputs: HumanReviewBundleFinalizeInputs
-  finalizeCommand: string
+  finalizeCommand: string | null
   warnings: string[]
   errors: string[]
 }
@@ -690,11 +691,18 @@ const buildBundleEntry = async (
     configRoot,
     allowWarnReason,
   })
+  const canFinalizeIndependently = bundleId === districtId
+  if (!canFinalizeIndependently) {
+    warnings.push(
+      `area alias ${bundleId} is supplemental review evidence for ${districtId} and cannot finalize the parent district independently`,
+    )
+  }
 
   return {
     districtId,
     bundleId,
     bundleDir,
+    canFinalizeIndependently,
     sourcePath,
     status,
     publishGateWarnCodes,
@@ -713,19 +721,21 @@ const buildBundleEntry = async (
     missingBuckets,
     bucketMinimumsRemaining,
     finalizeInputs,
-    finalizeCommand: buildFinalizeCommand(finalizeInputs),
+    finalizeCommand: canFinalizeIndependently
+      ? buildFinalizeCommand(finalizeInputs)
+      : null,
     warnings,
     errors,
   }
 }
 
-const matchesDistrictFilter = (
+export const matchesHumanReviewBundleSelection = (
   entry: HumanReviewBundleEntry,
   districtIds: Set<string>,
 ) =>
   districtIds.size === 0 ||
-  districtIds.has(entry.districtId) ||
-  districtIds.has(entry.bundleId)
+  districtIds.has(entry.bundleId) ||
+  (entry.bundleId === entry.districtId && districtIds.has(entry.districtId))
 
 export const runHumanReviewBundleIndex = async (
   options: HumanReviewBundleIndexOptions = {},
@@ -793,7 +803,7 @@ export const runHumanReviewBundleIndex = async (
           ),
         ),
     )
-  ).filter((entry) => matchesDistrictFilter(entry, districtIds))
+  ).filter((entry) => matchesHumanReviewBundleSelection(entry, districtIds))
   const specializedEntries = (
     await Promise.all(
       discoveries
@@ -858,7 +868,10 @@ export const runHumanReviewBundleIndex = async (
     'ready-to-finalize',
   ])
   const notReadyForFinalize = entries
-    .filter((entry) => !readyStatuses.has(entry.status))
+    .filter(
+      (entry) =>
+        !readyStatuses.has(entry.status) || !entry.canFinalizeIndependently,
+    )
     .map((entry) =>
       entry.bundleId === entry.districtId ? entry.districtId : entry.bundleId,
     )
@@ -967,7 +980,13 @@ export const renderHumanReviewBundleIndex = (
       `  Publish WARN codes: ${entry.publishGateWarnCodes.join(', ') || 'none'}`,
     )
     lines.push(
-      `  After human review: ${entry.status === 'review-complete' ? 'source already passes' : entry.finalizeCommand}`,
+      `  After human review: ${
+        !entry.canFinalizeIndependently
+          ? `return as supplemental ${entry.bundleId} evidence; do not finalize ${entry.districtId} independently`
+          : entry.status === 'review-complete'
+            ? 'source already passes'
+            : entry.finalizeCommand
+      }`,
     )
     entry.errors.forEach((error) => {
       lines.push(`  ERROR: ${error}`)

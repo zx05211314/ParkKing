@@ -31,6 +31,7 @@ export interface P0FinalizeReadyReviewsOptions {
 }
 
 export interface P0FinalizeReadyReviewsEntry {
+  bundleId: string
   districtId: string
   status: string
   command: string
@@ -39,6 +40,7 @@ export interface P0FinalizeReadyReviewsEntry {
 }
 
 export interface P0FinalizeReadyReviewsSkippedEntry {
+  bundleId: string
   districtId: string
   status: string
   reason: string
@@ -111,8 +113,14 @@ const readyStatuses = new Set<ReadyStatus>(['ready-to-finalize', 'review-complet
 
 const isReadyEntry = (
   entry: HumanReviewBundleEntry,
-): entry is HumanReviewBundleEntry & { status: ReadyStatus } =>
-  readyStatuses.has(entry.status as ReadyStatus)
+): entry is HumanReviewBundleEntry & {
+  status: ReadyStatus
+  canFinalizeIndependently: true
+  finalizeCommand: string
+} =>
+  readyStatuses.has(entry.status as ReadyStatus) &&
+  entry.canFinalizeIndependently &&
+  entry.finalizeCommand !== null
 
 const toFinalizeParams = (
   inputs: HumanReviewBundleFinalizeInputs,
@@ -155,9 +163,12 @@ export const runP0FinalizeReadyReviews = async (
   const skipped = index.entries
     .filter((entry) => !isReadyEntry(entry))
     .map((entry) => ({
+      bundleId: entry.bundleId,
       districtId: entry.districtId,
       status: entry.status,
-      reason: 'human review handoff is not ready to finalize',
+      reason: entry.canFinalizeIndependently
+        ? 'human review handoff is not ready to finalize'
+        : 'area alias review cannot finalize its parent district independently',
     }))
 
   if (readyEntries.length === 0) {
@@ -176,6 +187,7 @@ export const runP0FinalizeReadyReviews = async (
       }
     }
     ready.push({
+      bundleId: entry.bundleId,
       districtId: entry.districtId,
       status: entry.status,
       command: entry.finalizeCommand,
@@ -217,7 +229,7 @@ export const renderP0FinalizeReadyReviews = (
     lines.push('- none')
   }
   result.ready.forEach((entry) => {
-    lines.push(`- ${entry.districtId}: ${entry.status}`)
+    lines.push(`- ${entry.bundleId} (district ${entry.districtId}): ${entry.status}`)
     lines.push(`  Command: ${entry.command}`)
     if (entry.result) {
       lines.push(
@@ -231,7 +243,9 @@ export const renderP0FinalizeReadyReviews = (
     lines.push('- none')
   }
   result.skipped.forEach((entry) => {
-    lines.push(`- ${entry.districtId}: ${entry.status}; ${entry.reason}`)
+    lines.push(
+      `- ${entry.bundleId} (district ${entry.districtId}): ${entry.status}; ${entry.reason}`,
+    )
   })
 
   if (result.errors.length > 0) {

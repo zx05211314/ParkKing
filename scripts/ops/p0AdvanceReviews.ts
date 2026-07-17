@@ -86,12 +86,14 @@ export interface P0AdvanceReviewsOptions {
 }
 
 export interface P0AdvanceReviewEntry {
+  bundleId: string
   districtId: string
   status: string
   nextAction: string
 }
 
 export interface P0AdvanceIntakeFinalizeEntry {
+  bundleId: string
   districtId: string
   candidateFilePath: string
   command: string
@@ -195,7 +197,8 @@ const readyForReview = (entry: HumanReviewBundleEntry) =>
   entry.status === 'ready-for-review'
 
 const readyForFinalize = (entry: HumanReviewBundleEntry) =>
-  entry.status === 'ready-to-finalize' || entry.status === 'review-complete'
+  entry.canFinalizeIndependently &&
+  (entry.status === 'ready-to-finalize' || entry.status === 'review-complete')
 
 const incomplete = (entry: HumanReviewBundleEntry) => entry.status === 'incomplete'
 
@@ -203,16 +206,18 @@ const requiredNotReadyDistricts = (
   entries: HumanReviewBundleEntry[],
   districtIds: string[],
   all: boolean | undefined,
-  readyDistrictIds: Set<string> = new Set(),
+  readyBundleIds: Set<string> = new Set(),
 ) => {
   const readyStatuses = new Set(['ready-to-finalize', 'review-complete'])
   if (all) {
     return entries
       .filter(
         (entry) =>
-          !readyStatuses.has(entry.status) && !readyDistrictIds.has(entry.districtId),
+          (!readyStatuses.has(entry.status) ||
+            !entry.canFinalizeIndependently) &&
+          !readyBundleIds.has(entry.bundleId),
       )
-      .map((entry) => entry.districtId)
+      .map((entry) => entry.bundleId)
   }
 
   const matched = new Set<string>()
@@ -226,14 +231,15 @@ const requiredNotReadyDistricts = (
       }
       return (
         selected &&
-        !readyStatuses.has(entry.status) &&
-        !readyDistrictIds.has(entry.districtId)
+        (!readyStatuses.has(entry.status) ||
+          !entry.canFinalizeIndependently) &&
+        !readyBundleIds.has(entry.bundleId)
       )
     })
-    .map((entry) => entry.districtId)
+    .map((entry) => entry.bundleId)
 
   districtIds.forEach((districtId) => {
-    if (!matched.has(districtId) && !readyDistrictIds.has(districtId)) {
+    if (!matched.has(districtId) && !readyBundleIds.has(districtId)) {
       notReady.push(districtId)
     }
   })
@@ -250,6 +256,9 @@ const nextAction = (entry: HumanReviewBundleEntry) => {
   }
   return 'repair-review-bundle'
 }
+
+const candidateBundleId = (candidate: P0ReviewIntakeCandidate) =>
+  candidate.bundleId ?? candidate.districtId
 
 const toIntakeFinalizeParams = (
   candidate: P0ReviewIntakeCandidate,
@@ -321,12 +330,13 @@ export const runP0AdvanceReviews = async (
   warnings.push(...index.warnings)
 
   const entries = index.entries.map((entry) => ({
+    bundleId: entry.bundleId,
     districtId: entry.districtId,
     status: entry.status,
     nextAction: nextAction(entry),
   }))
-  const bundleByDistrict = new Map(
-    index.entries.map((entry) => [entry.districtId, entry] as const),
+  const bundleById = new Map(
+    index.entries.map((entry) => [entry.bundleId, entry] as const),
   )
   const reviewEntries = index.entries.filter(readyForReview)
   const finalizeEntries = index.entries.filter(readyForFinalize)
@@ -340,7 +350,9 @@ export const runP0AdvanceReviews = async (
     reviewIntakeResult = await (options.reviewIntakeScanner ?? runP0ReviewIntake)({
       reviewRoot,
       configRoot,
-      districtIds: options.all ? index.entries.map((entry) => entry.districtId) : districtIds,
+      districtIds: options.all
+        ? index.entries.map((entry) => entry.bundleId)
+        : districtIds,
       scanDirs: options.reviewIntakeScanDirs,
       includeCommonDirs: options.includeCommonDirs,
       publishGateSummaryPath,
@@ -353,17 +365,17 @@ export const runP0AdvanceReviews = async (
     warnings.push(...reviewIntakeResult.warnings)
   }
 
-  const intakeReadyDistricts = new Set(
+  const intakeReadyBundleIds = new Set(
     (reviewIntakeResult?.candidates ?? [])
       .filter((candidate) => candidate.finalizeCommand)
-      .map((candidate) => candidate.districtId),
+      .map(candidateBundleId),
   )
   const notReadyForRequiredFinalize = options.requireReadyToFinalize
     ? requiredNotReadyDistricts(
         index.entries,
         districtIds,
         options.all,
-        intakeReadyDistricts,
+        intakeReadyBundleIds,
       )
     : []
   if (notReadyForRequiredFinalize.length > 0) {
@@ -372,14 +384,14 @@ export const runP0AdvanceReviews = async (
     )
   }
   const reviewEntriesToPackage = reviewEntries.filter(
-    (entry) => !intakeReadyDistricts.has(entry.districtId),
+    (entry) => !intakeReadyBundleIds.has(entry.bundleId),
   )
 
   let auditResult: ReviewHandoffAuditResult | null = null
   if (reviewEntriesToPackage.length > 0 && selectedDistricts.length > 0) {
     auditResult = await (options.auditHandoffs ?? runReviewHandoffAudit)({
       reviewRoot,
-      districtIds: reviewEntriesToPackage.map((entry) => entry.districtId),
+      districtIds: reviewEntriesToPackage.map((entry) => entry.bundleId),
       publishGateSummaryPath,
     })
     errors.push(...auditResult.errors)
@@ -394,13 +406,13 @@ export const runP0AdvanceReviews = async (
   ) {
     warnings.push(
       `Packaging skipped by --no-package for: ${reviewEntriesToPackage
-        .map((entry) => entry.districtId)
+        .map((entry) => entry.bundleId)
         .join(', ')}`,
     )
   } else if (reviewEntriesToPackage.length > 0 && selectedDistricts.length > 0) {
     packageResult = await (options.packageReviews ?? runPackageHumanReviews)({
       reviewRoot,
-      districtIds: reviewEntriesToPackage.map((entry) => entry.districtId),
+      districtIds: reviewEntriesToPackage.map((entry) => entry.bundleId),
       outDir,
       configRoot,
       publishGateSummaryPath,
@@ -414,7 +426,7 @@ export const runP0AdvanceReviews = async (
   if (finalizeEntries.length > 0 && errors.length === 0) {
     finalizeResult = await (options.finalizeReadyReviews ?? runP0FinalizeReadyReviews)({
       reviewRoot,
-      districtIds: finalizeEntries.map((entry) => entry.districtId),
+      districtIds: finalizeEntries.map((entry) => entry.bundleId),
       configRoot,
       publishGateSummaryPath,
       execute: options.execute,
@@ -424,13 +436,13 @@ export const runP0AdvanceReviews = async (
     warnings.push(...finalizeResult.warnings)
   }
 
-  const bundleFinalizeDistricts = new Set(
-    finalizeEntries.map((entry) => entry.districtId),
+  const bundleFinalizeIds = new Set(
+    finalizeEntries.map((entry) => entry.bundleId),
   )
   const intakeFinalizeCandidates = (reviewIntakeResult?.candidates ?? []).filter(
     (candidate) =>
       Boolean(candidate.finalizeCommand) &&
-      !bundleFinalizeDistricts.has(candidate.districtId),
+      !bundleFinalizeIds.has(candidateBundleId(candidate)),
   )
   const intakeFinalizeResults: P0AdvanceIntakeFinalizeEntry[] = []
   const shouldExecuteIntakeFinalize = Boolean(
@@ -440,7 +452,7 @@ export const runP0AdvanceReviews = async (
   for (const candidate of intakeFinalizeCandidates) {
     const params = toIntakeFinalizeParams(
       candidate,
-      bundleByDistrict.get(candidate.districtId),
+      bundleById.get(candidateBundleId(candidate)),
     )
     if (!params || !candidate.finalizeCommand) {
       continue
@@ -453,6 +465,7 @@ export const runP0AdvanceReviews = async (
       }
     }
     intakeFinalizeResults.push({
+      bundleId: candidateBundleId(candidate),
       districtId: candidate.districtId,
       candidateFilePath: candidate.filePath,
       command: candidate.finalizeCommand,
@@ -469,7 +482,8 @@ export const runP0AdvanceReviews = async (
       finalizeResult?.ready.some((entry) => entry.result?.pass) ||
         intakeFinalizeResults.some((entry) => entry.result?.pass),
     ),
-    readyForFinalize: finalizeEntries.length > 0 || intakeReadyDistricts.size > 0,
+    readyForFinalize:
+      finalizeEntries.length > 0 || intakeReadyBundleIds.size > 0,
     execute: Boolean(options.execute),
   })
 
@@ -512,7 +526,11 @@ export const renderP0AdvanceReviews = (result: P0AdvanceReviewsResult) => {
     lines.push('- none')
   }
   result.entries.forEach((entry) => {
-    lines.push(`- ${entry.districtId}: ${entry.status}; next ${entry.nextAction}`)
+    const label =
+      entry.bundleId === entry.districtId
+        ? entry.districtId
+        : `${entry.bundleId} (district ${entry.districtId})`
+    lines.push(`- ${label}: ${entry.status}; next ${entry.nextAction}`)
   })
 
   lines.push('', '## Human Review Index', renderHumanReviewBundleIndex(result.index))
@@ -532,7 +550,9 @@ export const renderP0AdvanceReviews = (result: P0AdvanceReviewsResult) => {
   if (result.intakeFinalizeResults.length > 0) {
     lines.push('', '## Intake Finalize')
     result.intakeFinalizeResults.forEach((entry) => {
-      lines.push(`- ${entry.districtId}: ${entry.candidateFilePath}`)
+      lines.push(
+        `- ${entry.bundleId} (district ${entry.districtId}): ${entry.candidateFilePath}`,
+      )
       lines.push(`  Command: ${entry.command}`)
       if (entry.result) {
         lines.push(

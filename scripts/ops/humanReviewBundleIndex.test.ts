@@ -311,10 +311,47 @@ describe('humanReviewBundleIndex', () => {
     expect(result.entries[0]).toMatchObject({
       bundleId: 'shipai',
       districtId: 'beitou',
+      canFinalizeIndependently: false,
       status: 'ready-for-review',
+      finalizeCommand: null,
     })
     expect(result.entries[0]?.files.sourceCsv.path).toBe(path.join(aliasDir, 'beitou-review.csv'))
     expect(result.notReadyForFinalize).toEqual(['shipai'])
+  })
+
+  it('does not select area aliases implicitly with their parent district', async () => {
+    const root = await makeTempRoot()
+    const bundleDir = await writeBundleFiles(
+      root,
+      'beitou',
+      [
+        'districtId,segmentId,reviewBucket,reviewStatus,reviewNote,createdAt',
+        'beitou,s1,marked_space_park,,,',
+        '',
+      ].join('\n'),
+      [
+        'sourceRowNumber,districtId,segmentId,reviewBucket,reviewStatus,reviewNote,createdAt',
+        '2,beitou,s1,marked_space_park,,,',
+        '',
+      ].join('\n'),
+    )
+    await fs.cp(bundleDir, path.join(root, 'shipai-human-review'), {
+      recursive: true,
+    })
+
+    const parent = await runHumanReviewBundleIndex({
+      reviewRoot: root,
+      districtIds: ['beitou'],
+      publishGateSummaryPath: null,
+    })
+    const alias = await runHumanReviewBundleIndex({
+      reviewRoot: root,
+      districtIds: ['shipai'],
+      publishGateSummaryPath: null,
+    })
+
+    expect(parent.entries.map((entry) => entry.bundleId)).toEqual(['beitou'])
+    expect(alias.entries.map((entry) => entry.bundleId)).toEqual(['shipai'])
   })
 
   it('reports source-text review bundles through their specialized gate', async () => {

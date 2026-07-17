@@ -6,6 +6,7 @@ import { parse as parseCsv } from 'csv-parse/sync'
 import fg from 'fast-glob'
 import {
   type HumanReviewBundleEntry,
+  matchesHumanReviewBundleSelection,
   runHumanReviewBundleIndex,
 } from './humanReviewBundleIndex'
 import {
@@ -48,6 +49,7 @@ export interface P0ReviewIntakeOptions {
 }
 
 export interface P0ReviewIntakeCandidate {
+  bundleId: string
   districtId: string
   filePath: string
   isCanonicalHandoff: boolean
@@ -435,6 +437,7 @@ const summarizeCandidate = (params: {
   })
 
   return {
+    bundleId: params.bundleEntry?.bundleId ?? params.districtId,
     districtId: params.districtId,
     filePath: params.filePath,
     isCanonicalHandoff:
@@ -512,9 +515,16 @@ const validateCandidate = async (
   })
   return {
     ...candidate,
-    nextAction: validation.pass ? 'finalize-review' : 'fix validation errors',
+    nextAction: validation.pass
+      ? bundleEntry?.canFinalizeIndependently === false
+        ? 'await parent-district consolidation'
+        : 'finalize-review'
+      : 'fix validation errors',
     validation,
-    finalizeCommand: validation.finalizeCommand,
+    finalizeCommand:
+      bundleEntry?.canFinalizeIndependently === false
+        ? null
+        : validation.finalizeCommand,
   }
 }
 
@@ -543,13 +553,72 @@ export const runP0ReviewIntake = async (
   const index = await runHumanReviewBundleIndex({
     reviewRoot,
     configRoot,
-    districtIds: selectedDistricts,
+    districtIds: [],
     publishGateSummaryPath,
   })
-  warnings.push(...index.warnings)
-  const bundleByDistrict = new Map(
-    index.entries.map((entry) => [entry.districtId, entry] as const),
+  const selectedSet = new Set(selectedDistricts)
+  const selectedEntries = index.entries.filter((entry) =>
+    matchesHumanReviewBundleSelection(entry, selectedSet),
   )
+  warnings.push(
+    ...selectedEntries.flatMap((entry) =>
+      entry.warnings.map((warning) => `[${entry.bundleId}] ${warning}`),
+    ),
+  )
+  const selectedScopes =
+    selectedEntries.length > 0
+      ? selectedEntries.map((entry) => ({
+          bundleId: entry.bundleId,
+          districtId: entry.districtId,
+          entry,
+        }))
+      : selectedDistricts.map((districtId) => ({
+          bundleId: districtId,
+          districtId,
+          entry: undefined,
+        }))
+  const bundleById = new Map(
+    selectedEntries.map((entry) => [entry.bundleId, entry] as const),
+  )
+  if (selectedDistricts.length > 0 && selectedEntries.length === 0) {
+    warnings.push(
+      `No QA review bundles matched: ${selectedDistricts.join(', ')}`,
+    )
+  }
+
+  const resolveFileBundle = (filePath: string) => {
+    const resolved = path.resolve(filePath).toLowerCase()
+    const exact = index.entries.find((entry) =>
+      [entry.sourcePath, entry.files.sourceCsv.path, entry.files.handoffCsv.path]
+        .map((targetPath) => path.resolve(targetPath).toLowerCase())
+        .includes(resolved),
+    )
+    if (exact) {
+      return exact
+    }
+    const containing = index.entries.find((entry) => {
+      const bundleDir = `${path.resolve(entry.bundleDir).toLowerCase()}${path.sep}`
+      return resolved.startsWith(bundleDir)
+    })
+    if (containing) {
+      return containing
+    }
+    const segments = resolved.split(/[\\/]/u)
+    const scoped = index.entries.find((entry) => {
+      const bundleId = entry.bundleId.toLowerCase()
+      return segments.some(
+        (segment) =>
+          segment === bundleId || segment === `${bundleId}-human-review`,
+      )
+    })
+    if (scoped) {
+      return scoped
+    }
+    const baseName = path.basename(resolved)
+    return index.entries.find((entry) =>
+      baseName.includes(entry.bundleId.toLowerCase()),
+    )
+  }
 
   let scannedFiles = 0
   const candidates: P0ReviewIntakeCandidate[] = []
@@ -576,19 +645,27 @@ export const runP0ReviewIntake = async (
         continue
       }
       const headers = allHeadersFromRows(rows)
-      selectedDistricts.forEach((districtId) => {
-        const districtRows = resolveDistrictRows(filePath, rows, districtId)
+      const fileBundle = resolveFileBundle(filePath)
+      selectedScopes.forEach((scope) => {
+        if (fileBundle && fileBundle.bundleId !== scope.bundleId) {
+          return
+        }
+        const districtRows = resolveDistrictRows(
+          filePath,
+          rows,
+          scope.districtId,
+        )
         if (districtRows.length === 0) {
           return
         }
         candidates.push(
           summarizeCandidate({
-            districtId,
+            districtId: scope.districtId,
             filePath,
             configRoot,
             rows: districtRows,
             allHeaders: headers,
-            bundleEntry: bundleByDistrict.get(districtId),
+            bundleEntry: scope.entry,
           }),
         )
       })
@@ -600,6 +677,7 @@ export const runP0ReviewIntake = async (
       right.validReviewedRows - left.validReviewedRows ||
       right.reviewedRows - left.reviewedRows ||
       left.districtId.localeCompare(right.districtId) ||
+      left.bundleId.localeCompare(right.bundleId) ||
       left.filePath.localeCompare(right.filePath),
   )
   if (options.validateReady) {
@@ -609,7 +687,7 @@ export const runP0ReviewIntake = async (
         await validateCandidate(
           candidate,
           configRoot,
-          bundleByDistrict.get(candidate.districtId),
+          bundleById.get(candidate.bundleId),
           options.validatePriorityReview ?? runP0ValidatePriorityReview,
         ),
       )
@@ -662,9 +740,13 @@ export const renderP0ReviewIntake = (result: P0ReviewIntakeResult) => {
     lines.push('| - | 0 | 0 | 0 | no review CSV found | - |')
   }
   result.candidates.forEach((candidate) => {
+    const label =
+      candidate.bundleId === candidate.districtId
+        ? candidate.districtId
+        : `${candidate.bundleId} (${candidate.districtId})`
     lines.push(
       [
-        `| ${candidate.districtId}`,
+        `| ${label}`,
         candidate.validReviewedRows,
         candidate.reviewedRows,
         candidate.relevantRows,
@@ -677,9 +759,9 @@ export const renderP0ReviewIntake = (result: P0ReviewIntakeResult) => {
   const readyCommands = result.candidates
     .map((candidate) =>
       candidate.finalizeCommand
-        ? `Finalize ${candidate.districtId}: ${candidate.finalizeCommand}`
+        ? `Finalize ${candidate.bundleId}: ${candidate.finalizeCommand}`
         : candidate.validationCommand
-          ? `Validate ${candidate.districtId}: ${candidate.validationCommand}`
+          ? `Validate ${candidate.bundleId}: ${candidate.validationCommand}`
           : null,
     )
     .filter((command): command is string => Boolean(command))
@@ -696,7 +778,7 @@ export const renderP0ReviewIntake = (result: P0ReviewIntakeResult) => {
   }
   result.candidates.slice(0, 30).forEach((candidate) => {
     lines.push(
-      `- ${candidate.districtId}: valid ${candidate.validReviewedRows}, reviewed ${candidate.reviewedRows}, invalid status ${candidate.invalidStatusRows}, missing evidence ${candidate.missingEvidenceRows}, invalid timestamp ${candidate.invalidTimestampRows}, validation ${candidate.validation ? (candidate.validation.pass ? 'PASS' : 'FAIL') : 'not run'}, statuses ${formatCounts(candidate.statusCounts)}, reviewed buckets ${formatCounts(candidate.reviewedBucketCounts)}, file ${candidate.filePath}`,
+      `- ${candidate.bundleId} (district ${candidate.districtId}): valid ${candidate.validReviewedRows}, reviewed ${candidate.reviewedRows}, invalid status ${candidate.invalidStatusRows}, missing evidence ${candidate.missingEvidenceRows}, invalid timestamp ${candidate.invalidTimestampRows}, validation ${candidate.validation ? (candidate.validation.pass ? 'PASS' : 'FAIL') : 'not run'}, statuses ${formatCounts(candidate.statusCounts)}, reviewed buckets ${formatCounts(candidate.reviewedBucketCounts)}, file ${candidate.filePath}`,
     )
   })
   if (result.candidates.length > 30) {
