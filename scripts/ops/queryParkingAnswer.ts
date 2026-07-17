@@ -19,6 +19,7 @@ import type { RiskMode } from '../../src/domain/ranking/rank'
 import type { EvaluatedSegment, Segment } from '../../src/ui/types'
 import {
   buildParkingAnswer,
+  buildParkingAnswerFromSegmentsWithStats,
   type ParkingAnswer,
   type ParkingAnswerOptions,
 } from '../../src/domain/answers/parkingAnswer'
@@ -26,6 +27,7 @@ import {
   buildParkingAnswerTrustSummary,
   type ParkingAnswerTrustSummary,
 } from '../../src/ui/parkingAnswerPresentation'
+import type { ZoneIndex } from '../../src/domain/zones/zoneIndex'
 
 export interface QueryParkingAnswerOptions extends ParkingAnswerOptions {
   datasetDir?: string
@@ -51,10 +53,22 @@ export interface EvaluatedSegmentsForAnswer {
   appliedSignOverridesCount: number | null
 }
 
+export interface PreparedSegmentsForAnswer {
+  datasetHash: string
+  segments: Segment[]
+  zoneIndex: ZoneIndex | null
+  reviewedSignOverridesCount: number | null
+  appliedSignOverridesCount: number | null
+}
+
 export type QueryParkingAnswerLoader = (
   datasetDir: string,
   hhmm: string,
 ) => Promise<EvaluatedSegmentsForAnswer>
+
+export type QueryParkingAnswerPreparedLoader = (
+  datasetDir: string,
+) => Promise<PreparedSegmentsForAnswer>
 
 const DEFAULT_DATASET_DIR = 'public/data/generated/xinyi'
 const DEFAULT_HHMM = '21:00'
@@ -123,10 +137,9 @@ const requireLocation = (
   return [options.lng, options.lat]
 }
 
-export const loadEvaluatedSegmentsForAnswer = async (
+export const loadPreparedSegmentsForAnswer = async (
   datasetDir: string,
-  hhmm: string,
-): Promise<EvaluatedSegmentsForAnswer> => {
+): Promise<PreparedSegmentsForAnswer> => {
   const [
     redYellow,
     busStops,
@@ -185,11 +198,32 @@ export const loadEvaluatedSegmentsForAnswer = async (
     ZONE_PARAMS_VERSION,
   )
 
-  resetClipCacheStats()
   return {
     datasetHash: meta.datasetHash ?? 'local',
     reviewedSignOverridesCount: meta.signOverridesCount ?? null,
     appliedSignOverridesCount: meta.overridesAppliedCount ?? null,
+    segments,
+    zoneIndex,
+  }
+}
+
+export const loadEvaluatedSegmentsForAnswer = async (
+  datasetDir: string,
+  hhmm: string,
+): Promise<EvaluatedSegmentsForAnswer> => {
+  const {
+    datasetHash,
+    reviewedSignOverridesCount,
+    appliedSignOverridesCount,
+    segments,
+    zoneIndex,
+  } = await loadPreparedSegmentsForAnswer(datasetDir)
+
+  resetClipCacheStats()
+  return {
+    datasetHash,
+    reviewedSignOverridesCount,
+    appliedSignOverridesCount,
     segments: segments.flatMap((segment: Segment) =>
       evaluateSegmentWithZones(segment, hhmm, zoneIndex),
     ),
@@ -220,6 +254,43 @@ export const createQueryParkingAnswerRunner = (
     datasetHash,
     hhmm,
     evaluatedCount: segments.length,
+    answer,
+    trustSummary: buildParkingAnswerTrustSummary(answer),
+  }
+}
+
+export const createPreparedQueryParkingAnswerRunner = (
+  loadSegments: QueryParkingAnswerPreparedLoader = loadPreparedSegmentsForAnswer,
+) => async (
+  options: QueryParkingAnswerOptions,
+): Promise<QueryParkingAnswerResult> => {
+  const datasetDir = options.datasetDir ?? DEFAULT_DATASET_DIR
+  const hhmm = options.hhmm ?? DEFAULT_HHMM
+  const location = requireLocation(options)
+  const {
+    datasetHash,
+    segments,
+    zoneIndex,
+    reviewedSignOverridesCount,
+    appliedSignOverridesCount,
+  } = await loadSegments(datasetDir)
+  const { answer, evaluatedCount } = buildParkingAnswerFromSegmentsWithStats(
+    segments,
+    location,
+    {
+      ...options,
+      nowHHMM: hhmm,
+      zoneIndex,
+      reviewedSignOverridesCount,
+      appliedSignOverridesCount,
+    },
+  )
+
+  return {
+    datasetDir,
+    datasetHash,
+    hhmm,
+    evaluatedCount,
     answer,
     trustSummary: buildParkingAnswerTrustSummary(answer),
   }

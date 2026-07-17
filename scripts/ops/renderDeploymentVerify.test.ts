@@ -46,6 +46,35 @@ const startJsonServer = async (
       sendJson(response, parkingReadyStatus, parkingReadyPayload)
       return
     }
+    if (url.pathname === '/api/parking-answer') {
+      const districtId = url.searchParams.get('district')
+      const readyRecord =
+        parkingReadyPayload &&
+        typeof parkingReadyPayload === 'object' &&
+        !Array.isArray(parkingReadyPayload)
+          ? (parkingReadyPayload as { districts?: unknown[] })
+          : null
+      const district = readyRecord?.districts
+        ?.filter(
+          (entry): entry is Record<string, unknown> =>
+            entry !== null && typeof entry === 'object' && !Array.isArray(entry),
+        )
+        .find((entry) => entry.district === districtId)
+      sendJson(response, 200, {
+        schemaVersion: 1,
+        datasetHash:
+          typeof district?.datasetHash === 'string'
+            ? district.datasetHash
+            : 'hash-xinyi',
+        answer: {
+          kind: 'PARK',
+          evidence: { kind: 'MARKED_SPACE', parkingSpaceCount: 1 },
+          primary: { id: 'seg-1', finalConfidence: 'HIGH' },
+        },
+        trustSummary: { trustLabel: 'High trust' },
+      })
+      return
+    }
     if (['/api/geocode/health', '/api/geocode/ready'].includes(url.pathname)) {
       sendJson(response, 200, {
         status: 'ok',
@@ -131,6 +160,7 @@ describe('renderDeploymentVerify', () => {
         'geocode,routing',
         '--skip-sync-issue-roundtrip',
         '--skip-sync-cors-check',
+        '--skip-parking-answer-cases',
         '--out',
         '.tmp/verify.md',
         '--json-out',
@@ -145,6 +175,8 @@ describe('renderDeploymentVerify', () => {
       apiServices: ['geocode', 'routing'],
       syncIssueRoundtrip: false,
       syncCorsCheck: false,
+      answerCasesDir: 'configs/prod',
+      skipParkingAnswerCases: true,
       outPath: '.tmp/verify.md',
       jsonOutPath: '.tmp/verify.json',
     })
@@ -484,6 +516,80 @@ describe('renderDeploymentVerify', () => {
       expect(result.pass).toBe(true)
       expect(result.contractSource).toBe(path.resolve(manifestPath))
       expect(result.releaseId).toBe('release-a')
+    } finally {
+      await server.close()
+    }
+  })
+
+  it('verifies one reviewed live parking answer per release district', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'render-verify-answers-'))
+    const manifestPath = path.join(base, 'release_manifest.json')
+    const answerCasesDir = path.join(base, 'cases')
+    await writeJson(manifestPath, {
+      releaseId: 'release-a',
+      districts: [
+        {
+          districtId: 'xinyi',
+          datasetHash: 'hash-xinyi',
+          publishedAt: '2026-05-01T00:00:00Z',
+        },
+      ],
+      files: [],
+    })
+    await writeJson(path.join(answerCasesDir, 'xinyi.answer-cases.json'), {
+      schemaVersion: 1,
+      districtId: 'xinyi',
+      datasetHash: 'stale-local-hash-is-not-the-live-contract',
+      cases: [
+        {
+          id: 'xinyi-live-case',
+          lng: 121.56,
+          lat: 25.03,
+          hhmm: '21:00',
+          searchRadiusMeters: 25,
+          expectedKind: 'PARK',
+          expectedEvidenceKind: 'MARKED_SPACE',
+          expectedPrimarySegmentId: 'seg-1',
+          expectedFinalConfidence: 'HIGH',
+          minParkingSpaceCount: 1,
+        },
+      ],
+    })
+    const server = await startJsonServer({
+      status: 'ok',
+      districts: [
+        {
+          district: 'xinyi',
+          ready: true,
+          datasetHash: 'hash-xinyi',
+          latestDatasetHash: 'hash-xinyi',
+        },
+      ],
+    })
+
+    try {
+      const result = await verifyRenderDeployment({
+        appUrl: server.baseUrl,
+        manifestPath,
+        answerCasesDir,
+        timeoutMs: 1000,
+      })
+
+      expect(result.pass).toBe(true)
+      expect(result.parkingAnswers).toEqual([
+        expect.objectContaining({
+          districtId: 'xinyi',
+          id: 'xinyi-live-case',
+          pass: true,
+          status: 200,
+          answerKind: 'PARK',
+          primarySegmentId: 'seg-1',
+          datasetHash: 'hash-xinyi',
+        }),
+      ])
+      expect(renderRenderDeploymentVerify(result)).toContain(
+        '## Reviewed Live Parking Answers',
+      )
     } finally {
       await server.close()
     }

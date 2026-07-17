@@ -1,5 +1,6 @@
 import type { RiskMode } from '../../src/domain/ranking/rank'
 import type {
+  QueryParkingAnswerPreparedLoader,
   QueryParkingAnswerLoader,
   QueryParkingAnswerOptions,
   QueryParkingAnswerResult,
@@ -74,6 +75,7 @@ export interface ParkingAnswerService {
 }
 
 export interface ParkingAnswerServiceDependencies {
+  loadPreparedSegmentsForAnswer?: QueryParkingAnswerPreparedLoader
   loadEvaluatedSegmentsForAnswer?: QueryParkingAnswerLoader
   queryParkingAnswer?: (
     options: QueryParkingAnswerOptions,
