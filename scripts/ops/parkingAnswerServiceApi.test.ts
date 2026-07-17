@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createParkingAnswerServiceApi } from './parkingAnswerServiceApi'
+import {
+  createCachedPreparedParkingAnswerLoader,
+  createParkingAnswerServiceApi,
+} from './parkingAnswerServiceApi'
 import type { QueryParkingAnswerResult } from './queryParkingAnswer'
 
 const queryResult: QueryParkingAnswerResult = {
@@ -142,5 +145,25 @@ describe('createParkingAnswerServiceApi', () => {
     expect(day.evaluatedCount).toBe(1)
     expect(night.evaluatedCount).toBe(1)
     expect(loadPreparedSegmentsForAnswer).toHaveBeenCalledTimes(1)
+  })
+
+  it('evicts the least recently used prepared district', async () => {
+    const loadPreparedSegmentsForAnswer = vi.fn().mockResolvedValue({
+      datasetHash: 'hash-1',
+      segments: [],
+      zoneIndex: null,
+      reviewedSignOverridesCount: 1,
+      appliedSignOverridesCount: 1,
+    })
+    const loadCached = createCachedPreparedParkingAnswerLoader(
+      loadPreparedSegmentsForAnswer,
+      1,
+    )
+
+    await loadCached('public/data/generated/xinyi')
+    await loadCached('public/data/generated/daan')
+    await loadCached('public/data/generated/xinyi')
+
+    expect(loadPreparedSegmentsForAnswer).toHaveBeenCalledTimes(3)
   })
 })

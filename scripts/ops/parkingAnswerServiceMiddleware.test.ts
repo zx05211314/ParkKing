@@ -3,6 +3,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import { resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
+import { ZONE_PARAMS_VERSION } from '../../src/domain/zones/makeZones'
 import { REQUIRED_PARKING_ANSWER_DATASET_FILES } from './parkingAnswerServiceHealth'
 import { createParkingAnswerServiceMiddleware } from './parkingAnswerServiceMiddleware'
 import type {
@@ -148,6 +149,93 @@ describe('createParkingAnswerServiceMiddleware', () => {
     expect(REQUIRED_PARKING_ANSWER_DATASET_FILES).toContain(
       'candidates_inferred.geojson',
     )
+  })
+
+  it('requires a matching prepared answer index when configured', async () => {
+    const { root } = await createDatasetDir()
+    const indexRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'parking-answer-index-ready-'),
+    )
+    const service: ParkingAnswerService = {
+      answer: vi.fn(),
+    }
+    const middleware = createParkingAnswerServiceMiddleware(
+      service,
+      {
+        ...config,
+        districtDatasetRoot: root,
+        preparedIndexRoot: indexRoot,
+      },
+      config.path,
+    )
+
+    const missingResponse = createMockResponse()
+    await middleware(
+      {
+        method: 'GET',
+        url: '/api/parking-answer/ready',
+      } as never,
+      missingResponse.response as never,
+    )
+    expect(missingResponse.response.statusCode).toBe(503)
+    expect(JSON.parse(missingResponse.body())).toMatchObject({
+      districts: [
+        {
+          missingFiles: ['parking-answer-index/xinyi.json'],
+        },
+      ],
+    })
+
+    await fs.writeFile(
+      path.join(indexRoot, 'xinyi.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        districtId: 'xinyi',
+        datasetHash: 'hash-1',
+        zoneParamsVersion: 'outdated-zone-params',
+        segments: [],
+        zones: [],
+      }),
+      'utf-8',
+    )
+    const incompatibleResponse = createMockResponse()
+    await middleware(
+      {
+        method: 'GET',
+        url: '/api/parking-answer/ready',
+      } as never,
+      incompatibleResponse.response as never,
+    )
+    expect(incompatibleResponse.response.statusCode).toBe(503)
+    expect(JSON.parse(incompatibleResponse.body())).toMatchObject({
+      districts: [
+        {
+          invalidFiles: ['parking-answer-index/xinyi.json'],
+        },
+      ],
+    })
+
+    await fs.writeFile(
+      path.join(indexRoot, 'xinyi.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        districtId: 'xinyi',
+        datasetHash: 'hash-1',
+        zoneParamsVersion: ZONE_PARAMS_VERSION,
+        segments: [],
+        zones: [],
+      }),
+      'utf-8',
+    )
+    const readyResponse = createMockResponse()
+    await middleware(
+      {
+        method: 'GET',
+        url: '/api/parking-answer/ready',
+      } as never,
+      readyResponse.response as never,
+    )
+    expect(readyResponse.response.statusCode).toBe(200)
   })
 
   it('returns 503 readiness when required dataset files are missing', async () => {

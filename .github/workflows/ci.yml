@@ -67,6 +67,8 @@ jobs:
           PARKKING_LATEST_NAME: LATEST_CI
           PARKKING_OVERRIDE_REPORTS_DIR: .tmp/ci-overrides
         run: npm run ingest:all -- --configs "configs/ci-fixtures.json" --allowWarn --override "ci"
+      - name: Build parking answer indexes for CI fixtures
+        run: npm run ops:build-parking-answer-indexes
       - name: Smoke latest pack
         run: npm run ops:smoke-latest -- --latestName LATEST_CI
       - name: Smoke parking answers

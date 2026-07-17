@@ -1,6 +1,7 @@
 import { access, open, readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { PARKING_ANSWER_SCHEMA_VERSION } from './parkingAnswerServiceDefaults'
+import { ZONE_PARAMS_VERSION } from '../../src/domain/zones/makeZones'
 import type {
   ParkingAnswerServiceConfig,
   ParkingAnswerServiceDistrictReadiness,
@@ -150,6 +151,46 @@ const readDistrictReadinessMetadata = async (datasetDir: string) => {
   }
 }
 
+const inspectPreparedIndex = async (
+  indexRoot: string | null | undefined,
+  district: string,
+  expectedDatasetHash?: string,
+) => {
+  if (!indexRoot) {
+    return { missing: [] as string[], invalid: [] as string[] }
+  }
+  const label = `parking-answer-index/${district}.json`
+  const filePath = resolve(indexRoot, `${district}.json`)
+  try {
+    const handle = await open(filePath, 'r')
+    try {
+      const stat = await handle.stat()
+      if (!stat.isFile() || stat.size === 0) {
+        return { missing: [], invalid: [label] }
+      }
+      const sampleSize = Math.min(4096, stat.size)
+      const buffer = Buffer.alloc(sampleSize)
+      const read = await handle.read(buffer, 0, sampleSize, 0)
+      const prefix = buffer.toString('utf-8', 0, read.bytesRead)
+      const valid =
+        /"schemaVersion"\s*:\s*1/.test(prefix) &&
+        prefix.includes(`"districtId":"${district}"`) &&
+        (!expectedDatasetHash ||
+          prefix.includes(`"datasetHash":"${expectedDatasetHash}"`)) &&
+        prefix.includes(`"zoneParamsVersion":"${ZONE_PARAMS_VERSION}"`) &&
+        /"segments"\s*:\s*\[/.test(prefix)
+      return {
+        missing: [],
+        invalid: valid ? [] : [label],
+      }
+    } finally {
+      await handle.close()
+    }
+  } catch {
+    return { missing: [label], invalid: [] }
+  }
+}
+
 export const buildParkingAnswerServiceDistrictReadiness = async (
   config: ParkingAnswerServiceConfig,
 ): Promise<ParkingAnswerServiceDistrictReadiness[]> =>
@@ -158,6 +199,13 @@ export const buildParkingAnswerServiceDistrictReadiness = async (
       const datasetDir = resolve(config.districtDatasetRoot, district)
       const { missing, invalid } = await inspectRequiredFiles(datasetDir)
       const metadata = await readDistrictReadinessMetadata(datasetDir)
+      const indexState = await inspectPreparedIndex(
+        config.preparedIndexRoot,
+        district,
+        metadata.datasetHash,
+      )
+      missing.push(...indexState.missing)
+      invalid.push(...indexState.invalid)
       return {
         district,
         datasetDir,

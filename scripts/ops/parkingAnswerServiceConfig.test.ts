@@ -60,4 +60,21 @@ describe('resolveParkingAnswerServiceConfig', () => {
 
     expect(config.allowedDistricts).toEqual(['xinyi'])
   })
+
+  it('requires the build-time index by default in production', async () => {
+    const root = await makeDatasetRoot()
+    const cwd = process.cwd()
+
+    const config = resolveParkingAnswerServiceConfig(
+      {
+        NODE_ENV: 'production',
+        PARKKING_PARKING_ANSWER_DATASET_ROOT: root,
+      },
+      cwd,
+    )
+
+    expect(config.preparedIndexRoot).toBe(
+      path.resolve(cwd, '.tmp/parking-answer-index'),
+    )
+  })
 })
