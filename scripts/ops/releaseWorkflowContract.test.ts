@@ -5,6 +5,16 @@ import { describe, expect, it } from 'vitest'
 const readWorkflow = async (name: string) =>
   await fs.readFile(path.resolve('.github/workflows', name), 'utf-8')
 
+const readAllWorkflows = async () => {
+  const workflowDir = path.resolve('.github/workflows')
+  const fileNames = (await fs.readdir(workflowDir))
+    .filter((name) => name.endsWith('.yml') || name.endsWith('.yaml'))
+    .sort()
+  return (
+    await Promise.all(fileNames.map((name) => fs.readFile(path.join(workflowDir, name), 'utf-8')))
+  ).join('\n')
+}
+
 const readPackageJson = async () =>
   JSON.parse(await fs.readFile(path.resolve('package.json'), 'utf-8')) as {
     scripts?: Record<string, string>
@@ -32,6 +42,24 @@ const expectWorkflowInputs = (content: string, inputs: string[]) => {
 }
 
 describe('release workflow contracts', () => {
+  it('uses Node 24-compatible official action majors in every workflow', async () => {
+    const workflows = await readAllWorkflows()
+    const actionRefs = [
+      ...workflows.matchAll(
+        /actions\/(?:checkout|setup-node|upload-artifact|cache)@v\d+/g,
+      ),
+    ].map(([reference]) => reference)
+
+    expect(new Set(actionRefs)).toEqual(
+      new Set([
+        'actions/checkout@v7',
+        'actions/setup-node@v7',
+        'actions/upload-artifact@v7',
+        'actions/cache@v6',
+      ]),
+    )
+  })
+
   it('keeps Release Data Package guarded before publishing assets', async () => {
     const workflow = await readWorkflow('release_data.yml')
 
@@ -99,7 +127,7 @@ describe('release workflow contracts', () => {
       /- name: Summarize verification\s+if: always\(\)\s+run: npm run ops:append-workflow-summary -- --append-file \.tmp\/render-deployment-verify\.md/,
     )
     expect(workflow).toMatch(
-      /- name: Upload verification artifacts\s+if: always\(\)\s+uses: actions\/upload-artifact@v4/,
+      /- name: Upload verification artifacts\s+if: always\(\)\s+uses: actions\/upload-artifact@v7/,
     )
     expect(workflow).toContain('name: render-live-verify')
     expect(workflow).toContain('.tmp/render-deployment-verify.md')
@@ -143,7 +171,7 @@ describe('release workflow contracts', () => {
       /- name: Summarize sync\s+if: always\(\)\s+run: npm run ops:append-workflow-summary -- --append-file \.tmp\/render-runtime-env-sync\.md/,
     )
     expect(workflow).toMatch(
-      /- name: Upload sync artifact\s+if: always\(\)\s+uses: actions\/upload-artifact@v4/,
+      /- name: Upload sync artifact\s+if: always\(\)\s+uses: actions\/upload-artifact@v7/,
     )
     expect(workflow).toContain('name: render-runtime-env-sync')
     expect(workflow).toContain('.tmp/render-runtime-env-sync.md')

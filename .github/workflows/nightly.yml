@@ -13,14 +13,14 @@ jobs:
   nightly:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24.x'
           cache: 'npm'
       - name: Restore pack cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: public/data/generated
           key: nightly-pack-cache-${{ github.run_id }}
@@ -66,7 +66,7 @@ jobs:
       - name: Upload nightly issue packets
         id: upload_issue_packets
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nightly-issue-packets
           path: |
@@ -75,7 +75,7 @@ jobs:
       - name: Upload nightly publish gate summary artifact
         id: upload_publish_gate_summary
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nightly-publish-gate-summary
           path: |
@@ -85,7 +85,7 @@ jobs:
       - name: Upload sign override preflight artifacts
         id: upload_sign_override_preflight
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nightly-sign-override-preflight
           path: .tmp/sign-override-preflight/**
@@ -93,7 +93,7 @@ jobs:
       - name: Upload nightly issue csv
         id: upload_issue_csv
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nightly-issue-csv
           path: |
@@ -109,7 +109,7 @@ jobs:
       - name: Upload nightly issue index
         id: upload_issue_index
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nightly-issue-index
           path: |
@@ -141,7 +141,7 @@ jobs:
         run: npm run ops:notify-nightly-from-registry -- --registry public/data/generated/registry.json --root public/data/generated --issue-input .tmp/nightly-issue-artifacts/manifest.json --issue-limit 5 --publish-gate-summary public/data/generated/_ops/publish_gate_summary.json --publish-gate-summary-url "${{ steps.upload_publish_gate_summary.outputs['artifact-url'] }}" --issue-input-url "${{ steps.upload_issue_index.outputs['artifact-url'] }}" --issue-packet-url "${{ steps.upload_issue_packets.outputs['artifact-url'] }}" --issue-csv-url "${{ steps.upload_issue_csv.outputs['artifact-url'] }}"
       - name: Upload diff reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pack-diff-report
           path: |
