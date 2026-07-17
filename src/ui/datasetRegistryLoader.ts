@@ -1,4 +1,5 @@
 import { getDatasetBaseDir, getDatasetRootDir } from '../data/datasetResolver'
+import { fetchDatasetResource } from '../data/loaders/fetchDatasetResource.browser'
 import { readViteEnv } from '../api/client'
 import {
   validateRegistryEntry,
@@ -22,13 +23,14 @@ export const loadDatasetRegistryOptions = async (
 
   for (const url of candidates) {
     try {
-      const response = await fetch(url)
-      if (!response.ok) {
-        continue
-      }
-      const payload = (await response.json()) as {
+      const payload = await fetchDatasetResource<{
         districts?: RegistryEntry[]
-      }
+      }>(url, {
+        init: { cache: 'no-store' },
+        read: (response) => response.json() as Promise<{
+          districts?: RegistryEntry[]
+        }>,
+      })
       const entries = payload.districts ?? []
       const verifyHashes = readViteEnv().VITE_VERIFY_HASHES === '1'
       const validEntries: typeof entries = []

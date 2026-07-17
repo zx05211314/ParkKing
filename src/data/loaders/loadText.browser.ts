@@ -1,4 +1,5 @@
 import { getDatasetBaseDir } from '../datasetResolver'
+import { fetchDatasetResource } from './fetchDatasetResource.browser'
 
 interface LoadTextOptions {
   baseDir?: string
@@ -19,9 +20,8 @@ export const loadText = async (
   const url = baseDir.startsWith('http')
     ? new URL(filePath, baseDir.endsWith('/') ? baseDir : `${baseDir}/`).toString()
     : joinUrl(baseDir, filePath)
-  const response = await fetch(url, { cache: 'no-store' })
-  if (!response.ok) {
-    throw new Error(`Failed to load ${url}: ${response.status}`)
-  }
-  return response.text()
+  return fetchDatasetResource(url, {
+    init: { cache: 'no-store' },
+    read: (response) => response.text(),
+  })
 }
