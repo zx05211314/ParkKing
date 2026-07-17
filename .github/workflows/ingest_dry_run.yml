@@ -7,9 +7,9 @@ jobs:
   ingest-dry-run:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24.x'
           cache: 'npm'
@@ -50,7 +50,7 @@ jobs:
         run: npm run ops:issue-report-artifacts -- --out-root .tmp/ingest-dry-run-issue-artifacts --limit 5 --packet-issue-limit 5 --publish-gate-summary data/generated/_ops/publish_gate_summary.json
       - name: Upload dry-run artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ingest-dry-run
           path: |
@@ -61,7 +61,7 @@ jobs:
       - name: Upload dry-run publish gate summary artifact
         id: upload_publish_gate_summary
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ingest-dry-run-publish-gate-summary
           path: |
@@ -71,7 +71,7 @@ jobs:
       - name: Upload sign override preflight artifacts
         id: upload_sign_override_preflight
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ingest-dry-run-sign-override-preflight
           path: .tmp/sign-override-preflight/**
@@ -79,7 +79,7 @@ jobs:
       - name: Upload dry-run issue packets
         id: upload_issue_packets
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ingest-dry-run-issue-packets
           path: .tmp/ingest-dry-run-issue-artifacts/packets/**
@@ -87,7 +87,7 @@ jobs:
       - name: Upload dry-run issue csv
         id: upload_issue_csv
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ingest-dry-run-issue-csv
           path: .tmp/ingest-dry-run-issue-artifacts/csv/**
@@ -102,7 +102,7 @@ jobs:
       - name: Upload dry-run issue index
         id: upload_issue_index
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ingest-dry-run-issue-index
           path: |

@@ -8,9 +8,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24.x'
           cache: 'npm'
@@ -27,7 +27,7 @@ jobs:
         run: npm run ops:append-workflow-summary -- --append-file .tmp/taoyuan-expansion-readiness.md
       - name: Upload Taoyuan expansion readiness
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: taoyuan-expansion-readiness
           path: |
@@ -51,7 +51,7 @@ jobs:
       - name: Summarize P1 release package
         run: npm run ops:append-workflow-summary -- --append-file .tmp/p1-release-package.md
       - name: Upload P1 release package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: p1-release-package
           path: |
@@ -85,7 +85,7 @@ jobs:
         run: npm run ops:append-workflow-summary -- --append-file .tmp/p0-review-gate.md
       - name: Upload P0 review gate report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: p0-review-gate
           path: |
@@ -106,7 +106,7 @@ jobs:
         run: npm run ops:append-workflow-summary -- --append-file .tmp/p2-human-review-handoff.md --append-file .tmp/p2-status.md --append-file .tmp/p2-review-diagnostics.md
       - name: Upload P2 status artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: p2-status
           path: |
@@ -123,7 +123,7 @@ jobs:
           if-no-files-found: warn
       - name: Upload vitest log
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vitest-log
           path: vitest.log

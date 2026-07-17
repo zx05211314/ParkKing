@@ -20,9 +20,9 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24.x'
           cache: 'npm'
@@ -80,7 +80,7 @@ jobs:
         run: npm run ops:issue-report-artifacts -- --out-root .tmp/publish-issue-artifacts --limit 5 --packet-issue-limit 5 --publish-gate-summary public/data/generated/_ops/publish_gate_summary.json
       - name: Upload publish artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: published-packs
           path: |
@@ -104,7 +104,7 @@ jobs:
       - name: Upload publish gate summary artifact
         id: upload_publish_gate_summary
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: publish-gate-summary
           path: |
@@ -114,7 +114,7 @@ jobs:
       - name: Upload sign override preflight artifacts
         id: upload_sign_override_preflight
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: publish-sign-override-preflight
           path: .tmp/sign-override-preflight/**
@@ -122,7 +122,7 @@ jobs:
       - name: Upload publish issue packets
         id: upload_issue_packets
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: publish-issue-packets
           path: .tmp/publish-issue-artifacts/packets/**
@@ -130,7 +130,7 @@ jobs:
       - name: Upload publish issue csv
         id: upload_issue_csv
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: publish-issue-csv
           path: .tmp/publish-issue-artifacts/csv/**
@@ -145,7 +145,7 @@ jobs:
       - name: Upload publish issue index
         id: upload_issue_index
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: publish-issue-index
           path: |
