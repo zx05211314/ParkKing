@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "districtId": "beitou",
+  "datasetHash": "cac815908681e213fa51eb0cb9c26b50aae6aa50c920c95274c6ef7320daf7dd",
+  "cases": [
+    {
+      "id": "beitou-reviewed-legal-seg-1326-part-1",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.50954553948952,
+      "lat": 25.14190206349811,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-1326-part-1",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 17
+    },
+    {
+      "id": "beitou-reviewed-legal-seg-3956",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.50943485706293,
+      "lat": 25.141817146217043,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-3956",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 4
+    },
+    {
+      "id": "beitou-reviewed-illegal-seg-10849-part-2",
+      "label": "Reviewed no-stop answer with marked-space evidence",
+      "lng": 121.5080710301983,
+      "lat": 25.138304777587344,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-10849-part-2",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 18
+    },
+    {
+      "id": "beitou-reviewed-illegal-seg-10069-part-2",
+      "label": "Reviewed no-stop answer with marked-space evidence",
+      "lng": 121.50263460379614,
+      "lat": 25.14123448464043,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-10069-part-2",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 19
+    },
+    {
+      "id": "beitou-reviewed-legal-seg-2440-part-3",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.5154344534964,
+      "lat": 25.114325329060243,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-2440-part-3",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 2
+    },
+    {
+      "id": "beitou-reviewed-illegal-seg-9403-part-1",
+      "label": "Reviewed no-stop answer with marked-space evidence",
+      "lng": 121.5149558536595,
+      "lat": 25.115799230988863,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-9403-part-1",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 15
+    },
+    {
+      "id": "beitou-reviewed-legal-seg-2480",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.51524829300801,
+      "lat": 25.114592203990806,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-2480",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 5
+    },
+    {
+      "id": "beitou-reviewed-illegal-seg-9431-part-1",
+      "label": "Reviewed no-stop answer with marked-space evidence",
+      "lng": 121.51508572455928,
+      "lat": 25.116253437605494,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-9431-part-1",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 15
+    }
+  ]
+}

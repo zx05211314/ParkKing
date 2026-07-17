@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "districtId": "wenshan",
+  "datasetHash": "c1cf10d518aae33c1f3e26e2cb5cf48928b48f08fef0a526e9b14c39efc9ae80",
+  "cases": [
+    {
+      "id": "wenshan-reviewed-legal-seg-3915",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.573672,
+      "lat": 24.988641,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-3915",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 17
+    },
+    {
+      "id": "wenshan-reviewed-legal-seg-7202-part-2",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.577519,
+      "lat": 24.98736,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-7202-part-2",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 2
+    },
+    {
+      "id": "wenshan-reviewed-illegal-seg-2305-part-2",
+      "label": "Reviewed no-stop answer from curb-rule evidence",
+      "lng": 121.571839,
+      "lat": 24.987298,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "CURB_RULE",
+      "expectedPrimarySegmentId": "seg-2305-part-2",
+      "expectedFinalConfidence": "HIGH"
+    },
+    {
+      "id": "wenshan-reviewed-illegal-seg-12594-part-2",
+      "label": "Reviewed no-stop answer with marked-space evidence",
+      "lng": 121.576555,
+      "lat": 24.991305,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-12594-part-2",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 3
+    }
+  ]
+}

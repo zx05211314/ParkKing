@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "districtId": "shilin",
+  "datasetHash": "98d5653de775f8720c942ac0a944e5346da67c744ab5552cd77f7e466093ac79",
+  "cases": [
+    {
+      "id": "shilin-reviewed-legal-seg-93",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.532357,
+      "lat": 25.124604,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-93",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 6
+    },
+    {
+      "id": "shilin-reviewed-illegal-seg-5112-part-1",
+      "label": "Reviewed no-stop answer with marked-space evidence",
+      "lng": 121.533229,
+      "lat": 25.123977,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-5112-part-1",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 7
+    },
+    {
+      "id": "shilin-reviewed-legal-seg-6795-part-2",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.533241,
+      "lat": 25.123797,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-6795-part-2",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 18
+    },
+    {
+      "id": "shilin-reviewed-illegal-seg-12578-part-1",
+      "label": "Reviewed no-stop answer with marked-space evidence",
+      "lng": 121.536745,
+      "lat": 25.118244,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-12578-part-1",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 2
+    }
+  ]
+}

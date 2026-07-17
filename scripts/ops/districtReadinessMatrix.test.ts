@@ -416,6 +416,34 @@ describe('districtReadinessMatrix', () => {
     expect(fallback.entries[0]?.reviewPath?.replace(/\\/g, '/')).toBe(
       path.resolve(casesPath).replace(/\\/g, '/'),
     )
+
+    await writeText(
+      path.join(reviewRoot, 'xinyi-review.csv'),
+      [
+        'districtId,segmentId,reviewBucket,reviewStatus,reviewNote,createdAt',
+        'xinyi,s1,marked_space_park,,,',
+        'xinyi,s2,no_stop,,,',
+        '',
+      ].join('\n'),
+    )
+    const staleTempReview = await runDistrictReadinessMatrix({
+      configGlob: path.join(root, 'configs', 'prod', '*.json'),
+      publicRoot,
+      reviewRoot,
+      answerCasesGlob,
+      allowAnswerCaseReviewFallback: true,
+    })
+
+    expect(staleTempReview.entries[0]).toMatchObject({
+      reviewStatus: 'pass',
+      reviewedRows: 1,
+      validReviewedRows: 1,
+      pendingReviewRows: 0,
+      blockers: [],
+    })
+    expect(staleTempReview.entries[0]?.reviewPath?.replace(/\\/g, '/')).toBe(
+      path.resolve(casesPath).replace(/\\/g, '/'),
+    )
   })
 
   it('does not block publish warnings that passed with an explicit override', async () => {

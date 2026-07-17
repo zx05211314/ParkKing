@@ -6,6 +6,9 @@ import {
   runSmokeExactParkingAnswers,
   type SmokeExactParkingAnswerCase,
 } from './smokeExactParkingAnswers'
+import { loadEvaluatedSegmentsForAnswer } from './queryParkingAnswer'
+import { getPathMidpoint } from '../../src/map/geo'
+import type { Segment } from '../../src/ui/types'
 import {
   findCoverageDistrictById,
   findCoverageDistrictByLocation,
@@ -238,6 +241,7 @@ const buildReviewedAnswerCase = (params: {
   hhmm: string
   searchRadiusMeters: number
   seenCaseIds: Map<string, number>
+  segmentPaths?: ReadonlyMap<string, Segment['path']>
 }) => {
   const reviewStatus = normalizeStatus(getReviewStatus(params.row))
   const expectedKind = expectedKindForStatus(reviewStatus)
@@ -264,6 +268,11 @@ const buildReviewedAnswerCase = (params: {
   ])?.toUpperCase() ?? null
   const hasMarkedSpaces = parkingSpaceCount !== null && parkingSpaceCount > 0
   const isInferred = sourceType === 'INFERRED'
+  const segmentPath = params.segmentPaths?.get(segmentId)
+  const [caseLng, caseLat] =
+    segmentPath && segmentPath.length > 0
+      ? getPathMidpoint(segmentPath)
+      : [lng, lat]
   const evidenceLabel = hasMarkedSpaces
     ? 'with marked-space evidence'
     : isInferred
@@ -272,8 +281,8 @@ const buildReviewedAnswerCase = (params: {
   const answerCase: SmokeExactParkingAnswerCase = {
     id: buildCaseId(params.districtId, reviewStatus, segmentId, params.seenCaseIds),
     label: `Reviewed ${reviewStatus === 'LEGAL' ? 'legal parking' : 'no-stop'} answer ${evidenceLabel}`,
-    lng,
-    lat,
+    lng: caseLng,
+    lat: caseLat,
     hhmm: params.hhmm,
     searchRadiusMeters: params.searchRadiusMeters,
     expectedKind,
@@ -291,6 +300,7 @@ export const buildAnswerCasesFromReviewRows = (params: {
   districtId: string
   hhmm: string
   searchRadiusMeters: number
+  segmentPaths?: ReadonlyMap<string, Segment['path']>
 }) => {
   const seenCaseIds = new Map<string, number>()
   return params.rows
@@ -301,6 +311,7 @@ export const buildAnswerCasesFromReviewRows = (params: {
         hhmm: params.hhmm,
         searchRadiusMeters: params.searchRadiusMeters,
         seenCaseIds,
+        segmentPaths: params.segmentPaths,
       }),
     )
     .filter((answerCase): answerCase is SmokeExactParkingAnswerCase => Boolean(answerCase))
@@ -313,6 +324,29 @@ const readReviewRows = async (inputPath: string) =>
     skip_empty_lines: true,
     trim: true,
   }) as Record<string, unknown>[]
+
+const loadReviewedSegmentPaths = async (
+  datasetDir: string,
+  hhmm: string,
+  rows: Record<string, unknown>[],
+) => {
+  const reviewedSegmentIds = new Set(
+    rows
+      .filter((row) => expectedKindForStatus(normalizeStatus(getReviewStatus(row))))
+      .map((row) => getCsvString(row, ['segmentId', 'segment_id', 'segment']))
+      .filter((segmentId): segmentId is string => Boolean(segmentId)),
+  )
+  if (reviewedSegmentIds.size === 0) {
+    return new Map<string, Segment['path']>()
+  }
+
+  const evaluated = await loadEvaluatedSegmentsForAnswer(datasetDir, hhmm)
+  return new Map(
+    evaluated.segments
+      .filter((segment) => reviewedSegmentIds.has(segment.id))
+      .map((segment) => [segment.id, segment.path] as const),
+  )
+}
 
 const loadCoverageCatalog = async (catalogPath: string) =>
   parseRuntimeCoverageCatalog(
@@ -432,11 +466,16 @@ export const writeAnswerCases = async (
   const hhmm = params.hhmm?.trim() || manifest.hhmm || DEFAULT_HHMM
   const searchRadiusMeters = params.searchRadiusMeters ?? DEFAULT_SEARCH_RADIUS_METERS
   const rows = await readReviewRows(inputPath)
+  const segmentPaths =
+    params.validate === false
+      ? undefined
+      : await loadReviewedSegmentPaths(datasetDir, hhmm, rows)
   const cases = buildAnswerCasesFromReviewRows({
     rows,
     districtId,
     hhmm,
     searchRadiusMeters,
+    segmentPaths,
   })
   const outPath = path.resolve(
     params.outPath ?? path.join('configs', 'prod', `${districtId}.answer-cases.json`),

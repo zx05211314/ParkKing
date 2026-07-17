@@ -375,6 +375,95 @@ describe('p0ReviewIntake', () => {
     ])
   })
 
+  it('uses row bundleId to scope generic parent and area-alias CSVs', async () => {
+    const root = await makeTempRoot()
+    await writeScopedBundle(root, 'beitou', 'beitou')
+    await writeScopedBundle(root, 'shipai', 'beitou')
+    const returnedCsv = path.join(root, 'combined-priority-review.csv')
+    await writeText(
+      returnedCsv,
+      [
+        'bundleId,districtId,sourceRowNumber,segmentId,reviewBucket,reviewStatus,reviewNote,createdAt',
+        'beitou,beitou,2,seg-parent,marked_space_park,LEGAL,parent evidence,2026-05-16T00:00:00.000Z',
+        'shipai,beitou,2,seg-area,marked_space_park,LEGAL,area evidence,2026-05-16T00:00:00.000Z',
+        '',
+      ].join('\n'),
+    )
+
+    const parent = await runP0ReviewIntake({
+      reviewRoot: root,
+      scanDirs: [root],
+      districtIds: ['beitou'],
+      publishGateSummaryPath: null,
+      actionableOnly: true,
+    })
+    const alias = await runP0ReviewIntake({
+      reviewRoot: root,
+      scanDirs: [root],
+      districtIds: ['shipai'],
+      publishGateSummaryPath: null,
+      actionableOnly: true,
+    })
+
+    expect(parent.candidates).toContainEqual(
+      expect.objectContaining({
+        bundleId: 'beitou',
+        districtId: 'beitou',
+        filePath: returnedCsv,
+        relevantRows: 1,
+      }),
+    )
+    expect(alias.candidates).toContainEqual(
+      expect.objectContaining({
+        bundleId: 'shipai',
+        districtId: 'beitou',
+        filePath: returnedCsv,
+        relevantRows: 1,
+      }),
+    )
+  })
+
+  it('does not validate an area alias independently from its parent district', async () => {
+    const root = await makeTempRoot()
+    const shipaiDir = await writeScopedBundle(root, 'shipai', 'beitou')
+    const returnedCsv = path.join(shipaiDir, 'beitou-next-review.csv')
+    await writeText(
+      returnedCsv,
+      [
+        'districtId,sourceRowNumber,segmentId,reviewBucket,reviewStatus,reviewNote,createdAt',
+        'beitou,2,seg-area,marked_space_park,LEGAL,area evidence,2026-05-16T00:00:00.000Z',
+        '',
+      ].join('\n'),
+    )
+    let validateCalls = 0
+
+    const result = await runP0ReviewIntake({
+      reviewRoot: root,
+      scanDirs: [root],
+      districtIds: ['shipai'],
+      publishGateSummaryPath: null,
+      validateReady: true,
+      actionableOnly: true,
+      validatePriorityReview: async () => {
+        validateCalls += 1
+        throw new Error('area aliases must not invoke the parent validator')
+      },
+    })
+
+    expect(validateCalls).toBe(0)
+    expect(result.status).toBe('action-required')
+    expect(result.candidates).toEqual([
+      expect.objectContaining({
+        bundleId: 'shipai',
+        districtId: 'beitou',
+        nextAction: 'await parent-district consolidation',
+        validationCommand: null,
+        validation: null,
+        finalizeCommand: null,
+      }),
+    ])
+  })
+
   it('blocks without a district filter', async () => {
     const root = await makeTempRoot()
 

@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "districtId": "datong",
+  "datasetHash": "7c931cc7c09ef2d5d659e45036fea4955cef8b3ac4b4902dcbb5829187918057",
+  "cases": [
+    {
+      "id": "datong-reviewed-legal-seg-2757",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.513499,
+      "lat": 25.064071,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-2757",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 2
+    },
+    {
+      "id": "datong-reviewed-legal-seg-7039-part-2",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.513829,
+      "lat": 25.065088,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-7039-part-2",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 3
+    },
+    {
+      "id": "datong-reviewed-illegal-seg-1651",
+      "label": "Reviewed no-stop answer from curb-rule evidence",
+      "lng": 121.514113,
+      "lat": 25.064909,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "CURB_RULE",
+      "expectedPrimarySegmentId": "seg-1651",
+      "expectedFinalConfidence": "HIGH"
+    },
+    {
+      "id": "datong-reviewed-illegal-seg-4724-part-1",
+      "label": "Reviewed no-stop answer with marked-space evidence",
+      "lng": 121.512114,
+      "lat": 25.063007,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-4724-part-1",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 5
+    }
+  ]
+}

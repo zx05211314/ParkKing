@@ -505,13 +505,16 @@ const buildEntry = async (params: {
   const reviewCsvPath = await findReviewPath(reviewRoot, config.districtId)
   const answerCaseReviewFallback =
     answerCaseReviewFallbacks.get(config.districtId) ?? null
-  const reviewPath = reviewCsvPath ?? answerCaseReviewFallback?.path ?? null
   const nextReviewPath = path.resolve(reviewRoot, `${config.districtId}-next-review.csv`)
-  const review = reviewCsvPath
-    ? await summarizeReview(reviewCsvPath)
-    : answerCaseReviewFallback
-      ? answerCaseFallbackReview(answerCaseReviewFallback)
-      : await summarizeReview(null)
+  const csvReview = await summarizeReview(reviewCsvPath)
+  const useAnswerCaseFallback =
+    answerCaseReviewFallback !== null && csvReview.reviewStatus !== 'pass'
+  const review = useAnswerCaseFallback
+    ? answerCaseFallbackReview(answerCaseReviewFallback)
+    : csvReview
+  const reviewPath = useAnswerCaseFallback
+    ? answerCaseReviewFallback.path
+    : reviewCsvPath
   const primaryPublishGateEntries =
     primaryDatasetSource === 'public'
       ? publicPublishGateEntries

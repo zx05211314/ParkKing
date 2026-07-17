@@ -208,7 +208,8 @@ const defaultRunners: SmokeReviewedUiPacksRunners = {
 export const resolveSmokeReviewedUiPacksSuiteTimeoutMs = (
   timeoutMs: number,
   suiteTimeoutMs?: number,
-) => suiteTimeoutMs ?? timeoutMs * 3
+  packCount = 3,
+) => suiteTimeoutMs ?? timeoutMs * Math.max(3, packCount)
 
 export const resolveSmokeReviewedUiPacksSummaryPath = (
   options: Pick<SmokeReviewedUiPacksOptions, 'summaryPath'>,
@@ -238,12 +239,6 @@ export const runSmokeReviewedUiPacks = async (
   )
   const requireGenerated = options.requireGenerated ?? true
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
-  const suiteDeadline =
-    Date.now() +
-    resolveSmokeReviewedUiPacksSuiteTimeoutMs(
-      timeoutMs,
-      options.suiteTimeoutMs,
-    )
   const errors: string[] = []
   let datasetDirs: string[] = []
 
@@ -257,6 +252,13 @@ export const runSmokeReviewedUiPacks = async (
     errors.push(`No generated district packs found under ${root}.`)
   }
 
+  const suiteDeadline =
+    Date.now() +
+    resolveSmokeReviewedUiPacksSuiteTimeoutMs(
+      timeoutMs,
+      options.suiteTimeoutMs,
+      datasetDirs.length,
+    )
   const packResults: SmokeReviewedUiPackResult[] = []
   for (const datasetDir of datasetDirs) {
     const districtId = path.basename(path.normalize(datasetDir))
@@ -325,11 +327,11 @@ const formatCasesStatus = (result: SmokeReviewedUiPackResult) => {
   if (result.summary) {
     return `used ${result.casesPath}`
   }
-  if (result.reviewedCasesRequired) {
-    return `missing required ${result.casesPath}`
-  }
   if (result.reviewedCasesFound) {
     return `found but UI smoke did not complete ${result.casesPath}`
+  }
+  if (result.reviewedCasesRequired) {
+    return `missing required ${result.casesPath}`
   }
   return 'not found; skipped'
 }

@@ -500,6 +500,15 @@ const validateCandidate = async (
   if (!candidate.validationCommand) {
     return candidate
   }
+  if (bundleEntry?.canFinalizeIndependently === false) {
+    return {
+      ...candidate,
+      nextAction: 'await parent-district consolidation',
+      validationCommand: null,
+      validation: null,
+      finalizeCommand: null,
+    }
+  }
   const finalizeInputs = bundleEntry?.finalizeInputs
   const validation = await validatePriorityReview({
     districtId: candidate.districtId,
@@ -515,16 +524,9 @@ const validateCandidate = async (
   })
   return {
     ...candidate,
-    nextAction: validation.pass
-      ? bundleEntry?.canFinalizeIndependently === false
-        ? 'await parent-district consolidation'
-        : 'finalize-review'
-      : 'fix validation errors',
+    nextAction: validation.pass ? 'finalize-review' : 'fix validation errors',
     validation,
-    finalizeCommand:
-      bundleEntry?.canFinalizeIndependently === false
-        ? null
-        : validation.finalizeCommand,
+    finalizeCommand: validation.finalizeCommand,
   }
 }
 
@@ -655,7 +657,20 @@ export const runP0ReviewIntake = async (
           rows,
           scope.districtId,
         )
-        if (districtRows.length === 0) {
+        const scopedRows = districtRows.filter((row) => {
+          if (fileBundle) {
+            return true
+          }
+          const rowBundleId = getCsvValue(row, [
+            'bundleId',
+            'bundle_id',
+            'reviewBundleId',
+          ])
+          return rowBundleId
+            ? rowBundleId === scope.bundleId
+            : scope.bundleId === scope.districtId
+        })
+        if (scopedRows.length === 0) {
           return
         }
         candidates.push(
@@ -663,7 +678,7 @@ export const runP0ReviewIntake = async (
             districtId: scope.districtId,
             filePath,
             configRoot,
-            rows: districtRows,
+            rows: scopedRows,
             allHeaders: headers,
             bundleEntry: scope.entry,
           }),

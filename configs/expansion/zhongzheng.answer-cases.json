@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "districtId": "zhongzheng",
+  "datasetHash": "f426bf6ae934cdf35da2349269c6d6c3f9052fff15f42a30e50e21fb7e6c8d1d",
+  "cases": [
+    {
+      "id": "zhongzheng-reviewed-legal-seg-8829-part-1",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.52094063249157,
+      "lat": 25.028841486611046,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-8829-part-1",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 3
+    },
+    {
+      "id": "zhongzheng-reviewed-legal-seg-8960-part-2",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.52091226542788,
+      "lat": 25.029386619036785,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-8960-part-2",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 4
+    },
+    {
+      "id": "zhongzheng-reviewed-illegal-seg-2612-part-1",
+      "label": "Reviewed no-stop answer with marked-space evidence",
+      "lng": 121.52079819563644,
+      "lat": 25.02970021447588,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-2612-part-1",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 11
+    },
+    {
+      "id": "zhongzheng-reviewed-illegal-seg-3673-part-2",
+      "label": "Reviewed no-stop answer with marked-space evidence",
+      "lng": 121.52122764574364,
+      "lat": 25.029657220315126,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-3673-part-2",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 11
+    }
+  ]
+}

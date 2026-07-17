@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "districtId": "nangang",
+  "datasetHash": "82d2ba1e83b3bd123df91ca0370dcbe10dd43aa9fe837fc593264bf676fcbf48",
+  "cases": [
+    {
+      "id": "nangang-reviewed-legal-seg-5677",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.62217,
+      "lat": 25.038307,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-5677",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 29
+    },
+    {
+      "id": "nangang-reviewed-legal-seg-5627-part-2",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.620908,
+      "lat": 25.037429,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-5627-part-2",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 6
+    },
+    {
+      "id": "nangang-reviewed-illegal-seg-5761-part-2",
+      "label": "Reviewed no-stop answer with marked-space evidence",
+      "lng": 121.620875,
+      "lat": 25.039621,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-5761-part-2",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 10
+    },
+    {
+      "id": "nangang-reviewed-illegal-seg-5763-part-3",
+      "label": "Reviewed no-stop answer with marked-space evidence",
+      "lng": 121.619946,
+      "lat": 25.040211,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-5763-part-3",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 5
+    }
+  ]
+}
