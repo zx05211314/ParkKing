@@ -279,7 +279,7 @@ export const buildParkingAnswer = (
   }
 }
 
-export const buildParkingAnswerFromSegments = (
+export const buildParkingAnswerFromSegmentsWithStats = (
   segments: Segment[],
   location: [number, number],
   options: ParkingAnswerOptions & {
@@ -287,7 +287,7 @@ export const buildParkingAnswerFromSegments = (
     zoneIndex: ZoneIndex | null
     prefilterLimit?: number
   },
-): ParkingAnswer => {
+) => {
   const includeInferred = options.includeInferred ?? false
   const searchRadiusMeters =
     options.searchRadiusMeters ?? DEFAULT_SEARCH_RADIUS_METERS
@@ -314,8 +314,22 @@ export const buildParkingAnswerFromSegments = (
     evaluateSegmentWithZones(segment, options.nowHHMM, options.zoneIndex),
   )
 
-  return buildParkingAnswer(evaluatedCandidates, location, options)
+  return {
+    answer: buildParkingAnswer(evaluatedCandidates, location, options),
+    evaluatedCount: evaluatedCandidates.length,
+  }
 }
+
+export const buildParkingAnswerFromSegments = (
+  segments: Segment[],
+  location: [number, number],
+  options: ParkingAnswerOptions & {
+    nowHHMM: string
+    zoneIndex: ZoneIndex | null
+    prefilterLimit?: number
+  },
+): ParkingAnswer =>
+  buildParkingAnswerFromSegmentsWithStats(segments, location, options).answer
 
 export const getParkingAnswerFocusPoint = (
   candidate: Pick<ParkingAnswerCandidate, 'path'> | null,

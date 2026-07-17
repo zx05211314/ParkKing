@@ -12,9 +12,18 @@ import {
   REQUIRED_RENDER_RUNTIME_ENV,
   renderEnvAssignments,
 } from './renderDeploymentEnv'
+import {
+  buildSmokeParkingAnswerServiceCaseResult,
+  type SmokeParkingAnswerServiceCaseResult,
+} from './smokeParkingAnswerService'
+import {
+  loadSmokeExactParkingAnswerCases,
+  type SmokeExactParkingAnswerCase,
+} from './smokeExactParkingAnswers'
 
 const DEFAULT_HANDOFF_JSON = '.tmp/render-deployment-handoff.json'
 const DEFAULT_TIMEOUT_MS = 15_000
+const DEFAULT_ANSWER_CASES_DIR = 'configs/prod'
 
 export interface RenderDeploymentVerifyOptions {
   appUrl?: string | null
@@ -28,6 +37,8 @@ export interface RenderDeploymentVerifyOptions {
   apiServices?: SmokeApiServiceId[] | null
   syncIssueRoundtrip?: boolean | null
   syncCorsCheck?: boolean | null
+  answerCasesDir?: string | null
+  skipParkingAnswerCases?: boolean | null
   outPath?: string | null
   jsonOutPath?: string | null
 }
@@ -55,6 +66,7 @@ export interface RenderDeploymentVerifyResult {
   districts: RenderDeploymentVerifyDistrict[]
   unexpectedDistricts: string[]
   apiServices?: SmokeApiServicesSummary | null
+  parkingAnswers?: RenderDeploymentVerifyParkingAnswerResult[] | null
   syncCors?: RenderDeploymentVerifySyncCorsResult | null
   proxyRuntime?: RenderDeploymentVerifyProxyRuntimeResult[] | null
   releasePackageRemediation: RenderDeploymentVerifyRemediation | null
@@ -69,6 +81,14 @@ export interface RenderDeploymentVerifySyncCorsResult {
   status: number
   allowOrigin: string | null
   errors: string[]
+}
+
+export interface RenderDeploymentVerifyParkingAnswerResult
+  extends SmokeParkingAnswerServiceCaseResult {
+  districtId: string
+  url: string
+  datasetHash: string | null
+  elapsedMs: number
 }
 
 export interface RenderDeploymentVerifyProxyRuntimeResult {
@@ -185,6 +205,14 @@ export const parseRenderDeploymentVerifyArgs = (
   syncIssueRoundtrip:
     !hasFlag(argv, '--skip-sync-issue-roundtrip', '--skipSyncIssueRoundtrip'),
   syncCorsCheck: !hasFlag(argv, '--skip-sync-cors-check', '--skipSyncCorsCheck'),
+  answerCasesDir:
+    getArgValue(argv, '--answer-cases-dir', '--answerCasesDir') ??
+    DEFAULT_ANSWER_CASES_DIR,
+  skipParkingAnswerCases: hasFlag(
+    argv,
+    '--skip-parking-answer-cases',
+    '--skipParkingAnswerCases',
+  ),
   outPath: getArgValue(argv, '--out'),
   jsonOutPath: getArgValue(argv, '--json-out', '--jsonOut'),
 })
@@ -396,6 +424,116 @@ export const buildRenderProxyReadyUrl = (
 
 export const buildRenderSyncIssuesUrl = (appUrl: string) =>
   new URL('/api/sync/issues', `${appUrl}/`).toString()
+
+const buildRenderParkingAnswerUrl = (params: {
+  appUrl: string
+  districtId: string
+  answerCase: SmokeExactParkingAnswerCase
+}) => {
+  const url = new URL('/api/parking-answer', `${params.appUrl}/`)
+  url.searchParams.set('district', params.districtId)
+  url.searchParams.set('lng', String(params.answerCase.lng))
+  url.searchParams.set('lat', String(params.answerCase.lat))
+  if (params.answerCase.hhmm) {
+    url.searchParams.set('hhmm', params.answerCase.hhmm)
+  }
+  if (params.answerCase.searchRadiusMeters !== undefined) {
+    url.searchParams.set('radius', String(params.answerCase.searchRadiusMeters))
+  }
+  if (params.answerCase.includeInferred !== undefined) {
+    url.searchParams.set(
+      'includeInferred',
+      String(params.answerCase.includeInferred),
+    )
+  }
+  return url.toString()
+}
+
+export const verifyRenderParkingAnswers = async (params: {
+  appUrl: string
+  timeoutMs: number
+  answerCasesDir: string
+  expectedDatasets: RenderDeploymentHandoffDataset[]
+}): Promise<RenderDeploymentVerifyParkingAnswerResult[]> => {
+  const results: RenderDeploymentVerifyParkingAnswerResult[] = []
+  for (const dataset of params.expectedDatasets) {
+    const casesPath = path.resolve(
+      params.answerCasesDir,
+      `${dataset.districtId}.answer-cases.json`,
+    )
+    let answerCase: SmokeExactParkingAnswerCase
+    try {
+      const caseFile = await loadSmokeExactParkingAnswerCases(casesPath)
+      const firstCase = caseFile.cases[0]
+      if (!firstCase) {
+        throw new Error(`No reviewed answer cases found in ${casesPath}`)
+      }
+      answerCase = firstCase
+    } catch (error) {
+      results.push({
+        districtId: dataset.districtId,
+        id: 'missing-reviewed-case',
+        url: '',
+        status: 0,
+        datasetHash: null,
+        elapsedMs: 0,
+        pass: false,
+        errors: [error instanceof Error ? error.message : String(error)],
+        expectedKind: '',
+        answerKind: null,
+        expectedEvidenceKind: null,
+        evidenceKind: null,
+        expectedPrimarySegmentId: null,
+        primarySegmentId: null,
+        trustLabel: null,
+      })
+      continue
+    }
+
+    const url = buildRenderParkingAnswerUrl({
+      appUrl: params.appUrl,
+      districtId: dataset.districtId,
+      answerCase,
+    })
+    const startedAt = performance.now()
+    try {
+      const response = await fetchJsonWithTimeout(url, params.timeoutMs)
+      const elapsedMs = Math.round(performance.now() - startedAt)
+      const caseResult = buildSmokeParkingAnswerServiceCaseResult({
+        answerCase,
+        responseStatus: response.status,
+        payload: response.payload,
+        expectedDatasetHash: dataset.datasetHash,
+      })
+      results.push({
+        districtId: dataset.districtId,
+        url,
+        datasetHash: getString(toRecord(response.payload), 'datasetHash'),
+        elapsedMs,
+        ...caseResult,
+      })
+    } catch (error) {
+      results.push({
+        districtId: dataset.districtId,
+        id: answerCase.id,
+        url,
+        status: 0,
+        datasetHash: null,
+        elapsedMs: Math.round(performance.now() - startedAt),
+        pass: false,
+        errors: [error instanceof Error ? error.message : String(error)],
+        expectedKind: answerCase.expectedKind,
+        answerKind: null,
+        expectedEvidenceKind: answerCase.expectedEvidenceKind ?? null,
+        evidenceKind: null,
+        expectedPrimarySegmentId: answerCase.expectedPrimarySegmentId ?? null,
+        primarySegmentId: null,
+        trustLabel: null,
+      })
+    }
+  }
+  return results
+}
 
 const getNumber = (record: Record<string, unknown> | null, key: string) =>
   typeof record?.[key] === 'number' ? record[key] : null
@@ -696,9 +834,12 @@ export const verifyRenderDeployment = async (
     errors.push(`unexpected live districts: ${unexpectedDistricts.join(', ')}`)
   }
   let apiServices: SmokeApiServicesSummary | null = null
+  let parkingAnswers: RenderDeploymentVerifyParkingAnswerResult[] | null = null
   let syncCors: RenderDeploymentVerifySyncCorsResult | null = null
   const selectedApiServices = options.apiServices ?? undefined
   const syncSelected = selectedApiServices?.includes('sync') ?? true
+  const parkingAnswerSelected =
+    selectedApiServices?.includes('parking-answer') ?? true
   let proxyRuntime: RenderDeploymentVerifyProxyRuntimeResult[] | null = null
   if (!options.skipApiServices) {
     try {
@@ -728,6 +869,29 @@ export const verifyRenderDeployment = async (
         )
       }
     }
+    if (
+      !options.skipParkingAnswerCases &&
+      options.answerCasesDir &&
+      parkingAnswerSelected
+    ) {
+      parkingAnswers = await verifyRenderParkingAnswers({
+        appUrl,
+        timeoutMs,
+        answerCasesDir: options.answerCasesDir,
+        expectedDatasets: contract.expectedDatasets,
+      })
+      const failures = parkingAnswers.filter((result) => !result.pass)
+      if (failures.length > 0) {
+        errors.push(
+          `reviewed live parking answers failed: ${failures
+            .map(
+              (result) =>
+                `${result.districtId}: ${result.errors.join('; ')}`,
+            )
+            .join(' | ')}`,
+        )
+      }
+    }
     const proxyRuntimeServices = (['geocode', 'routing'] as const).filter(
       (service) => selectedApiServices?.includes(service) ?? true,
     )
@@ -752,6 +916,7 @@ export const verifyRenderDeployment = async (
     errors.length === 0 &&
     districts.every((district) => district.pass) &&
     (apiServices?.failed ?? 0) === 0 &&
+    (parkingAnswers?.every((result) => result.pass) ?? true) &&
     (syncCors?.pass ?? true) &&
     (proxyRuntime?.every((result) => result.pass) ?? true)
   const remediation = buildRuntimeRemediation({
@@ -780,6 +945,7 @@ export const verifyRenderDeployment = async (
     districts,
     unexpectedDistricts,
     apiServices,
+    parkingAnswers,
     syncCors,
     proxyRuntime,
     releasePackageRemediation,
@@ -817,6 +983,19 @@ export const renderRenderDeploymentVerify = (
           '## Mounted API Services',
           '',
           renderSmokeApiServicesSummary(result.apiServices),
+        ]
+      : []),
+    ...(result.parkingAnswers
+      ? [
+          '',
+          '## Reviewed Live Parking Answers',
+          '',
+          '| Status | District | Case | HTTP | Answer | Evidence | Primary | Dataset hash | Elapsed | Error |',
+          '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+          ...result.parkingAnswers.map(
+            (entry) =>
+              `| ${entry.pass ? 'PASS' : 'FAIL'} | ${entry.districtId} | ${entry.id} | ${entry.status} | ${entry.answerKind ?? '-'} | ${entry.evidenceKind ?? '-'} | ${entry.primarySegmentId ?? '-'} | ${shortHash(entry.datasetHash)} | ${entry.elapsedMs}ms | ${entry.errors.join('; ')} |`,
+          ),
         ]
       : []),
     ...(result.syncCors

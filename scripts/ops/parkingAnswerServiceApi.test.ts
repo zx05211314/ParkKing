@@ -68,37 +68,79 @@ describe('createParkingAnswerServiceApi', () => {
     })
   })
 
-  it('caches evaluated dataset loads by dataset and time', async () => {
-    const loadEvaluatedSegmentsForAnswer = vi.fn().mockResolvedValue({
+  it('caches prepared dataset loads across locations and times', async () => {
+    const loadPreparedSegmentsForAnswer = vi.fn().mockResolvedValue({
       datasetHash: 'hash-1',
       segments: [],
+      zoneIndex: null,
       reviewedSignOverridesCount: 7,
       appliedSignOverridesCount: 7,
     })
     const service = createParkingAnswerServiceApi({
-      loadEvaluatedSegmentsForAnswer,
+      loadPreparedSegmentsForAnswer,
     })
     const baseRequest = {
       district: 'xinyi',
       datasetDir: 'public/data/generated/xinyi',
-      hhmm: '21:00',
     }
 
     await service.answer({
       ...baseRequest,
       lng: 121.56,
       lat: 25.03,
+      hhmm: '21:01',
     })
     await service.answer({
       ...baseRequest,
       lng: 121.57,
       lat: 25.04,
+      hhmm: '21:02',
     })
 
-    expect(loadEvaluatedSegmentsForAnswer).toHaveBeenCalledTimes(1)
-    expect(loadEvaluatedSegmentsForAnswer).toHaveBeenCalledWith(
+    expect(loadPreparedSegmentsForAnswer).toHaveBeenCalledTimes(1)
+    expect(loadPreparedSegmentsForAnswer).toHaveBeenCalledWith(
       'public/data/generated/xinyi',
-      '21:00',
     )
+  })
+
+  it('re-evaluates cached prepared segments for the requested time', async () => {
+    const loadPreparedSegmentsForAnswer = vi.fn().mockResolvedValue({
+      datasetHash: 'hash-1',
+      segments: [
+        {
+          id: 'seg-1',
+          name: 'Yellow curb',
+          curbMarking: 'YELLOW',
+          confidence: 'HIGH',
+          path: [
+            [121.56, 25.03],
+            [121.561, 25.03],
+          ],
+          sourceReliability: 'HIGH',
+          dataFreshnessDays: 1,
+        },
+      ],
+      zoneIndex: null,
+      reviewedSignOverridesCount: 1,
+      appliedSignOverridesCount: 1,
+    })
+    const service = createParkingAnswerServiceApi({
+      loadPreparedSegmentsForAnswer,
+    })
+    const request = {
+      district: 'xinyi',
+      datasetDir: 'public/data/generated/xinyi',
+      lng: 121.56,
+      lat: 25.03,
+    }
+
+    const day = await service.answer({ ...request, hhmm: '13:37' })
+    const night = await service.answer({ ...request, hhmm: '21:42' })
+
+    expect(day.answer.kind).toBe('TEMP_STOP')
+    expect(night.answer.kind).toBe('PARK')
+    expect(day.evaluatedCount).toBe(1)
+    expect(night.evaluatedCount).toBe(1)
+    expect(loadPreparedSegmentsForAnswer).toHaveBeenCalledTimes(1)
   })
 })

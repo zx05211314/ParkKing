@@ -5,10 +5,14 @@ import type {
   ParkingAnswerServiceRequest,
 } from './parkingAnswerServiceTypes'
 import {
+  createPreparedQueryParkingAnswerRunner,
   createQueryParkingAnswerRunner,
   loadEvaluatedSegmentsForAnswer,
+  loadPreparedSegmentsForAnswer,
   type EvaluatedSegmentsForAnswer,
+  type PreparedSegmentsForAnswer,
   type QueryParkingAnswerLoader,
+  type QueryParkingAnswerPreparedLoader,
 } from './queryParkingAnswer'
 
 const toQueryOptions = ({
@@ -52,16 +56,43 @@ export const createCachedParkingAnswerLoader = (
   }
 }
 
+export const createCachedPreparedParkingAnswerLoader = (
+  loadSegments: QueryParkingAnswerPreparedLoader = loadPreparedSegmentsForAnswer,
+): QueryParkingAnswerPreparedLoader => {
+  const cache = new Map<string, Promise<PreparedSegmentsForAnswer>>()
+
+  return (datasetDir) => {
+    const cached = cache.get(datasetDir)
+    if (cached) {
+      return cached
+    }
+
+    const loaded = loadSegments(datasetDir).catch((error) => {
+      cache.delete(datasetDir)
+      throw error
+    })
+    cache.set(datasetDir, loaded)
+    return loaded
+  }
+}
+
 export const createParkingAnswerServiceApi = (
   dependencies: ParkingAnswerServiceDependencies = {},
 ): ParkingAnswerService => {
   const queryParkingAnswer =
     dependencies.queryParkingAnswer ??
-    createQueryParkingAnswerRunner(
-      createCachedParkingAnswerLoader(
-        dependencies.loadEvaluatedSegmentsForAnswer ?? loadEvaluatedSegmentsForAnswer,
-      ),
-    )
+    (dependencies.loadEvaluatedSegmentsForAnswer
+      ? createQueryParkingAnswerRunner(
+          createCachedParkingAnswerLoader(
+            dependencies.loadEvaluatedSegmentsForAnswer,
+          ),
+        )
+      : createPreparedQueryParkingAnswerRunner(
+          createCachedPreparedParkingAnswerLoader(
+            dependencies.loadPreparedSegmentsForAnswer ??
+              loadPreparedSegmentsForAnswer,
+          ),
+        ))
 
   return {
     async answer(request) {
