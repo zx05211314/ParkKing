@@ -133,11 +133,13 @@ const createFixture = async (options: {
             legalAnswerEligible: options.unsafeSpatial ? true : false,
             geometryPrecision: 'REPRESENTATIVE_POINT',
             parkingSegmentId: 'segment-1',
+            sourceDataset: 'TDX OnStreet ParkingSegment v1',
           },
         },
       ],
       metadata: {
         sourceDataset: 'TDX OnStreet ParkingSegment v1',
+        sourceRecordCount: 1,
         featureCount: 1,
         legalAnswerEligible: options.unsafeSpatial ? true : false,
       },

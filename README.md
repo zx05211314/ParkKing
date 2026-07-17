@@ -370,6 +370,18 @@ For a credentialed CI handoff, store those two values as GitHub repository secre
 manually run the `Taoyuan Spatial Reference` workflow. It applies the spatial-only
 `--require-spatial` gate and uploads the normalized GeoJSON plus readiness reports for 14
 days; it does not commit, ingest, publish, or deploy the artifact.
+After a successful run, install the downloaded artifact without bypassing its safety gate:
+
+```powershell
+gh run download <run-id> --name taoyuan-spatial-reference --dir .tmp/taoyuan-spatial-reference
+npm run ops:install-taoyuan-spatial-reference
+npm run ops:taoyuan-expansion-readiness:strict -- --boundary-catalog public/data/coverage.json
+```
+
+The installer validates every feature before atomically replacing
+`data/sources/taoyuan/paid_curb_segments.geojson` and writes a SHA-256 receipt to
+`.tmp/taoyuan-spatial-reference-install.json`. Invalid, empty, or legal-answer-eligible
+artifacts never replace an existing reference.
 Run `npm run ops:taoyuan-expansion-readiness:report` to verify the 13 official boundaries,
 944-row text pack, 270-row source-text review, optional saved/credentialed TDX geometry,
 and the non-legal safety contract in one report. The report exits successfully when the
