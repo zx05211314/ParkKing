@@ -238,6 +238,8 @@ describe('releasePublishRequest', () => {
 
     expect(result.state).toBe('ready_for_render_live_verify')
     expect(result.status.publishedManifest.pass).toBe(true)
+    expect(result.publishPlan).toBeNull()
+    expect(result.assets).toEqual([])
     expect(result.externalRequirements.join('\n')).not.toContain(
       'Publish GitHub Release data-20260531_abc1234',
     )
@@ -280,6 +282,32 @@ describe('releasePublishRequest', () => {
     expect(result.blockers).toEqual([])
     expect(result.warnings.join('\n')).toContain(
       'local republish is unavailable, but remote live verify is unaffected',
+    )
+  })
+
+  it('does not report local republish blockers after published manifest parity passes', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'release-publish-live-'))
+    const fixture = await writeHandoffFixture(base)
+
+    const result = await buildReleasePublishRequest(
+      {
+        ...fixture,
+        repository: 'owner/repo',
+        ref: 'main',
+        targetSha: 'def5678ffff',
+        appUrl: 'https://parkking.onrender.com',
+      },
+      publishedReleaseFetch(),
+      noToolsEnvironment,
+    )
+
+    expect(result.state).toBe('ready_for_render_live_verify')
+    expect(result.status.readyForRenderLiveVerify).toBe(true)
+    expect(result.publishPlan).toBeNull()
+    expect(result.assets).toEqual([])
+    expect(result.blockers).toEqual([])
+    expect(result.warnings.join('\n')).toContain(
+      'local republish is blocked, but remote live verify is unaffected',
     )
   })
 
