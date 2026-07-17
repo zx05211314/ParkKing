@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "districtId": "neihu",
+  "datasetHash": "3c5d43416a64842fc3dd9815af5532af7df4b08ce683b4626c0410313dd05929",
+  "cases": [
+    {
+      "id": "neihu-reviewed-legal-seg-12439",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.591625,
+      "lat": 25.083749,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-12439",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 10
+    },
+    {
+      "id": "neihu-reviewed-illegal-seg-11593-part-1",
+      "label": "Reviewed no-stop answer with marked-space evidence",
+      "lng": 121.58918,
+      "lat": 25.081808,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-11593-part-1",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 4
+    },
+    {
+      "id": "neihu-reviewed-legal-seg-11546",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.590975,
+      "lat": 25.082157,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-11546",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 22
+    },
+    {
+      "id": "neihu-reviewed-illegal-seg-520-part-2",
+      "label": "Reviewed no-stop answer with marked-space evidence",
+      "lng": 121.587236,
+      "lat": 25.08226,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-520-part-2",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 33
+    }
+  ]
+}

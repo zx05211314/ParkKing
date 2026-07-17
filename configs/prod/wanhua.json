@@ -1,0 +1,59 @@
+{
+  "districtId": "wanhua",
+  "districtName": "Wanhua",
+  "boundary": {
+    "featureId": "63007"
+  },
+  "inputs": {
+    "districtBounds": "../../data/sources/shared/district_bounds/district_bounds.shp",
+    "redYellow": "../../data/sources/shared/red_yellow/red_yellow.shp",
+    "busStops": "../../data/sources/shared/bus_stops/bus_stops.shp",
+    "hydrants": "../../data/sources/shared/hydrants.csv",
+    "parking_spaces": "../../data/sources/shared/parking_spaces/parking_spaces.shp",
+    "intersections": "../../data/sources/shared/signals.csv",
+    "road_centerlines": "../../data/sources/shared/road_centerlines_gt8m/road_centerlines_gt8m.shp",
+    "crosswalks": "../../data/sources/shared/crosswalks/crosswalks.shp"
+  },
+  "outputs": {
+    "generatedDir": "../../data/generated/wanhua",
+    "publicDir": "../../public/data/generated/wanhua"
+  },
+  "crs": {
+    "default": "EPSG:3826"
+  },
+  "intersections": {
+    "snapToleranceMeters": 10,
+    "angleDiversityDegrees": 25,
+    "includeRoadClasses": [],
+    "excludeRoadClasses": []
+  },
+  "crosswalks": {
+    "bufferMeters": 6
+  },
+  "signOverrides": {
+    "matchToleranceMeters": 15
+  },
+  "inferredCandidates": {
+    "offsetMeters": 3.5,
+    "includeRoadClasses": [],
+    "excludeRoadClasses": []
+  },
+  "ops": {
+    "thresholds": {
+      "counts": {
+        "segments": 20,
+        "intersections": 20,
+        "inferredCandidates": 30,
+        "signOverrides": 30
+      },
+      "tierDistributionMaxDeltaPct": 15,
+      "perfRegressionMaxDeltaPct": 30,
+      "maxReasonCodeDeltaPct": 20,
+      "maxNewReasonCodePct": 5
+    },
+    "retention": {
+      "maxBackupsPerDistrict": 5,
+      "maxBackupAgeDays": 30
+    }
+  }
+}

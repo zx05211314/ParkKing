@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "districtId": "songshan",
+  "datasetHash": "1914db4a9b4402d01b3bc7039af9a30cec559c983debab3b3b3462073047514b",
+  "cases": [
+    {
+      "id": "songshan-reviewed-illegal-candidate-8529-1-l-part-3",
+      "label": "Reviewed no-stop answer from inferred curb candidate",
+      "lng": 121.544358,
+      "lat": 25.066457,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "INFERRED",
+      "expectedPrimarySegmentId": "candidate-8529-1-L-part-3",
+      "expectedFinalConfidence": "LOW",
+      "includeInferred": true
+    },
+    {
+      "id": "songshan-reviewed-illegal-candidate-8529-1-r-part-3",
+      "label": "Reviewed no-stop answer from inferred curb candidate",
+      "lng": 121.544301,
+      "lat": 25.066429,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "INFERRED",
+      "expectedPrimarySegmentId": "candidate-8529-1-R-part-3",
+      "expectedFinalConfidence": "LOW",
+      "includeInferred": true
+    },
+    {
+      "id": "songshan-reviewed-legal-seg-488",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.559193,
+      "lat": 25.059918,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-488",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 12
+    },
+    {
+      "id": "songshan-reviewed-legal-seg-2597",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.55933,
+      "lat": 25.059928,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-2597",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 13
+    }
+  ]
+}

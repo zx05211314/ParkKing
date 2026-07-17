@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "districtId": "wanhua",
+  "datasetHash": "fb33d5ebc7248c2dfa185fe9901b299a567caaedc23a95fb993f265aee51af34",
+  "cases": [
+    {
+      "id": "wanhua-reviewed-legal-seg-4277",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.497903,
+      "lat": 25.029418,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-4277",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 2
+    },
+    {
+      "id": "wanhua-reviewed-illegal-seg-5456-part-2",
+      "label": "Reviewed no-stop answer with marked-space evidence",
+      "lng": 121.49989,
+      "lat": 25.030264,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-5456-part-2",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 20
+    },
+    {
+      "id": "wanhua-reviewed-legal-seg-3304",
+      "label": "Reviewed legal parking answer with marked-space evidence",
+      "lng": 121.497446,
+      "lat": 25.029171,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "PARK",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-3304",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 2
+    },
+    {
+      "id": "wanhua-reviewed-illegal-seg-3661-part-1",
+      "label": "Reviewed no-stop answer with marked-space evidence",
+      "lng": 121.49842,
+      "lat": 25.026691,
+      "hhmm": "21:00",
+      "searchRadiusMeters": 25,
+      "expectedKind": "NO_STOP",
+      "expectedEvidenceKind": "MARKED_SPACE",
+      "expectedPrimarySegmentId": "seg-3661-part-1",
+      "expectedFinalConfidence": "HIGH",
+      "minParkingSpaceCount": 7
+    }
+  ]
+}
