@@ -18,6 +18,7 @@ const args: GenerateBaselinesArgs = {
   force: false,
   seed: false,
   districtIdFilter: null,
+  generatedRoot: 'public/data/generated',
 }
 
 const benchResult = {

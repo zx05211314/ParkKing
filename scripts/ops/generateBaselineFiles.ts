@@ -6,18 +6,16 @@ export const readBaselineJson = async <T>(filePath: string): Promise<T> => {
   return JSON.parse(raw) as T
 }
 
-export const findBaselineDatasetDir = async (districtId: string) => {
-  const candidates = [
-    path.resolve('data/generated', districtId),
-    path.resolve('public/data/generated', districtId),
-  ]
-  for (const candidate of candidates) {
-    try {
-      await fs.access(candidate)
-      return candidate
-    } catch {
-      continue
-    }
+export const findBaselineDatasetDir = async (
+  districtId: string,
+  generatedRoot = 'public/data/generated',
+) => {
+  const root = path.resolve(generatedRoot)
+  const candidate = path.join(root, districtId)
+  try {
+    await fs.access(candidate)
+    return candidate
+  } catch {
+    throw new Error(`Dataset directory not found for ${districtId} under ${root}`)
   }
-  throw new Error(`Dataset directory not found for ${districtId}`)
 }

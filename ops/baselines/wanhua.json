@@ -1,0 +1,88 @@
+{
+  "baselineCreatedAt": "2026-07-18T17:33:12.547Z",
+  "baselineDatasetHash": "55b6dfccb516cf1fe21d7f954cdd0460cfdfc4db5d73891829a59af1001ccb99",
+  "baselineSchemaVersion": 1,
+  "baselineSourceMetaSha256": "6f27e8495e7d7d28dbe2ad94c4a306712a849c8a4ce656ae00c275471eb68e8e",
+  "baselineDistrictName": "Wanhua",
+  "generatedAt": "2026-07-18T17:33:12.548Z",
+  "districtId": "wanhua",
+  "datasetHash": "55b6dfccb516cf1fe21d7f954cdd0460cfdfc4db5d73891829a59af1001ccb99",
+  "counts": {
+    "segments": 7262,
+    "intersections": 191,
+    "inferredCandidates": 1216,
+    "signOverrides": 4,
+    "signOverrideUnmatchedNamedCount": 0
+  },
+  "distributions": {
+    "day": {
+      "YELLOW|TEMP_STOP": 2471,
+      "RED|NO_STOP": 13722,
+      "GREEN|PARK": 2
+    },
+    "night": {
+      "GREEN|PARK": 208,
+      "RED|NO_STOP": 13722,
+      "YELLOW|PARK": 2212,
+      "YELLOW|TEMP_STOP": 53
+    }
+  },
+  "performance": {
+    "day": {
+      "evalFirstMsMedian": 286,
+      "evalSecondMsMedian": 285
+    },
+    "night": {
+      "evalFirstMsMedian": 278,
+      "evalSecondMsMedian": 279
+    }
+  },
+  "reasonCodes": {
+    "day": {
+      "top": {
+        "DATA_FRESHNESS_STALE": 10804,
+        "RULE_RED_NO_STOP": 9998,
+        "RULE_YELLOW_DAY_NO_PARK": 6109,
+        "DATA_FRESHNESS_UNKNOWN": 5391,
+        "COVERAGE_LOW": 5390,
+        "INFERRED_CAPPED": 5390,
+        "INFERRED_RISK_HIGH_ZONE_DENSITY": 5226,
+        "ZONE_CROSSWALK": 4570,
+        "ZONE_HYDRANT": 2503,
+        "ZONE_INTERSECTION": 1289,
+        "ZONE_BUS_STOP": 594,
+        "PARKING_SPACE_EVIDENCE": 302,
+        "UNKNOWN_MARKING": 82,
+        "OVERRIDE_APPLIED": 6,
+        "OVERRIDE_STATUS_ILLEGAL": 4,
+        "OVERRIDE_STATUS_LEGAL": 2
+      },
+      "other": 0,
+      "total": 16195,
+      "coveragePct": 100
+    },
+    "night": {
+      "top": {
+        "DATA_FRESHNESS_STALE": 10804,
+        "RULE_RED_NO_STOP": 9998,
+        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 6109,
+        "DATA_FRESHNESS_UNKNOWN": 5391,
+        "COVERAGE_LOW": 5390,
+        "INFERRED_CAPPED": 5390,
+        "INFERRED_RISK_HIGH_ZONE_DENSITY": 5226,
+        "ZONE_CROSSWALK": 4570,
+        "ZONE_HYDRANT": 2503,
+        "ZONE_INTERSECTION": 1289,
+        "ZONE_BUS_STOP": 594,
+        "PARKING_SPACE_EVIDENCE": 302,
+        "UNKNOWN_MARKING": 82,
+        "OVERRIDE_APPLIED": 6,
+        "OVERRIDE_STATUS_ILLEGAL": 4,
+        "OVERRIDE_STATUS_LEGAL": 2
+      },
+      "other": 0,
+      "total": 16195,
+      "coveragePct": 100
+    }
+  }
+}

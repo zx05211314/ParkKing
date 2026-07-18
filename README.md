@@ -470,6 +470,12 @@ Legacy per-district raw source scaffold:
 Optional override (when publish gate warns and you still need to publish):
 `npm run ingest:all -- --configs "configs/prod/<id>.json" --allowWarn --override "<reason>"`
 
+Seed a missing metrics baseline from one explicit generated-data root:
+`npm run ops:baseline:seed -- --districtId <id> --root public/data/generated`
+Use an isolated installed release root for published release evidence. The baseline
+generator reads both `registry.json` and every district dataset from the selected root
+and never falls back to a different local generated-data tree.
+
 ### Expected Outputs
 
 After ingest + publish:

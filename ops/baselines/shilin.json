@@ -1,0 +1,88 @@
+{
+  "baselineCreatedAt": "2026-07-18T17:30:43.096Z",
+  "baselineDatasetHash": "bc0410bf72e838fcf5d27c73b47731bfb728a634bb22443ef17a53839ff1c149",
+  "baselineSchemaVersion": 1,
+  "baselineSourceMetaSha256": "ceca2abfbf7a0ec67af0ecc0dbe3b363e7d0ff0a57a273fe4b79cdc15cd9cf49",
+  "baselineDistrictName": "Shilin",
+  "generatedAt": "2026-07-18T17:30:43.097Z",
+  "districtId": "shilin",
+  "datasetHash": "bc0410bf72e838fcf5d27c73b47731bfb728a634bb22443ef17a53839ff1c149",
+  "counts": {
+    "segments": 13534,
+    "intersections": 270,
+    "inferredCandidates": 4158,
+    "signOverrides": 4,
+    "signOverrideUnmatchedNamedCount": 0
+  },
+  "distributions": {
+    "day": {
+      "RED|NO_STOP": 26454,
+      "YELLOW|TEMP_STOP": 6564,
+      "GREEN|PARK": 2
+    },
+    "night": {
+      "RED|NO_STOP": 26454,
+      "GREEN|PARK": 383,
+      "YELLOW|PARK": 6156,
+      "YELLOW|TEMP_STOP": 27
+    }
+  },
+  "performance": {
+    "day": {
+      "evalFirstMsMedian": 1678,
+      "evalSecondMsMedian": 1708
+    },
+    "night": {
+      "evalFirstMsMedian": 1658,
+      "evalSecondMsMedian": 1763
+    }
+  },
+  "reasonCodes": {
+    "day": {
+      "top": {
+        "DATA_FRESHNESS_STALE": 20837,
+        "RULE_RED_NO_STOP": 19585,
+        "RULE_YELLOW_DAY_NO_PARK": 13390,
+        "DATA_FRESHNESS_UNKNOWN": 12183,
+        "COVERAGE_LOW": 12173,
+        "INFERRED_CAPPED": 12173,
+        "INFERRED_RISK_HIGH_ZONE_DENSITY": 10316,
+        "ZONE_CROSSWALK": 7857,
+        "ZONE_HYDRANT": 4912,
+        "ZONE_INTERSECTION": 1837,
+        "ZONE_BUS_STOP": 1604,
+        "PARKING_SPACE_EVIDENCE": 528,
+        "UNKNOWN_MARKING": 40,
+        "OVERRIDE_APPLIED": 5,
+        "OVERRIDE_STATUS_LEGAL": 3,
+        "OVERRIDE_STATUS_ILLEGAL": 2
+      },
+      "other": 0,
+      "total": 33020,
+      "coveragePct": 100
+    },
+    "night": {
+      "top": {
+        "DATA_FRESHNESS_STALE": 20837,
+        "RULE_RED_NO_STOP": 19585,
+        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 13390,
+        "DATA_FRESHNESS_UNKNOWN": 12183,
+        "COVERAGE_LOW": 12173,
+        "INFERRED_CAPPED": 12173,
+        "INFERRED_RISK_HIGH_ZONE_DENSITY": 10316,
+        "ZONE_CROSSWALK": 7857,
+        "ZONE_HYDRANT": 4912,
+        "ZONE_INTERSECTION": 1837,
+        "ZONE_BUS_STOP": 1604,
+        "PARKING_SPACE_EVIDENCE": 528,
+        "UNKNOWN_MARKING": 40,
+        "OVERRIDE_APPLIED": 5,
+        "OVERRIDE_STATUS_LEGAL": 3,
+        "OVERRIDE_STATUS_ILLEGAL": 2
+      },
+      "other": 0,
+      "total": 33020,
+      "coveragePct": 100
+    }
+  }
+}
