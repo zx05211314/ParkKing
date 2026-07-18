@@ -69,6 +69,10 @@ jobs:
         run: npm run ingest:all -- --configs "configs/ci-fixtures.json" --allowWarn --override "ci"
       - name: Build parking answer indexes for CI fixtures
         run: npm run ops:build-parking-answer-indexes
+      - name: Build UI with CI fixtures
+        run: npm run build
+      - name: Smoke Taoyuan paid-curb reference UI
+        run: npm run ops:smoke-ui-paid-curb-reference:preview -- --timeout-ms 60000
       - name: Smoke latest pack
         run: npm run ops:smoke-latest -- --latestName LATEST_CI
       - name: Smoke parking answers

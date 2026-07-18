@@ -8,6 +8,7 @@ import type { SmokeReviewedUiPacksResult } from './smokeReviewedUiPacks'
 import type { SmokeUiParkingAnswersSummary } from './smokeUiParkingAnswers'
 import type { SmokeUiMapViewSummary } from './smokeUiMapView'
 import type { SmokeUiIssueReportSummary } from './smokeUiIssueReport'
+import type { SmokeUiPaidCurbReferenceSummary } from './smokeUiPaidCurbReference'
 import type { BundleBudgetResult } from './bundleBudget'
 import type { RefreshPublishReportResult } from './refreshPublishReportState'
 import {
@@ -129,6 +130,14 @@ const issueReportUiPass = {
   downloadedFileName: 'parkking-debug-2026-04-02T000000.000Z.json',
 } as unknown as SmokeUiIssueReportSummary
 
+const paidCurbReferenceUiPass = {
+  pass: true,
+  sourceRecordCount: 270,
+  referencePointCount: 264,
+  excludedPointCount: 6,
+  selectedReferenceId: '169',
+} as unknown as SmokeUiPaidCurbReferenceSummary
+
 const buildRunners = (
   overrides: Partial<P1ReleaseReadinessRunners> = {},
 ): P1ReleaseReadinessRunners => ({
@@ -142,6 +151,9 @@ const buildRunners = (
   runSmokeReviewedUiPacks: vi.fn().mockResolvedValue(reviewedUiPass),
   runSmokeUiParkingAnswers: vi.fn().mockResolvedValue(mapReviewedUiPass),
   runSmokeUiMapView: vi.fn().mockResolvedValue(mapUiPass),
+  runSmokeUiPaidCurbReference: vi
+    .fn()
+    .mockResolvedValue(paidCurbReferenceUiPass),
   runSmokeUiIssueReport: vi.fn().mockResolvedValue(issueReportUiPass),
   ...overrides,
 })
@@ -254,6 +266,11 @@ describe('p1ReleaseReadiness', () => {
       timeoutMs: 25000,
       startPreview: true,
     })
+    expect(runners.runSmokeUiPaidCurbReference).toHaveBeenCalledWith({
+      district: 'xinyi',
+      timeoutMs: 60000,
+      startPreview: true,
+    })
     expect(runners.runSmokeUiIssueReport).toHaveBeenCalledWith({
       district: 'xinyi',
       timeoutMs: 25000,
@@ -271,6 +288,23 @@ describe('p1ReleaseReadiness', () => {
     expect(result.blockers).toEqual(['District readiness matrix: failed'])
     expect(renderP1ReleaseReadiness(result)).toContain(
       '# P1 Release Readiness: BLOCKED',
+    )
+  })
+
+  it('blocks release readiness when the paid-curb reference UI contract fails', async () => {
+    const result = await runP1ReleaseReadiness(
+      {},
+      buildRunners({
+        runSmokeUiPaidCurbReference: vi.fn().mockResolvedValue({
+          ...paidCurbReferenceUiPass,
+          pass: false,
+        }),
+      }),
+    )
+
+    expect(result.pass).toBe(false)
+    expect(result.blockers).toContain(
+      'Paid-curb reference UI smoke: failed',
     )
   })
 
@@ -310,10 +344,12 @@ describe('p1ReleaseReadiness', () => {
     expect(result.reviewedUi).toBeNull()
     expect(result.mapReviewedUi).toBeNull()
     expect(result.mapUi).toBeNull()
+    expect(result.paidCurbReferenceUi).toBeNull()
     expect(result.issueReportUi).toBeNull()
     expect(runners.runSmokeReviewedUiPacks).not.toHaveBeenCalled()
     expect(runners.runSmokeUiParkingAnswers).not.toHaveBeenCalled()
     expect(runners.runSmokeUiMapView).not.toHaveBeenCalled()
+    expect(runners.runSmokeUiPaidCurbReference).not.toHaveBeenCalled()
     expect(runners.runSmokeUiIssueReport).not.toHaveBeenCalled()
     expect(renderP1ReleaseReadiness(result)).toContain(
       '| SKIP | Reviewed UI answers | skipped by --skip-ui | |',
@@ -323,6 +359,9 @@ describe('p1ReleaseReadiness', () => {
     )
     expect(renderP1ReleaseReadiness(result)).toContain(
       '| SKIP | MAP UI smoke | skipped by --skip-ui | |',
+    )
+    expect(renderP1ReleaseReadiness(result)).toContain(
+      '| SKIP | Paid-curb reference UI smoke | skipped by --skip-ui | |',
     )
     expect(renderP1ReleaseReadiness(result)).toContain(
       '| SKIP | Issue report UI smoke | skipped by --skip-ui | |',
