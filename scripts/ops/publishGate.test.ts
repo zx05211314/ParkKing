@@ -3,8 +3,8 @@ import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { tmpdir } from 'node:os'
 import { createHash } from 'node:crypto'
+import { comparePerformance } from './compareBaselinePerformanceMetrics'
 import { runPublishGate } from './publishGate'
-
 
 const hashBuffer = (buffer: Buffer) =>
   createHash('sha256').update(buffer).digest('hex')
@@ -160,6 +160,44 @@ describe('publishGate', () => {
     })
 
     expect(result.exitCode).toBe(2)
+  })
+
+  it('keeps cross-host performance drift advisory in strict mode', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'gate-test-'))
+    await writeDatasetFixture(base, 'xinyi')
+    const warnings = comparePerformance(
+      {
+        day: { evalFirstMs: 160, evalSecondMs: 452 },
+        night: { evalFirstMs: 120, evalSecondMs: 118 },
+      },
+      {
+        day: { evalFirstMsMedian: 100, evalSecondMsMedian: 236 },
+        night: { evalFirstMsMedian: 120, evalSecondMsMedian: 120 },
+      },
+      30,
+    )
+    const reportPath = await writeReport(base, {
+      districts: [{ districtId: 'xinyi', warnings }],
+    })
+
+    const result = await runPublishGate({
+      reportPath,
+      outputDir: base,
+      allowWarn: false,
+      datasetRootDir: base,
+    })
+
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toMatchObject({
+      severity: 'INFO',
+      code: 'PERF_REGRESSION',
+    })
+    expect(result.exitCode).toBe(0)
+    expect(result.summary.totals).toEqual({
+      info: 1,
+      warn: 0,
+      fail: 0,
+    })
   })
 
   it('blocks fail when allowFail is false', async () => {

@@ -26,9 +26,9 @@ export const comparePerformance = (
         // Baselines are often captured on an operator workstation while
         // release gates run on hosted CI. Without a host fingerprint,
         // wall-clock deltas cannot distinguish code regressions from CPU load.
-        severity: 'WARN',
+        severity: 'INFO',
         code: 'PERF_REGRESSION',
-        message: `${label} eval time delta ${delta.toFixed(1)}% exceeds ${maxDeltaPctValue}%; cross-host wall-clock drift is warning-only`,
+        message: `${label} eval time delta ${delta.toFixed(1)}% exceeds ${maxDeltaPctValue}%; cross-host wall-clock drift is advisory only`,
         metric: {
           label,
           baseline: baselineValue,
@@ -36,8 +36,8 @@ export const comparePerformance = (
           deltaPct: delta,
         },
         threshold: {
-          warn: maxDeltaPctValue,
-          policy: 'warning-only-cross-host-wall-clock',
+          advisory: maxDeltaPctValue,
+          policy: 'advisory-cross-host-wall-clock',
         },
       })
     }

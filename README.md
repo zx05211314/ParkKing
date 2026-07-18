@@ -968,9 +968,10 @@ The markdown summary includes:
 `PERF_REGRESSION` compares evaluation wall-clock time with the reviewed baseline,
 but baseline generation and release gates can run on different hosts. Until
 benchmark records include a comparable host fingerprint, this signal remains a
-WARN that requires the normal publish WARN override; it does not become a hard
-FAIL. Data-count, distribution, reason-code, dataset-hash, answer-correctness,
-and bundle-budget failures remain hard gates.
+non-blocking INFO advisory and does not require a publish override. The raw
+metric, threshold, and delta remain in the ingest report for performance
+triage. Data-count, distribution, reason-code, baseline, dataset-hash,
+answer-correctness, and bundle-budget warnings or failures remain release gates.
 
 These workflow runs now append that markdown summary into the run summary and upload it as a downloadable artifact:
 - `.github/workflows/publish.yml`
