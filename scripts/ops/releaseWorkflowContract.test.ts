@@ -407,6 +407,9 @@ describe('release workflow contracts', () => {
   it('keeps CI typechecking deploy ops helpers before build', async () => {
     const workflow = await readWorkflow('ci.yml')
 
+    expect(workflow).toMatch(
+      /on:\r?\n {2}pull_request:\r?\n {2}push:\r?\n {4}branches:\r?\n {6}- main/,
+    )
     expectCommandsInOrder(workflow, [
       'npm run lint -- --max-warnings=0',
       'npm run ops:typecheck-deploy',
