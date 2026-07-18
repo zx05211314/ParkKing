@@ -3,7 +3,10 @@ import * as fs from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { promoteTaoyuanPaidCurbReview } from './promoteTaoyuanPaidCurbReview'
+import {
+  getTaoyuanPaidCurbReviewPromotionReceiptPath,
+  promoteTaoyuanPaidCurbReview,
+} from './promoteTaoyuanPaidCurbReview'
 
 const writeJson = async (targetPath: string, value: unknown) => {
   await fs.mkdir(path.dirname(targetPath), { recursive: true })
@@ -92,6 +95,12 @@ const createFixture = async (status = 'APPROVED_SOURCE_TEXT') => {
 }
 
 describe('promoteTaoyuanPaidCurbReview', () => {
+  it('isolates default promotion receipts by district', () => {
+    expect(getTaoyuanPaidCurbReviewPromotionReceiptPath('zhongli')).toBe(
+      '.tmp/zhongli-paid-curb-review-promotion.json',
+    )
+  })
+
   it('installs only fully approved source-text evidence with a hash receipt', async () => {
     const fixture = await createFixture()
     const receiptPath = path.join(fixture.root, 'receipt.json')

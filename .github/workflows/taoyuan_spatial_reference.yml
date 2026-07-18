@@ -2,6 +2,24 @@ name: Taoyuan Spatial Reference
 
 on:
   workflow_dispatch:
+    inputs:
+      district:
+        description: Taoyuan district with promoted source-text review evidence
+        required: true
+        default: taoyuan-district
+        type: choice
+        options:
+          - taoyuan-district
+          - zhongli
+          - daxi
+          - yangmei
+          - luzhu
+          - dayuan
+          - guishan
+          - bade
+          - longtan
+          - pingzhen
+          - guanyin
 
 permissions:
   contents: read
@@ -25,9 +43,9 @@ jobs:
           TDX_ALLOW_GUEST: "true"
         run: npm run ops:fetch-taoyuan-paid-curb -- --out .tmp/taoyuan-spatial-reference/paid_curb_segments.geojson
       - name: Verify non-legal spatial artifact
-        run: npm run ops:taoyuan-expansion-readiness -- --boundary-catalog public/data/coverage.json --spatial .tmp/taoyuan-spatial-reference/paid_curb_segments.geojson --require-spatial --out .tmp/taoyuan-spatial-reference/readiness.md --json-out .tmp/taoyuan-spatial-reference/readiness.json
+        run: npm run ops:taoyuan-expansion-readiness -- --district ${{ inputs.district }} --boundary-catalog public/data/coverage.json --spatial .tmp/taoyuan-spatial-reference/paid_curb_segments.geojson --require-spatial --out .tmp/taoyuan-spatial-reference/readiness.md --json-out .tmp/taoyuan-spatial-reference/readiness.json
       - name: Apply approved review and boundary gate
-        run: npm run ops:promote-taoyuan-spatial-reference -- --input .tmp/taoyuan-spatial-reference/paid_curb_segments.geojson --out .tmp/taoyuan-spatial-reference/taoyuan-district-paid-curb-points.geojson --receipt .tmp/taoyuan-spatial-reference/promotion.json --expected public/data/reference/taoyuan-district-paid-curb-points.geojson
+        run: npm run ops:promote-taoyuan-spatial-reference -- --district ${{ inputs.district }} --input .tmp/taoyuan-spatial-reference/paid_curb_segments.geojson --out .tmp/taoyuan-spatial-reference/${{ inputs.district }}-paid-curb-points.geojson --receipt .tmp/taoyuan-spatial-reference/promotion.json --expected-if-present public/data/reference/${{ inputs.district }}-paid-curb-points.geojson
       - name: Summarize spatial reference
         if: always()
         run: npm run ops:append-workflow-summary -- --append-file .tmp/taoyuan-spatial-reference/readiness.md
@@ -35,10 +53,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: taoyuan-spatial-reference
+          name: taoyuan-spatial-reference-${{ inputs.district }}
           path: |
             .tmp/taoyuan-spatial-reference/paid_curb_segments.geojson
-            .tmp/taoyuan-spatial-reference/taoyuan-district-paid-curb-points.geojson
+            .tmp/taoyuan-spatial-reference/*-paid-curb-points.geojson
             .tmp/taoyuan-spatial-reference/promotion.json
             .tmp/taoyuan-spatial-reference/readiness.md
             .tmp/taoyuan-spatial-reference/readiness.json

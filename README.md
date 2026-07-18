@@ -356,18 +356,22 @@ unpack its official administrative boundaries and fare metadata with
 all 13 boundaries and build the deterministic text-reference pack with
 `npm run ops:build-taoyuan-expansion`. This writes
 `public/data/reference/taoyuan-paid-curb.json` and a Taoyuan District source-text review
-bundle under `.tmp/taoyuan-human-review/`. The current official XML contains 944 records,
-including 270 for Taoyuan District, but no coordinates. Human approval of this CSV confirms
-source transcription only and never confirms parking legality. Rebuilds refresh the
-`.template.csv` file but preserve an existing review CSV. Check structure, source hash,
-and pending counts in a draft bundle with
-`npm run ops:taoyuan-review-status -- --review-dir .tmp/taoyuan-human-review`;
+bundle under `.tmp/taoyuan-human-review/`. Run
+`npm run ops:build-taoyuan-review-all` to produce isolated review bundles for every
+district with source records. The current official XML contains 944 records across 11
+non-empty districts, including 270 for Taoyuan District; Xinwu and Fuxing currently have
+zero records. The dataset has no coordinates. Human approval of a CSV confirms source
+transcription only and never confirms parking legality. Rebuilds refresh each
+`.template.csv` file but preserve an existing review CSV. Check a district's structure,
+source hash, and pending counts with
+`npm run ops:taoyuan-review-status -- --district zhongli --review-dir .tmp/taoyuan-human-review`;
 require every draft row to be explicitly approved with
-`npm run ops:taoyuan-review-gate -- --review-dir .tmp/taoyuan-human-review`.
-After project-owner approval, run `npm run ops:promote-taoyuan-review`; the command
+`npm run ops:taoyuan-review-gate -- --district zhongli --review-dir .tmp/taoyuan-human-review`.
+After project-owner approval, run
+`npm run ops:promote-taoyuan-review -- --district zhongli`; the command
 revalidates every immutable field and source hash before installing the approved CSV
 and manifest under `review-evidence/taoyuan/`. The promoted manifest pins the reviewed
-CSV SHA-256 and approved row count. The default status, gate, readiness,
+CSV SHA-256 and approved row count. Status, gate, readiness,
 and CI commands read this tracked evidence so a clean checkout reproduces the decision.
 With TDX
 guest access, or credentials in `TDX_CLIENT_ID` and `TDX_CLIENT_SECRET`, run
@@ -378,7 +382,8 @@ count, and dropped-record count. A swapped point is repaired only when the origi
 is invalid and the reversed pair is inside the Taoyuan range. The output uses
 `PAID_CURB_SEGMENT` with `legalAnswerEligible: false`; it must not be
 renamed to `parking_spaces.geojson` or used to produce a general legal parking answer.
-For a CI handoff, manually run the `Taoyuan Spatial Reference` workflow. It uses guest
+For a CI handoff, manually run the `Taoyuan Spatial Reference` workflow and select a
+district whose source-text review has been promoted. It uses guest
 access when the optional repository secrets are absent and applies the spatial-only
 `--require-spatial` gate. It then joins the TDX IDs to the tracked approved review, checks
 every text field, excludes points outside the official district boundary, and uploads the
@@ -390,10 +395,10 @@ content drift. This workflow does not commit, ingest, or deploy the artifact.
 After a successful run, install the downloaded artifact without bypassing its safety gate:
 
 ```powershell
-gh run download <run-id> --name taoyuan-spatial-reference --dir .tmp/taoyuan-spatial-reference
+gh run download <run-id> --name taoyuan-spatial-reference-zhongli --dir .tmp/taoyuan-spatial-reference
 npm run ops:install-taoyuan-spatial-reference
-npm run ops:taoyuan-expansion-readiness:strict -- --boundary-catalog public/data/coverage.json
-npm run ops:promote-taoyuan-spatial-reference
+npm run ops:taoyuan-expansion-readiness:strict -- --district zhongli --boundary-catalog public/data/coverage.json
+npm run ops:promote-taoyuan-spatial-reference -- --district zhongli
 npm run ops:build-coverage-catalog
 npm run ops:validate-coverage-catalog
 ```
@@ -402,7 +407,10 @@ The installer validates every feature before atomically replacing
 `data/sources/taoyuan/paid_curb_segments.geojson` and writes a SHA-256 receipt to
 `.tmp/taoyuan-spatial-reference-install.json`. Invalid, empty, or legal-answer-eligible
 artifacts never replace an existing reference.
-The tracked browser pack currently publishes 264 of the 270 reviewed Taoyuan District
+Each promoted district receives its own
+`public/data/reference/<district>-paid-curb-points.geojson` browser pack, and coverage
+catalog generation discovers all such packs. The tracked Taoyuan District pack currently
+publishes 264 of its 270 reviewed
 records as `REPRESENTATIVE_POINT` features. Six source points are excluded because they
 fall outside the official district boundary. These points help users locate and inspect
 official paid-curb source records, but they are not curb-line geometry, parking-space

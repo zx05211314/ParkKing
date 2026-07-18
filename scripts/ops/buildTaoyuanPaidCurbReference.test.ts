@@ -130,4 +130,38 @@ describe('buildTaoyuanPaidCurbReference', () => {
       ),
     ).resolves.toContain('source_text_review_status')
   })
+
+  it('builds review handoffs for every non-empty district', async () => {
+    const root = await fs.mkdtemp(path.join(tmpdir(), 'taoyuan-reference-all-'))
+    const inputPath = path.join(root, 'paid-curb.xml')
+    const manifestPath = path.join(root, 'coverage.json')
+    const outputPath = path.join(root, 'reference.json')
+    const reviewDir = path.join(root, 'review')
+    await fs.writeFile(inputPath, xml, 'utf-8')
+    await fs.writeFile(manifestPath, JSON.stringify(manifest), 'utf-8')
+
+    await writeTaoyuanPaidCurbReference({
+      inputPath,
+      manifestPath,
+      outputPath,
+      reviewDistrictId: 'all',
+      reviewDir,
+    })
+
+    await expect(
+      fs.readFile(
+        path.join(
+          reviewDir,
+          'taoyuan-district-paid-curb-review.csv',
+        ),
+        'utf-8',
+      ),
+    ).resolves.toContain('segment-1')
+    await expect(
+      fs.access(path.join(reviewDir, 'fuxing-paid-curb-review.csv')),
+    ).rejects.toThrow()
+    await expect(
+      fs.readFile(path.join(reviewDir, 'README.md'), 'utf-8'),
+    ).resolves.toContain('taoyuan-district: review 1 source rows')
+  })
 })

@@ -18,10 +18,7 @@ const DEFAULT_DISTRICT = 'taoyuan-district'
 const DEFAULT_BOUNDARY =
   'data/sources/taoyuan/town_boundaries/town_boundaries.shp'
 const DEFAULT_REFERENCE = 'public/data/reference/taoyuan-paid-curb.json'
-const DEFAULT_REVIEW =
-  'review-evidence/taoyuan/taoyuan-district-paid-curb-review.csv'
-const DEFAULT_REVIEW_MANIFEST =
-  'review-evidence/taoyuan/taoyuan-district-paid-curb-review.manifest.json'
+const DEFAULT_REVIEW_DIR = 'review-evidence/taoyuan'
 const DEFAULT_SPATIAL = 'data/sources/taoyuan/paid_curb_segments.geojson'
 
 type ReadinessStatus =
@@ -128,17 +125,27 @@ const getArgValue = (argv: string[], ...flags: string[]) => {
 const hasFlag = (argv: string[], ...flags: string[]) =>
   flags.some((flag) => argv.includes(flag))
 
+export const resolveTaoyuanExpansionReviewPaths = (districtId: string) => {
+  const baseName = `${districtId}-paid-curb-review`
+  return {
+    reviewPath: `${DEFAULT_REVIEW_DIR}/${baseName}.csv`,
+    reviewManifestPath: `${DEFAULT_REVIEW_DIR}/${baseName}.manifest.json`,
+  }
+}
+
 export const parseTaoyuanExpansionReadinessArgs = (
   argv: string[],
 ): TaoyuanExpansionReadinessOptions => {
+  const districtId = getArgValue(argv, '--district') ?? DEFAULT_DISTRICT
   const reviewPath = getArgValue(argv, '--review')
   const reviewManifestPath = getArgValue(
     argv,
     '--review-manifest',
     '--reviewManifest',
   )
+  const defaultReviewPaths = resolveTaoyuanExpansionReviewPaths(districtId)
   return {
-    districtId: getArgValue(argv, '--district') ?? DEFAULT_DISTRICT,
+    districtId,
     boundaryPath: getArgValue(argv, '--boundary') ?? DEFAULT_BOUNDARY,
     boundaryCatalogPath: getArgValue(
       argv,
@@ -146,8 +153,9 @@ export const parseTaoyuanExpansionReadinessArgs = (
       '--boundaryCatalog',
     ),
     referencePath: getArgValue(argv, '--reference') ?? DEFAULT_REFERENCE,
-    reviewPath: reviewPath ?? DEFAULT_REVIEW,
-    reviewManifestPath: reviewManifestPath ?? DEFAULT_REVIEW_MANIFEST,
+    reviewPath: reviewPath ?? defaultReviewPaths.reviewPath,
+    reviewManifestPath:
+      reviewManifestPath ?? defaultReviewPaths.reviewManifestPath,
     requirePinnedReview: reviewPath === null && reviewManifestPath === null,
     spatialPath: getArgValue(argv, '--spatial') ?? DEFAULT_SPATIAL,
     tdxInputPath: getArgValue(argv, '--tdx-input', '--tdxInput'),
@@ -311,14 +319,17 @@ export const runTaoyuanExpansionReadiness = async (
   options: TaoyuanExpansionReadinessOptions = {},
 ): Promise<TaoyuanExpansionReadinessResult> => {
   const districtId = options.districtId ?? DEFAULT_DISTRICT
+  const defaultReviewPaths = resolveTaoyuanExpansionReviewPaths(districtId)
   const boundaryPath = path.resolve(options.boundaryPath ?? DEFAULT_BOUNDARY)
   const boundaryCatalogPath = options.boundaryCatalogPath
     ? path.resolve(options.boundaryCatalogPath)
     : null
   const referencePath = path.resolve(options.referencePath ?? DEFAULT_REFERENCE)
-  const reviewPath = path.resolve(options.reviewPath ?? DEFAULT_REVIEW)
+  const reviewPath = path.resolve(
+    options.reviewPath ?? defaultReviewPaths.reviewPath,
+  )
   const reviewManifestPath = path.resolve(
-    options.reviewManifestPath ?? DEFAULT_REVIEW_MANIFEST,
+    options.reviewManifestPath ?? defaultReviewPaths.reviewManifestPath,
   )
   const spatialPath = path.resolve(options.spatialPath ?? DEFAULT_SPATIAL)
   const savedInputPath = options.tdxInputPath
@@ -434,8 +445,10 @@ export const runTaoyuanExpansionReadiness = async (
   }
   if (!reviewExists) {
     blockers.push('Promoted Taoyuan source-text review evidence is missing.')
-    nextActions.push('npm run ops:build-taoyuan-reference')
-    nextActions.push('npm run ops:promote-taoyuan-review')
+    nextActions.push('npm run ops:build-taoyuan-review-all')
+    nextActions.push(
+      `npm run ops:promote-taoyuan-review -- --district ${districtId}`,
+    )
   } else if (referencePack) {
     try {
       const reviewBuffer = await fs.readFile(reviewPath)
@@ -471,8 +484,18 @@ export const runTaoyuanExpansionReadiness = async (
       blockers.push(
         `${sourceTextReview.pendingRows ?? 'Unknown'} source-text review rows remain pending or unresolved.`,
       )
-      nextActions.push('npm run ops:taoyuan-review-status')
-      nextActions.push('npm run ops:taoyuan-review-gate')
+      const reviewArgs = [
+        '--district',
+        districtId,
+        '--input',
+        quoteArg(reviewPath),
+        '--manifest',
+        quoteArg(reviewManifestPath),
+      ].join(' ')
+      nextActions.push(
+        `npm run ops:taoyuan-review-status -- ${reviewArgs}`,
+      )
+      nextActions.push(`npm run ops:taoyuan-review-gate -- ${reviewArgs}`)
     }
   }
 

@@ -184,6 +184,8 @@ describe('taoyuanExpansionReadiness', () => {
     )
 
     expect(workflow).toContain('workflow_dispatch:')
+    expect(workflow).toContain('district:')
+    expect(workflow).toContain('- zhongli')
     expect(workflow).not.toMatch(/^\s+push:/m)
     expect(workflow).toContain(
       'TDX_CLIENT_ID: ${{ secrets.TDX_CLIENT_ID }}',
@@ -200,11 +202,15 @@ describe('taoyuanExpansionReadiness', () => {
     expect(workflow).toContain('name: taoyuan-spatial-reference')
     expect(workflow).toContain('paid_curb_segments.geojson')
     expect(workflow).toContain(
-      'taoyuan-district-paid-curb-points.geojson',
+      '${{ inputs.district }}-paid-curb-points.geojson',
     )
     expect(workflow).toContain('promotion.json')
     expect(workflow).toContain(
-      '--expected public/data/reference/taoyuan-district-paid-curb-points.geojson',
+      '--district ${{ inputs.district }}',
+    )
+    expect(workflow).toContain('--expected-if-present')
+    expect(workflow).toContain(
+      'name: taoyuan-spatial-reference-${{ inputs.district }}',
     )
     expect(workflow).not.toContain('npm run ingest:')
     expect(workflow).not.toContain('npm run ops:release')
@@ -269,6 +275,23 @@ describe('taoyuanExpansionReadiness', () => {
         'review-evidence/taoyuan/taoyuan-district-paid-curb-review.csv',
       reviewManifestPath:
         'review-evidence/taoyuan/taoyuan-district-paid-curb-review.manifest.json',
+      requirePinnedReview: true,
+    })
+  })
+
+  it('isolates default tracked review evidence by district', () => {
+    const options = parseTaoyuanExpansionReadinessArgs([
+      'node',
+      'readiness',
+      '--district',
+      'zhongli',
+    ])
+
+    expect(options).toMatchObject({
+      districtId: 'zhongli',
+      reviewPath: 'review-evidence/taoyuan/zhongli-paid-curb-review.csv',
+      reviewManifestPath:
+        'review-evidence/taoyuan/zhongli-paid-curb-review.manifest.json',
       requirePinnedReview: true,
     })
   })
@@ -355,6 +378,9 @@ describe('taoyuanExpansionReadiness', () => {
     expect(result.automationErrors).toEqual([])
     expect(result.nextActions).toContain(
       'npm run ops:fetch-taoyuan-paid-curb',
+    )
+    expect(result.nextActions.join('\n')).toContain(
+      'npm run ops:taoyuan-review-gate -- --district taoyuan-district',
     )
     expect(renderTaoyuanExpansionReadiness(result)).toContain(
       'Eligible for legal parking answers: no',

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  getPaidCurbSpatialReferenceFileName,
+  getPaidCurbSpatialReferenceUrl,
   getTaoyuanDistrictPaidCurbSpatialReferenceUrl,
   parsePaidCurbSpatialReferencePack,
 } from './paidCurbSpatialReference'
@@ -51,6 +53,15 @@ describe('paidCurbSpatialReference', () => {
     expect(parsePaidCurbSpatialReferencePack(pack)).toEqual(pack)
     expect(getTaoyuanDistrictPaidCurbSpatialReferenceUrl()).toBe(
       '/data/reference/taoyuan-district-paid-curb-points.geojson',
+    )
+    expect(getPaidCurbSpatialReferenceFileName('zhongli')).toBe(
+      'zhongli-paid-curb-points.geojson',
+    )
+    expect(getPaidCurbSpatialReferenceUrl('zhongli')).toBe(
+      '/data/reference/zhongli-paid-curb-points.geojson',
+    )
+    expect(() => getPaidCurbSpatialReferenceUrl('../zhongli')).toThrow(
+      'Invalid paid-curb spatial reference district',
     )
   })
 
