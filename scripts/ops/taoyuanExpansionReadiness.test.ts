@@ -177,7 +177,7 @@ describe('taoyuanExpansionReadiness', () => {
     expect(workflow).toContain('.tmp/taoyuan-expansion-readiness.json')
   })
 
-  it('keeps TDX acquisition manual, non-publishing, and artifact-only', async () => {
+  it('keeps TDX acquisition manual, non-deploying, and artifact-only', async () => {
     const workflow = await fs.readFile(
       path.resolve('.github/workflows/taoyuan_spatial_reference.yml'),
       'utf-8',
@@ -194,8 +194,18 @@ describe('taoyuanExpansionReadiness', () => {
     expect(workflow).toContain('TDX_ALLOW_GUEST: "true"')
     expect(workflow).toContain('npm run ops:fetch-taoyuan-paid-curb')
     expect(workflow).toContain('--require-spatial')
+    expect(workflow).toContain(
+      'npm run ops:promote-taoyuan-spatial-reference',
+    )
     expect(workflow).toContain('name: taoyuan-spatial-reference')
     expect(workflow).toContain('paid_curb_segments.geojson')
+    expect(workflow).toContain(
+      'taoyuan-district-paid-curb-points.geojson',
+    )
+    expect(workflow).toContain('promotion.json')
+    expect(workflow).toContain(
+      '--expected public/data/reference/taoyuan-district-paid-curb-points.geojson',
+    )
     expect(workflow).not.toContain('npm run ingest:')
     expect(workflow).not.toContain('npm run ops:release')
     expect(workflow).not.toContain('npm run ops:render')

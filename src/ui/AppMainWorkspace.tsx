@@ -103,6 +103,12 @@ export const AppMainWorkspace = ({
                 <span className="legend-swatch parking-space" /> Marked spaces
               </div>
             ) : null}
+            {(mapViewProps.paidCurbReferencePoints?.features.length ?? 0) > 0 ? (
+              <div>
+                <span className="legend-swatch paid-curb-reference" /> Paid-curb
+                representative points
+              </div>
+            ) : null}
             {selectedParkingSpaceMarkerCount > 0 ? (
               <div>
                 <span className="legend-swatch parking-space-option" /> Numbered targets

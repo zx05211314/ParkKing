@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { PaidCurbReferencePack } from '../../src/data/paidCurbReference'
 import {
   validateTaoyuanPaidCurbReview,
+  sha256TaoyuanReviewCsv,
   type CsvRow,
   type ReviewManifest,
 } from './validateTaoyuanPaidCurbReview'
@@ -171,5 +172,12 @@ describe('validateTaoyuanPaidCurbReview', () => {
     expect(result.errors).toContain(
       'Review manifest must pin approvedRecordCount for promoted evidence.',
     )
+  })
+
+  it('canonicalizes LF and CRLF before hashing review evidence', () => {
+    const lf = Buffer.from('header\nvalue\n', 'utf-8')
+    const crlf = Buffer.from('header\r\nvalue\r\n', 'utf-8')
+
+    expect(sha256TaoyuanReviewCsv(lf)).toBe(sha256TaoyuanReviewCsv(crlf))
   })
 })

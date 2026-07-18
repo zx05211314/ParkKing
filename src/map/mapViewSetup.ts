@@ -11,6 +11,7 @@ import type { Map, MapLayerMouseEvent } from 'maplibre-gl'
 
 interface InitializeMapViewContentOptions {
   coverageBoundaryData: FeatureCollection<Polygon | MultiPolygon> | null
+  paidCurbReferenceData: FeatureCollection<Point>
   zonesData: FeatureCollection<Polygon | MultiPolygon>
   intersectionZonesData: FeatureCollection<Polygon | MultiPolygon>
   crosswalkZonesData: FeatureCollection<Polygon | MultiPolygon>
@@ -48,6 +49,7 @@ export const initializeMapViewContent = (
   map: Map,
   {
     coverageBoundaryData,
+    paidCurbReferenceData,
     zonesData,
     intersectionZonesData,
     crosswalkZonesData,
@@ -115,6 +117,24 @@ export const initializeMapViewContent = (
         '#b3bccb',
       ],
       'line-opacity': 0.9,
+    },
+  })
+
+  map.addSource('paid-curb-reference-points', {
+    type: 'geojson',
+    data: paidCurbReferenceData,
+  })
+
+  map.addLayer({
+    id: 'paid-curb-reference-points',
+    type: 'circle',
+    source: 'paid-curb-reference-points',
+    paint: {
+      'circle-radius': 5.5,
+      'circle-color': 'rgba(8, 20, 26, 0.76)',
+      'circle-stroke-color': '#57c5e8',
+      'circle-stroke-width': 2,
+      'circle-opacity': 0.9,
     },
   })
 

@@ -10,7 +10,9 @@ describe('PaidCurbReferencePanel', () => {
         state={{
           status: 'ready',
           sourceUrl: '/data/reference/taoyuan-paid-curb.json',
+          spatialSourceUrl: null,
           error: null,
+          spatialReference: null,
           district: {
             districtId: 'taoyuan-district',
             districtName: 'Taoyuan',

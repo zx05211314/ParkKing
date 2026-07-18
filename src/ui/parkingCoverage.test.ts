@@ -88,6 +88,17 @@ const catalog: RuntimeCoverageCatalog = {
         geometryAvailable: false,
         legalAnswerEligible: false,
         requiresHumanReview: true,
+        spatialReference: {
+          kind: 'PAID_CURB_SEGMENT',
+          url: '/data/reference/taoyuan-district-paid-curb-points.geojson',
+          dataSha256: 'b'.repeat(64),
+          sourceSha256: 'c'.repeat(64),
+          reviewSha256: 'd'.repeat(64),
+          featureCount: 264,
+          excludedFeatureCount: 6,
+          geometryPrecision: 'REPRESENTATIVE_POINT',
+          legalAnswerEligible: false,
+        },
       },
       boundaryBBox: [121.2, 24.9, 121.4, 25.1],
       boundaryGeometry: {
@@ -190,6 +201,8 @@ describe('parkingCoverage', () => {
     expect(state.notice).toContain('Taoyuan, Taoyuan City')
     expect(state.notice).toContain('paid-curb reference sources only')
     expect(state.notice).toContain('270 official source rows')
+    expect(state.notice).toContain('264 reviewed representative points')
+    expect(state.notice).toContain('not curb geometry')
     expect(state.notice).toContain('no parking legality answer')
   })
 })

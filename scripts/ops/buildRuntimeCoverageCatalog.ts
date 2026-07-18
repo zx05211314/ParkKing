@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -12,6 +13,10 @@ import {
   getPaidCurbReferenceUrl,
   parsePaidCurbReferencePack,
 } from '../../src/data/paidCurbReference'
+import {
+  getTaoyuanDistrictPaidCurbSpatialReferenceUrl,
+  parsePaidCurbSpatialReferencePack,
+} from '../../src/data/paidCurbSpatialReference'
 import {
   parseRuntimeCoverageCatalog,
   type RuntimeCoverageCatalog,
@@ -31,6 +36,8 @@ const DEFAULT_TAOYUAN_BOUNDARIES =
 const DEFAULT_OUTPUT = 'public/data/coverage.json'
 const DEFAULT_TAOYUAN_REFERENCE =
   'public/data/reference/taoyuan-paid-curb.json'
+const DEFAULT_TAOYUAN_SPATIAL_REFERENCE =
+  'public/data/reference/taoyuan-district-paid-curb-points.geojson'
 const DEFAULT_SIMPLIFY_TOLERANCE = 0.00002
 
 const REGION_BOUNDARY_ID_KEYS: Record<string, string[]> = {
@@ -167,8 +174,22 @@ export const buildRuntimeCoverageCatalog = (
   return parseRuntimeCoverageCatalog({ schemaVersion: 1, districts })
 }
 
-export const loadTaoyuanCoverageReferences = async (filePath: string) => {
+const sha256 = (buffer: Buffer) =>
+  createHash('sha256').update(buffer).digest('hex')
+
+export const loadTaoyuanCoverageReferences = async (
+  filePath: string,
+  spatialReferencePath?: string | null,
+) => {
   const pack = parsePaidCurbReferencePack(await readJson<unknown>(filePath))
+  const spatialBuffer = spatialReferencePath
+    ? await fs.readFile(spatialReferencePath)
+    : null
+  const spatialPack = spatialBuffer
+    ? parsePaidCurbSpatialReferencePack(
+        JSON.parse(spatialBuffer.toString('utf-8')) as unknown,
+      )
+    : null
   return new Map<string, RuntimeCoverageReferenceData>(
     pack.districts.map((district) => [
       district.boundaryFeatureId,
@@ -180,6 +201,23 @@ export const loadTaoyuanCoverageReferences = async (filePath: string) => {
         geometryAvailable: false,
         legalAnswerEligible: false,
         requiresHumanReview: true,
+        ...(spatialPack?.metadata.districtId === district.districtId &&
+        spatialBuffer
+          ? {
+              spatialReference: {
+                kind: spatialPack.metadata.evidenceKind,
+                url: getTaoyuanDistrictPaidCurbSpatialReferenceUrl(),
+                dataSha256: sha256(spatialBuffer),
+                sourceSha256: spatialPack.metadata.sourceSha256,
+                reviewSha256: spatialPack.metadata.reviewSha256,
+                featureCount: spatialPack.metadata.featureCount,
+                excludedFeatureCount:
+                  spatialPack.metadata.excludedFeatureCount,
+                geometryPrecision: spatialPack.metadata.geometryPrecision,
+                legalAnswerEligible: false,
+              },
+            }
+          : {}),
       },
     ]),
   )
@@ -269,6 +307,10 @@ const run = async () => {
         path.resolve(
           getArgValue(process.argv, '--taoyuan-reference') ??
             DEFAULT_TAOYUAN_REFERENCE,
+        ),
+        path.resolve(
+          getArgValue(process.argv, '--taoyuan-spatial-reference') ??
+            DEFAULT_TAOYUAN_SPATIAL_REFERENCE,
         ),
       )
     : undefined

@@ -7,6 +7,7 @@ import { parsePaidCurbReferencePack } from '../../src/data/paidCurbReference'
 import {
   type CsvRow,
   type ReviewManifest,
+  sha256TaoyuanReviewCsv,
   validateTaoyuanPaidCurbReview,
 } from './validateTaoyuanPaidCurbReview'
 
@@ -127,7 +128,7 @@ export const promoteTaoyuanPaidCurbReview = async (
     manifest,
     rows,
     districtId,
-    reviewSha256: sha256(reviewBuffer),
+    reviewSha256: sha256TaoyuanReviewCsv(reviewBuffer),
     requireApproved: true,
   })
   if (!validation.pass || !validation.approved) {
@@ -148,7 +149,7 @@ export const promoteTaoyuanPaidCurbReview = async (
     legalAnswerEligible: false,
     allowedStatuses: manifest.allowedStatuses,
     reviewCsv: path.basename(destinationReviewPath),
-    reviewSha256: sha256(reviewBuffer),
+    reviewSha256: sha256TaoyuanReviewCsv(reviewBuffer),
     approvedRecordCount: validation.statusCounts.APPROVED_SOURCE_TEXT,
   }
   const promotedManifestBuffer = Buffer.from(
@@ -164,7 +165,7 @@ export const promoteTaoyuanPaidCurbReview = async (
       manifestPath: portablePath(manifestPath),
       referencePath: portablePath(referencePath),
       sourceSha256: pack.source.sha256,
-      reviewSha256: sha256(reviewBuffer),
+      reviewSha256: sha256TaoyuanReviewCsv(reviewBuffer),
       manifestSha256: sha256(manifestBuffer),
     },
     destination: {

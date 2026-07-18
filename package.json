@@ -48,6 +48,7 @@
     "ops:taoyuan-review-status": "tsx scripts/ops/validateTaoyuanPaidCurbReview.ts",
     "ops:taoyuan-review-gate": "tsx scripts/ops/validateTaoyuanPaidCurbReview.ts --require-approved",
     "ops:promote-taoyuan-review": "tsx scripts/ops/promoteTaoyuanPaidCurbReview.ts",
+    "ops:promote-taoyuan-spatial-reference": "tsx scripts/ops/promoteTaoyuanSpatialReference.ts",
     "ops:taoyuan-expansion-readiness": "tsx scripts/ops/taoyuanExpansionReadiness.ts",
     "ops:taoyuan-expansion-readiness:report": "tsx scripts/ops/taoyuanExpansionReadiness.ts --out .tmp/taoyuan-expansion-readiness.md --json-out .tmp/taoyuan-expansion-readiness.json",
     "ops:taoyuan-expansion-readiness:ci": "npm run ops:taoyuan-expansion-readiness:report -- --boundary-catalog public/data/coverage.json",

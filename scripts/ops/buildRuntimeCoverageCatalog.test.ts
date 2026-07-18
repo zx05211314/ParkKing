@@ -5,8 +5,10 @@ import { buildRuntimeCoverageCatalog } from './buildRuntimeCoverageCatalog'
 import {
   validateRuntimeCoverageCatalog,
   validateRuntimeCoverageReferences,
+  validateRuntimeCoverageSpatialReference,
 } from './validateRuntimeCoverageCatalog'
 import type { PaidCurbReferencePack } from '../../src/data/paidCurbReference'
+import type { PaidCurbSpatialReferencePack } from '../../src/data/paidCurbSpatialReference'
 
 const manifest: CoverageManifest = {
   schemaVersion: 1,
@@ -165,6 +167,17 @@ describe('buildRuntimeCoverageCatalog', () => {
       geometryAvailable: false as const,
       legalAnswerEligible: false as const,
       requiresHumanReview: true as const,
+      spatialReference: {
+        kind: 'PAID_CURB_SEGMENT' as const,
+        url: '/data/reference/taoyuan-district-paid-curb-points.geojson',
+        dataSha256: 'b'.repeat(64),
+        sourceSha256: 'c'.repeat(64),
+        reviewSha256: 'd'.repeat(64),
+        featureCount: 1,
+        excludedFeatureCount: 0,
+        geometryPrecision: 'REPRESENTATIVE_POINT' as const,
+        legalAnswerEligible: false as const,
+      },
     }
     const catalog = buildRuntimeCoverageCatalog(
       taoyuanManifest,
@@ -218,6 +231,61 @@ describe('buildRuntimeCoverageCatalog', () => {
       }),
     ).toContain(
       `taoyuan-district: reference sourceSha256 is ${'a'.repeat(64)}, expected ${'b'.repeat(64)}`,
+    )
+    const spatialPack = {
+      type: 'FeatureCollection',
+      metadata: {
+        schemaVersion: 1,
+        districtId: 'taoyuan-district',
+        boundaryFeatureId: '68000010',
+        evidenceKind: 'PAID_CURB_SEGMENT',
+        sourceDataset: 'TDX OnStreet ParkingSegment v1',
+        sourceSha256: 'c'.repeat(64),
+        sourceFeatureCount: 1,
+        reviewSha256: 'd'.repeat(64),
+        reviewRecordCount: 1,
+        featureCount: 1,
+        excludedFeatureCount: 0,
+        excluded: [],
+        geometryPrecision: 'REPRESENTATIVE_POINT',
+        legalAnswerEligible: false,
+      },
+      features: [
+        {
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [121.3, 24.99],
+          },
+          properties: {
+            evidenceKind: 'PAID_CURB_SEGMENT',
+            parkingSegmentId: 'segment-1',
+            districtId: 'taoyuan-district',
+            description: 'Road A',
+            fareDescription: null,
+            hasChargingPoint: false,
+            geometryPrecision: 'REPRESENTATIVE_POINT',
+            legalAnswerEligible: false,
+            sourceDataset: 'TDX OnStreet ParkingSegment v1',
+          },
+        },
+      ],
+    } satisfies PaidCurbSpatialReferencePack
+    expect(
+      validateRuntimeCoverageSpatialReference(
+        catalog,
+        spatialPack,
+        'b'.repeat(64),
+      ),
+    ).toEqual([])
+    expect(
+      validateRuntimeCoverageSpatialReference(
+        catalog,
+        spatialPack,
+        'e'.repeat(64),
+      ),
+    ).toContain(
+      `taoyuan-district: spatial reference dataSha256 is ${'b'.repeat(64)}, expected ${'e'.repeat(64)}`,
     )
   })
 })

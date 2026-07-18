@@ -9,6 +9,8 @@ CSV and manifest. The promotion gate requires every row to be
 `APPROVED_SOURCE_TEXT` and rejects source drift.
 The promoted manifest also pins the reviewed CSV SHA-256 and approved row count,
 so partial or out-of-band changes fail closed.
+The SHA uses UTF-8 text with line endings canonicalized to LF so Windows and
+Linux checkouts validate the same reviewed content.
 
 Approval covers source transcription only. Geometry availability and
 `legalAnswerEligible` must remain false.

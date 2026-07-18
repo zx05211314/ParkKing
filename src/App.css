@@ -1857,6 +1857,11 @@
   border: 1px solid rgba(222, 246, 255, 0.65);
 }
 
+.legend-swatch.paid-curb-reference {
+  border: 2px solid #57c5e8;
+  background: rgba(8, 20, 26, 0.76);
+}
+
 .legend-swatch.parking-space-option {
   background: linear-gradient(135deg, #7ee3ff, #ffe07a);
   border: 1px solid rgba(255, 240, 190, 0.72);
