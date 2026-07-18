@@ -667,9 +667,15 @@ const readManifestMetadata = async (response: Response) => {
     releaseId?: unknown
     districts?: unknown
   }
-  const districts = Array.isArray(parsed.districts)
-    ? parsed.districts.filter(
-        (district): district is { districtId: string; datasetHash: string } => {
+  const rawDistricts = Array.isArray(parsed.districts) ? parsed.districts : []
+  const districts = rawDistricts.filter(
+        (
+          district,
+        ): district is {
+          districtId: string
+          datasetHash: string
+          publishedAt: string
+        } => {
           const record =
             district !== null &&
             typeof district === 'object' &&
@@ -678,14 +684,36 @@ const readManifestMetadata = async (response: Response) => {
               : null
           return (
             typeof record?.districtId === 'string' &&
-            typeof record.datasetHash === 'string'
+            typeof record.datasetHash === 'string' &&
+            typeof record.publishedAt === 'string'
           )
         },
       )
-    : []
+  const districtIds = districts.map((district) => district.districtId)
+  const duplicateDistricts = [
+    ...new Set(
+      districtIds.filter(
+        (districtId, index) => districtIds.indexOf(districtId) !== index,
+      ),
+    ),
+  ]
+  const errors = [
+    ...(rawDistricts.length === 0
+      ? ['Manifest does not include district dataset identities']
+      : []),
+    ...(districts.length !== rawDistricts.length
+      ? ['Manifest has incomplete district dataset identities']
+      : []),
+    ...(duplicateDistricts.length > 0
+      ? [
+          `Manifest has duplicate district dataset identities: ${duplicateDistricts.join(', ')}`,
+        ]
+      : []),
+  ]
   return {
     releaseId: typeof parsed.releaseId === 'string' ? parsed.releaseId : null,
     districts,
+    errors,
   }
 }
 
@@ -730,9 +758,7 @@ export const smokeReleaseDataAssetUrls = async (
           `Manifest releaseId ${manifestReleaseId ?? 'missing'} does not match ${options.releaseId}`,
         )
       }
-      if (manifestMetadata.districts.length === 0) {
-        errors.push('Manifest does not include district dataset hashes')
-      }
+      errors.push(...manifestMetadata.errors)
     } catch (error) {
       errors.push(
         `Manifest URL did not return valid JSON: ${

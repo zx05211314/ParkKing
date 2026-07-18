@@ -43,7 +43,16 @@ const writeHandoffFixture = async (
     await fs.writeFile(zipPath, 'zip', 'utf-8')
     await fs.writeFile(
       manifestPath,
-      JSON.stringify({ releaseId, districts: [{ districtId: 'xinyi', datasetHash: 'hash' }] }),
+      JSON.stringify({
+        releaseId,
+        districts: [
+          {
+            districtId: 'xinyi',
+            datasetHash: 'hash',
+            publishedAt: '2026-05-31T00:00:00Z',
+          },
+        ],
+      }),
       'utf-8',
     )
   }
@@ -60,7 +69,13 @@ const writeHandoffFixture = async (
       p3ReadinessPass: true,
       deployReadinessPass: true,
       districts: ['xinyi'],
-      expectedDatasets: [{ districtId: 'xinyi', datasetHash: 'hash' }],
+      expectedDatasets: [
+        {
+          districtId: 'xinyi',
+          datasetHash: 'hash',
+          publishedAt: '2026-05-31T00:00:00Z',
+        },
+      ],
       releaseFileCount: 2,
       releaseTotalBytes: 5,
       installedFileCount: 2,
@@ -104,7 +119,13 @@ const publishedReleaseFetch = (): typeof fetch =>
       return new Response(
         JSON.stringify({
           releaseId: '20260531_abc1234',
-          districts: [{ districtId: 'xinyi', datasetHash: 'hash' }],
+          districts: [
+            {
+              districtId: 'xinyi',
+              datasetHash: 'hash',
+              publishedAt: '2026-05-31T00:00:00Z',
+            },
+          ],
         }),
         { status: 200 },
       )

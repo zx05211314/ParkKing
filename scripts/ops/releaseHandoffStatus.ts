@@ -57,7 +57,9 @@ export interface ReleaseHandoffReleaseLookup {
 export interface ReleaseHandoffPublishedManifestDistrict {
   districtId: string
   expectedDatasetHash: string
+  expectedPublishedAt: string
   publishedDatasetHash: string | null
+  publishedPublishedAt: string | null
   pass: boolean
   error: string | null
 }
@@ -346,10 +348,12 @@ const normalizeExpectedDatasets = (handoff: RenderDeploymentHandoffResult) =>
               ? (entry as unknown as Record<string, unknown>)
               : null
           return typeof record?.districtId === 'string' &&
-            typeof record.datasetHash === 'string'
+            typeof record.datasetHash === 'string' &&
+            typeof record.publishedAt === 'string'
             ? {
                 districtId: record.districtId,
                 datasetHash: record.datasetHash,
+                publishedAt: record.publishedAt,
               }
             : null
         })
@@ -359,33 +363,89 @@ const normalizeExpectedDatasets = (handoff: RenderDeploymentHandoffResult) =>
           ): entry is {
             districtId: string
             datasetHash: string
+            publishedAt: string
           } => entry !== null,
         )
     : []
 
-const parsePublishedManifestDistricts = (manifest: PublishedReleaseManifest) => {
-  if (!Array.isArray(manifest.districts)) {
-    return new Map<string, string>()
+const getDatasetIdentityErrors = (value: unknown, label: string) => {
+  if (!Array.isArray(value) || value.length === 0) {
+    return [`${label} is empty`]
   }
-  return new Map(
-    manifest.districts.flatMap((entry) => {
-      const record =
-        entry !== null && typeof entry === 'object' && !Array.isArray(entry)
-          ? (entry as Record<string, unknown>)
-          : null
-      return typeof record?.districtId === 'string' &&
-        typeof record.datasetHash === 'string'
-        ? [[record.districtId, record.datasetHash] as const]
-        : []
-    }),
+  const records = value.map((entry) =>
+    entry !== null && typeof entry === 'object' && !Array.isArray(entry)
+      ? (entry as Record<string, unknown>)
+      : null,
   )
+  const incomplete = records.flatMap((record, index) => {
+    const districtId =
+      typeof record?.districtId === 'string'
+        ? record.districtId
+        : `entry ${index + 1}`
+    return typeof record?.districtId === 'string' &&
+      typeof record.datasetHash === 'string' &&
+      typeof record.publishedAt === 'string'
+      ? []
+      : [districtId]
+  })
+  const districtIds = records.flatMap((record) =>
+    typeof record?.districtId === 'string' ? [record.districtId] : [],
+  )
+  const duplicates = [
+    ...new Set(
+      districtIds.filter(
+        (districtId, index) => districtIds.indexOf(districtId) !== index,
+      ),
+    ),
+  ]
+  return [
+    ...(incomplete.length > 0
+      ? [`${label} has incomplete identities: ${incomplete.join(', ')}`]
+      : []),
+    ...(duplicates.length > 0
+      ? [`${label} has duplicate identities: ${duplicates.join(', ')}`]
+      : []),
+  ]
+}
+
+const parsePublishedManifestDistricts = (manifest: PublishedReleaseManifest) => {
+  const errors = getDatasetIdentityErrors(
+    manifest.districts,
+    'Published manifest districts',
+  )
+  const identities = Array.isArray(manifest.districts)
+    ? manifest.districts.flatMap((entry) => {
+        const record =
+          entry !== null && typeof entry === 'object' && !Array.isArray(entry)
+            ? (entry as Record<string, unknown>)
+            : null
+        return typeof record?.districtId === 'string' &&
+          typeof record.datasetHash === 'string' &&
+          typeof record.publishedAt === 'string'
+          ? [
+              [
+                record.districtId,
+                {
+                  datasetHash: record.datasetHash,
+                  publishedAt: record.publishedAt,
+                },
+              ] as const,
+            ]
+          : []
+      })
+    : []
+  return { identities: new Map(identities), errors }
 }
 
 const checkPublishedManifestParity = async (
   params: {
     releaseId: string
     manifestUrl: string
-    expectedDatasets: Array<{ districtId: string; datasetHash: string }>
+    expectedDatasets: Array<{
+      districtId: string
+      datasetHash: string
+      publishedAt: string
+    }>
     timeoutMs: number
     skip: boolean
   },
@@ -424,20 +484,35 @@ const checkPublishedManifestParity = async (
       typeof manifest.releaseId === 'string' ? manifest.releaseId : null
     const publishedDistricts = parsePublishedManifestDistricts(manifest)
     const districts = params.expectedDatasets.map((expected) => {
-      const publishedDatasetHash = publishedDistricts.get(expected.districtId) ?? null
-      const pass = publishedDatasetHash === expected.datasetHash
+      const publishedIdentity =
+        publishedDistricts.identities.get(expected.districtId) ?? null
+      const districtErrors = [
+        ...(publishedIdentity ? [] : ['missing from published manifest']),
+        ...(publishedIdentity &&
+        publishedIdentity.datasetHash !== expected.datasetHash
+          ? ['dataset hash mismatch']
+          : []),
+        ...(publishedIdentity &&
+        publishedIdentity.publishedAt !== expected.publishedAt
+          ? ['publishedAt mismatch']
+          : []),
+      ]
       return {
         districtId: expected.districtId,
         expectedDatasetHash: expected.datasetHash,
-        publishedDatasetHash,
-        pass,
-        error: pass
-          ? null
-          : publishedDatasetHash === null
-            ? 'missing from published manifest'
-            : 'dataset hash mismatch',
+        expectedPublishedAt: expected.publishedAt,
+        publishedDatasetHash: publishedIdentity?.datasetHash ?? null,
+        publishedPublishedAt: publishedIdentity?.publishedAt ?? null,
+        pass: districtErrors.length === 0,
+        error: districtErrors.length > 0 ? districtErrors.join('; ') : null,
       }
     })
+    const expectedDistrictIds = new Set(
+      params.expectedDatasets.map((dataset) => dataset.districtId),
+    )
+    const unexpectedDistricts = [
+      ...publishedDistricts.identities.keys(),
+    ].filter((districtId) => !expectedDistrictIds.has(districtId))
     const errors = [
       ...(publishedReleaseId === params.releaseId
         ? []
@@ -446,6 +521,12 @@ const checkPublishedManifestParity = async (
               publishedReleaseId ?? 'missing'
             } does not match ${params.releaseId}`,
           ]),
+      ...publishedDistricts.errors,
+      ...(unexpectedDistricts.length > 0
+        ? [
+            `published manifest has unexpected districts: ${unexpectedDistricts.join(', ')}`,
+          ]
+        : []),
       ...districts
         .filter((district) => !district.pass)
         .map(
@@ -544,6 +625,10 @@ export const buildReleaseHandoffStatus = async (
   const packageUrl = requireString(handoff.packageUrl, 'handoff.packageUrl')
   const manifestUrl = requireString(handoff.manifestUrl, 'handoff.manifestUrl')
   const expectedDatasets = normalizeExpectedDatasets(handoff)
+  const expectedDatasetIdentityErrors = getDatasetIdentityErrors(
+    handoff.expectedDatasets,
+    'Local handoff expectedDatasets',
+  )
   const localAssetPaths = localAssetPathsForHandoff(handoff, releaseId, releaseDir)
   const missingLocalAssets = (
     await Promise.all(
@@ -598,6 +683,7 @@ export const buildReleaseHandoffStatus = async (
   if (!handoffReady) {
     blockers.push('Local Render deployment handoff is not READY')
   }
+  blockers.push(...expectedDatasetIdentityErrors)
   if (!localAssetsPresent) {
     const message = `Local handoff release assets are missing: ${missingLocalAssets
       .map((asset) => asset.assetPath)
@@ -639,9 +725,6 @@ export const buildReleaseHandoffStatus = async (
     warnings.push(
       `Could not determine GitHub Release status for ${tag}: ${releaseLookup.error ?? 'unknown error'}`,
     )
-  }
-  if (releaseLookup.published === true && expectedDatasets.length === 0) {
-    warnings.push('Local handoff does not include expected dataset hashes')
   }
   if (publishedManifest.pass === false) {
     blockers.push(
@@ -785,14 +868,14 @@ export const renderReleaseHandoffStatus = (
     `- Release ID: ${result.publishedManifest.releaseId ?? '-'}`,
     `- Error: ${result.publishedManifest.error ?? '-'}`,
     '',
-    '| Status | District | Local handoff hash | Published hash | Error |',
-    '| --- | --- | --- | --- | --- |',
+    '| Status | District | Local handoff hash | Published hash | Local publishedAt | Published publishedAt | Error |',
+    '| --- | --- | --- | --- | --- | --- | --- |',
     ...(result.publishedManifest.districts.length > 0
       ? result.publishedManifest.districts.map(
           (district) =>
-            `| ${district.pass ? 'PASS' : 'FAIL'} | ${district.districtId} | ${district.expectedDatasetHash} | ${district.publishedDatasetHash ?? '-'} | ${district.error ?? ''} |`,
+            `| ${district.pass ? 'PASS' : 'FAIL'} | ${district.districtId} | ${district.expectedDatasetHash} | ${district.publishedDatasetHash ?? '-'} | ${district.expectedPublishedAt} | ${district.publishedPublishedAt ?? '-'} | ${district.error ?? ''} |`,
         )
-      : ['| - | - | - | - | - |']),
+      : ['| - | - | - | - | - | - | - |']),
     '',
     '## Commands',
     '',
