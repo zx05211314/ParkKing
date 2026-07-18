@@ -352,6 +352,75 @@ describe('releaseDataWorkflow', () => {
     }
   })
 
+  it('fails release URL smoke on incomplete or duplicate district identities', async () => {
+    const releaseId = 'release-identities'
+    const server = createServer((request, response) => {
+      if (request.url === '/data.zip' && request.method === 'HEAD') {
+        response.writeHead(200)
+        response.end()
+        return
+      }
+      if (request.url === '/manifest.json' && request.method === 'GET') {
+        response.writeHead(200, {
+          'content-type': 'application/json',
+        })
+        response.end(
+          JSON.stringify({
+            releaseId,
+            districts: [
+              {
+                districtId: 'xinyi',
+                datasetHash: 'hash-xinyi',
+                publishedAt: '2026-05-01T00:00:00Z',
+              },
+              {
+                districtId: 'xinyi',
+                datasetHash: 'hash-xinyi',
+                publishedAt: '2026-05-01T00:00:00Z',
+              },
+              {
+                districtId: 'daan',
+                datasetHash: 'hash-daan',
+              },
+            ],
+          }),
+        )
+        return
+      }
+      response.writeHead(404)
+      response.end()
+    })
+    await new Promise<void>((resolve) => {
+      server.listen(0, '127.0.0.1', resolve)
+    })
+
+    try {
+      const address = server.address()
+      if (!address || typeof address === 'string') {
+        throw new Error('Test server did not bind to a TCP port')
+      }
+      const baseUrl = `http://127.0.0.1:${address.port}`
+      const result = await smokeReleaseDataAssetUrls({
+        releaseId,
+        packageUrl: `${baseUrl}/data.zip`,
+        manifestUrl: `${baseUrl}/manifest.json`,
+        timeoutMs: 1000,
+      })
+
+      expect(result.pass).toBe(false)
+      expect(result.errors).toEqual(
+        expect.arrayContaining([
+          'Manifest has incomplete district dataset identities',
+          'Manifest has duplicate district dataset identities: xinyi',
+        ]),
+      )
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()))
+      })
+    }
+  })
+
   it('publishes release assets through GitHub REST API when token and repository are provided', async () => {
     const base = await fs.mkdtemp(path.join(tmpdir(), 'release-data-api-'))
     const notesPath = path.join(base, 'readiness.md')

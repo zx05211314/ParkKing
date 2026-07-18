@@ -57,7 +57,8 @@ deploy-readiness, publish, and URL-smoke gates must still pass.
 upload local assets to one of these tags: creating the tag starts Release Data
 Package, which re-ingests current sources and may replace any assets uploaded
 before it finishes. The completed workflow artifact, published manifest, and
-dataset hashes are authoritative.
+per-district dataset identities (`datasetHash` plus `publishedAt`) are
+authoritative.
 
 For a custom tag that does not match `data-*`, `ops:release-data-publish` can use
 the GitHub REST API directly when `GH_TOKEN` or `GITHUB_TOKEN` and
@@ -230,7 +231,7 @@ The deploy readiness gate installs the latest `dist/releases` zip/manifest pair 
 and parking-answer API smokes against the installed release, then starts the app
 server with `PARKKING_PARKING_ANSWER_DATASET_ROOT` pointing at that installed
 release. The app-server smoke verifies `/api/parking-answer/ready` exposes
-district readiness metadata with dataset hashes, probes the mounted same-origin
+district readiness metadata with dataset identities, probes the mounted same-origin
 geocode, route, sync, and parking-answer health/ready endpoints, and runs a sync
 issue-report roundtrip before the app server is accepted. The same command writes
 `.tmp/deploy-readiness.md` and `.tmp/deploy-readiness.json`, and the release
@@ -269,7 +270,9 @@ npm run ops:release-data-url-smoke
 The release workflow runs this automatically after `ops:release-data-publish`.
 It checks the package URL with `HEAD`, falls back to `GET` with
 `Range: bytes=0-0` when `HEAD` is rejected, fetches the manifest URL, and
-verifies the manifest `releaseId` matches the released package.
+verifies the manifest `releaseId` matches the released package. It also rejects
+incomplete or duplicate per-district `datasetHash` plus `publishedAt`
+identities.
 
 After Render finishes deploying those release URLs, verify the live service
 against the handoff contract:
@@ -321,7 +324,7 @@ probes the live same-origin geocode, route, sync, and parking-answer
 health/ready endpoints, verifies geocoder/routing readiness exposes positive
 upstream request timeouts, runs a sync issue-report roundtrip, and verifies sync
 CORS rejects an untrusted browser origin instead of returning wildcard access.
-When live dataset hashes differ from the release contract, the generated
+When live dataset identities differ from the release contract, the generated
 markdown and JSON reports include a release-package remediation block with the
 exact Render `PARKKING_RELEASE_PACKAGE_URL` and
 `PARKKING_RELEASE_MANIFEST_URL` values, full build/redeploy steps, and the

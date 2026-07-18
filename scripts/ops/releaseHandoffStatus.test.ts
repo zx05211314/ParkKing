@@ -21,7 +21,11 @@ const writeStatusInputs = async (
     releaseId?: string
     tag?: string
     createAssetFiles?: boolean
-    expectedDatasets?: Array<{ districtId: string; datasetHash: string }>
+    expectedDatasets?: Array<{
+      districtId: string
+      datasetHash: string
+      publishedAt?: string
+    }>
   } = {},
 ) => {
   const handoffJsonPath = path.join(base, 'handoff.json')
@@ -54,6 +58,7 @@ const writeStatusInputs = async (
         {
           districtId: 'xinyi',
           datasetHash: 'hash-xinyi',
+          publishedAt: '2026-05-01T00:00:00Z',
         },
       ],
       releaseAssetPaths: [zipPath, manifestPath],
@@ -70,13 +75,18 @@ const fetchResponse = (response: Response): typeof fetch =>
 
 const publishedReleaseFetch = (params: {
   releaseId?: string
-  districts?: Array<{ districtId: string; datasetHash: string }>
+  districts?: Array<{
+    districtId: string
+    datasetHash: string
+    publishedAt: string
+  }>
 } = {}): typeof fetch => {
   const releaseId = params.releaseId ?? 'release-a'
   const districts = params.districts ?? [
     {
       districtId: 'xinyi',
       datasetHash: 'hash-xinyi',
+      publishedAt: '2026-05-01T00:00:00Z',
     },
   ]
   return (async (input) => {
@@ -256,6 +266,7 @@ describe('releaseHandoffStatus', () => {
           {
             districtId: 'xinyi',
             datasetHash: 'published-hash-xinyi',
+            publishedAt: '2026-05-01T00:00:00Z',
           },
         ],
       }),
@@ -271,7 +282,9 @@ describe('releaseHandoffStatus', () => {
       {
         districtId: 'xinyi',
         expectedDatasetHash: 'hash-xinyi',
+        expectedPublishedAt: '2026-05-01T00:00:00Z',
         publishedDatasetHash: 'published-hash-xinyi',
+        publishedPublishedAt: '2026-05-01T00:00:00Z',
         pass: false,
         error: 'dataset hash mismatch',
       },
@@ -284,7 +297,65 @@ describe('releaseHandoffStatus', () => {
       '# Release Handoff Status: READY FOR RELEASE PUBLISH',
     )
     expect(renderReleaseHandoffStatus(result)).toContain(
-      '| FAIL | xinyi | hash-xinyi | published-hash-xinyi | dataset hash mismatch |',
+      '| FAIL | xinyi | hash-xinyi | published-hash-xinyi | 2026-05-01T00:00:00Z | 2026-05-01T00:00:00Z | dataset hash mismatch |',
+    )
+  })
+
+  it('blocks unchanged hashes when the publishedAt identity differs', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'handoff-status-published-'))
+    const paths = await writeStatusInputs(base)
+
+    const result = await buildReleaseHandoffStatus(
+      {
+        ...paths,
+        ref: 'main',
+        appUrl: 'https://parkking.onrender.com',
+      },
+      publishedReleaseFetch({
+        districts: [
+          {
+            districtId: 'xinyi',
+            datasetHash: 'hash-xinyi',
+            publishedAt: '2026-05-02T00:00:00Z',
+          },
+        ],
+      }),
+    )
+
+    expect(result.readyForRenderLiveVerify).toBe(false)
+    expect(result.publishedManifest.districts[0]).toMatchObject({
+      expectedDatasetHash: 'hash-xinyi',
+      publishedDatasetHash: 'hash-xinyi',
+      expectedPublishedAt: '2026-05-01T00:00:00Z',
+      publishedPublishedAt: '2026-05-02T00:00:00Z',
+      pass: false,
+      error: 'publishedAt mismatch',
+    })
+  })
+
+  it('blocks an old local handoff without complete dataset identities', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'handoff-status-old-'))
+    const paths = await writeStatusInputs(base, {
+      expectedDatasets: [
+        {
+          districtId: 'xinyi',
+          datasetHash: 'hash-xinyi',
+        },
+      ],
+    })
+
+    const result = await buildReleaseHandoffStatus(
+      {
+        ...paths,
+        ref: 'main',
+        skipReleaseLookup: true,
+      },
+      fetchResponse(new Response('', { status: 200 })),
+    )
+
+    expect(result.readyForReleasePublish).toBe(false)
+    expect(result.blockers).toContain(
+      'Local handoff expectedDatasets has incomplete identities: xinyi',
     )
   })
 
