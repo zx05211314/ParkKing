@@ -82,6 +82,8 @@ describe('humanReviewBundleIndex', () => {
       configRoot: 'configs/expansion',
       districtIds: ['daan', 'zhongshan'],
       publishGateSummaryPath: '.tmp/publish_gate_summary.json',
+      sourceTextReferencePath:
+        'public/data/reference/taoyuan-paid-curb.json',
       requireReadyToFinalize: true,
       outPath: '.tmp/index.md',
       jsonOutPath: '.tmp/index.json',
@@ -354,34 +356,108 @@ describe('humanReviewBundleIndex', () => {
     expect(alias.entries.map((entry) => entry.bundleId)).toEqual(['shipai'])
   })
 
-  it('reports source-text review bundles through their specialized gate', async () => {
+  it('validates every source-text review manifest in a shared bundle directory', async () => {
     const root = await makeTempRoot()
     const bundleDir = path.join(root, 'taoyuan-human-review')
-    const reviewFileName = 'taoyuan-district-paid-curb-review.csv'
+    const referencePath = path.join(root, 'taoyuan-paid-curb.json')
+    const sourceSha256 = 'a'.repeat(64)
+    const header =
+      'parking_segment_id,district_id,district_name,description,fare_description,has_charging_point,geometry_available,legal_answer_eligible,source_text_review_status,source_text_review_note'
     await writeText(
-      path.join(bundleDir, reviewFileName),
-      ['parking_segment_id,source_text_review_status', 'segment-1,', ''].join('\n'),
+      path.join(bundleDir, 'taoyuan-district-paid-curb-review.csv'),
+      [
+        header,
+        'segment-1,taoyuan-district,Taoyuan,Road A,,false,false,false,,',
+        '',
+      ].join('\n'),
     )
-    await writeJson(path.join(bundleDir, 'taoyuan-district-paid-curb-review.manifest.json'), {
+    await writeText(
+      path.join(bundleDir, 'zhongli-paid-curb-review.csv'),
+      [
+        header,
+        'segment-2,zhongli,Zhongli,Road B,20 per hour,true,false,false,APPROVED_SOURCE_TEXT,reviewed',
+        '',
+      ].join('\n'),
+    )
+    const manifestBase = {
       schemaVersion: 1,
-      districtId: 'taoyuan-district',
+      sourceSha256,
+      sourceRecordCount: 2,
       reviewRecordCount: 1,
+      geometryAvailable: false,
+      legalAnswerEligible: false,
       allowedStatuses: ['APPROVED_SOURCE_TEXT', 'NEEDS_CORRECTION', 'UNCLEAR'],
-      reviewCsv: reviewFileName,
-    })
-    await writeJson(path.join(bundleDir, 'status.json'), {
-      districtId: 'taoyuan-district',
-      structureValid: true,
-      complete: false,
-      approved: false,
-      expectedRows: 1,
-      actualRows: 1,
-      statusCounts: { PENDING: 1 },
+    }
+    await writeJson(
+      path.join(
+        bundleDir,
+        'taoyuan-district-paid-curb-review.manifest.json',
+      ),
+      {
+        ...manifestBase,
+        districtId: 'taoyuan-district',
+        reviewCsv: 'taoyuan-district-paid-curb-review.csv',
+      },
+    )
+    await writeJson(
+      path.join(bundleDir, 'zhongli-paid-curb-review.manifest.json'),
+      {
+        ...manifestBase,
+        districtId: 'zhongli',
+        reviewCsv: 'zhongli-paid-curb-review.csv',
+      },
+    )
+    await writeJson(referencePath, {
+      schemaVersion: 1,
+      regionId: 'taoyuan',
+      evidenceKind: 'PAID_CURB_SEGMENT_TEXT',
+      geometryAvailable: false,
+      legalAnswerEligible: false,
+      requiresHumanReview: true,
+      source: {
+        dataset: 'Taoyuan City curb parking segment list',
+        relativePath: 'source.xml',
+        sha256: sourceSha256,
+        recordCount: 2,
+      },
+      districts: [
+        {
+          districtId: 'taoyuan-district',
+          districtName: 'Taoyuan',
+          boundaryFeatureId: '68000010',
+          recordCount: 1,
+          records: [
+            {
+              parkingSegmentId: 'segment-1',
+              description: 'Road A',
+              fareDescription: null,
+              hasChargingPoint: false,
+              sourceTownName: 'Taoyuan',
+            },
+          ],
+        },
+        {
+          districtId: 'zhongli',
+          districtName: 'Zhongli',
+          boundaryFeatureId: '68000020',
+          recordCount: 1,
+          records: [
+            {
+              parkingSegmentId: 'segment-2',
+              description: 'Road B',
+              fareDescription: '20 per hour',
+              hasChargingPoint: true,
+              sourceTownName: 'Zhongli',
+            },
+          ],
+        },
+      ],
     })
 
     const result = await runHumanReviewBundleIndex({
       reviewRoot: root,
       publishGateSummaryPath: null,
+      sourceTextReferencePath: referencePath,
     })
     const rendered = renderHumanReviewBundleIndex(result)
 
@@ -397,10 +473,39 @@ describe('humanReviewBundleIndex', () => {
         actualRows: 1,
         pendingRows: 1,
       }),
+      expect.objectContaining({
+        bundleId: 'taoyuan',
+        districtId: 'zhongli',
+        contract: 'source-text',
+        status: 'approved',
+        expectedRows: 1,
+        actualRows: 1,
+        pendingRows: 0,
+      }),
     ])
-    expect(rendered).toContain('Specialized review bundles: 1')
+    expect(rendered).toContain('Specialized review bundles: 2')
     expect(rendered).toContain('ops:taoyuan-review-gate')
+    expect(rendered).not.toContain('Status snapshot:')
     expect(rendered).not.toContain('missing handoffCsv')
+
+    const filtered = await runHumanReviewBundleIndex({
+      reviewRoot: root,
+      districtIds: ['zhongli'],
+      publishGateSummaryPath: null,
+      sourceTextReferencePath: referencePath,
+    })
+    expect(
+      filtered.specializedEntries?.map(({ districtId }) => districtId),
+    ).toEqual(['zhongli'])
+
+    const directBundle = await runHumanReviewBundleIndex({
+      reviewRoot: bundleDir,
+      publishGateSummaryPath: null,
+      sourceTextReferencePath: referencePath,
+    })
+    expect(
+      directBundle.specializedEntries?.map(({ districtId }) => districtId),
+    ).toEqual(['taoyuan-district', 'zhongli'])
   })
 
   it('adds a publish WARN override only for baseline bootstrap warnings', async () => {

@@ -3,11 +3,23 @@ import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseCsv } from 'csv-parse/sync'
 import fg from 'fast-glob'
+import {
+  parsePaidCurbReferencePack,
+  type PaidCurbReferencePack,
+} from '../../src/data/paidCurbReference'
 import { buildQaReviewSummary } from './qaReviewSummaryState'
+import {
+  type CsvRow,
+  type ReviewManifest,
+  sha256TaoyuanReviewCsv,
+  validateTaoyuanPaidCurbReview,
+} from './validateTaoyuanPaidCurbReview'
 
 const DEFAULT_REVIEW_ROOT = '.tmp'
 const DEFAULT_CONFIG_ROOT = 'configs/prod'
 const DEFAULT_PUBLISH_GATE_SUMMARY = 'data/generated/_ops/publish_gate_summary.json'
+const DEFAULT_SOURCE_TEXT_REFERENCE =
+  'public/data/reference/taoyuan-paid-curb.json'
 const HUMAN_REVIEW_SUFFIX = '-human-review'
 
 type HumanReviewBundleStatus =
@@ -38,6 +50,7 @@ export interface HumanReviewBundleIndexOptions {
   configRoot?: string
   districtIds?: string[]
   publishGateSummaryPath?: string | null
+  sourceTextReferencePath?: string
   requireReadyToFinalize?: boolean
   outPath?: string | null
   jsonOutPath?: string | null
@@ -94,7 +107,7 @@ export interface SpecializedHumanReviewBundleEntry {
   status: 'approved' | 'pending' | 'needs-resolution' | 'invalid' | 'unknown'
   reviewPath: string
   manifestPath: string
-  statusPath: string
+  statusPath: string | null
   expectedRows: number | null
   actualRows: number | null
   pendingRows: number | null
@@ -149,6 +162,14 @@ export const parseHumanReviewBundleIndexArgs = (
         '--publish-gate-summary-path',
         '--publishGateSummaryPath',
       ) ?? DEFAULT_PUBLISH_GATE_SUMMARY),
+  sourceTextReferencePath:
+    getArgValue(
+      argv,
+      '--source-text-reference',
+      '--sourceTextReference',
+      '--taoyuan-reference',
+      '--taoyuanReference',
+    ) ?? DEFAULT_SOURCE_TEXT_REFERENCE,
   requireReadyToFinalize: hasFlag(
     argv,
     '--require-ready-to-finalize',
@@ -209,11 +230,6 @@ const getRecordString = (record: Record<string, unknown>, key: string) => {
 const getRecordNumber = (record: Record<string, unknown>, key: string) => {
   const value = record[key]
   return typeof value === 'number' && Number.isFinite(value) ? value : null
-}
-
-const getRecordBoolean = (record: Record<string, unknown>, key: string) => {
-  const value = record[key]
-  return typeof value === 'boolean' ? value : null
 }
 
 const readJsonRecord = async (targetPath: string) =>
@@ -286,7 +302,7 @@ interface BundleDiscovery {
   bundleDir: string
   bundleId: string
   qaArtifactId: string | null
-  sourceTextManifestPath: string | null
+  sourceTextManifestPaths: string[]
 }
 
 const discoverBundle = async (bundleDir: string): Promise<BundleDiscovery> => {
@@ -300,7 +316,7 @@ const discoverBundle = async (bundleDir: string): Promise<BundleDiscovery> => {
       bundleDir,
       bundleId,
       qaArtifactId: bundleId,
-      sourceTextManifestPath: null,
+      sourceTextManifestPaths: [],
     }
   }
 
@@ -311,6 +327,8 @@ const discoverBundle = async (bundleDir: string): Promise<BundleDiscovery> => {
       onlyFiles: true,
     })
   ).sort()
+  const sourceTextManifestPaths: string[] = []
+  let qaArtifactId: string | null = null
   for (const manifestPath of manifestPaths) {
     try {
       const manifest = await readJsonRecord(manifestPath)
@@ -318,23 +336,25 @@ const discoverBundle = async (bundleDir: string): Promise<BundleDiscovery> => {
         ? manifest.allowedStatuses
         : []
       if (allowedStatuses.includes('APPROVED_SOURCE_TEXT')) {
-        return {
-          bundleDir,
-          bundleId,
-          qaArtifactId: null,
-          sourceTextManifestPath: manifestPath,
-        }
+        sourceTextManifestPaths.push(manifestPath)
+        continue
       }
-      if (Object.keys(toRecord(manifest.dataset)).length > 0) {
-        return {
-          bundleDir,
-          bundleId,
-          qaArtifactId: path.basename(manifestPath, '-review.manifest.json'),
-          sourceTextManifestPath: null,
-        }
+      if (
+        qaArtifactId === null &&
+        Object.keys(toRecord(manifest.dataset)).length > 0
+      ) {
+        qaArtifactId = path.basename(manifestPath, '-review.manifest.json')
       }
     } catch {
       // The normal bundle validator will surface malformed canonical manifests.
+    }
+  }
+  if (sourceTextManifestPaths.length > 0 || qaArtifactId !== null) {
+    return {
+      bundleDir,
+      bundleId,
+      qaArtifactId,
+      sourceTextManifestPaths,
     }
   }
   if (
@@ -345,19 +365,21 @@ const discoverBundle = async (bundleDir: string): Promise<BundleDiscovery> => {
       bundleDir,
       bundleId,
       qaArtifactId: bundleId,
-      sourceTextManifestPath: null,
+      sourceTextManifestPaths: [],
     }
   }
   return {
     bundleDir,
     bundleId,
     qaArtifactId: null,
-    sourceTextManifestPath: null,
+    sourceTextManifestPaths: [],
   }
 }
 
 const buildSourceTextBundleEntry = async (
   discovery: BundleDiscovery & { sourceTextManifestPath: string },
+  referencePack: PaidCurbReferencePack | null,
+  referenceError: string | null,
 ): Promise<SpecializedHumanReviewBundleEntry> => {
   const manifestPath = discovery.sourceTextManifestPath
   const manifest = await readJsonRecord(manifestPath)
@@ -365,7 +387,6 @@ const buildSourceTextBundleEntry = async (
   const reviewFileName =
     getRecordString(manifest, 'reviewCsv') ?? `${districtId}-paid-curb-review.csv`
   const reviewPath = path.join(discovery.bundleDir, reviewFileName)
-  const statusPath = path.join(discovery.bundleDir, 'status.json')
   const expectedRows = getRecordNumber(manifest, 'reviewRecordCount')
   const actualRows = await readCsvRowCount(reviewPath)
   const warnings: string[] = []
@@ -374,39 +395,37 @@ const buildSourceTextBundleEntry = async (
     errors.push(`missing source-text review CSV: ${reviewPath}`)
   }
 
-  let structureValid: boolean | null = null
-  let complete: boolean | null = null
-  let approved: boolean | null = null
+  let structureValid = false
+  let complete = false
+  let approved = false
   let pendingRows: number | null = null
-  if (await fileExists(statusPath)) {
+  if (referenceError) {
+    errors.push(`source-text reference could not be read: ${referenceError}`)
+  } else if (referencePack && (await fileExists(reviewPath))) {
     try {
-      const status = await readJsonRecord(statusPath)
-      const counts = toRecord(status.statusCounts)
-      structureValid = getRecordBoolean(status, 'structureValid')
-      complete = getRecordBoolean(status, 'complete')
-      approved = getRecordBoolean(status, 'approved')
-      pendingRows = getRecordNumber(counts, 'PENDING')
-      const statusDistrictId = getRecordString(status, 'districtId')
-      const statusExpectedRows = getRecordNumber(status, 'expectedRows')
-      const statusActualRows = getRecordNumber(status, 'actualRows')
-      if (statusDistrictId !== districtId) {
-        errors.push(
-          `source-text status district ${statusDistrictId ?? '-'} does not match ${districtId}`,
-        )
-      }
-      if (
-        statusExpectedRows !== expectedRows ||
-        statusActualRows !== actualRows
-      ) {
-        errors.push('source-text status row counts do not match the current review artifacts')
-      }
+      const reviewBuffer = await fs.readFile(reviewPath)
+      const rows = parseCsv(reviewBuffer, {
+        bom: true,
+        columns: true,
+        skip_empty_lines: true,
+      }) as CsvRow[]
+      const result = validateTaoyuanPaidCurbReview({
+        pack: referencePack,
+        manifest: manifest as unknown as ReviewManifest,
+        rows,
+        districtId,
+        reviewSha256: sha256TaoyuanReviewCsv(reviewBuffer),
+      })
+      structureValid = result.structureValid
+      complete = result.complete
+      approved = result.approved
+      pendingRows = result.statusCounts.PENDING
+      errors.push(...result.errors)
     } catch (error) {
       errors.push(
-        `source-text status could not be read: ${error instanceof Error ? error.message : String(error)}`,
+        `source-text review could not be validated: ${error instanceof Error ? error.message : String(error)}`,
       )
     }
-  } else {
-    warnings.push(`dedicated status snapshot is missing: ${statusPath}`)
   }
 
   const status =
@@ -430,7 +449,7 @@ const buildSourceTextBundleEntry = async (
     status,
     reviewPath,
     manifestPath,
-    statusPath,
+    statusPath: null,
     expectedRows,
     actualRows,
     pendingRows,
@@ -764,13 +783,17 @@ export const runHumanReviewBundleIndex = async (
     }
   }
 
-  const bundleDirs = (
-    await fg(`*${HUMAN_REVIEW_SUFFIX}`, {
-      cwd: reviewRoot,
-      absolute: true,
-      onlyDirectories: true,
-    })
-  ).sort((left, right) => path.basename(left).localeCompare(path.basename(right)))
+  const bundleDirs = path.basename(reviewRoot).endsWith(HUMAN_REVIEW_SUFFIX)
+    ? [reviewRoot]
+    : (
+        await fg(`*${HUMAN_REVIEW_SUFFIX}`, {
+          cwd: reviewRoot,
+          absolute: true,
+          onlyDirectories: true,
+        })
+      ).sort((left, right) =>
+        path.basename(left).localeCompare(path.basename(right)),
+      )
 
   if (bundleDirs.length === 0) {
     warnings.push(`No human review bundle directories found under ${reviewRoot}`)
@@ -778,6 +801,29 @@ export const runHumanReviewBundleIndex = async (
 
   const districtIds = new Set(options.districtIds ?? [])
   const discoveries = await Promise.all(bundleDirs.map(discoverBundle))
+  const sourceTextDiscoveries = discoveries.flatMap((discovery) =>
+    discovery.sourceTextManifestPaths.map((sourceTextManifestPath) => ({
+      ...discovery,
+      sourceTextManifestPath,
+    })),
+  )
+  const sourceTextReferencePath = path.resolve(
+    options.sourceTextReferencePath ?? DEFAULT_SOURCE_TEXT_REFERENCE,
+  )
+  let sourceTextReferencePack: PaidCurbReferencePack | null = null
+  let sourceTextReferenceError: string | null = null
+  if (sourceTextDiscoveries.length > 0) {
+    try {
+      sourceTextReferencePack = parsePaidCurbReferencePack(
+        JSON.parse(
+          await fs.readFile(sourceTextReferencePath, 'utf-8'),
+        ) as unknown,
+      )
+    } catch (error) {
+      sourceTextReferenceError =
+        error instanceof Error ? error.message : String(error)
+    }
+  }
   let publishGateWarnCodesByDistrict = new Map<string, string[]>()
   try {
     publishGateWarnCodesByDistrict =
@@ -806,26 +852,26 @@ export const runHumanReviewBundleIndex = async (
   ).filter((entry) => matchesHumanReviewBundleSelection(entry, districtIds))
   const specializedEntries = (
     await Promise.all(
-      discoveries
-        .filter(
-          (
-            discovery,
-          ): discovery is BundleDiscovery & {
-            sourceTextManifestPath: string
-          } => discovery.sourceTextManifestPath !== null,
-        )
-        .map((discovery) => buildSourceTextBundleEntry(discovery)),
+      sourceTextDiscoveries.map((discovery) =>
+        buildSourceTextBundleEntry(
+          discovery,
+          sourceTextReferencePack,
+          sourceTextReferenceError,
+        ),
+      ),
     )
-  ).filter(
-    (entry) =>
-      districtIds.size === 0 ||
-      districtIds.has(entry.districtId) ||
-      districtIds.has(entry.bundleId),
   )
+    .filter(
+      (entry) =>
+        districtIds.size === 0 ||
+        districtIds.has(entry.districtId) ||
+        districtIds.has(entry.bundleId),
+    )
+    .sort((left, right) => left.districtId.localeCompare(right.districtId))
   const unsupportedBundles = discoveries.filter(
     (discovery) =>
       discovery.qaArtifactId === null &&
-      discovery.sourceTextManifestPath === null &&
+      discovery.sourceTextManifestPaths.length === 0 &&
       (districtIds.size === 0 || districtIds.has(discovery.bundleId)),
   )
   unsupportedBundles.forEach((discovery) => {
@@ -954,7 +1000,9 @@ export const renderHumanReviewBundleIndex = (
     specializedEntries.forEach((entry) => {
       lines.push(`- ${entry.districtId}: ${entry.bundleDir}`)
       lines.push(`  Review CSV: ${entry.reviewPath}`)
-      lines.push(`  Status snapshot: ${entry.statusPath}`)
+      if (entry.statusPath) {
+        lines.push(`  Status snapshot: ${entry.statusPath}`)
+      }
       lines.push(`  Refresh status: ${entry.statusCommand}`)
       lines.push(`  Approval gate: ${entry.gateCommand}`)
       entry.errors.forEach((error) => lines.push(`  ERROR: ${error}`))

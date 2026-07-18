@@ -59,6 +59,8 @@
     "ops:generated-pack-inventory": "tsx scripts/ops/generatedPackInventory.ts",
     "ops:district-readiness-matrix": "tsx scripts/ops/districtReadinessMatrix.ts",
     "ops:human-review-index": "tsx scripts/ops/humanReviewBundleIndex.ts",
+    "ops:taoyuan-review-index": "tsx scripts/ops/humanReviewBundleIndex.ts --review-root .tmp/taoyuan-human-review --no-publish-gate-summary --out .tmp/taoyuan-city-review-status.md --json-out .tmp/taoyuan-city-review-status.json",
+    "ops:promote-ready-taoyuan-reviews": "tsx scripts/ops/promoteReadyTaoyuanPaidCurbReviews.ts",
     "ops:package-human-reviews": "tsx scripts/ops/packageHumanReviews.ts",
     "ops:review-handoff-audit": "tsx scripts/ops/reviewHandoffAudit.ts",
     "ops:smoke-generated-packs": "tsx scripts/ops/smokeGeneratedPacks.ts",

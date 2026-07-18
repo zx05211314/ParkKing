@@ -362,11 +362,19 @@ district with source records. The current official XML contains 944 records acro
 non-empty districts, including 270 for Taoyuan District; Xinwu and Fuxing currently have
 zero records. The dataset has no coordinates. Human approval of a CSV confirms source
 transcription only and never confirms parking legality. Rebuilds refresh each
-`.template.csv` file but preserve an existing review CSV. Check a district's structure,
-source hash, and pending counts with
+`.template.csv` file but preserve an existing review CSV. Run
+`npm run ops:taoyuan-review-index` for one live-validated status table across all manifests
+in the authoritative bundle directory; this writes
+`.tmp/taoyuan-city-review-status.md/json` and does not rely on stale status snapshots.
+Check one district's structure, source hash, and pending counts with
 `npm run ops:taoyuan-review-status -- --district zhongli --review-dir .tmp/taoyuan-human-review`;
 require every draft row to be explicitly approved with
 `npm run ops:taoyuan-review-gate -- --district zhongli --review-dir .tmp/taoyuan-human-review`.
+Run `npm run ops:promote-ready-taoyuan-reviews` to preview which fully approved
+districts can be installed. Add `-- --execute` to promote only those approved districts;
+the command skips pending or needs-resolution districts and blocks invalid evidence.
+Add `--require-all-approved` when the batch must remain non-zero until every selected
+district is approved.
 After project-owner approval, run
 `npm run ops:promote-taoyuan-review -- --district zhongli`; the command
 revalidates every immutable field and source hash before installing the approved CSV
