@@ -41,12 +41,18 @@ describe('fetchTaoyuanPaidCurbSegments', () => {
     })
 
     expect(collection.features).toHaveLength(2)
-    expect(collection.features[0]?.geometry.type).toBe('Point')
-    expect(collection.features[0]?.properties.geometryPrecision).toBe(
+    const pointFeature = collection.features.find(
+      ({ properties }) => properties.parkingSegmentId === 'segment-point',
+    )
+    const lineFeature = collection.features.find(
+      ({ properties }) => properties.parkingSegmentId === 'segment-line',
+    )
+    expect(pointFeature?.geometry.type).toBe('Point')
+    expect(pointFeature?.properties.geometryPrecision).toBe(
       'REPRESENTATIVE_POINT',
     )
-    expect(collection.features[1]?.geometry.type).toBe('LineString')
-    expect(collection.features[1]?.properties.geometryPrecision).toBe(
+    expect(lineFeature?.geometry.type).toBe('LineString')
+    expect(lineFeature?.properties.geometryPrecision).toBe(
       'SEGMENT_GEOMETRY',
     )
     expect(collection.features.every(({ properties }) => !properties.legalAnswerEligible)).toBe(
@@ -63,6 +69,28 @@ describe('fetchTaoyuanPaidCurbSegments', () => {
       droppedRecordCount: 0,
       legalAnswerEligible: false,
     })
+  })
+
+  it('sorts features deterministically regardless of TDX response order', () => {
+    const buildPayload = (ids: string[]) => ({
+      Items: ids.map((parkingSegmentId) => ({
+        ParkingSegmentID: parkingSegmentId,
+        ParkingSegmentPosition: {
+          PositionLon: 121.3,
+          PositionLat: 24.99,
+        },
+      })),
+    })
+    const first = normalizeTaoyuanPaidCurbSegments(buildPayload(['z', 'a']))
+    const second = normalizeTaoyuanPaidCurbSegments(buildPayload(['a', 'z']))
+
+    expect(
+      first.features.map(({ properties }) => properties.parkingSegmentId),
+    ).toEqual(['a', 'z'])
+    expect(
+      second.features.map(({ properties }) => properties.parkingSegmentId),
+    ).toEqual(['a', 'z'])
+    expect(first).toEqual(second)
   })
 
   it('repairs only an unambiguous swapped coordinate within the Taoyuan range', () => {

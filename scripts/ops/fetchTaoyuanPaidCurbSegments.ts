@@ -269,6 +269,13 @@ export const normalizeTaoyuanPaidCurbSegments = (
       }
     }
   })
+  features.sort(({ properties: left }, { properties: right }) =>
+    left.parkingSegmentId < right.parkingSegmentId
+      ? -1
+      : left.parkingSegmentId > right.parkingSegmentId
+        ? 1
+        : 0,
+  )
 
   return {
     type: 'FeatureCollection',
