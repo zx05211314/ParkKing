@@ -162,9 +162,12 @@ describe('release workflow contracts', () => {
     expect(workflow).toContain('actions: read')
     expect(workflow).toContain('contents: write')
     expect(workflow).toContain('group: parkking-production-data-rollout')
-    expect(workflow).toContain(
+    expectCommandsInOrder(workflow, [
+      'actions/setup-node@v7',
+      'npm ci',
       'npm run ops:release-rollout-workflow -- --mode download-handoff',
-    )
+      'npm run ops:render-runtime-env-sync-workflow',
+    ])
     expect(workflow).toContain('RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}')
     expect(workflow).toContain(
       'PARKKING_RENDER_SERVICE_ID: ${{ secrets.PARKKING_RENDER_SERVICE_ID }}',
