@@ -366,7 +366,7 @@ require every draft row to be explicitly approved with
 `npm run ops:taoyuan-review-gate -- --review-dir .tmp/taoyuan-human-review`.
 After project-owner approval, run `npm run ops:promote-taoyuan-review`; the command
 revalidates every immutable field and source hash before installing the approved CSV
-and manifest under `configs/reviews/taoyuan/`. The promoted manifest pins the reviewed
+and manifest under `review-evidence/taoyuan/`. The promoted manifest pins the reviewed
 CSV SHA-256 and approved row count. The default status, gate, readiness,
 and CI commands read this tracked evidence so a clean checkout reproduces the decision.
 With TDX

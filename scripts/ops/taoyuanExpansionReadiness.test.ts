@@ -256,9 +256,9 @@ describe('taoyuanExpansionReadiness', () => {
 
     expect(options).toMatchObject({
       reviewPath:
-        'configs/reviews/taoyuan/taoyuan-district-paid-curb-review.csv',
+        'review-evidence/taoyuan/taoyuan-district-paid-curb-review.csv',
       reviewManifestPath:
-        'configs/reviews/taoyuan/taoyuan-district-paid-curb-review.manifest.json',
+        'review-evidence/taoyuan/taoyuan-district-paid-curb-review.manifest.json',
       requirePinnedReview: true,
     })
   })

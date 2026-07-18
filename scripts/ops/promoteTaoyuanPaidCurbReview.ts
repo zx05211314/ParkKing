@@ -12,7 +12,7 @@ import {
 
 const DEFAULT_DISTRICT = 'taoyuan-district'
 const DEFAULT_INPUT_DIR = '.tmp/taoyuan-human-review'
-const DEFAULT_OUTPUT_DIR = 'configs/reviews/taoyuan'
+const DEFAULT_OUTPUT_DIR = 'review-evidence/taoyuan'
 const DEFAULT_REFERENCE = 'public/data/reference/taoyuan-paid-curb.json'
 const DEFAULT_RECEIPT = '.tmp/taoyuan-review-promotion.json'
 

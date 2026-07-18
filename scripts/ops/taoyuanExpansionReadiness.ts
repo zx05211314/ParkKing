@@ -19,9 +19,9 @@ const DEFAULT_BOUNDARY =
   'data/sources/taoyuan/town_boundaries/town_boundaries.shp'
 const DEFAULT_REFERENCE = 'public/data/reference/taoyuan-paid-curb.json'
 const DEFAULT_REVIEW =
-  'configs/reviews/taoyuan/taoyuan-district-paid-curb-review.csv'
+  'review-evidence/taoyuan/taoyuan-district-paid-curb-review.csv'
 const DEFAULT_REVIEW_MANIFEST =
-  'configs/reviews/taoyuan/taoyuan-district-paid-curb-review.manifest.json'
+  'review-evidence/taoyuan/taoyuan-district-paid-curb-review.manifest.json'
 const DEFAULT_SPATIAL = 'data/sources/taoyuan/paid_curb_segments.geojson'
 
 type ReadinessStatus =

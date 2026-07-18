@@ -9,7 +9,7 @@ import {
 } from '../../src/data/paidCurbReference'
 
 const DEFAULT_DISTRICT = 'taoyuan-district'
-const DEFAULT_REVIEW_DIR = 'configs/reviews/taoyuan'
+const DEFAULT_REVIEW_DIR = 'review-evidence/taoyuan'
 const DEFAULT_REFERENCE = 'public/data/reference/taoyuan-paid-curb.json'
 
 const ALLOWED_STATUSES = new Set([
