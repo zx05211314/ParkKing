@@ -113,10 +113,10 @@ describe('compareBaselineMetrics', () => {
       ),
     ).toEqual([
       {
-        severity: 'WARN',
+        severity: 'INFO',
         code: 'PERF_REGRESSION',
         message:
-          'day eval time delta 91.5% exceeds 30%; cross-host wall-clock drift is warning-only',
+          'day eval time delta 91.5% exceeds 30%; cross-host wall-clock drift is advisory only',
         metric: {
           label: 'day',
           baseline: 236,
@@ -124,15 +124,15 @@ describe('compareBaselineMetrics', () => {
           deltaPct: 91.52542372881356,
         },
         threshold: {
-          warn: 30,
-          policy: 'warning-only-cross-host-wall-clock',
+          advisory: 30,
+          policy: 'advisory-cross-host-wall-clock',
         },
       },
       {
-        severity: 'WARN',
+        severity: 'INFO',
         code: 'PERF_REGRESSION',
         message:
-          'night eval time delta 32.8% exceeds 30%; cross-host wall-clock drift is warning-only',
+          'night eval time delta 32.8% exceeds 30%; cross-host wall-clock drift is advisory only',
         metric: {
           label: 'night',
           baseline: 250,
@@ -140,8 +140,8 @@ describe('compareBaselineMetrics', () => {
           deltaPct: 32.800000000000004,
         },
         threshold: {
-          warn: 30,
-          policy: 'warning-only-cross-host-wall-clock',
+          advisory: 30,
+          policy: 'advisory-cross-host-wall-clock',
         },
       },
     ])
