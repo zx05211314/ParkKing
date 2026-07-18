@@ -423,7 +423,9 @@ but no coordinates, so address text must not be converted into synthetic geometr
 When a source-only Taoyuan address is pinned, the app can filter this official text by
 Chinese road name and show the reviewed representative points on the map. Text results are
 road-description matches rather than proximity matches, and map points remain references
-rather than curb geometry or legality answers.
+rather than curb geometry or legality answers. Clicking a reference point opens its
+official segment ID, road description, fare text, charging flag, and representative
+coordinates without moving the parking-evaluation pin.
 
 Legacy per-district raw source scaffold:
    `npm run ops:new-district -- --districtId <id> --districtName "<Name>" --sourceRoot "data/raw/<id>"`

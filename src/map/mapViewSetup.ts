@@ -8,10 +8,15 @@ import type {
   Polygon,
 } from 'geojson'
 import type { Map, MapLayerMouseEvent } from 'maplibre-gl'
+import {
+  parsePaidCurbReferencePointSelection,
+  type PaidCurbReferencePointSelection,
+} from './paidCurbReferenceSelection'
 
 interface InitializeMapViewContentOptions {
   coverageBoundaryData: FeatureCollection<Polygon | MultiPolygon> | null
   paidCurbReferenceData: FeatureCollection<Point>
+  selectedPaidCurbReferenceId: string | null
   zonesData: FeatureCollection<Polygon | MultiPolygon>
   intersectionZonesData: FeatureCollection<Polygon | MultiPolygon>
   crosswalkZonesData: FeatureCollection<Polygon | MultiPolygon>
@@ -32,6 +37,9 @@ interface InitializeMapViewContentOptions {
     ((segmentId: string, key: string | null) => void) | undefined
   >
   onSelectParkingSpaceRef: MutableRefObject<((key: string | null) => void) | undefined>
+  onSelectPaidCurbReferenceRef: MutableRefObject<
+    ((selection: PaidCurbReferencePointSelection | null) => void) | undefined
+  >
   onPickLocationRef: MutableRefObject<((location: [number, number]) => void) | undefined>
 }
 
@@ -50,6 +58,7 @@ export const initializeMapViewContent = (
   {
     coverageBoundaryData,
     paidCurbReferenceData,
+    selectedPaidCurbReferenceId,
     zonesData,
     intersectionZonesData,
     crosswalkZonesData,
@@ -68,6 +77,7 @@ export const initializeMapViewContent = (
     onSelectRef,
     onSelectRecommendedTargetRef,
     onSelectParkingSpaceRef,
+    onSelectPaidCurbReferenceRef,
     onPickLocationRef,
   }: InitializeMapViewContentOptions,
 ) => {
@@ -135,6 +145,24 @@ export const initializeMapViewContent = (
       'circle-stroke-color': '#57c5e8',
       'circle-stroke-width': 2,
       'circle-opacity': 0.9,
+    },
+  })
+
+  map.addLayer({
+    id: 'paid-curb-reference-selected',
+    type: 'circle',
+    source: 'paid-curb-reference-points',
+    filter: [
+      '==',
+      ['get', 'parkingSegmentId'],
+      selectedPaidCurbReferenceId ?? '',
+    ],
+    paint: {
+      'circle-radius': 9,
+      'circle-color': 'rgba(8, 20, 26, 0.3)',
+      'circle-stroke-color': '#ffe07a',
+      'circle-stroke-width': 3,
+      'circle-opacity': 1,
     },
   })
 
@@ -597,12 +625,15 @@ export const initializeMapViewContent = (
 
   bindPointerCursor(map, 'segments-line')
   bindPointerCursor(map, 'segments-inferred')
+  bindPointerCursor(map, 'paid-curb-reference-points')
+  bindPointerCursor(map, 'paid-curb-reference-selected')
   bindPointerCursor(map, 'recommended-targets-circle')
   bindPointerCursor(map, 'recommended-targets-label')
   bindPointerCursor(map, 'selected-space-options-circle')
   bindPointerCursor(map, 'selected-space-options-label')
 
   map.on('click', 'segments-line', (event) => {
+    onSelectPaidCurbReferenceRef.current?.(null)
     const feature = event.features?.[0]
     const id = feature?.properties?.id
     if (id) {
@@ -611,6 +642,7 @@ export const initializeMapViewContent = (
   })
 
   map.on('click', 'segments-inferred', (event) => {
+    onSelectPaidCurbReferenceRef.current?.(null)
     const feature = event.features?.[0]
     const id = feature?.properties?.id
     if (id) {
@@ -619,6 +651,7 @@ export const initializeMapViewContent = (
   })
 
   const handleRecommendedTargetClick = (event: MapLayerMouseEvent) => {
+    onSelectPaidCurbReferenceRef.current?.(null)
     const feature = event.features?.[0]
     const segmentId = feature?.properties?.segmentId
     const targetKey = feature?.properties?.targetKey
@@ -631,6 +664,7 @@ export const initializeMapViewContent = (
   map.on('click', 'recommended-targets-label', handleRecommendedTargetClick)
 
   const handleSelectedSpaceClick = (event: MapLayerMouseEvent) => {
+    onSelectPaidCurbReferenceRef.current?.(null)
     const feature = event.features?.[0]
     const key = feature?.properties?.key
     if (key) {
@@ -641,11 +675,33 @@ export const initializeMapViewContent = (
   map.on('click', 'selected-space-options-circle', handleSelectedSpaceClick)
   map.on('click', 'selected-space-options-label', handleSelectedSpaceClick)
 
+  const handlePaidCurbReferenceClick = (event: MapLayerMouseEvent) => {
+    const selection = parsePaidCurbReferencePointSelection(
+      event.features?.[0],
+    )
+    if (selection) {
+      onSelectPaidCurbReferenceRef.current?.(selection)
+    }
+  }
+
+  map.on(
+    'click',
+    'paid-curb-reference-points',
+    handlePaidCurbReferenceClick,
+  )
+  map.on(
+    'click',
+    'paid-curb-reference-selected',
+    handlePaidCurbReferenceClick,
+  )
+
   map.on('click', (event) => {
     const features = map.queryRenderedFeatures(event.point, {
       layers: [
         'segments-line',
         'segments-inferred',
+        'paid-curb-reference-points',
+        'paid-curb-reference-selected',
         'recommended-targets-circle',
         'recommended-targets-label',
         'selected-space-options-circle',
@@ -666,6 +722,7 @@ export const initializeMapViewContent = (
       return
     }
     if (features.length === 0) {
+      onSelectPaidCurbReferenceRef.current?.(null)
       onSelectRef.current(null)
       onPickLocationRef.current?.([event.lngLat.lng, event.lngLat.lat])
     }
