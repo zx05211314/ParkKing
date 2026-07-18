@@ -98,6 +98,55 @@ describe('compareBaselineMetrics', () => {
     ).toEqual([])
   })
 
+  it('keeps cross-host wall-clock regressions visible without hard-failing publish', () => {
+    expect(
+      comparePerformance(
+        {
+          day: { evalFirstMs: 160, evalSecondMs: 452 },
+          night: { evalFirstMs: 120, evalSecondMs: 332 },
+        },
+        {
+          day: { evalFirstMsMedian: 100, evalSecondMsMedian: 236 },
+          night: { evalFirstMsMedian: 120, evalSecondMsMedian: 250 },
+        },
+        30,
+      ),
+    ).toEqual([
+      {
+        severity: 'WARN',
+        code: 'PERF_REGRESSION',
+        message:
+          'day eval time delta 91.5% exceeds 30%; cross-host wall-clock drift is warning-only',
+        metric: {
+          label: 'day',
+          baseline: 236,
+          current: 452,
+          deltaPct: 91.52542372881356,
+        },
+        threshold: {
+          warn: 30,
+          policy: 'warning-only-cross-host-wall-clock',
+        },
+      },
+      {
+        severity: 'WARN',
+        code: 'PERF_REGRESSION',
+        message:
+          'night eval time delta 32.8% exceeds 30%; cross-host wall-clock drift is warning-only',
+        metric: {
+          label: 'night',
+          baseline: 250,
+          current: 332,
+          deltaPct: 32.800000000000004,
+        },
+        threshold: {
+          warn: 30,
+          policy: 'warning-only-cross-host-wall-clock',
+        },
+      },
+    ])
+  })
+
   it('does not flag faster current performance as a regression', () => {
     expect(
       comparePerformance(
