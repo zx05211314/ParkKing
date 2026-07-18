@@ -166,17 +166,14 @@ export const loadSmokeUiPaidCurbReferenceFixture = async (
   const coverageDistrict = coverage.districts.find(
     (candidate) => candidate.districtId === referenceDistrict,
   )
-  if (
-    !coverageDistrict?.referenceData ||
-    !coverageDistrict.referenceData.spatialReference
-  ) {
+  const referenceData = coverageDistrict?.referenceData
+  const spatialReference = referenceData?.spatialReference
+  if (!coverageDistrict || !referenceData || !spatialReference) {
     throw new Error(
       `Reference district ${referenceDistrict} has no runtime paid-curb spatial pack`,
     )
   }
 
-  const referenceData = coverageDistrict.referenceData
-  const spatialReference = referenceData.spatialReference
   const textPack = parsePaidCurbReferencePack(
     await readJson(resolvePublicDataPath(publicRoot, referenceData.url)),
   )
