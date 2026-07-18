@@ -453,6 +453,10 @@ describe('humanReviewBundleIndex', () => {
         },
       ],
     })
+    await writeJson(path.join(root, 'scratch-review.manifest.json'), {
+      districtId: 'scratch',
+      dataset: { datasetHash: 'scratch' },
+    })
 
     const result = await runHumanReviewBundleIndex({
       reviewRoot: root,
@@ -505,6 +509,19 @@ describe('humanReviewBundleIndex', () => {
     })
     expect(
       directBundle.specializedEntries?.map(({ districtId }) => districtId),
+    ).toEqual(['taoyuan-district', 'zhongli'])
+
+    const arbitraryBundleDir = path.join(root, 'review-output')
+    await fs.cp(bundleDir, arbitraryBundleDir, { recursive: true })
+    const arbitraryDirectBundle = await runHumanReviewBundleIndex({
+      reviewRoot: arbitraryBundleDir,
+      publishGateSummaryPath: null,
+      sourceTextReferencePath: referencePath,
+    })
+    expect(
+      arbitraryDirectBundle.specializedEntries?.map(
+        ({ districtId }) => districtId,
+      ),
     ).toEqual(['taoyuan-district', 'zhongli'])
   })
 

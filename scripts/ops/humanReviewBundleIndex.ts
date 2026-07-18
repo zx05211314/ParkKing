@@ -783,17 +783,38 @@ export const runHumanReviewBundleIndex = async (
     }
   }
 
-  const bundleDirs = path.basename(reviewRoot).endsWith(HUMAN_REVIEW_SUFFIX)
-    ? [reviewRoot]
-    : (
-        await fg(`*${HUMAN_REVIEW_SUFFIX}`, {
-          cwd: reviewRoot,
-          absolute: true,
-          onlyDirectories: true,
-        })
-      ).sort((left, right) =>
-        path.basename(left).localeCompare(path.basename(right)),
-      )
+  const directManifestPaths = await fg('*-review.manifest.json', {
+    cwd: reviewRoot,
+    absolute: true,
+    onlyFiles: true,
+  })
+  const directSourceTextBundle = (
+    await Promise.all(
+      directManifestPaths.map(async (manifestPath) => {
+        try {
+          const manifest = await readJsonRecord(manifestPath)
+          return Array.isArray(manifest.allowedStatuses)
+            ? manifest.allowedStatuses.includes('APPROVED_SOURCE_TEXT')
+            : false
+        } catch {
+          return false
+        }
+      }),
+    )
+  ).some(Boolean)
+  const bundleDirs =
+    path.basename(reviewRoot).endsWith(HUMAN_REVIEW_SUFFIX) ||
+    directSourceTextBundle
+      ? [reviewRoot]
+      : (
+          await fg(`*${HUMAN_REVIEW_SUFFIX}`, {
+            cwd: reviewRoot,
+            absolute: true,
+            onlyDirectories: true,
+          })
+        ).sort((left, right) =>
+          path.basename(left).localeCompare(path.basename(right)),
+        )
 
   if (bundleDirs.length === 0) {
     warnings.push(`No human review bundle directories found under ${reviewRoot}`)

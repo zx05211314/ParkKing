@@ -7,7 +7,9 @@ import {
   buildTaoyuanPaidCurbReferencePack,
   parseTaoyuanPaidCurbXml,
   writeTaoyuanPaidCurbReference,
+  writeTaoyuanPaidCurbReviewBundles,
 } from './buildTaoyuanPaidCurbReference'
+import { sha256TaoyuanReviewCsv } from './validateTaoyuanPaidCurbReview'
 
 const manifest: CoverageManifest = {
   schemaVersion: 1,
@@ -163,5 +165,127 @@ describe('buildTaoyuanPaidCurbReference', () => {
     await expect(
       fs.readFile(path.join(reviewDir, 'README.md'), 'utf-8'),
     ).resolves.toContain('taoyuan-district: review 1 source rows')
+  })
+
+  it('seeds only pinned approved tracked evidence into a clean review bundle', async () => {
+    const root = await fs.mkdtemp(
+      path.join(tmpdir(), 'taoyuan-reference-seed-'),
+    )
+    const pack = buildTaoyuanPaidCurbReferencePack({
+      xml,
+      sourceRelativePath: 'data/sources/taoyuan/paid_curb_segments.xml',
+      manifest,
+    })
+    const draftDir = path.join(root, 'draft')
+    await writeTaoyuanPaidCurbReviewBundles({
+      pack,
+      reviewDistrictId: 'taoyuan-district',
+      reviewDir: draftDir,
+    })
+    const baseName = 'taoyuan-district-paid-curb-review'
+    const approvedBuffer = Buffer.from(
+      (
+        await fs.readFile(path.join(draftDir, `${baseName}.csv`), 'utf-8')
+      ).replace(
+        ',false,false,,\r\n',
+        ',false,false,APPROVED_SOURCE_TEXT,reviewed\r\n',
+      ),
+      'utf-8',
+    )
+    const evidenceDir = path.join(root, 'evidence')
+    await fs.mkdir(evidenceDir, { recursive: true })
+    await fs.writeFile(
+      path.join(evidenceDir, `${baseName}.csv`),
+      approvedBuffer,
+    )
+    await fs.writeFile(
+      path.join(evidenceDir, `${baseName}.manifest.json`),
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          districtId: 'taoyuan-district',
+          sourceSha256: pack.source.sha256,
+          sourceRecordCount: pack.source.recordCount,
+          reviewRecordCount: 1,
+          geometryAvailable: false,
+          legalAnswerEligible: false,
+          allowedStatuses: [
+            'APPROVED_SOURCE_TEXT',
+            'NEEDS_CORRECTION',
+            'UNCLEAR',
+          ],
+          reviewCsv: `${baseName}.csv`,
+          reviewSha256: sha256TaoyuanReviewCsv(approvedBuffer),
+          approvedRecordCount: 1,
+        },
+        null,
+        2,
+      )}\n`,
+      'utf-8',
+    )
+
+    const reviewDir = path.join(root, 'review')
+    const result = await writeTaoyuanPaidCurbReviewBundles({
+      pack,
+      reviewDistrictId: 'all',
+      reviewDir,
+      reviewEvidenceDir: evidenceDir,
+    })
+
+    expect(result.seededDistrictIds).toEqual(['taoyuan-district'])
+    await expect(
+      fs.readFile(path.join(reviewDir, `${baseName}.csv`)),
+    ).resolves.toEqual(approvedBuffer)
+  })
+
+  it('fails closed when tracked review evidence is not pinned to its CSV', async () => {
+    const root = await fs.mkdtemp(
+      path.join(tmpdir(), 'taoyuan-reference-bad-seed-'),
+    )
+    const pack = buildTaoyuanPaidCurbReferencePack({
+      xml,
+      sourceRelativePath: 'data/sources/taoyuan/paid_curb_segments.xml',
+      manifest,
+    })
+    const evidenceDir = path.join(root, 'evidence')
+    const baseName = 'taoyuan-district-paid-curb-review'
+    await fs.mkdir(evidenceDir, { recursive: true })
+    await fs.writeFile(
+      path.join(evidenceDir, `${baseName}.csv`),
+      'not,the,approved,csv\n',
+      'utf-8',
+    )
+    await fs.writeFile(
+      path.join(evidenceDir, `${baseName}.manifest.json`),
+      `${JSON.stringify({
+        schemaVersion: 1,
+        districtId: 'taoyuan-district',
+        sourceSha256: pack.source.sha256,
+        sourceRecordCount: pack.source.recordCount,
+        reviewRecordCount: 1,
+        geometryAvailable: false,
+        legalAnswerEligible: false,
+        allowedStatuses: [
+          'APPROVED_SOURCE_TEXT',
+          'NEEDS_CORRECTION',
+          'UNCLEAR',
+        ],
+        reviewCsv: `${baseName}.csv`,
+        reviewSha256: '0'.repeat(64),
+        approvedRecordCount: 1,
+      })}\n`,
+      'utf-8',
+    )
+
+    await expect(
+      writeTaoyuanPaidCurbReviewBundles({
+        pack,
+        reviewDistrictId: 'taoyuan-district',
+        reviewDir: path.join(root, 'review'),
+        reviewEvidenceDir: evidenceDir,
+      }),
+    ).rejects.toThrow(
+      'Tracked Taoyuan review evidence for taoyuan-district failed validation',
+    )
   })
 })
