@@ -8,6 +8,7 @@ import {
   buildRuntimeCoverageCatalog,
   discoverTaoyuanSpatialReferencePaths,
   loadTaoyuanCoverageReferences,
+  sha256RuntimeReferenceData,
 } from './buildRuntimeCoverageCatalog'
 import {
   validateRuntimeCoverageCatalog,
@@ -71,6 +72,14 @@ const boundaries = new Map([
 ])
 
 describe('buildRuntimeCoverageCatalog', () => {
+  it('hashes runtime reference text consistently across checkout line endings', () => {
+    expect(
+      sha256RuntimeReferenceData(Buffer.from('{"type":"FeatureCollection"}\r\n')),
+    ).toBe(
+      sha256RuntimeReferenceData(Buffer.from('{"type":"FeatureCollection"}\n')),
+    )
+  })
+
   it('joins manifest status to authoritative boundary geometry', () => {
     const catalog = buildRuntimeCoverageCatalog(manifest, boundaries, {
       simplifyTolerance: 0,

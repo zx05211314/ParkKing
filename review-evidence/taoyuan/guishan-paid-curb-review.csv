@@ -64,7 +64,7 @@ parking_segment_id,district_id,district_name,description,fare_description,has_ch
 37X,guishan,Guishan,文化二路34巷14弄(文興路33巷-文化二路34巷),"一般小型車格 週一至週六 08:00~18:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
 37Y,guishan,Guishan,文化二路34巷14弄(機車計時)(文興路33巷-文化二路34巷),"機車車格 週一至週六 08:00~18:00收費 5元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
 37Z,guishan,Guishan,文化二路2(機車計時)(龜山一路-復興一路),"機車車格 週一至週六 08:00~18:00收費 5元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
-380,guishan,Guishan,樂學路(長庚路-樂學三路),"一般小型車格 週一至週五 08:00~18:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
+380,guishan,Guishan,樂學路(文德路-樂學三路),"一般小型車格 週一至週五 08:00~18:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
 381,guishan,Guishan,萬壽路一段3(中正路-福興街),"一般小型車格 週一至週五 08:00~18:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
 382,guishan,Guishan,文青路2(文青三路-文青六路),"一般小型車格 週一至週五 08:00~18:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
 383,guishan,Guishan,萬壽路二段(機車計時)(大同路-興中街),"機車車格 週一至週日 07:00~20:00收費 5元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,

@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "migratedAt": "2026-07-18T14:44:43.138Z",
+  "previousReferencePath": ".tmp/taoyuan-source-refresh-20260718/taoyuan-paid-curb.previous.json",
+  "currentReferencePath": "public/data/reference/taoyuan-paid-curb.json",
+  "evidenceDir": "review-evidence/taoyuan",
+  "outputDir": ".tmp/taoyuan-source-refresh-review",
+  "approval": {
+    "path": ".tmp/guishan-spatial-text-conflict-review.csv",
+    "sha256": "88e088d0ba694d1a8c12881e29b427001842b02ce090165ad3a4bbd76990565b",
+    "decision": "ACCEPT_CURRENT_TDX"
+  },
+  "source": {
+    "previousSha256": "a84e80ca8049c32bfdf9b06291b6eb6302dd81314ad5c02fadf53f2e89fc673e",
+    "currentSha256": "fb2a71771da7d21ee7d3fd689d1748c2669b2bc10113cec04d4a47a5b62a2d4a",
+    "recordCount": 944
+  },
+  "differences": [
+    {
+      "parkingSegmentId": "380",
+      "districtId": "guishan",
+      "field": "description",
+      "previousValue": "樂學路(長庚路-樂學三路)",
+      "currentValue": "樂學路(文德路-樂學三路)",
+      "reviewNote": "Project owner approved in Codex task on 2026-07-18"
+    }
+  ],
+  "migratedDistricts": [
+    {
+      "districtId": "taoyuan-district",
+      "approvedRows": 270,
+      "reviewSha256": "6ae0ee844e9db79f264553101e94293680fb5bd7b1b6d81decc65df967927e81"
+    },
+    {
+      "districtId": "zhongli",
+      "approvedRows": 155,
+      "reviewSha256": "30376259888ff971f2308df56a86f595d9db6941445c9cb8de607e15f7e61765"
+    },
+    {
+      "districtId": "daxi",
+      "approvedRows": 28,
+      "reviewSha256": "fc914769376ff917d290362a7a04a1ef566b843cb06af3b918f1b052321b4e6f"
+    },
+    {
+      "districtId": "yangmei",
+      "approvedRows": 43,
+      "reviewSha256": "0451d2cb01fd879b0ac67859006610f030458ab1be27ab8ca33494ee20b97bb6"
+    },
+    {
+      "districtId": "luzhu",
+      "approvedRows": 78,
+      "reviewSha256": "93c54ad482f627677c7406f0a38f42d2801f5a4a0d1458257ab95b20ad332aa3"
+    },
+    {
+      "districtId": "dayuan",
+      "approvedRows": 30,
+      "reviewSha256": "fcd85c3255f7a5c98d2e3bafd3c006ded87fd58a24ad1093458cb9e4cb67ac70"
+    },
+    {
+      "districtId": "guishan",
+      "approvedRows": 141,
+      "reviewSha256": "7caf75938eb3b24c69e69b577952359f202a1e4005428cdf2ec5c4d783bc61c4"
+    },
+    {
+      "districtId": "bade",
+      "approvedRows": 113,
+      "reviewSha256": "c1b88af0aa41706911952b04e629eb0b4f56a4656ff594820ff9d6494f22f42e"
+    },
+    {
+      "districtId": "longtan",
+      "approvedRows": 12,
+      "reviewSha256": "328e2efc0c2723a3dbeeeba9a1022a31dffefd2497f0228dfbdbfa05cd42750f"
+    },
+    {
+      "districtId": "pingzhen",
+      "approvedRows": 66,
+      "reviewSha256": "6327ddfc5100c4cc98854c802f138848868588737f52d7b50efc5c98099e08c1"
+    },
+    {
+      "districtId": "guanyin",
+      "approvedRows": 8,
+      "reviewSha256": "560a68f8275e2983f9959c6afc0bad78a4681e2b89060294c7e6a731cb6a0417"
+    }
+  ],
+  "totalApprovedRows": 944,
+  "safety": {
+    "geometryAvailable": false,
+    "legalAnswerEligible": false
+  }
+}
