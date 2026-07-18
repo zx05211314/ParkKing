@@ -123,6 +123,10 @@ describe('release workflow contracts', () => {
     expect(workflow).toContain(
       "run: npm run ops:render-deployment-verify -- ${{ inputs.skipSyncIssueRoundtrip && '--skip-sync-issue-roundtrip' || '' }} ${{ inputs.allParkingAnswerCases && '--all-parking-answer-cases' || '' }}",
     )
+    expectCommandsInOrder(workflow, [
+      'npm run ops:render-deployment-verify',
+      'npm run ops:smoke-ui-paid-curb-reference -- --app-url "${{ inputs.appUrl }}" --district xinyi --timeout-ms 90000',
+    ])
     expect(workflow).toContain('allParkingAnswerCases:')
     expect(workflow).toContain('default: true')
     expect(workflow).toMatch(

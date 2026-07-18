@@ -55,6 +55,19 @@ export type RenderLiveVerifyDispatchRequest =
 export type RenderLiveVerifyDispatchResult =
   WorkflowDispatchResult<RenderLiveVerifyDispatchInputs>
 
+export type ManifestPreflightFetch = (
+  input: string,
+  init: {
+    method: 'GET'
+    headers: Record<string, string>
+    redirect: 'follow'
+  },
+) => Promise<{
+  status: number
+  statusText: string
+  text: () => Promise<string>
+}>
+
 const readHandoffJson = async (filePath: string) => {
   try {
     return JSON.parse(
@@ -182,11 +195,72 @@ export const renderRenderLiveVerifyDispatchPlan = (
   '',
 ].join('\n')
 
+const isGithubManifestHost = (manifestUrl: string) => {
+  const hostname = new URL(manifestUrl).hostname.toLowerCase()
+  return (
+    hostname === 'github.com' ||
+    hostname.endsWith('.github.com') ||
+    hostname.endsWith('.githubusercontent.com')
+  )
+}
+
+export const preflightRenderLiveVerifyManifest = async (
+  options: RenderLiveVerifyDispatchOptions,
+  fetchImpl: ManifestPreflightFetch = fetch,
+) => {
+  if (options.dryRun) {
+    return
+  }
+
+  const headers: Record<string, string> = {
+    accept: 'application/json',
+    'user-agent': USER_AGENT,
+  }
+  if (
+    options.useGithubToken &&
+    options.token &&
+    isGithubManifestHost(options.manifestUrl)
+  ) {
+    headers.authorization = `Bearer ${options.token}`
+  }
+
+  const response = await fetchImpl(options.manifestUrl, {
+    method: 'GET',
+    headers,
+    redirect: 'follow',
+  })
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error(
+      `Release manifest preflight failed: HTTP ${response.status} ${response.statusText} for ${options.manifestUrl}`,
+    )
+  }
+
+  const body = await response.text()
+  try {
+    const manifest = JSON.parse(body) as unknown
+    if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {
+      throw new Error('manifest root must be an object')
+    }
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error)
+    throw new Error(
+      `Release manifest preflight failed: invalid JSON from ${options.manifestUrl} (${detail})`,
+    )
+  }
+}
+
 export const dispatchRenderLiveVerifyWorkflow = async (
   options: RenderLiveVerifyDispatchOptions,
   fetchImpl: WorkflowDispatchFetch = fetch,
-): Promise<RenderLiveVerifyDispatchResult> =>
-  dispatchWorkflow(
+  manifestFetchImpl: ManifestPreflightFetch = fetch,
+): Promise<RenderLiveVerifyDispatchResult> => {
+  if (!options.dryRun && !options.token) {
+    throw new Error(
+      'Missing GH_TOKEN or GITHUB_TOKEN; use --dry-run to preview only',
+    )
+  }
+  await preflightRenderLiveVerifyManifest(options, manifestFetchImpl)
+  return dispatchWorkflow(
     {
       repo: options.repo,
       ref: options.ref,
@@ -198,6 +272,7 @@ export const dispatchRenderLiveVerifyWorkflow = async (
     },
     fetchImpl,
   )
+}
 
 const run = async () => {
   const argv = process.argv.slice(2)

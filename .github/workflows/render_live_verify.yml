@@ -46,6 +46,8 @@ jobs:
           PARKKING_RELEASE_MANIFEST_URL: ${{ inputs.manifestUrl }}
           PARKKING_RELEASE_DOWNLOAD_TOKEN: ${{ inputs.useGithubToken && github.token || '' }}
         run: npm run ops:render-deployment-verify -- ${{ inputs.skipSyncIssueRoundtrip && '--skip-sync-issue-roundtrip' || '' }} ${{ inputs.allParkingAnswerCases && '--all-parking-answer-cases' || '' }}
+      - name: Smoke live Taoyuan paid-curb reference UI
+        run: npm run ops:smoke-ui-paid-curb-reference -- --app-url "${{ inputs.appUrl }}" --district xinyi --timeout-ms 90000
       - name: Summarize verification
         if: always()
         run: npm run ops:append-workflow-summary -- --append-file .tmp/render-deployment-verify.md
