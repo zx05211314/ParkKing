@@ -1001,17 +1001,22 @@ export const runSmokeUiPaidCurbReferenceMatrix = async (
     }
 
     const summaries: SmokeUiPaidCurbReferenceSummary[] = []
-    for (const referenceDistrict of referenceDistricts) {
-      summaries.push(
-        await runSmokeUiPaidCurbReference({
-          ...options,
-          appUrl,
-          district,
-          referenceDistrict,
-          allReferenceDistricts: false,
-          startPreview: false,
-          previewPort: undefined,
-        }),
+    for (const [index, referenceDistrict] of referenceDistricts.entries()) {
+      console.log(
+        `Paid-curb reference UI ${index + 1}/${referenceDistricts.length}: ${referenceDistrict}`,
+      )
+      const summary = await runSmokeUiPaidCurbReference({
+        ...options,
+        appUrl,
+        district,
+        referenceDistrict,
+        allReferenceDistricts: false,
+        startPreview: false,
+        previewPort: undefined,
+      })
+      summaries.push(summary)
+      console.log(
+        `Paid-curb reference UI ${referenceDistrict}: ${summary.pass ? 'PASS' : 'FAIL'}`,
       )
     }
     const passedDistrictCount = summaries.filter(({ pass }) => pass).length

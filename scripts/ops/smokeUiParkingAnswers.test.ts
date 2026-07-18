@@ -8,6 +8,7 @@ import {
   buildSmokeUiDatasetMetaUrl,
   buildSmokeUiParkingAnswerCaseUrl,
   buildSmokeUiParkingAnswerExpectations,
+  connectCdp,
   detectSmokeUiLoadingIndicators,
   getDatasetHashFromMeta,
   getSmokeProfileCleanupDelayMs,
@@ -22,6 +23,56 @@ import {
   validateSmokeUiDatasetHash,
   validateSmokeUiParkingAnswersSummary,
 } from './smokeUiParkingAnswers'
+
+type WebSocketListener = (event: { data?: unknown }) => void
+
+class FakeWebSocket {
+  private readonly listeners = new Map<string, WebSocketListener[]>()
+
+  constructor(url: string) {
+    void url
+  }
+
+  send(data: string) {
+    void data
+  }
+
+  close() {
+    this.emit('close')
+  }
+
+  addEventListener(
+    type: 'open' | 'message' | 'error' | 'close',
+    listener: WebSocketListener,
+  ) {
+    const listeners = this.listeners.get(type) ?? []
+    listeners.push(listener)
+    this.listeners.set(type, listeners)
+  }
+
+  protected emit(type: string, data?: unknown) {
+    this.listeners.get(type)?.forEach((listener) => listener({ data }))
+  }
+}
+
+class OpenButSilentWebSocket extends FakeWebSocket {
+  constructor(url: string) {
+    super(url)
+    queueMicrotask(() => this.emit('open'))
+  }
+}
+
+class ResponsiveWebSocket extends OpenButSilentWebSocket {
+  override send(data: string) {
+    const request = JSON.parse(data) as { id: number }
+    queueMicrotask(() =>
+      this.emit(
+        'message',
+        JSON.stringify({ id: request.id, result: { value: 'ok' } }),
+      ),
+    )
+  }
+}
 
 const answerCase: SmokeExactParkingAnswerCase = {
   id: 'xinyi-reviewed-legal-seg-8953-part-2',
@@ -82,6 +133,29 @@ describe('smokeUiParkingAnswers', () => {
       allowUnpinnedCases: false,
       allowMismatchedCaseHash: undefined,
     })
+  })
+
+  it('bounds CDP connection and command waits', async () => {
+    vi.stubGlobal('WebSocket', FakeWebSocket)
+    await expect(connectCdp('ws://never-opens', 10)).rejects.toThrow(
+      'Timed out opening Chrome CDP WebSocket after 10ms',
+    )
+
+    vi.stubGlobal('WebSocket', OpenButSilentWebSocket)
+    const silentClient = await connectCdp('ws://silent', 10)
+    await expect(silentClient.send('Runtime.evaluate')).rejects.toThrow(
+      'Timed out waiting for Chrome CDP command Runtime.evaluate after 10ms',
+    )
+    silentClient.close()
+  })
+
+  it('preserves successful CDP command responses', async () => {
+    vi.stubGlobal('WebSocket', ResponsiveWebSocket)
+    const client = await connectCdp('ws://responsive', 50)
+    await expect(client.send('Runtime.evaluate')).resolves.toEqual({
+      value: 'ok',
+    })
+    client.close()
   })
 
   it('bounds suite duration and retries fully missing or explicitly loading pages once', () => {
