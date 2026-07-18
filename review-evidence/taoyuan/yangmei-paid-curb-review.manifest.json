@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "districtId": "yangmei",
+  "sourceSha256": "a84e80ca8049c32bfdf9b06291b6eb6302dd81314ad5c02fadf53f2e89fc673e",
+  "sourceRecordCount": 944,
+  "reviewRecordCount": 43,
+  "geometryAvailable": false,
+  "legalAnswerEligible": false,
+  "allowedStatuses": [
+    "APPROVED_SOURCE_TEXT",
+    "NEEDS_CORRECTION",
+    "UNCLEAR"
+  ],
+  "reviewCsv": "yangmei-paid-curb-review.csv",
+  "reviewSha256": "0451d2cb01fd879b0ac67859006610f030458ab1be27ab8ca33494ee20b97bb6",
+  "approvedRecordCount": 43
+}

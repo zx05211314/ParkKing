@@ -1,0 +1,9 @@
+parking_segment_id,district_id,district_name,description,fare_description,has_charging_point,geometry_available,legal_answer_eligible,source_text_review_status,source_text_review_note
+B05,guanyin,Guanyin,長安路(福興街-莊敬路),"一般小型車格 週一至週五 08:00~18:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
+B06,guanyin,Guanyin,民權路238巷(建國路-泰安街),"一般小型車格 週一至週五 08:00~18:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
+B07,guanyin,Guanyin,民族路(富林里10鄰及(雙號側)仁德路-成功路二段及建國路),"一般小型車格 週一至週五 08:00~18:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
+B08,guanyin,Guanyin,吉祥街(仁德街及民族路-吉祥街81巷及吉祥街),"一般小型車格 週一至週五 08:00~18:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
+B09,guanyin,Guanyin,泰安街(樹林公園-活動中心),"一般小型車格 週一至週五 08:00~18:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
+B0A,guanyin,Guanyin,五福街(大觀路二段-三多街),"一般小型車格 週一至週五 08:00~18:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
+B0B,guanyin,Guanyin,八德街(九如街-五福街),"一般小型車格 週一至週五 08:00~18:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
+B0C,guanyin,Guanyin,三多街(九如街-二聖路),"一般小型車格 週一至週五 08:00~18:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,

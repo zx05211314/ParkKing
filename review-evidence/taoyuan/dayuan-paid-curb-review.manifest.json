@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "districtId": "dayuan",
+  "sourceSha256": "a84e80ca8049c32bfdf9b06291b6eb6302dd81314ad5c02fadf53f2e89fc673e",
+  "sourceRecordCount": 944,
+  "reviewRecordCount": 30,
+  "geometryAvailable": false,
+  "legalAnswerEligible": false,
+  "allowedStatuses": [
+    "APPROVED_SOURCE_TEXT",
+    "NEEDS_CORRECTION",
+    "UNCLEAR"
+  ],
+  "reviewCsv": "dayuan-paid-curb-review.csv",
+  "reviewSha256": "fcd85c3255f7a5c98d2e3bafd3c006ded87fd58a24ad1093458cb9e4cb67ac70",
+  "approvedRecordCount": 30
+}
