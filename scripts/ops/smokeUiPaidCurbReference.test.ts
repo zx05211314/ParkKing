@@ -1,3 +1,4 @@
+import * as fs from 'node:fs/promises'
 import { describe, expect, it } from 'vitest'
 import {
   buildSmokeUiPaidCurbReferenceSummary,
@@ -92,6 +93,19 @@ describe('smokeUiPaidCurbReference', () => {
     expect(url.searchParams.get('lat')).toBe('24.99493')
     expect(url.searchParams.get('lng')).toBe('121.30074')
     expect(url.searchParams.get('view')).toBe('LIST')
+  })
+
+  it('runs the CI smoke only after fixture data is built into the app', async () => {
+    const workflow = await fs.readFile('.github/workflows/ci.yml', 'utf-8')
+    const ingestPosition = workflow.indexOf('name: Ingest CI fixtures')
+    const fixtureBuildPosition = workflow.indexOf('name: Build UI with CI fixtures')
+    const smokePosition = workflow.indexOf(
+      'name: Smoke Taoyuan paid-curb reference UI',
+    )
+
+    expect(ingestPosition).toBeGreaterThanOrEqual(0)
+    expect(fixtureBuildPosition).toBeGreaterThan(ingestPosition)
+    expect(smokePosition).toBeGreaterThan(fixtureBuildPosition)
   })
 
   it('accepts the complete source-to-map and excluded-row contract', () => {
