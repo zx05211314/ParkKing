@@ -177,7 +177,7 @@ describe('taoyuanExpansionReadiness', () => {
     expect(workflow).toContain('.tmp/taoyuan-expansion-readiness.json')
   })
 
-  it('keeps credentialed TDX acquisition manual, non-publishing, and artifact-only', async () => {
+  it('keeps TDX acquisition manual, non-publishing, and artifact-only', async () => {
     const workflow = await fs.readFile(
       path.resolve('.github/workflows/taoyuan_spatial_reference.yml'),
       'utf-8',
@@ -191,6 +191,7 @@ describe('taoyuanExpansionReadiness', () => {
     expect(workflow).toContain(
       'TDX_CLIENT_SECRET: ${{ secrets.TDX_CLIENT_SECRET }}',
     )
+    expect(workflow).toContain('TDX_ALLOW_GUEST: "true"')
     expect(workflow).toContain('npm run ops:fetch-taoyuan-paid-curb')
     expect(workflow).toContain('--require-spatial')
     expect(workflow).toContain('name: taoyuan-spatial-reference')
@@ -296,7 +297,7 @@ describe('taoyuanExpansionReadiness', () => {
     )
   })
 
-  it('reports human and external input blockers without failing report mode', async () => {
+  it('reports human review while guest spatial acquisition is available', async () => {
     const fixture = await createFixture({})
     const result = await runTaoyuanExpansionReadiness({
       ...fixture,
@@ -304,7 +305,7 @@ describe('taoyuanExpansionReadiness', () => {
     })
 
     expect(result).toMatchObject({
-      status: 'human-and-external-input-required',
+      status: 'human-review-required',
       gatePass: true,
       readyForSpatialReference: false,
       legalAnswerEligible: false,
@@ -321,12 +322,14 @@ describe('taoyuanExpansionReadiness', () => {
       },
       spatial: {
         exists: false,
-        acquisition: 'blocked',
+        acquisition: 'guest',
         credentialsConfigured: false,
       },
     })
     expect(result.automationErrors).toEqual([])
-    expect(result.nextActions.join('\n')).toContain('TDX_CLIENT_ID')
+    expect(result.nextActions).toContain(
+      'npm run ops:fetch-taoyuan-paid-curb',
+    )
     expect(renderTaoyuanExpansionReadiness(result)).toContain(
       'Eligible for legal parking answers: no',
     )
@@ -377,8 +380,21 @@ describe('taoyuanExpansionReadiness', () => {
     })
 
     expect(result.gatePass).toBe(false)
+    expect(result.status).toBe('spatial-acquisition-ready')
     expect(result.requireSpatial).toBe(true)
     expect(result.spatial.valid).toBe(false)
+  })
+
+  it('reports external input when guest access is explicitly disabled', async () => {
+    const fixture = await createFixture({ approved: true })
+    const result = await runTaoyuanExpansionReadiness({
+      ...fixture,
+      env: { TDX_ALLOW_GUEST: 'false' },
+    })
+
+    expect(result.status).toBe('external-input-required')
+    expect(result.spatial.acquisition).toBe('blocked')
+    expect(result.nextActions.join('\n')).toContain('TDX_CLIENT_ID')
   })
 
   it('accepts reviewed text and safe TDX geometry as reference-only evidence', async () => {

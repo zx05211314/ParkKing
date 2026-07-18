@@ -362,12 +362,16 @@ source transcription only and never confirms parking legality. Rebuilds refresh 
 `.template.csv` file but preserve an existing review CSV. Check structure, source hash,
 and pending counts with `npm run ops:taoyuan-review-status`; require every row to be
 explicitly approved with `npm run ops:taoyuan-review-gate`. With TDX
-credentials in `TDX_CLIENT_ID` and `TDX_CLIENT_SECRET`, run
+guest access, or credentials in `TDX_CLIENT_ID` and `TDX_CLIENT_SECRET`, run
 `npm run ops:fetch-taoyuan-paid-curb` to normalize paid curb segment geometry/reference
-points. The output uses `PAID_CURB_SEGMENT` with `legalAnswerEligible: false`; it must not be
+points. Guest access is used only when credentials are absent and can be disabled with
+`TDX_ALLOW_GUEST=false`. The output records its acquisition mode, coordinate correction
+count, and dropped-record count. A swapped point is repaired only when the original pair
+is invalid and the reversed pair is inside the Taoyuan range. The output uses
+`PAID_CURB_SEGMENT` with `legalAnswerEligible: false`; it must not be
 renamed to `parking_spaces.geojson` or used to produce a general legal parking answer.
-For a credentialed CI handoff, store those two values as GitHub repository secrets and
-manually run the `Taoyuan Spatial Reference` workflow. It applies the spatial-only
+For a CI handoff, manually run the `Taoyuan Spatial Reference` workflow. It uses guest
+access when the optional repository secrets are absent, applies the spatial-only
 `--require-spatial` gate and uploads the normalized GeoJSON plus readiness reports for 14
 days; it does not commit, ingest, publish, or deploy the artifact.
 After a successful run, install the downloaded artifact without bypassing its safety gate:
@@ -383,7 +387,7 @@ The installer validates every feature before atomically replacing
 `.tmp/taoyuan-spatial-reference-install.json`. Invalid, empty, or legal-answer-eligible
 artifacts never replace an existing reference.
 Run `npm run ops:taoyuan-expansion-readiness:report` to verify the 13 official boundaries,
-944-row text pack, 270-row source-text review, optional saved/credentialed TDX geometry,
+944-row text pack, 270-row source-text review, optional saved/guest/credentialed TDX geometry,
 and the non-legal safety contract in one report. The report exits successfully when the
 only blockers are expected human or external inputs. Use
 `npm run ops:taoyuan-expansion-readiness:strict` when a milestone must remain non-zero

@@ -22,6 +22,7 @@ jobs:
         env:
           TDX_CLIENT_ID: ${{ secrets.TDX_CLIENT_ID }}
           TDX_CLIENT_SECRET: ${{ secrets.TDX_CLIENT_SECRET }}
+          TDX_ALLOW_GUEST: "true"
         run: npm run ops:fetch-taoyuan-paid-curb -- --out .tmp/taoyuan-spatial-reference/paid_curb_segments.geojson
       - name: Verify non-legal spatial artifact
         run: npm run ops:taoyuan-expansion-readiness -- --boundary-catalog public/data/coverage.json --spatial .tmp/taoyuan-spatial-reference/paid_curb_segments.geojson --require-spatial --out .tmp/taoyuan-spatial-reference/readiness.md --json-out .tmp/taoyuan-spatial-reference/readiness.json
