@@ -575,7 +575,7 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   `npm run ops:smoke-ui-issue-report:preview -- --district xinyi --timeout-ms 25000`
 - Production Taoyuan paid-curb reference UI smoke after `npm run build`; the district-driven fixture verifies that a reviewed source row opens its representative point without changing the pinned address or producing a parking-legality answer, and that a boundary-excluded row remains text-only:
   `npm run ops:smoke-ui-paid-curb-reference:preview -- --district xinyi --reference-district taoyuan-district --timeout-ms 60000`
-  Use `--reference-district guishan` to run the same safety contract against Guishan's reviewed text and representative-point packs.
+  Use `--reference-district guishan` for one district or `--all-reference-districts` to run the same safety contract against every published Taoyuan text and representative-point pack with one preview server.
 - Current-product P1 release readiness gate for the Xinyi flow:
   `npm run build`
   `npm run ops:p1-release-readiness`

@@ -29,6 +29,7 @@ export interface SmokeUiPaidCurbReferenceOptions {
   appUrl?: string
   district?: string
   referenceDistrict?: string
+  allReferenceDistricts?: boolean
   chromePath?: string
   cdpPort?: number
   timeoutMs?: number
@@ -46,8 +47,8 @@ export interface PaidCurbReferenceSmokeFixture {
   availableSourceDescription: string
   availableQuery: string
   expectedCoordinates: string
-  excludedSourceId: string
-  excludedQuery: string
+  excludedSourceId: string | null
+  excludedQuery: string | null
   expectedSourceRecordCount: number
   expectedReferencePointCount: number
   expectedExcludedPointCount: number
@@ -59,7 +60,7 @@ export interface SmokeUiPaidCurbReferenceSummary {
   district: string
   referenceDistrict: string
   availableSourceId: string
-  excludedSourceId: string
+  excludedSourceId: string | null
   expectedSourceRecordCount: number
   expectedReferencePointCount: number
   expectedExcludedPointCount: number
@@ -87,6 +88,15 @@ export interface SmokeUiPaidCurbReferenceSummary {
   selectionCleared: boolean
   errors: string[]
   bodySnippet: string
+}
+
+export interface SmokeUiPaidCurbReferenceMatrixSummary {
+  appUrl: string
+  district: string
+  pass: boolean
+  districtCount: number
+  passedDistrictCount: number
+  summaries: SmokeUiPaidCurbReferenceSummary[]
 }
 
 interface PaidCurbReferenceListState {
@@ -156,6 +166,22 @@ const requireRecord = (
   return record
 }
 
+export const loadSmokeUiPaidCurbReferenceDistrictIds = async (
+  publicRoot = path.join(process.cwd(), 'public'),
+) => {
+  const coverage = parseRuntimeCoverageCatalog(
+    await readJson(path.join(publicRoot, 'data', 'coverage.json')),
+  )
+  return coverage.districts
+    .filter(
+      (district) =>
+        district.regionId === 'taoyuan' &&
+        district.publishStage === 'source-only' &&
+        Boolean(district.referenceData?.spatialReference),
+    )
+    .map(({ districtId }) => districtId)
+}
+
 export const loadSmokeUiPaidCurbReferenceFixture = async (
   referenceDistrict: string,
   publicRoot = path.join(process.cwd(), 'public'),
@@ -204,9 +230,9 @@ export const loadSmokeUiPaidCurbReferenceFixture = async (
     compareSourceIds(left.properties, right.properties),
   )[0]
   const excluded = [...spatialPack.metadata.excluded].sort(compareSourceIds)[0]
-  if (!availableFeature || !excluded) {
+  if (!availableFeature) {
     throw new Error(
-      `Reference district ${referenceDistrict} needs at least one mapped and one excluded source`,
+      `Reference district ${referenceDistrict} needs at least one mapped source`,
     )
   }
 
@@ -215,11 +241,13 @@ export const loadSmokeUiPaidCurbReferenceFixture = async (
     availableFeature.properties.parkingSegmentId,
     referenceDistrict,
   )
-  const excludedRecord = requireRecord(
-    textDistrict.records,
-    excluded.parkingSegmentId,
-    referenceDistrict,
-  )
+  const excludedRecord = excluded
+    ? requireRecord(
+        textDistrict.records,
+        excluded.parkingSegmentId,
+        referenceDistrict,
+      )
+    : null
   if (availableFeature.properties.description !== availableRecord.description) {
     throw new Error(
       `Reference district ${referenceDistrict} mapped source text does not match the text pack`,
@@ -236,8 +264,8 @@ export const loadSmokeUiPaidCurbReferenceFixture = async (
     availableSourceDescription: availableRecord.description,
     availableQuery: availableRecord.description,
     expectedCoordinates: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
-    excludedSourceId: excludedRecord.parkingSegmentId,
-    excludedQuery: excludedRecord.description,
+    excludedSourceId: excludedRecord?.parkingSegmentId ?? null,
+    excludedQuery: excludedRecord?.description ?? null,
     expectedSourceRecordCount: textDistrict.recordCount,
     expectedReferencePointCount: spatialPack.metadata.featureCount,
     expectedExcludedPointCount: spatialPack.metadata.excludedFeatureCount,
@@ -277,6 +305,7 @@ export const parseSmokeUiPaidCurbReferenceArgs = (
   referenceDistrict:
     getArgValue(argv, '--reference-district', '--referenceDistrict') ??
     DEFAULT_REFERENCE_DISTRICT,
+  allReferenceDistricts: hasFlag(argv, '--all-reference-districts'),
   chromePath:
     getArgValue(argv, '--chrome-path', '--chromePath') ??
     process.env.CHROME_PATH ??
@@ -528,16 +557,22 @@ const closeDetailAndFilterExcludedReference = async (
     `(() => {
       const close = document.querySelector('.map-paid-curb-detail-close');
       const input = document.querySelector('.paid-curb-reference-search input');
-      if (!(close instanceof HTMLButtonElement) || !(input instanceof HTMLInputElement)) {
+      const excludedQuery = ${JSON.stringify(fixture.excludedQuery)};
+      if (
+        !(close instanceof HTMLButtonElement) ||
+        (excludedQuery !== null && !(input instanceof HTMLInputElement))
+      ) {
         return { changed: false };
       }
       close.click();
-      const setter = Object.getOwnPropertyDescriptor(
-        HTMLInputElement.prototype,
-        'value'
-      )?.set;
-      setter?.call(input, ${JSON.stringify(fixture.excludedQuery)});
-      input.dispatchEvent(new Event('input', { bubbles: true }));
+      if (excludedQuery !== null && input instanceof HTMLInputElement) {
+        const setter = Object.getOwnPropertyDescriptor(
+          HTMLInputElement.prototype,
+          'value'
+        )?.set;
+        setter?.call(input, excludedQuery);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
       return { changed: true };
     })()`,
   )
@@ -557,10 +592,12 @@ const readExcludedState = async (
     `(() => {
       const bodyText = document.body ? document.body.innerText : '';
       const root = document.querySelector('.map-root-shell');
+      const excludedSourceId = ${JSON.stringify(fixture.excludedSourceId)};
       const row = Array.from(document.querySelectorAll('.paid-curb-reference-row')).find(
         (candidate) =>
+          excludedSourceId !== null &&
           candidate.querySelector('.paid-curb-reference-row-meta')?.textContent?.trim() ===
-          ${JSON.stringify(`Source ID ${fixture.excludedSourceId}`)}
+          'Source ID ' + excludedSourceId
       );
       const note = row?.querySelector('.paid-curb-reference-point-note');
       const input = document.querySelector('.paid-curb-reference-search input');
@@ -698,19 +735,29 @@ export const validateSmokeUiPaidCurbReferenceSummary = (
       `${summary.referenceDistrict} pinned location was presented as a parking recommendation`,
     )
   }
-  if (!summary.excludedRowFound) {
+  if (summary.expectedExcludedPointCount > 0) {
+    if (!summary.excludedSourceId) {
+      errors.push('excluded point metadata has no deterministic smoke source')
+    } else {
+      if (!summary.excludedRowFound) {
+        errors.push(
+          `excluded source row ${summary.excludedSourceId} was not rendered`,
+        )
+      }
+      if (summary.excludedActionCount !== 0) {
+        errors.push(
+          `excluded source row ${summary.excludedSourceId} exposed ${summary.excludedActionCount} map actions`,
+        )
+      }
+      if (!summary.excludedBoundaryNoteFound) {
+        errors.push(
+          `excluded source row ${summary.excludedSourceId} is missing its boundary-review note`,
+        )
+      }
+    }
+  } else if (summary.excludedSourceId !== null) {
     errors.push(
-      `excluded source row ${summary.excludedSourceId} was not rendered`,
-    )
-  }
-  if (summary.excludedActionCount !== 0) {
-    errors.push(
-      `excluded source row ${summary.excludedSourceId} exposed ${summary.excludedActionCount} map actions`,
-    )
-  }
-  if (!summary.excludedBoundaryNoteFound) {
-    errors.push(
-      `excluded source row ${summary.excludedSourceId} is missing its boundary-review note`,
+      `zero-exclusion district unexpectedly selected source ${summary.excludedSourceId}`,
     )
   }
   if (!summary.selectionCleared) {
@@ -786,7 +833,9 @@ export const renderSmokeUiPaidCurbReferenceSummary = (
     `Coverage boundary: ${summary.coverageDistrict ?? 'missing'} / ${summary.coverageStage ?? 'missing'}`,
     `Address preserved: ${summary.addressPreserved ? 'yes' : 'no'}`,
     `Safety boundary: ${summary.mapDetailHasSafetyBoundary && summary.outsideCoverageNotEvaluated ? 'preserved' : 'missing'}`,
-    `Excluded source ${summary.excludedSourceId}: ${summary.excludedRowFound && summary.excludedActionCount === 0 && summary.excludedBoundaryNoteFound ? 'text only' : 'invalid'}`,
+    summary.excludedSourceId
+      ? `Excluded source ${summary.excludedSourceId}: ${summary.excludedRowFound && summary.excludedActionCount === 0 && summary.excludedBoundaryNoteFound ? 'text only' : 'invalid'}`
+      : 'Excluded source: not applicable (0 reviewed exclusions)',
     summary.errors.length > 0
       ? `Errors: ${summary.errors.join('; ')}`
       : 'Errors: none',
@@ -892,11 +941,17 @@ export const runSmokeUiPaidCurbReference = async (
 
     const excluded = await waitForState({
       read: () => readExcludedState(client as CdpClient, fixture),
-      isReady: (state) =>
-        state.queryValue === fixture.excludedQuery &&
-        state.excludedRowFound &&
-        state.excludedBoundaryNoteFound &&
-        state.selectionCleared,
+      isReady: (state) => {
+        if (!fixture.excludedSourceId) {
+          return state.selectionCleared
+        }
+        return (
+          state.queryValue === fixture.excludedQuery &&
+          state.excludedRowFound &&
+          state.excludedBoundaryNoteFound &&
+          state.selectionCleared
+        )
+      },
       timeoutMs,
     })
     const summary = buildSmokeUiPaidCurbReferenceSummary({
@@ -925,10 +980,80 @@ export const runSmokeUiPaidCurbReference = async (
   }
 }
 
+export const runSmokeUiPaidCurbReferenceMatrix = async (
+  options: SmokeUiPaidCurbReferenceOptions = {},
+): Promise<SmokeUiPaidCurbReferenceMatrixSummary> => {
+  let appUrl = options.appUrl ?? DEFAULT_APP_URL
+  const district = options.district?.trim() || DEFAULT_DISTRICT
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const referenceDistricts =
+    await loadSmokeUiPaidCurbReferenceDistrictIds()
+  if (referenceDistricts.length === 0) {
+    throw new Error('No published Taoyuan paid-curb spatial districts found')
+  }
+
+  let launchedPreview: LaunchedPreview | null = null
+  try {
+    if (options.startPreview) {
+      const previewPort = await chooseAvailablePort(options.previewPort)
+      launchedPreview = await launchPreview({ previewPort, timeoutMs })
+      appUrl = launchedPreview.appUrl
+    }
+
+    const summaries: SmokeUiPaidCurbReferenceSummary[] = []
+    for (const referenceDistrict of referenceDistricts) {
+      summaries.push(
+        await runSmokeUiPaidCurbReference({
+          ...options,
+          appUrl,
+          district,
+          referenceDistrict,
+          allReferenceDistricts: false,
+          startPreview: false,
+          previewPort: undefined,
+        }),
+      )
+    }
+    const passedDistrictCount = summaries.filter(({ pass }) => pass).length
+    return {
+      appUrl,
+      district,
+      pass: passedDistrictCount === summaries.length,
+      districtCount: summaries.length,
+      passedDistrictCount,
+      summaries,
+    }
+  } finally {
+    await stopPreview(launchedPreview)
+  }
+}
+
+export const renderSmokeUiPaidCurbReferenceMatrixSummary = (
+  summary: SmokeUiPaidCurbReferenceMatrixSummary,
+) =>
+  [
+    `UI paid-curb reference matrix: ${summary.pass ? 'PASS' : 'FAIL'}`,
+    `Active dataset: ${summary.district}`,
+    `App: ${summary.appUrl}`,
+    `Districts: ${summary.passedDistrictCount}/${summary.districtCount} passed`,
+    ...summary.summaries.map(
+      (district) =>
+        `- ${district.pass ? 'PASS' : 'FAIL'} ${district.referenceDistrict}: records=${district.sourceRecordCount ?? 'missing'}, points=${district.referencePointCount ?? 'missing'}, exclusions=${district.excludedPointCount ?? 'missing'}, mapped=${district.availableSourceId}, excluded=${district.excludedSourceId ?? 'none'}`,
+    ),
+  ].join('\n')
+
 const run = async () => {
-  const summary = await runSmokeUiPaidCurbReference(
-    parseSmokeUiPaidCurbReferenceArgs(process.argv),
-  )
+  const options = parseSmokeUiPaidCurbReferenceArgs(process.argv)
+  if (options.allReferenceDistricts) {
+    const matrix = await runSmokeUiPaidCurbReferenceMatrix(options)
+    if (!matrix.pass) {
+      throw new Error(renderSmokeUiPaidCurbReferenceMatrixSummary(matrix))
+    }
+    console.log('UI paid-curb reference matrix ok')
+    console.log(renderSmokeUiPaidCurbReferenceMatrixSummary(matrix))
+    return
+  }
+  const summary = await runSmokeUiPaidCurbReference(options)
   console.log('UI paid-curb reference smoke ok')
   console.log(renderSmokeUiPaidCurbReferenceSummary(summary))
 }
