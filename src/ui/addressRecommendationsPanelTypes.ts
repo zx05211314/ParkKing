@@ -25,6 +25,7 @@ export interface AddressRecommendationsPanelProps {
   parkingCoverageNotice: string | null
   parkingCoverageReferenceState?: PaidCurbReferenceState | null
   parkingCoverageReferenceAddressLabel?: string | null
+  selectedPaidCurbReferenceId?: string | null
   parkingAnswerReport: SegmentReport | null
   nearbySnapshot: NearbySnapshot | null
   bestAddressRecommendation: RecommendationSegmentLike | null
@@ -61,6 +62,7 @@ export interface AddressRecommendationsPanelProps {
   ) => void
   onRecommendationRankModeChange: (value: AddressRecommendationRankMode) => void
   onParkingAnswerReport: (status: ReportStatus, note: string) => void
+  onSelectPaidCurbReference?: (parkingSegmentId: string) => void
   onSelectAddressRecommendation: (segmentId: string, targetKey?: string | null) => void
   onSaveBestRecommendationPlan: () => void
   onNavigateToRecommendation: (
@@ -95,9 +97,11 @@ export type AddressParkingAnswerSummaryProps = Pick<
   | 'parkingCoverageNotice'
   | 'parkingCoverageReferenceState'
   | 'parkingCoverageReferenceAddressLabel'
+  | 'selectedPaidCurbReferenceId'
   | 'parkingAnswerReport'
   | 'formatDistanceMeters'
   | 'onParkingAnswerReport'
+  | 'onSelectPaidCurbReference'
 >
 
 export type AddressBestRecommendationCardProps = Pick<

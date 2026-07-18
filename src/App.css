@@ -649,6 +649,17 @@
   background: rgba(5, 17, 22, 0.46);
 }
 
+.paid-curb-reference-row.selected {
+  border-color: rgba(255, 224, 122, 0.7);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 224, 122, 0.12),
+      rgba(5, 17, 22, 0.5)
+    );
+  box-shadow: inset 3px 0 0 #ffe07a;
+}
+
 .paid-curb-reference-row-title {
   color: #f4ffff;
   font-size: 12px;
@@ -669,6 +680,43 @@
   line-height: 1.4;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+}
+
+.paid-curb-reference-map-action {
+  width: fit-content;
+  margin-top: 3px;
+  padding: 6px 9px;
+  border: 1px solid rgba(95, 211, 206, 0.42);
+  border-radius: 999px;
+  color: #d9fffb;
+  background: rgba(95, 211, 206, 0.12);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.paid-curb-reference-map-action[aria-pressed='true'] {
+  border-color: rgba(255, 224, 122, 0.72);
+  color: #fff3bd;
+  background: rgba(255, 224, 122, 0.14);
+}
+
+.paid-curb-reference-map-action:focus-visible {
+  outline: 2px solid #9ff4ed;
+  outline-offset: 2px;
+}
+
+.paid-curb-reference-map-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.paid-curb-reference-point-note {
+  padding-top: 2px;
+  color: #cbbf9c;
+  font-size: 10px;
+  line-height: 1.4;
 }
 
 .paid-curb-reference-source-link {

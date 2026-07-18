@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import maplibregl, { Map, GeoJSONSource } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type {
@@ -73,6 +73,7 @@ export interface MapViewProps {
   searchLocationLabel?: string | null
   coverageBoundary?: PinnedCoverageBoundary | null
   paidCurbReferencePoints?: FeatureCollection<Point> | null
+  selectedPaidCurbReferenceId?: string | null
   arrivalLocation?: [number, number] | null
   arrivalLocationKind?: 'SEGMENT' | 'PARKING_SPACE' | null
   arrivalLocationLabel?: string | null
@@ -84,6 +85,7 @@ export interface MapViewProps {
   onSelect: (id: string | null) => void
   onSelectRecommendedTarget?: (segmentId: string, key: string | null) => void
   onSelectParkingSpace?: (key: string | null) => void
+  onSelectPaidCurbReference?: (id: string | null) => void
   onPickLocation?: (location: [number, number]) => void
 }
 
@@ -253,6 +255,7 @@ export const MapView = ({
   searchLocationLabel = null,
   coverageBoundary = null,
   paidCurbReferencePoints = null,
+  selectedPaidCurbReferenceId = null,
   arrivalLocation = null,
   arrivalLocationKind = null,
   arrivalLocationLabel = null,
@@ -264,21 +267,20 @@ export const MapView = ({
   onSelect,
   onSelectRecommendedTarget,
   onSelectParkingSpace,
+  onSelectPaidCurbReference,
   onPickLocation,
 }: MapViewProps) => {
   const mapRef = useRef<Map | null>(null)
   const mapContainer = useRef<HTMLDivElement | null>(null)
   const searchMarkerRef = useRef<maplibregl.Marker | null>(null)
   const arrivalMarkerRef = useRef<maplibregl.Marker | null>(null)
-  const [selectedPaidCurbReferenceId, setSelectedPaidCurbReferenceId] =
-    useState<string | null>(null)
   const onSelectRef = useRef(onSelect)
   const onSelectRecommendedTargetRef = useRef(onSelectRecommendedTarget)
   const onSelectParkingSpaceRef = useRef(onSelectParkingSpace)
   const onSelectPaidCurbReferenceRef = useRef<
     (selection: PaidCurbReferencePointSelection | null) => void
   >((selection) =>
-    setSelectedPaidCurbReferenceId(selection?.parkingSegmentId ?? null),
+    onSelectPaidCurbReference?.(selection?.parkingSegmentId ?? null),
   )
   const onPickLocationRef = useRef(onPickLocation)
   const showZonesRef = useRef(showZones)
@@ -323,6 +325,11 @@ export const MapView = ({
   useEffect(() => {
     onSelectParkingSpaceRef.current = onSelectParkingSpace
   }, [onSelectParkingSpace])
+
+  useEffect(() => {
+    onSelectPaidCurbReferenceRef.current = (selection) =>
+      onSelectPaidCurbReference?.(selection?.parkingSegmentId ?? null)
+  }, [onSelectPaidCurbReference])
 
   useEffect(() => {
     onPickLocationRef.current = onPickLocation
@@ -865,7 +872,7 @@ export const MapView = ({
       {selectedPaidCurbReference ? (
         <PaidCurbReferenceMapDetail
           selection={selectedPaidCurbReference}
-          onClose={() => setSelectedPaidCurbReferenceId(null)}
+          onClose={() => onSelectPaidCurbReference?.(null)}
         />
       ) : null}
       <div className="map-overlay-controls">

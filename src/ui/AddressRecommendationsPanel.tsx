@@ -17,6 +17,7 @@ export function AddressRecommendationsPanel({
   parkingCoverageNotice,
   parkingCoverageReferenceState,
   parkingCoverageReferenceAddressLabel,
+  selectedPaidCurbReferenceId,
   parkingAnswerReport,
   nearbySnapshot,
   bestAddressRecommendation,
@@ -50,6 +51,7 @@ export function AddressRecommendationsPanel({
   onSearchActionKeyDown,
   onRecommendationRankModeChange,
   onParkingAnswerReport,
+  onSelectPaidCurbReference,
   onSelectAddressRecommendation,
   onSaveBestRecommendationPlan,
   onNavigateToRecommendation,
@@ -85,9 +87,11 @@ export function AddressRecommendationsPanel({
         parkingCoverageReferenceAddressLabel={
           parkingCoverageReferenceAddressLabel
         }
+        selectedPaidCurbReferenceId={selectedPaidCurbReferenceId}
         parkingAnswerReport={parkingAnswerReport}
         formatDistanceMeters={formatDistanceMeters}
         onParkingAnswerReport={onParkingAnswerReport}
+        onSelectPaidCurbReference={onSelectPaidCurbReference}
       />
       {parkingCoverageNotice ||
       !bestAddressRecommendation ||

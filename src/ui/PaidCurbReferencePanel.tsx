@@ -4,15 +4,20 @@ import {
   findPaidCurbReferenceMatches,
   suggestPaidCurbRoadQuery,
 } from './paidCurbReferenceSearch'
+import { getPaidCurbReferencePointStatus } from './paidCurbReferenceMapSelection'
 
 interface PaidCurbReferencePanelProps {
   state: PaidCurbReferenceState
   addressLabel: string | null
+  selectedReferencePointId?: string | null
+  onSelectReferencePoint?: (parkingSegmentId: string) => void
 }
 
 export function PaidCurbReferencePanel({
   state,
   addressLabel,
+  selectedReferencePointId = null,
+  onSelectReferencePoint,
 }: PaidCurbReferencePanelProps) {
   const suggestedQuery = suggestPaidCurbRoadQuery(addressLabel)
   const [query, setQuery] = useState(suggestedQuery)
@@ -73,23 +78,57 @@ export function PaidCurbReferencePanel({
           <div className="paid-curb-reference-result-count">
             {matches.total} source-text match{matches.total === 1 ? '' : 'es'}
           </div>
-          {matches.records.map((record) => (
-            <article
-              className="paid-curb-reference-row"
-              key={record.parkingSegmentId}
-            >
-              <div className="paid-curb-reference-row-title">
-                {record.description}
-              </div>
-              <div className="paid-curb-reference-row-meta">
-                Source ID {record.parkingSegmentId}
-                {record.hasChargingPoint ? ' | charging point reported' : ''}
-              </div>
-              <div className="paid-curb-reference-fare">
-                {record.fareDescription ?? 'No fare text in the source record.'}
-              </div>
-            </article>
-          ))}
+          {matches.records.map((record) => {
+            const pointStatus = getPaidCurbReferencePointStatus(
+              state.spatialReference,
+              record.parkingSegmentId,
+            )
+            const selected =
+              selectedReferencePointId === record.parkingSegmentId
+            return (
+              <article
+                className={`paid-curb-reference-row${selected ? ' selected' : ''}`}
+                key={record.parkingSegmentId}
+              >
+                <div className="paid-curb-reference-row-title">
+                  {record.description}
+                </div>
+                <div className="paid-curb-reference-row-meta">
+                  Source ID {record.parkingSegmentId}
+                  {record.hasChargingPoint
+                    ? ' | charging point reported'
+                    : ''}
+                </div>
+                <div className="paid-curb-reference-fare">
+                  {record.fareDescription ??
+                    'No fare text in the source record.'}
+                </div>
+                {pointStatus === 'AVAILABLE' ? (
+                  <button
+                    type="button"
+                    className="paid-curb-reference-map-action"
+                    aria-pressed={selected}
+                    disabled={!onSelectReferencePoint}
+                    onClick={() =>
+                      onSelectReferencePoint?.(record.parkingSegmentId)
+                    }
+                  >
+                    {selected ? 'Highlighted on map' : 'Highlight on map'}
+                  </button>
+                ) : pointStatus === 'EXCLUDED' ? (
+                  <div className="paid-curb-reference-point-note">
+                    Text only. Its representative point was excluded by the
+                    official district-boundary review.
+                  </div>
+                ) : spatialMetadata ? (
+                  <div className="paid-curb-reference-point-note">
+                    No reviewed representative point is available for this
+                    source row.
+                  </div>
+                ) : null}
+              </article>
+            )
+          })}
           {matches.total === 0 ? (
             <div className="paid-curb-reference-empty">
               No district source description contains this road name. This is not
