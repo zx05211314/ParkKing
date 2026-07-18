@@ -41,14 +41,27 @@ on:
       - completed
 
 permissions:
-  contents: read
+  actions: read
+  contents: write
+
+concurrency:
+  group: parkking-production-data-rollout
+  cancel-in-progress: false
 
 jobs:
   sync:
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'data-')) }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.head_branch == github.event.repository.default_branch || startsWith(github.event.workflow_run.head_branch, 'data-'))) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      - name: Download exact release handoff
+        if: ${{ github.event_name == 'workflow_run' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PARKKING_UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: npm run ops:release-rollout-workflow -- --mode download-handoff
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
@@ -63,6 +76,7 @@ jobs:
           PARKKING_RENDER_SERVICE_NAME: ${{ secrets.PARKKING_RENDER_SERVICE_NAME }}
           PARKKING_WORKFLOW_EVENT_NAME: ${{ github.event_name }}
           PARKKING_WORKFLOW_RUN_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          PARKKING_WORKFLOW_RUN_HANDOFF_JSON: ${{ github.event_name == 'workflow_run' && '.tmp/release-data-upstream/.tmp/render-deployment-handoff.json' || '' }}
           PARKKING_INPUT_SERVICE_ID: ${{ github.event.inputs.serviceId }}
           PARKKING_INPUT_SERVICE_NAME: ${{ github.event.inputs.serviceName }}
           PARKKING_INPUT_PACKAGE_URL: ${{ github.event.inputs.packageUrl }}
@@ -71,9 +85,27 @@ jobs:
           PARKKING_INPUT_DEPLOY: ${{ github.event.inputs.deploy }}
           PARKKING_INPUT_DEPLOY_MODE: ${{ github.event.inputs.deployMode }}
         run: npm run ops:render-runtime-env-sync-workflow
+      - name: Wait for exact release on Render
+        if: ${{ github.event_name == 'workflow_run' }}
+        env:
+          PARKKING_RENDER_APP_URL: ${{ vars.PARKKING_RENDER_APP_URL || 'https://parkking.onrender.com' }}
+        run: npm run ops:wait-render-release -- --handoff-json .tmp/release-data-upstream/.tmp/render-deployment-handoff.json
+      - name: Verify live Render deployment
+        if: ${{ github.event_name == 'workflow_run' }}
+        env:
+          PARKKING_RENDER_APP_URL: ${{ vars.PARKKING_RENDER_APP_URL || 'https://parkking.onrender.com' }}
+        run: npm run ops:render-deployment-verify -- --handoff-json .tmp/release-data-upstream/.tmp/render-deployment-handoff.json --all-parking-answer-cases
+      - name: Smoke live all Taoyuan paid-curb reference UIs
+        if: ${{ github.event_name == 'workflow_run' }}
+        run: npm run ops:smoke-ui-paid-curb-reference -- --app-url "${{ vars.PARKKING_RENDER_APP_URL || 'https://parkking.onrender.com' }}" --district xinyi --all-reference-districts --timeout-ms 90000
+      - name: Mark verified data release latest
+        if: ${{ github.event_name == 'workflow_run' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: npm run ops:release-rollout-workflow -- --mode mark-latest
       - name: Summarize sync
         if: always()
-        run: npm run ops:append-workflow-summary -- --append-file .tmp/render-runtime-env-sync.md
+        run: npm run ops:append-workflow-summary -- --append-file .tmp/render-runtime-env-sync.md --append-file .tmp/render-release-wait.md --append-file .tmp/render-deployment-verify.md
       - name: Upload sync artifact
         if: always()
         uses: actions/upload-artifact@v7
@@ -82,4 +114,8 @@ jobs:
           path: |
             .tmp/render-runtime-env-sync.md
             .tmp/render-runtime-env-sync.json
+            .tmp/render-release-wait.md
+            .tmp/render-release-wait.json
+            .tmp/render-deployment-verify.md
+            .tmp/render-deployment-verify.json
           if-no-files-found: warn

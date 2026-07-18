@@ -156,6 +156,15 @@ describe('release workflow contracts', () => {
     expect(workflow).toContain('workflow_run:')
     expect(workflow).toContain('Release Data Package')
     expect(workflow).toContain("startsWith(github.event.workflow_run.head_branch, 'data-')")
+    expect(workflow).toContain(
+      'github.event.workflow_run.head_branch == github.event.repository.default_branch',
+    )
+    expect(workflow).toContain('actions: read')
+    expect(workflow).toContain('contents: write')
+    expect(workflow).toContain('group: parkking-production-data-rollout')
+    expect(workflow).toContain(
+      'npm run ops:release-rollout-workflow -- --mode download-handoff',
+    )
     expect(workflow).toContain('RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}')
     expect(workflow).toContain(
       'PARKKING_RENDER_SERVICE_ID: ${{ secrets.PARKKING_RENDER_SERVICE_ID }}',
@@ -170,11 +179,20 @@ describe('release workflow contracts', () => {
       'PARKKING_WORKFLOW_RUN_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}',
     )
     expect(workflow).toContain(
+      "PARKKING_WORKFLOW_RUN_HANDOFF_JSON: ${{ github.event_name == 'workflow_run' && '.tmp/release-data-upstream/.tmp/render-deployment-handoff.json' || '' }}",
+    )
+    expect(workflow).toContain(
       'PARKKING_INPUT_SERVICE_ID: ${{ github.event.inputs.serviceId }}',
     )
-    expect(workflow).toContain('npm run ops:render-runtime-env-sync-workflow')
+    expectCommandsInOrder(workflow, [
+      'npm run ops:render-runtime-env-sync-workflow',
+      'npm run ops:wait-render-release -- --handoff-json .tmp/release-data-upstream/.tmp/render-deployment-handoff.json',
+      'npm run ops:render-deployment-verify -- --handoff-json .tmp/release-data-upstream/.tmp/render-deployment-handoff.json --all-parking-answer-cases',
+      `npm run ops:smoke-ui-paid-curb-reference -- --app-url "\${{ vars.PARKKING_RENDER_APP_URL || 'https://parkking.onrender.com' }}" --district xinyi --all-reference-districts --timeout-ms 90000`,
+      'npm run ops:release-rollout-workflow -- --mode mark-latest',
+    ])
     expect(workflow).toMatch(
-      /- name: Summarize sync\s+if: always\(\)\s+run: npm run ops:append-workflow-summary -- --append-file \.tmp\/render-runtime-env-sync\.md/,
+      /- name: Summarize sync\s+if: always\(\)\s+run: npm run ops:append-workflow-summary -- --append-file \.tmp\/render-runtime-env-sync\.md --append-file \.tmp\/render-release-wait\.md --append-file \.tmp\/render-deployment-verify\.md/,
     )
     expect(workflow).toMatch(
       /- name: Upload sync artifact\s+if: always\(\)\s+uses: actions\/upload-artifact@v7/,
@@ -182,6 +200,10 @@ describe('release workflow contracts', () => {
     expect(workflow).toContain('name: render-runtime-env-sync')
     expect(workflow).toContain('.tmp/render-runtime-env-sync.md')
     expect(workflow).toContain('.tmp/render-runtime-env-sync.json')
+    expect(workflow).toContain('.tmp/render-release-wait.md')
+    expect(workflow).toContain('.tmp/render-release-wait.json')
+    expect(workflow).toContain('.tmp/render-deployment-verify.md')
+    expect(workflow).toContain('.tmp/render-deployment-verify.json')
   })
 
   it('keeps Production Rollout Status wired to release manifest inputs and artifacts', async () => {
@@ -276,6 +298,12 @@ describe('release workflow contracts', () => {
     )
     expect(packageJson.scripts?.['ops:render-runtime-env-sync-workflow']).toBe(
       'tsx scripts/ops/renderRuntimeEnvSyncWorkflow.ts',
+    )
+    expect(packageJson.scripts?.['ops:wait-render-release']).toBe(
+      'tsx scripts/ops/waitForRenderRelease.ts',
+    )
+    expect(packageJson.scripts?.['ops:release-rollout-workflow']).toBe(
+      'tsx scripts/ops/releaseRolloutWorkflow.ts',
     )
     expectWorkflowInputs(workflow, [
       'serviceId',

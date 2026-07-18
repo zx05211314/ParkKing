@@ -39,6 +39,7 @@ const releaseAssetUrls = (repository: string, releaseTag: string) => {
 const buildArgs = (params: {
   serviceId: string
   serviceName: string
+  handoffJsonPath: string
   packageUrl: string
   manifestUrl: string
   execute: boolean
@@ -50,6 +51,7 @@ const buildArgs = (params: {
   const argv: string[] = []
   appendArg(argv, '--service-id', params.serviceId)
   appendArg(argv, '--service-name', params.serviceName)
+  appendArg(argv, '--handoff-json', params.handoffJsonPath)
   appendArg(argv, '--package-url', params.packageUrl)
   appendArg(argv, '--manifest-url', params.manifestUrl)
   if (params.execute) {
@@ -78,18 +80,24 @@ export const resolveRenderRuntimeEnvSyncWorkflowOptions = (
     normalizeText(env.PARKKING_SYNC_JSON_OUT_PATH) || DEFAULT_JSON_OUT_PATH
 
   if (eventName === 'workflow_run') {
+    const handoffJsonPath = normalizeText(
+      env.PARKKING_WORKFLOW_RUN_HANDOFF_JSON,
+    )
     const releaseTag = normalizeText(env.PARKKING_WORKFLOW_RUN_HEAD_BRANCH)
-    if (!releaseTag.startsWith('data-')) {
+    if (!handoffJsonPath && !releaseTag.startsWith('data-')) {
       throw new Error(`workflow_run head branch is not a data tag: ${releaseTag || '-'}`)
     }
     if (!repository) {
       throw new Error('GITHUB_REPOSITORY is required to derive release asset URLs.')
     }
-    const urls = releaseAssetUrls(repository, releaseTag)
+    const urls = handoffJsonPath
+      ? { packageUrl: '', manifestUrl: '' }
+      : releaseAssetUrls(repository, releaseTag)
     return parseRenderRuntimeEnvSyncArgs(
       buildArgs({
         serviceId: '',
         serviceName: DEFAULT_SERVICE_NAME,
+        handoffJsonPath,
         packageUrl: urls.packageUrl,
         manifestUrl: urls.manifestUrl,
         execute: true,
@@ -107,6 +115,7 @@ export const resolveRenderRuntimeEnvSyncWorkflowOptions = (
       serviceId: normalizeText(env.PARKKING_INPUT_SERVICE_ID),
       serviceName:
         normalizeText(env.PARKKING_INPUT_SERVICE_NAME) || DEFAULT_SERVICE_NAME,
+      handoffJsonPath: '',
       packageUrl: normalizeText(env.PARKKING_INPUT_PACKAGE_URL),
       manifestUrl: normalizeText(env.PARKKING_INPUT_MANIFEST_URL),
       execute: isTruthy(env.PARKKING_INPUT_EXECUTE),

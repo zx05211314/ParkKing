@@ -373,20 +373,33 @@ repository has a `RENDER_API_KEY` secret. The workflow is dry-run by default;
 set `execute=true` only when you are ready to change Render. To
 dispatch that workflow from a tokenized CLI instead of the Actions UI:
 
-After a successful tag-triggered `Release Data Package` run, the same Render
-Runtime Env Sync workflow also runs automatically for `data-*` tags. That path
-derives the package and manifest URLs from the published release tag, syncs the
-release/runtime env vars with `--execute --deploy`, and deploys the `parkking`
-service. For the least fragile automatic path, configure both repository
-secrets:
+After a successful `Release Data Package` run from the repository default
+branch or a `data-*` tag, the same Render Runtime Env Sync workflow runs the
+production rollout automatically. It downloads the exact upstream
+`release-data-package` artifact and reads
+`.tmp/render-deployment-handoff.json` rather than inferring a release from the
+branch name. It then syncs the release/runtime env vars with
+`--execute --deploy`, triggers a full Render deploy, and runs:
+
+1. `ops:wait-render-release` until all 12 live dataset hashes match the handoff.
+2. `ops:render-deployment-verify --all-parking-answer-cases`.
+3. The live smoke for every published Taoyuan paid-curb reference UI.
+4. GitHub Latest promotion for the verified data release.
+
+Any failed step leaves the previous Latest release unchanged and uploads the
+sync, wait, and live-verify reports. For the least fragile automatic path,
+configure both repository secrets:
 
 - `RENDER_API_KEY`: Render API token used to update env vars and trigger deploys.
 - `PARKKING_RENDER_SERVICE_ID`: Render service id, for example `srv-...`, so the workflow does not need to resolve the `parkking` service by name.
 
 `PARKKING_RENDER_SERVICE_NAME` is optional and only needed when intentionally
-using a non-default Render service name. If `RENDER_API_KEY` is not configured
-as a repository secret, the release still remains published, but this follow-up
-sync workflow will fail and the dashboard packet remains the manual fallback.
+using a non-default Render service name. Set the optional
+`PARKKING_RENDER_APP_URL` repository variable when production is not
+`https://parkking.onrender.com`. If `RENDER_API_KEY` is not configured as a
+repository secret, the release still remains published, but the automatic
+rollout fails before Latest promotion and the dashboard packet remains the
+manual fallback.
 
 ```powershell
 npm run ops:render-runtime-env-sync-dispatch -- --repo <owner/repo> --ref main --handoff-json .tmp/render-deployment-handoff.json --dry-run
