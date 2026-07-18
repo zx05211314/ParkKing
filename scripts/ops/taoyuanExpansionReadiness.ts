@@ -1,5 +1,4 @@
 import * as fs from 'node:fs/promises'
-import { createHash } from 'node:crypto'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseCsv } from 'csv-parse/sync'
@@ -10,6 +9,7 @@ import { readDataset } from '../ingest/ingestDatasetRead'
 import {
   type CsvRow,
   type ReviewManifest,
+  sha256TaoyuanReviewCsv,
   validateTaoyuanPaidCurbReview,
 } from './validateTaoyuanPaidCurbReview'
 import { validateTaoyuanBoundaryCollection } from './validateTaoyuanBoundaries'
@@ -170,9 +170,6 @@ const fileExists = async (targetPath: string) => {
 
 const readJson = async <T>(targetPath: string): Promise<T> =>
   JSON.parse(await fs.readFile(targetPath, 'utf-8')) as T
-
-const sha256 = (buffer: Buffer) =>
-  createHash('sha256').update(buffer).digest('hex')
 
 const toRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value)
@@ -452,7 +449,7 @@ export const runTaoyuanExpansionReadiness = async (
         manifest: await readJson<ReviewManifest>(reviewManifestPath),
         rows,
         districtId,
-        reviewSha256: sha256(reviewBuffer),
+        reviewSha256: sha256TaoyuanReviewCsv(reviewBuffer),
         requirePinnedReview,
       })
       sourceTextReview.structureValid = result.structureValid

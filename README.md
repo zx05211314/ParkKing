@@ -357,7 +357,7 @@ all 13 boundaries and build the deterministic text-reference pack with
 `npm run ops:build-taoyuan-expansion`. This writes
 `public/data/reference/taoyuan-paid-curb.json` and a Taoyuan District source-text review
 bundle under `.tmp/taoyuan-human-review/`. The current official XML contains 944 records,
-including 270 for Taoyuan District, but no geometry. Human approval of this CSV confirms
+including 270 for Taoyuan District, but no coordinates. Human approval of this CSV confirms
 source transcription only and never confirms parking legality. Rebuilds refresh the
 `.template.csv` file but preserve an existing review CSV. Check structure, source hash,
 and pending counts in a draft bundle with
@@ -379,21 +379,35 @@ is invalid and the reversed pair is inside the Taoyuan range. The output uses
 `PAID_CURB_SEGMENT` with `legalAnswerEligible: false`; it must not be
 renamed to `parking_spaces.geojson` or used to produce a general legal parking answer.
 For a CI handoff, manually run the `Taoyuan Spatial Reference` workflow. It uses guest
-access when the optional repository secrets are absent, applies the spatial-only
-`--require-spatial` gate and uploads the normalized GeoJSON plus readiness reports for 14
-days; it does not commit, ingest, publish, or deploy the artifact.
+access when the optional repository secrets are absent and applies the spatial-only
+`--require-spatial` gate. It then joins the TDX IDs to the tracked approved review, checks
+every text field, excludes points outside the official district boundary, and uploads the
+normalized source, browser-safe reference pack, promotion receipt, and readiness reports
+for 14 days. It fails closed if the generated runtime content differs from the tracked
+public pack, while the `if: always()` upload still preserves the changed artifact for
+review. Source-artifact hash-only changes are treated as provenance rather than runtime
+content drift. This workflow does not commit, ingest, or deploy the artifact.
 After a successful run, install the downloaded artifact without bypassing its safety gate:
 
 ```powershell
 gh run download <run-id> --name taoyuan-spatial-reference --dir .tmp/taoyuan-spatial-reference
 npm run ops:install-taoyuan-spatial-reference
 npm run ops:taoyuan-expansion-readiness:strict -- --boundary-catalog public/data/coverage.json
+npm run ops:promote-taoyuan-spatial-reference
+npm run ops:build-coverage-catalog
+npm run ops:validate-coverage-catalog
 ```
 
 The installer validates every feature before atomically replacing
 `data/sources/taoyuan/paid_curb_segments.geojson` and writes a SHA-256 receipt to
 `.tmp/taoyuan-spatial-reference-install.json`. Invalid, empty, or legal-answer-eligible
 artifacts never replace an existing reference.
+The tracked browser pack currently publishes 264 of the 270 reviewed Taoyuan District
+records as `REPRESENTATIVE_POINT` features. Six source points are excluded because they
+fall outside the official district boundary. These points help users locate and inspect
+official paid-curb source records, but they are not curb-line geometry, parking-space
+inventory, or proof that parking is legal. The runtime parser, coverage catalog, and UI
+all keep `legalAnswerEligible: false`.
 Run `npm run ops:taoyuan-expansion-readiness:report` to verify the 13 official boundaries,
 944-row text pack, 270-row source-text review, optional saved/guest/credentialed TDX geometry,
 and the non-legal safety contract in one report. The report exits successfully when the
@@ -407,7 +421,9 @@ remains false. The credential-free
 [Taoyuan roadside fee dataset](https://data.gov.tw/dataset/149456) exposes text/fare fields
 but no coordinates, so address text must not be converted into synthetic geometry.
 When a source-only Taoyuan address is pinned, the app can filter this official text by
-Chinese road name; the results are text matches, not proximity or legality matches.
+Chinese road name and show the reviewed representative points on the map. Text results are
+road-description matches rather than proximity matches, and map points remain references
+rather than curb geometry or legality answers.
 
 Legacy per-district raw source scaffold:
    `npm run ops:new-district -- --districtId <id> --districtName "<Name>" --sourceRoot "data/raw/<id>"`

@@ -32,6 +32,7 @@ export interface BuildMainWorkspacePropsOptions {
   searchLocation: MainWorkspaceProps['mapViewProps']['searchLocation']
   searchLocationLabel: MainWorkspaceProps['mapViewProps']['searchLocationLabel']
   coverageBoundary: MainWorkspaceProps['mapViewProps']['coverageBoundary']
+  paidCurbReferencePoints: MainWorkspaceProps['mapViewProps']['paidCurbReferencePoints']
   selectedCenter: MainWorkspaceProps['mapViewProps']['arrivalLocation']
   selectedArrivalKind: MainWorkspaceProps['selectedArrivalKind']
   selectedArrivalLabel: string | null

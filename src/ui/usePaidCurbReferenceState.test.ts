@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { RuntimeCoverageReferenceData } from '../data/coverageCatalog'
-import { loadPaidCurbReferenceDistrict } from './usePaidCurbReferenceState'
+import { createHash } from 'node:crypto'
+import {
+  loadPaidCurbReferenceDistrict,
+  loadPaidCurbSpatialReference,
+} from './usePaidCurbReferenceState'
 
 const referenceData: RuntimeCoverageReferenceData = {
   kind: 'PAID_CURB_SEGMENT_TEXT',
@@ -71,5 +75,75 @@ describe('usePaidCurbReferenceState loader', () => {
         referenceData: { ...referenceData, sourceSha256: 'b'.repeat(64) },
       }),
     ).rejects.toThrow('source hash does not match')
+  })
+
+  it('verifies and loads non-legal representative points', async () => {
+    const spatialPack = {
+      type: 'FeatureCollection',
+      metadata: {
+        schemaVersion: 1,
+        districtId: 'taoyuan-district',
+        boundaryFeatureId: '68000010',
+        evidenceKind: 'PAID_CURB_SEGMENT',
+        sourceDataset: 'TDX OnStreet ParkingSegment v1',
+        sourceSha256: 'b'.repeat(64),
+        sourceFeatureCount: 1,
+        reviewSha256: 'c'.repeat(64),
+        reviewRecordCount: 1,
+        featureCount: 1,
+        excludedFeatureCount: 0,
+        excluded: [],
+        geometryPrecision: 'REPRESENTATIVE_POINT',
+        legalAnswerEligible: false,
+      },
+      features: [
+        {
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [121.3, 24.99] },
+          properties: {
+            evidenceKind: 'PAID_CURB_SEGMENT',
+            parkingSegmentId: '169',
+            districtId: 'taoyuan-district',
+            description: 'Road A',
+            fareDescription: null,
+            hasChargingPoint: false,
+            geometryPrecision: 'REPRESENTATIVE_POINT',
+            legalAnswerEligible: false,
+            sourceDataset: 'TDX OnStreet ParkingSegment v1',
+          },
+        },
+      ],
+    }
+    const buffer = Buffer.from(`${JSON.stringify(spatialPack)}\n`, 'utf-8')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        arrayBuffer: async () =>
+          buffer.buffer.slice(
+            buffer.byteOffset,
+            buffer.byteOffset + buffer.byteLength,
+          ),
+      }),
+    )
+
+    await expect(
+      loadPaidCurbSpatialReference({
+        districtId: 'taoyuan-district',
+        spatialReference: {
+          kind: 'PAID_CURB_SEGMENT',
+          url: '/data/reference/points.geojson',
+          dataSha256: createHash('sha256').update(buffer).digest('hex'),
+          sourceSha256: 'b'.repeat(64),
+          reviewSha256: 'c'.repeat(64),
+          featureCount: 1,
+          excludedFeatureCount: 0,
+          geometryPrecision: 'REPRESENTATIVE_POINT',
+          legalAnswerEligible: false,
+        },
+      }),
+    ).resolves.toMatchObject({
+      metadata: { featureCount: 1, legalAnswerEligible: false },
+    })
   })
 })

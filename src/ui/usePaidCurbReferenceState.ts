@@ -3,6 +3,10 @@ import {
   parsePaidCurbReferencePack,
   type PaidCurbReferenceDistrict,
 } from '../data/paidCurbReference'
+import {
+  parsePaidCurbSpatialReferencePack,
+  type PaidCurbSpatialReferencePack,
+} from '../data/paidCurbSpatialReference'
 import type { RuntimeCoverageReferenceData } from '../data/coverageCatalog'
 
 export type PaidCurbReferenceStatus =
@@ -14,15 +18,90 @@ export type PaidCurbReferenceStatus =
 export interface PaidCurbReferenceState {
   status: PaidCurbReferenceStatus
   district: PaidCurbReferenceDistrict | null
+  spatialReference: PaidCurbSpatialReferencePack | null
   sourceUrl: string | null
+  spatialSourceUrl: string | null
   error: string | null
 }
 
 const IDLE_STATE: PaidCurbReferenceState = {
   status: 'idle',
   district: null,
+  spatialReference: null,
   sourceUrl: null,
+  spatialSourceUrl: null,
   error: null,
+}
+
+const sha256ArrayBuffer = async (buffer: ArrayBuffer) => {
+  if (typeof crypto === 'undefined' || !crypto.subtle) {
+    throw new Error('WebCrypto unavailable for paid-curb spatial verification')
+  }
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+export const loadPaidCurbSpatialReference = async (params: {
+  districtId: string
+  spatialReference: NonNullable<
+    RuntimeCoverageReferenceData['spatialReference']
+  >
+  signal?: AbortSignal
+}) => {
+  const response = await fetch(params.spatialReference.url, {
+    signal: params.signal,
+  })
+  if (!response.ok) {
+    throw new Error(
+      `Paid-curb spatial reference request failed (${response.status})`,
+    )
+  }
+  const buffer = await response.arrayBuffer()
+  if ((await sha256ArrayBuffer(buffer)) !== params.spatialReference.dataSha256) {
+    throw new Error('Paid-curb spatial reference data hash does not match catalog')
+  }
+  const pack = parsePaidCurbSpatialReferencePack(
+    JSON.parse(new TextDecoder().decode(buffer)) as unknown,
+  )
+  const metadata = pack.metadata
+  const comparisons: Array<[string, unknown, unknown]> = [
+    ['districtId', metadata.districtId, params.districtId],
+    [
+      'sourceSha256',
+      metadata.sourceSha256,
+      params.spatialReference.sourceSha256,
+    ],
+    [
+      'reviewSha256',
+      metadata.reviewSha256,
+      params.spatialReference.reviewSha256,
+    ],
+    [
+      'featureCount',
+      metadata.featureCount,
+      params.spatialReference.featureCount,
+    ],
+    [
+      'excludedFeatureCount',
+      metadata.excludedFeatureCount,
+      params.spatialReference.excludedFeatureCount,
+    ],
+    [
+      'geometryPrecision',
+      metadata.geometryPrecision,
+      params.spatialReference.geometryPrecision,
+    ],
+    ['legalAnswerEligible', metadata.legalAnswerEligible, false],
+  ]
+  const mismatch = comparisons.find(([, actual, expected]) => actual !== expected)
+  if (mismatch) {
+    throw new Error(
+      `Paid-curb spatial reference ${mismatch[0]} does not match coverage catalog`,
+    )
+  }
+  return pack
 }
 
 export const loadPaidCurbReferenceDistrict = async (params: {
@@ -62,9 +141,26 @@ export const usePaidCurbReferenceState = (params: {
   const url = params.referenceData?.url ?? null
   const sourceSha256 = params.referenceData?.sourceSha256 ?? null
   const recordCount = params.referenceData?.recordCount ?? null
+  const spatialReference = params.referenceData?.spatialReference ?? null
+  const spatialRequestKey = spatialReference
+    ? [
+        spatialReference.url,
+        spatialReference.dataSha256,
+        spatialReference.sourceSha256,
+        spatialReference.reviewSha256,
+        spatialReference.featureCount,
+        spatialReference.excludedFeatureCount,
+      ].join('|')
+    : ''
   const requestKey =
     params.districtId && url && sourceSha256 && recordCount !== null
-      ? [params.districtId, url, sourceSha256, recordCount].join('|')
+      ? [
+          params.districtId,
+          url,
+          sourceSha256,
+          recordCount,
+          spatialRequestKey,
+        ].join('|')
       : null
 
   useEffect(() => {
@@ -87,17 +183,29 @@ export const usePaidCurbReferenceState = (params: {
       geometryAvailable: false,
       legalAnswerEligible: false,
       requiresHumanReview: true,
+      ...(spatialReference ? { spatialReference } : {}),
     }
-    loadPaidCurbReferenceDistrict({
-      districtId: params.districtId,
-      referenceData,
-      signal: controller.signal,
-    })
-      .then((district) =>
+    Promise.all([
+      loadPaidCurbReferenceDistrict({
+        districtId: params.districtId,
+        referenceData,
+        signal: controller.signal,
+      }),
+      spatialReference
+        ? loadPaidCurbSpatialReference({
+            districtId: params.districtId,
+            spatialReference,
+            signal: controller.signal,
+          })
+        : Promise.resolve(null),
+    ])
+      .then(([district, loadedSpatialReference]) =>
         setResolvedState({
           status: 'ready',
           district,
+          spatialReference: loadedSpatialReference,
           sourceUrl: url,
+          spatialSourceUrl: spatialReference?.url ?? null,
           error: null,
           requestKey,
         }),
@@ -109,7 +217,9 @@ export const usePaidCurbReferenceState = (params: {
         setResolvedState({
           status: 'error',
           district: null,
+          spatialReference: null,
           sourceUrl: url,
+          spatialSourceUrl: spatialReference?.url ?? null,
           error:
             error instanceof Error
               ? error.message
@@ -119,7 +229,14 @@ export const usePaidCurbReferenceState = (params: {
       })
 
     return () => controller.abort()
-  }, [params.districtId, recordCount, requestKey, sourceSha256, url])
+  }, [
+    params.districtId,
+    recordCount,
+    requestKey,
+    sourceSha256,
+    spatialReference,
+    url,
+  ])
 
   if (!requestKey) {
     return IDLE_STATE
@@ -128,14 +245,18 @@ export const usePaidCurbReferenceState = (params: {
     return {
       status: 'loading',
       district: null,
+      spatialReference: null,
       sourceUrl: url,
+      spatialSourceUrl: spatialReference?.url ?? null,
       error: null,
     }
   }
   return {
     status: resolvedState.status,
     district: resolvedState.district,
+    spatialReference: resolvedState.spatialReference,
     sourceUrl: resolvedState.sourceUrl,
+    spatialSourceUrl: resolvedState.spatialSourceUrl,
     error: resolvedState.error,
   }
 }

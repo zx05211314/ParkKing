@@ -1287,6 +1287,7 @@ function App() {
     searchLocation,
     searchLocationLabel,
     coverageBoundary: pinnedCoverageBoundary,
+    paidCurbReferencePoints: paidCurbReferenceState.spatialReference,
     selectedCenter,
     selectedArrivalKind,
     selectedArrivalLabel,

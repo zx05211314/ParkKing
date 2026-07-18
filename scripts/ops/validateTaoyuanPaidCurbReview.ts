@@ -251,8 +251,10 @@ export const validateTaoyuanPaidCurbReview = (params: {
 const readJson = async <T>(filePath: string): Promise<T> =>
   JSON.parse(await fs.readFile(filePath, 'utf-8')) as T
 
-const sha256 = (buffer: Buffer) =>
-  createHash('sha256').update(buffer).digest('hex')
+export const sha256TaoyuanReviewCsv = (buffer: Buffer) =>
+  createHash('sha256')
+    .update(buffer.toString('utf-8').replace(/\r\n?/g, '\n'), 'utf-8')
+    .digest('hex')
 
 const getArgValue = (argv: string[], flag: string) => {
   const index = argv.indexOf(flag)
@@ -313,7 +315,7 @@ const run = async () => {
     manifest: await readJson<ReviewManifest>(manifestPath),
     rows,
     districtId,
-    reviewSha256: sha256(reviewBuffer),
+    reviewSha256: sha256TaoyuanReviewCsv(reviewBuffer),
     requirePinnedReview: !explicitReviewPaths,
     requireComplete:
       process.argv.includes('--require-complete') ||

@@ -39,6 +39,11 @@ const EMPTY_COVERAGE_BOUNDARY_DATA: FeatureCollection<Polygon | MultiPolygon> = 
   features: [],
 }
 
+const EMPTY_PAID_CURB_REFERENCE_DATA: FeatureCollection<Point> = {
+  type: 'FeatureCollection',
+  features: [],
+}
+
 export interface MapViewProps {
   center: [number, number]
   districtBounds?: MapBounds | null
@@ -62,6 +67,7 @@ export interface MapViewProps {
   searchLocation?: [number, number] | null
   searchLocationLabel?: string | null
   coverageBoundary?: PinnedCoverageBoundary | null
+  paidCurbReferencePoints?: FeatureCollection<Point> | null
   arrivalLocation?: [number, number] | null
   arrivalLocationKind?: 'SEGMENT' | 'PARKING_SPACE' | null
   arrivalLocationLabel?: string | null
@@ -241,6 +247,7 @@ export const MapView = ({
   searchLocation = null,
   searchLocationLabel = null,
   coverageBoundary = null,
+  paidCurbReferencePoints = null,
   arrivalLocation = null,
   arrivalLocationKind = null,
   arrivalLocationLabel = null,
@@ -273,8 +280,14 @@ export const MapView = ({
   const coverageBoundaryDataRef = useRef(
     coverageBoundary?.data ?? EMPTY_COVERAGE_BOUNDARY_DATA,
   )
+  const paidCurbReferenceDataRef = useRef(
+    paidCurbReferencePoints ?? EMPTY_PAID_CURB_REFERENCE_DATA,
+  )
   coverageBoundaryDataRef.current =
     coverageBoundary?.data ?? EMPTY_COVERAGE_BOUNDARY_DATA
+  const paidCurbReferenceData =
+    paidCurbReferencePoints ?? EMPTY_PAID_CURB_REFERENCE_DATA
+  paidCurbReferenceDataRef.current = paidCurbReferenceData
   const basemapStyle = useMemo(() => createBasemapStyle(), [])
 
   useEffect(() => {
@@ -380,6 +393,7 @@ export const MapView = ({
       initializeMapViewContent(map, {
         zonesData,
         coverageBoundaryData: coverageBoundaryDataRef.current,
+        paidCurbReferenceData: paidCurbReferenceDataRef.current,
         intersectionZonesData,
         crosswalkZonesData,
         parkingSpacesData,
@@ -529,6 +543,20 @@ export const MapView = ({
       source.setData(coverageBoundaryDataRef.current)
     }
   }, [coverageBoundary])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) {
+      return
+    }
+
+    const source = map.getSource(
+      'paid-curb-reference-points',
+    ) as GeoJSONSource | undefined
+    if (source) {
+      source.setData(paidCurbReferenceData)
+    }
+  }, [paidCurbReferenceData])
 
   useEffect(() => {
     const map = mapRef.current
@@ -792,6 +820,7 @@ export const MapView = ({
       data-zone-count={zones.length}
       data-coverage-district={coverageBoundary?.districtId ?? undefined}
       data-coverage-stage={coverageBoundary?.publishStage ?? undefined}
+      data-paid-curb-reference-count={paidCurbReferenceData.features.length}
     >
       <div ref={mapContainer} className="map-root" />
       <div className="map-overlay-controls">

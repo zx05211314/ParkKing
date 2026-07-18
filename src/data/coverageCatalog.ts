@@ -21,6 +21,19 @@ export interface RuntimeCoverageReferenceData {
   geometryAvailable: false
   legalAnswerEligible: false
   requiresHumanReview: true
+  spatialReference?: RuntimeCoverageSpatialReferenceData
+}
+
+export interface RuntimeCoverageSpatialReferenceData {
+  kind: 'PAID_CURB_SEGMENT'
+  url: string
+  dataSha256: string
+  sourceSha256: string
+  reviewSha256: string
+  featureCount: number
+  excludedFeatureCount: number
+  geometryPrecision: 'REPRESENTATIVE_POINT'
+  legalAnswerEligible: false
 }
 
 export interface RuntimeCoverageDistrict {
@@ -78,6 +91,22 @@ const isAlias = (value: unknown): value is RuntimeCoverageAlias =>
   value.coverageMode === 'parent-district' &&
   typeof value.standaloneBoundaryRequired === 'boolean'
 
+const isSpatialReferenceData = (
+  value: unknown,
+): value is RuntimeCoverageSpatialReferenceData =>
+  isRecord(value) &&
+  value.kind === 'PAID_CURB_SEGMENT' &&
+  typeof value.url === 'string' &&
+  /^[a-f0-9]{64}$/.test(String(value.dataSha256)) &&
+  /^[a-f0-9]{64}$/.test(String(value.sourceSha256)) &&
+  /^[a-f0-9]{64}$/.test(String(value.reviewSha256)) &&
+  Number.isSafeInteger(value.featureCount) &&
+  Number(value.featureCount) >= 0 &&
+  Number.isSafeInteger(value.excludedFeatureCount) &&
+  Number(value.excludedFeatureCount) >= 0 &&
+  value.geometryPrecision === 'REPRESENTATIVE_POINT' &&
+  value.legalAnswerEligible === false
+
 const isReferenceData = (
   value: unknown,
 ): value is RuntimeCoverageReferenceData =>
@@ -90,7 +119,9 @@ const isReferenceData = (
   /^[a-f0-9]{64}$/.test(value.sourceSha256) &&
   value.geometryAvailable === false &&
   value.legalAnswerEligible === false &&
-  value.requiresHumanReview === true
+  value.requiresHumanReview === true &&
+  (value.spatialReference === undefined ||
+    isSpatialReferenceData(value.spatialReference))
 
 const isDistrict = (value: unknown): value is RuntimeCoverageDistrict =>
   isRecord(value) &&

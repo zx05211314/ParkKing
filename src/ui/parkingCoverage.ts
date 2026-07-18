@@ -33,9 +33,12 @@ const buildKnownDistrictNotice = (
   activeDistrictName: string,
 ) => {
   if (district.publishStage === 'source-only') {
-    const countNotice = district.referenceData
-      ? ` (${district.referenceData.recordCount} official source rows, without geometry)`
-      : ''
+    const referenceData = district.referenceData
+    const countNotice = referenceData?.spatialReference
+      ? ` (${referenceData.recordCount} official source rows; ${referenceData.spatialReference.featureCount} reviewed representative points, not curb geometry)`
+      : referenceData
+        ? ` (${referenceData.recordCount} official source rows, without geometry)`
+        : ''
     return `This location is in ${district.districtName}, ${district.regionName}. ParkKing currently has paid-curb reference sources only for this area${countNotice}; curb-marking and sign rules are not available, so no parking legality answer was calculated.`
   }
 

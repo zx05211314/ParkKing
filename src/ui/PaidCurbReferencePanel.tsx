@@ -36,6 +36,7 @@ export function PaidCurbReferencePanel({
   }
 
   const matches = findPaidCurbReferenceMatches(state.district, query)
+  const spatialMetadata = state.spatialReference?.metadata ?? null
   return (
     <section className="paid-curb-reference-panel" aria-label="Paid curb source text">
       <div className="paid-curb-reference-heading">
@@ -46,11 +47,17 @@ export function PaidCurbReferencePanel({
             {state.district.recordCount === 1 ? '' : 's'}
           </span>
         </div>
-        <span className="paid-curb-reference-badge">TEXT ONLY</span>
+        <span className="paid-curb-reference-badge">
+          {spatialMetadata ? 'REFERENCE POINTS' : 'TEXT ONLY'}
+        </span>
       </div>
       <div className="paid-curb-reference-warning">
-        These are road-description text matches, not spatial matches. They do not
-        show that the pinned curb is legal or paid parking.
+        Text results remain road-description text matches, not spatial matches.
+        {spatialMetadata
+          ? ` The map shows ${spatialMetadata.featureCount} reviewed TDX representative points; ${spatialMetadata.excludedFeatureCount} out-of-boundary points are excluded.`
+          : ''}{' '}
+        Points are not exact curb geometry and do not show that the pinned curb
+        is legal or paid parking.
       </div>
       <label className="paid-curb-reference-search">
         <span>Filter by Chinese road name</span>
@@ -96,14 +103,26 @@ export function PaidCurbReferencePanel({
         </div>
       )}
       {state.sourceUrl ? (
-        <a
-          className="paid-curb-reference-source-link"
-          href={state.sourceUrl}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Open raw reference pack
-        </a>
+        <>
+          <a
+            className="paid-curb-reference-source-link"
+            href={state.sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open raw text reference pack
+          </a>
+          {state.spatialReference && state.spatialSourceUrl ? (
+            <a
+              className="paid-curb-reference-source-link"
+              href={state.spatialSourceUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open representative-point pack
+            </a>
+          ) : null}
+        </>
       ) : null}
     </section>
   )
