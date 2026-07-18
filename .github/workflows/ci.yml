@@ -46,6 +46,8 @@ jobs:
         run: npm run build
       - name: Bundle budget
         run: npm run ops:bundle-budget
+      - name: Smoke Taoyuan paid-curb reference UI
+        run: npm run ops:smoke-ui-paid-curb-reference:preview -- --timeout-ms 25000
       - name: Optional P1 release package
         run: npm run ops:ci-optional-p1-release
       - name: Summarize P1 release package

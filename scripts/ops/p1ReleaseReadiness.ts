@@ -49,6 +49,11 @@ import {
   type SmokeUiIssueReportSummary,
 } from './smokeUiIssueReport'
 import {
+  runSmokeUiPaidCurbReference,
+  type SmokeUiPaidCurbReferenceOptions,
+  type SmokeUiPaidCurbReferenceSummary,
+} from './smokeUiPaidCurbReference'
+import {
   runBundleBudget,
   type BundleBudgetOptions,
   type BundleBudgetResult,
@@ -105,6 +110,7 @@ export interface P1ReleaseReadinessResult {
   reviewedUi: P1ReleaseReadinessCheck<SmokeReviewedUiPacksResult> | null
   mapReviewedUi: P1ReleaseReadinessCheck<SmokeUiParkingAnswersSummary> | null
   mapUi: P1ReleaseReadinessCheck<SmokeUiMapViewSummary> | null
+  paidCurbReferenceUi: P1ReleaseReadinessCheck<SmokeUiPaidCurbReferenceSummary> | null
   issueReportUi: P1ReleaseReadinessCheck<SmokeUiIssueReportSummary> | null
   blockers: string[]
   knownDistrictBlockers: Array<Pick<DistrictReadinessEntry, 'districtId' | 'blockers'>>
@@ -137,6 +143,9 @@ export interface P1ReleaseReadinessRunners {
   runSmokeUiMapView: (
     options: SmokeUiMapViewOptions,
   ) => Promise<SmokeUiMapViewSummary>
+  runSmokeUiPaidCurbReference: (
+    options: SmokeUiPaidCurbReferenceOptions,
+  ) => Promise<SmokeUiPaidCurbReferenceSummary>
   runSmokeUiIssueReport: (
     options: SmokeUiIssueReportOptions,
   ) => Promise<SmokeUiIssueReportSummary>
@@ -159,6 +168,7 @@ const defaultRunners: P1ReleaseReadinessRunners = {
   runSmokeReviewedUiPacks,
   runSmokeUiParkingAnswers,
   runSmokeUiMapView,
+  runSmokeUiPaidCurbReference,
   runSmokeUiIssueReport,
 }
 
@@ -417,6 +427,19 @@ export const runP1ReleaseReadiness = async (
           }),
         (summary) => summary.pass,
       )
+  const paidCurbReferenceUi = inputs.skipUi
+    ? null
+    : await runCheck(
+        'Paid-curb reference UI smoke',
+        true,
+        () =>
+          runners.runSmokeUiPaidCurbReference({
+            district: inputs.districtId,
+            timeoutMs: inputs.timeoutMs,
+            startPreview: true,
+          }),
+        (summary) => summary.pass,
+      )
   const issueReportUi = inputs.skipUi
     ? null
     : await runCheck(
@@ -441,6 +464,7 @@ export const runP1ReleaseReadiness = async (
     ...(reviewedUi ? [reviewedUi] : []),
     ...(mapReviewedUi ? [mapReviewedUi] : []),
     ...(mapUi ? [mapUi] : []),
+    ...(paidCurbReferenceUi ? [paidCurbReferenceUi] : []),
     ...(issueReportUi ? [issueReportUi] : []),
   ]
   const blockers = checks.map(checkBlocker).filter((item): item is string => Boolean(item))
@@ -457,6 +481,7 @@ export const runP1ReleaseReadiness = async (
     reviewedUi,
     mapReviewedUi,
     mapUi,
+    paidCurbReferenceUi,
     issueReportUi,
     blockers,
     knownDistrictBlockers: knownDistrictBlockers(districtMatrix.summary),
@@ -502,6 +527,13 @@ const formatMapReviewedUi = (summary: SmokeUiParkingAnswersSummary | null) =>
 const formatMapUi = (summary: SmokeUiMapViewSummary | null) =>
   summary
     ? `segments ${summary.mapSegmentCount}/${summary.expectedSegmentsCount ?? '>0'}, parking spaces ${summary.mapParkingSpaceCount}/${summary.expectedParkingSpacesCount ?? '>0'}, canvas ${summary.canvasWidth}x${summary.canvasHeight}`
+    : '-'
+
+const formatPaidCurbReferenceUi = (
+  summary: SmokeUiPaidCurbReferenceSummary | null,
+) =>
+  summary
+    ? `source ${summary.sourceRecordCount ?? 'missing'}, points ${summary.referencePointCount ?? 'missing'}, excluded ${summary.excludedPointCount ?? 'missing'}, selected ${summary.selectedReferenceId ?? 'missing'}`
     : '-'
 
 const formatIssueReportUi = (summary: SmokeUiIssueReportSummary | null) =>
@@ -551,6 +583,9 @@ export const renderP1ReleaseReadiness = (result: P1ReleaseReadinessResult) => {
   const mapUiLine = result.mapUi
     ? `| ${checkStatus(result.mapUi)} | MAP UI smoke | ${formatMapUi(result.mapUi.summary)} | ${result.mapUi.error ?? ''} |`
     : '| SKIP | MAP UI smoke | skipped by --skip-ui | |'
+  const paidCurbReferenceUiLine = result.paidCurbReferenceUi
+    ? `| ${checkStatus(result.paidCurbReferenceUi)} | Paid-curb reference UI smoke | ${formatPaidCurbReferenceUi(result.paidCurbReferenceUi.summary)} | ${result.paidCurbReferenceUi.error ?? ''} |`
+    : '| SKIP | Paid-curb reference UI smoke | skipped by --skip-ui | |'
   const issueReportUiLine = result.issueReportUi
     ? `| ${checkStatus(result.issueReportUi)} | Issue report UI smoke | ${formatIssueReportUi(result.issueReportUi.summary)} | ${result.issueReportUi.error ?? ''} |`
     : '| SKIP | Issue report UI smoke | skipped by --skip-ui | |'
@@ -589,6 +624,7 @@ export const renderP1ReleaseReadiness = (result: P1ReleaseReadinessResult) => {
     reviewedUiLine,
     mapReviewedUiLine,
     mapUiLine,
+    paidCurbReferenceUiLine,
     issueReportUiLine,
     '',
     '## Blockers',

@@ -542,10 +542,12 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   `npm run ops:smoke-ui-map:preview -- --district xinyi --timeout-ms 25000`
 - Production issue-report UI smoke after `npm run build`; this clicks `Report issue`, verifies local issue storage, remote `/api/sync/issues` upload, and debug-bundle download:
   `npm run ops:smoke-ui-issue-report:preview -- --district xinyi --timeout-ms 25000`
+- Production Taoyuan paid-curb reference UI smoke after `npm run build`; this verifies that source row `169` opens its reviewed representative point without changing the pinned address or producing a parking-legality answer, and that boundary-excluded row `177` remains text-only:
+  `npm run ops:smoke-ui-paid-curb-reference:preview -- --district xinyi --timeout-ms 25000`
 - Current-product P1 release readiness gate for the Xinyi flow:
   `npm run build`
   `npm run ops:p1-release-readiness`
-  This fails on Xinyi P0 readiness, production bundle budget, API service probes including the sync issue-report write/read roundtrip, parking-answer API smoke, reviewed UI answer smoke, MAP-mode reviewed-answer smoke, MAP-mode UI regressions, or issue-report UI submission regressions. It also reports Daan/Zhongshan district blockers without failing the current-product gate unless `--strict-matrix` is supplied.
+  This fails on Xinyi P0 readiness, production bundle budget, API service probes including the sync issue-report write/read roundtrip, parking-answer API smoke, reviewed UI answer smoke, MAP-mode reviewed-answer smoke, MAP-mode UI regressions, Taoyuan paid-curb source-to-map safety regressions, or issue-report UI submission regressions. It also reports Daan/Zhongshan district blockers without failing the current-product gate unless `--strict-matrix` is supplied.
   The production publish workflow runs this automatically when `configsGlob` is `configs/prod/*.json`.
 - P1 release data package:
   `npm run ops:package-release:xinyi`
