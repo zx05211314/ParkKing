@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -16,7 +15,10 @@ import {
   parsePaidCurbSpatialReferencePack,
   type PaidCurbSpatialReferencePack,
 } from '../../src/data/paidCurbSpatialReference'
-import { discoverTaoyuanSpatialReferencePaths } from './buildRuntimeCoverageCatalog'
+import {
+  discoverTaoyuanSpatialReferencePaths,
+  sha256RuntimeReferenceData,
+} from './buildRuntimeCoverageCatalog'
 import type { CoverageManifest } from './coverageStatus'
 
 const DEFAULT_MANIFEST = 'configs/coverage.expansion.json'
@@ -301,7 +303,7 @@ const run = async () => {
             pack: parsePaidCurbSpatialReferencePack(
               JSON.parse(buffer.toString('utf-8')) as unknown,
             ),
-            dataSha256: createHash('sha256').update(buffer).digest('hex'),
+            dataSha256: sha256RuntimeReferenceData(buffer),
           }
         }),
       )

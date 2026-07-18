@@ -174,8 +174,10 @@ export const buildRuntimeCoverageCatalog = (
   return parseRuntimeCoverageCatalog({ schemaVersion: 1, districts })
 }
 
-const sha256 = (buffer: Buffer) =>
-  createHash('sha256').update(buffer).digest('hex')
+export const sha256RuntimeReferenceData = (buffer: Buffer) =>
+  createHash('sha256')
+    .update(buffer.toString('utf-8').replace(/\r\n?/g, '\n'), 'utf-8')
+    .digest('hex')
 
 export const loadTaoyuanCoverageReferences = async (
   filePath: string,
@@ -229,7 +231,7 @@ export const loadTaoyuanCoverageReferences = async (
                 spatialReference: {
                   kind: spatial.pack.metadata.evidenceKind,
                   url: getPaidCurbSpatialReferenceUrl(district.districtId),
-                  dataSha256: sha256(spatial.buffer),
+                  dataSha256: sha256RuntimeReferenceData(spatial.buffer),
                   sourceSha256: spatial.pack.metadata.sourceSha256,
                   reviewSha256: spatial.pack.metadata.reviewSha256,
                   featureCount: spatial.pack.metadata.featureCount,
