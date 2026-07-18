@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl, { Map, GeoJSONSource } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type {
@@ -17,6 +17,11 @@ import type { RouteProfile } from './routing'
 import { createBasemapStyle } from './style'
 import { initializeMapViewContent } from './mapViewSetup'
 import { shouldApplyDatasetMapFocus } from './mapFocusPriority'
+import {
+  parsePaidCurbReferencePointSelection,
+  type PaidCurbReferencePointSelection,
+} from './paidCurbReferenceSelection'
+import { PaidCurbReferenceMapDetail } from './PaidCurbReferenceMapDetail'
 
 interface SelectedParkingSpaceMarker {
   key: string
@@ -265,9 +270,16 @@ export const MapView = ({
   const mapContainer = useRef<HTMLDivElement | null>(null)
   const searchMarkerRef = useRef<maplibregl.Marker | null>(null)
   const arrivalMarkerRef = useRef<maplibregl.Marker | null>(null)
+  const [selectedPaidCurbReferenceId, setSelectedPaidCurbReferenceId] =
+    useState<string | null>(null)
   const onSelectRef = useRef(onSelect)
   const onSelectRecommendedTargetRef = useRef(onSelectRecommendedTarget)
   const onSelectParkingSpaceRef = useRef(onSelectParkingSpace)
+  const onSelectPaidCurbReferenceRef = useRef<
+    (selection: PaidCurbReferencePointSelection | null) => void
+  >((selection) =>
+    setSelectedPaidCurbReferenceId(selection?.parkingSegmentId ?? null),
+  )
   const onPickLocationRef = useRef(onPickLocation)
   const showZonesRef = useRef(showZones)
   const showIntersectionZonesRef = useRef(showIntersectionZones)
@@ -288,6 +300,16 @@ export const MapView = ({
   const paidCurbReferenceData =
     paidCurbReferencePoints ?? EMPTY_PAID_CURB_REFERENCE_DATA
   paidCurbReferenceDataRef.current = paidCurbReferenceData
+  const selectedPaidCurbReference = selectedPaidCurbReferenceId
+    ? paidCurbReferenceData.features
+        .map(parsePaidCurbReferencePointSelection)
+        .find(
+          (selection) =>
+            selection?.parkingSegmentId === selectedPaidCurbReferenceId,
+        ) ?? null
+    : null
+  const activePaidCurbReferenceId =
+    selectedPaidCurbReference?.parkingSegmentId ?? null
   const basemapStyle = useMemo(() => createBasemapStyle(), [])
 
   useEffect(() => {
@@ -394,6 +416,7 @@ export const MapView = ({
         zonesData,
         coverageBoundaryData: coverageBoundaryDataRef.current,
         paidCurbReferenceData: paidCurbReferenceDataRef.current,
+        selectedPaidCurbReferenceId: null,
         intersectionZonesData,
         crosswalkZonesData,
         parkingSpacesData,
@@ -411,6 +434,7 @@ export const MapView = ({
         onSelectRef,
         onSelectRecommendedTargetRef,
         onSelectParkingSpaceRef,
+        onSelectPaidCurbReferenceRef,
         onPickLocationRef,
       })
     })
@@ -557,6 +581,18 @@ export const MapView = ({
       source.setData(paidCurbReferenceData)
     }
   }, [paidCurbReferenceData])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map?.getLayer('paid-curb-reference-selected')) {
+      return
+    }
+    map.setFilter('paid-curb-reference-selected', [
+      '==',
+      ['get', 'parkingSegmentId'],
+      activePaidCurbReferenceId ?? '',
+    ])
+  }, [activePaidCurbReferenceId])
 
   useEffect(() => {
     const map = mapRef.current
@@ -821,8 +857,17 @@ export const MapView = ({
       data-coverage-district={coverageBoundary?.districtId ?? undefined}
       data-coverage-stage={coverageBoundary?.publishStage ?? undefined}
       data-paid-curb-reference-count={paidCurbReferenceData.features.length}
+      data-paid-curb-reference-selected={
+        activePaidCurbReferenceId ?? undefined
+      }
     >
       <div ref={mapContainer} className="map-root" />
+      {selectedPaidCurbReference ? (
+        <PaidCurbReferenceMapDetail
+          selection={selectedPaidCurbReference}
+          onClose={() => setSelectedPaidCurbReferenceId(null)}
+        />
+      ) : null}
       <div className="map-overlay-controls">
         {coverageBoundary ? (
           <div
@@ -836,7 +881,11 @@ export const MapView = ({
             </span>
           </div>
         ) : null}
-        <div className="map-click-hint">Click map to check parking here</div>
+        <div className="map-click-hint">
+          {paidCurbReferenceData.features.length > 0
+            ? 'Click a reference point for source details; click elsewhere to move the pin'
+            : 'Click map to check parking here'}
+        </div>
         <button
           type="button"
           className="map-action-button"
