@@ -10,4 +10,7 @@ Add a new district:
 2) `npm run ops:check-inputs -- --config configs/prod/<id>.json`
 3) (optional) `npm run ingest:all:dry -- --configs "configs/prod/<id>.json"`
 4) `npm run ingest:all -- --configs "configs/prod/<id>.json"`
-5) `npm run ops:baseline:seed -- --districtId <id>`
+5) `npm run ops:baseline:seed -- --districtId <id> --root public/data/generated`
+
+Use `--root <installed-release-root>` when seeding from a reviewed release package.
+The registry and every district dataset are read exclusively from that same root.

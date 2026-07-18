@@ -4,7 +4,9 @@ import { findBaselineDatasetDir } from './generateBaselineFiles'
 import { runMedianBench } from './generateBaselineMetrics'
 import type { GenerateBaselineWorkflowDeps } from './generateBaselineWorkflowTypes'
 
-export const defaultGenerateBaselineWorkflowDeps: GenerateBaselineWorkflowDeps = {
+export const createGenerateBaselineWorkflowDeps = (
+  generatedRoot = 'public/data/generated',
+): GenerateBaselineWorkflowDeps => ({
   ensureDir: async (dirPath) => {
     await fs.mkdir(dirPath, { recursive: true })
   },
@@ -16,7 +18,8 @@ export const defaultGenerateBaselineWorkflowDeps: GenerateBaselineWorkflowDeps =
       return false
     }
   },
-  findDatasetDir: findBaselineDatasetDir,
+  findDatasetDir: async (districtId) =>
+    await findBaselineDatasetDir(districtId, generatedRoot),
   readDatasetMeta: async (datasetDir) => {
     const metaPath = path.resolve(datasetDir, 'dataset_meta.json')
     const metaRaw = await fs.readFile(metaPath, 'utf-8')
@@ -32,4 +35,7 @@ export const defaultGenerateBaselineWorkflowDeps: GenerateBaselineWorkflowDeps =
   log: (message) => {
     console.log(message)
   },
-}
+})
+
+export const defaultGenerateBaselineWorkflowDeps =
+  createGenerateBaselineWorkflowDeps()

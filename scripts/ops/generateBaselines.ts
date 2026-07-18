@@ -3,18 +3,23 @@ import { fileURLToPath } from 'node:url'
 import { parseGenerateBaselinesArgs } from './generateBaselineArgs'
 import { loadGenerateBaselineEntries } from './generateBaselineRegistry'
 import { runGenerateBaselineWorkflow } from './generateBaselineWorkflow'
+import { createGenerateBaselineWorkflowDeps } from './generateBaselineWorkflowRuntime'
 
 const run = async () => {
   const args = parseGenerateBaselinesArgs(process.argv)
+  const generatedRoot = path.resolve(args.generatedRoot)
   const { entries } = await loadGenerateBaselineEntries({
-    registryPath: path.resolve('public/data/generated/registry.json'),
+    registryPath: path.join(generatedRoot, 'registry.json'),
     districtIdFilter: args.districtIdFilter,
   })
-  const { skipped } = await runGenerateBaselineWorkflow({
-    args,
-    entries,
-    baselineDir: path.resolve('ops/baselines'),
-  })
+  const { skipped } = await runGenerateBaselineWorkflow(
+    {
+      args,
+      entries,
+      baselineDir: path.resolve('ops/baselines'),
+    },
+    createGenerateBaselineWorkflowDeps(generatedRoot),
+  )
 
   if (skipped.length > 0) {
     throw new Error(

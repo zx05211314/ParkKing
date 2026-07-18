@@ -11,4 +11,5 @@ export interface GenerateBaselinesArgs {
   force: boolean
   seed: boolean
   districtIdFilter: string | null
+  generatedRoot: string
 }

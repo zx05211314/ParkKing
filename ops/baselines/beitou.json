@@ -1,0 +1,88 @@
+{
+  "baselineCreatedAt": "2026-07-18T17:31:10.822Z",
+  "baselineDatasetHash": "a7bd803de5b566012ad05de45e24603520ced2f45a66f5c8e743daac1d1493f8",
+  "baselineSchemaVersion": 1,
+  "baselineSourceMetaSha256": "87731099a495fb7ca5b7782a3cc4150670737fc630a18569b8b99f7d48c8ada6",
+  "baselineDistrictName": "Beitou",
+  "generatedAt": "2026-07-18T17:31:10.823Z",
+  "districtId": "beitou",
+  "datasetHash": "a7bd803de5b566012ad05de45e24603520ced2f45a66f5c8e743daac1d1493f8",
+  "counts": {
+    "segments": 11092,
+    "intersections": 239,
+    "inferredCandidates": 2979,
+    "signOverrides": 8,
+    "signOverrideUnmatchedNamedCount": 0
+  },
+  "distributions": {
+    "day": {
+      "RED|NO_STOP": 21426,
+      "YELLOW|TEMP_STOP": 4456,
+      "GREEN|PARK": 5
+    },
+    "night": {
+      "RED|NO_STOP": 21426,
+      "GREEN|PARK": 285,
+      "YELLOW|PARK": 4155,
+      "YELLOW|TEMP_STOP": 21
+    }
+  },
+  "performance": {
+    "day": {
+      "evalFirstMsMedian": 1356,
+      "evalSecondMsMedian": 1312
+    },
+    "night": {
+      "evalFirstMsMedian": 1329,
+      "evalSecondMsMedian": 1301
+    }
+  },
+  "reasonCodes": {
+    "day": {
+      "top": {
+        "DATA_FRESHNESS_STALE": 17164,
+        "RULE_RED_NO_STOP": 16359,
+        "RULE_YELLOW_DAY_NO_PARK": 9474,
+        "DATA_FRESHNESS_UNKNOWN": 8723,
+        "COVERAGE_LOW": 8718,
+        "INFERRED_CAPPED": 8718,
+        "INFERRED_RISK_HIGH_ZONE_DENSITY": 7550,
+        "ZONE_CROSSWALK": 5886,
+        "ZONE_HYDRANT": 3969,
+        "ZONE_INTERSECTION": 1866,
+        "ZONE_BUS_STOP": 1328,
+        "PARKING_SPACE_EVIDENCE": 387,
+        "UNKNOWN_MARKING": 37,
+        "OVERRIDE_APPLIED": 17,
+        "OVERRIDE_STATUS_ILLEGAL": 10,
+        "OVERRIDE_STATUS_LEGAL": 7
+      },
+      "other": 0,
+      "total": 25887,
+      "coveragePct": 100
+    },
+    "night": {
+      "top": {
+        "DATA_FRESHNESS_STALE": 17164,
+        "RULE_RED_NO_STOP": 16359,
+        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 9474,
+        "DATA_FRESHNESS_UNKNOWN": 8723,
+        "COVERAGE_LOW": 8718,
+        "INFERRED_CAPPED": 8718,
+        "INFERRED_RISK_HIGH_ZONE_DENSITY": 7550,
+        "ZONE_CROSSWALK": 5886,
+        "ZONE_HYDRANT": 3969,
+        "ZONE_INTERSECTION": 1866,
+        "ZONE_BUS_STOP": 1328,
+        "PARKING_SPACE_EVIDENCE": 387,
+        "UNKNOWN_MARKING": 37,
+        "OVERRIDE_APPLIED": 17,
+        "OVERRIDE_STATUS_ILLEGAL": 10,
+        "OVERRIDE_STATUS_LEGAL": 7
+      },
+      "other": 0,
+      "total": 25887,
+      "coveragePct": 100
+    }
+  }
+}
