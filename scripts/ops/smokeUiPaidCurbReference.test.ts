@@ -195,6 +195,9 @@ describe('smokeUiPaidCurbReference', () => {
     expect(fixtureBuildPosition).toBeGreaterThan(ingestPosition)
     expect(matrixSmokePosition).toBeGreaterThan(fixtureBuildPosition)
     expect(workflow).toContain('--all-reference-districts')
+    expect(workflow.slice(matrixSmokePosition, matrixSmokePosition + 300)).toContain(
+      'timeout-minutes: 5',
+    )
   })
 
   it('accepts excluded-row and zero-exclusion safety contracts', () => {

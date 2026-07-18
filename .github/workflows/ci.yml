@@ -72,6 +72,7 @@ jobs:
       - name: Build UI with CI fixtures
         run: npm run build
       - name: Smoke all Taoyuan paid-curb reference UIs
+        timeout-minutes: 5
         run: npm run ops:smoke-ui-paid-curb-reference:preview -- --all-reference-districts --timeout-ms 60000
       - name: Smoke latest pack
         run: npm run ops:smoke-latest -- --latestName LATEST_CI

@@ -111,6 +111,7 @@ const DEFAULT_APP_URL = 'http://127.0.0.1:4173'
 const DEFAULT_CASES_PATH = 'configs/prod/xinyi.answer-cases.json'
 const DEFAULT_DISTRICT = 'xinyi'
 const DEFAULT_TIMEOUT_MS = 20_000
+const DEFAULT_CDP_TIMEOUT_MS = 10_000
 const DEFAULT_FILTER = '__ui_smoke_no_match__'
 const DEFAULT_VIEW = 'LIST' as const satisfies SmokeUiParkingAnswerView
 const DEFAULT_PROFILE_CLEANUP_ATTEMPTS = 10
@@ -469,7 +470,13 @@ export const waitForCdp = async (port: number, timeoutMs: number) => {
   let lastError: unknown = null
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(`http://127.0.0.1:${port}/json/version`)
+      const requestTimeoutMs = Math.max(
+        1,
+        Math.min(DEFAULT_CDP_TIMEOUT_MS, deadline - Date.now()),
+      )
+      const response = await fetch(`http://127.0.0.1:${port}/json/version`, {
+        signal: AbortSignal.timeout(requestTimeoutMs),
+      })
       if (response.ok) {
         return
       }
@@ -589,10 +596,13 @@ export const launchPreview = async (params: {
   return { preview, appUrl }
 }
 
-export const openCdpTab = async (port: number) => {
+export const openCdpTab = async (
+  port: number,
+  timeoutMs = DEFAULT_CDP_TIMEOUT_MS,
+) => {
   const response = await fetch(
     `http://127.0.0.1:${port}/json/new?${encodeURIComponent('about:blank')}`,
-    { method: 'PUT' },
+    { method: 'PUT', signal: AbortSignal.timeout(timeoutMs) },
   )
   if (!response.ok) {
     throw new Error(`Failed to create Chrome tab: HTTP ${response.status}`)
@@ -604,7 +614,10 @@ export const openCdpTab = async (port: number) => {
   return target.webSocketDebuggerUrl
 }
 
-export const connectCdp = async (wsUrl: string): Promise<CdpClient> => {
+export const connectCdp = async (
+  wsUrl: string,
+  timeoutMs = DEFAULT_CDP_TIMEOUT_MS,
+): Promise<CdpClient> => {
   const WebSocketConstructor = (
     globalThis as typeof globalThis & {
       WebSocket?: new (url: string) => WebSocketLike
@@ -615,14 +628,48 @@ export const connectCdp = async (wsUrl: string): Promise<CdpClient> => {
   }
 
   const ws = new WebSocketConstructor(wsUrl)
-  await new Promise<void>((resolve, reject) => {
-    ws.addEventListener('open', () => resolve(), { once: true })
-    ws.addEventListener(
-      'error',
-      () => reject(new Error('Failed to open Chrome CDP WebSocket')),
-      { once: true },
-    )
-  })
+  try {
+    await new Promise<void>((resolve, reject) => {
+      let settled = false
+      const settle = (callback: () => void) => {
+        if (settled) {
+          return
+        }
+        settled = true
+        clearTimeout(timeout)
+        callback()
+      }
+      const timeout = setTimeout(
+        () =>
+          settle(() =>
+            reject(
+              new Error(
+                `Timed out opening Chrome CDP WebSocket after ${timeoutMs}ms`,
+              ),
+            ),
+          ),
+        timeoutMs,
+      )
+      ws.addEventListener('open', () => settle(resolve), { once: true })
+      ws.addEventListener(
+        'error',
+        () =>
+          settle(() => reject(new Error('Failed to open Chrome CDP WebSocket'))),
+        { once: true },
+      )
+      ws.addEventListener(
+        'close',
+        () =>
+          settle(() =>
+            reject(new Error('Chrome CDP WebSocket closed before opening')),
+          ),
+        { once: true },
+      )
+    })
+  } catch (error) {
+    ws.close()
+    throw error
+  }
 
   let nextId = 1
   const pending = new Map<
@@ -630,8 +677,17 @@ export const connectCdp = async (wsUrl: string): Promise<CdpClient> => {
     {
       resolve: (result: unknown) => void
       reject: (error: Error) => void
+      timeout: ReturnType<typeof setTimeout>
     }
   >()
+
+  const rejectPending = (error: Error) => {
+    pending.forEach((callback) => {
+      clearTimeout(callback.timeout)
+      callback.reject(error)
+    })
+    pending.clear()
+  }
 
   ws.addEventListener('message', (event) => {
     const payload =
@@ -649,11 +705,18 @@ export const connectCdp = async (wsUrl: string): Promise<CdpClient> => {
       return
     }
     pending.delete(message.id)
+    clearTimeout(callback.timeout)
     if (message.error) {
       callback.reject(new Error(message.error.message ?? 'CDP command failed'))
       return
     }
     callback.resolve(message.result)
+  })
+  ws.addEventListener('error', () => {
+    rejectPending(new Error('Chrome CDP WebSocket failed'))
+  })
+  ws.addEventListener('close', () => {
+    rejectPending(new Error('Chrome CDP WebSocket closed'))
   })
 
   return {
@@ -661,15 +724,38 @@ export const connectCdp = async (wsUrl: string): Promise<CdpClient> => {
       const id = nextId
       nextId += 1
       const result = new Promise<T>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          pending.delete(id)
+          reject(
+            new Error(
+              `Timed out waiting for Chrome CDP command ${method} after ${timeoutMs}ms`,
+            ),
+          )
+        }, timeoutMs)
         pending.set(id, {
           resolve: (value) => resolve(value as T),
           reject,
+          timeout,
         })
       })
-      ws.send(JSON.stringify({ id, method, params }))
+      try {
+        ws.send(JSON.stringify({ id, method, params }))
+      } catch (error) {
+        const callback = pending.get(id)
+        if (callback) {
+          pending.delete(id)
+          clearTimeout(callback.timeout)
+          callback.reject(
+            error instanceof Error ? error : new Error(String(error)),
+          )
+        }
+      }
       return await result
     },
-    close: () => ws.close(),
+    close: () => {
+      rejectPending(new Error('Chrome CDP client closed'))
+      ws.close()
+    },
   }
 }
 
