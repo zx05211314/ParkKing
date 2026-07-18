@@ -49,6 +49,30 @@ describe('renderRuntimeEnvSyncWorkflow', () => {
     })
   })
 
+  it('uses the exact release handoff artifact for default-branch workflow runs', () => {
+    const options = resolveRenderRuntimeEnvSyncWorkflowOptions({
+      PARKKING_WORKFLOW_EVENT_NAME: 'workflow_run',
+      PARKKING_WORKFLOW_RUN_HEAD_BRANCH: 'main',
+      PARKKING_WORKFLOW_RUN_HANDOFF_JSON:
+        '.tmp/release-data-upstream/.tmp/render-deployment-handoff.json',
+      GITHUB_REPOSITORY: 'zx05211314/ParkKing',
+      RENDER_API_KEY: 'render-token',
+    })
+
+    expect(options).toMatchObject({
+      serviceId: null,
+      serviceName: 'parkking',
+      handoffJsonPath:
+        '.tmp/release-data-upstream/.tmp/render-deployment-handoff.json',
+      execute: true,
+      deploy: true,
+      deployMode: 'build_and_deploy',
+      token: 'render-token',
+      packageUrl: null,
+      manifestUrl: null,
+    })
+  })
+
   it('rejects non-data workflow_run refs', () => {
     expect(() =>
       resolveRenderRuntimeEnvSyncWorkflowOptions({
