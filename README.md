@@ -362,10 +362,18 @@ district with source records. The current official XML contains 944 records acro
 non-empty districts, including 270 for Taoyuan District; Xinwu and Fuxing currently have
 zero records. The dataset has no coordinates. Human approval of a CSV confirms source
 transcription only and never confirms parking legality. Rebuilds refresh each
-`.template.csv` file but preserve an existing review CSV. Run
+`.template.csv` file but preserve an existing review CSV. A clean checkout builds these
+handoffs from the tracked deterministic reference pack and seeds only tracked review
+evidence that still passes its pinned CSV hash and full approval gate. Run
 `npm run ops:taoyuan-review-index` for one live-validated status table across all manifests
 in the authoritative bundle directory; this writes
 `.tmp/taoyuan-city-review-status.md/json` and does not rely on stale status snapshots.
+Run `npm run ops:package-taoyuan-reviews` to create one checksummed ZIP containing only
+pending or needs-resolution district CSVs, templates, manifests, and the source reference.
+Invalid evidence blocks packaging, while approved districts are listed but excluded from
+the reviewer workload. The manual `Taoyuan Source Review Handoff` workflow runs build,
+index, and packaging from a clean checkout and retains the downloadable artifact for 30
+days.
 Check one district's structure, source hash, and pending counts with
 `npm run ops:taoyuan-review-status -- --district zhongli --review-dir .tmp/taoyuan-human-review`;
 require every draft row to be explicitly approved with

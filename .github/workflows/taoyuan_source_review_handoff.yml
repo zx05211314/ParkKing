@@ -1,0 +1,43 @@
+name: Taoyuan Source Review Handoff
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+      - name: Install
+        run: npm ci
+      - name: Build reproducible city review bundles
+        run: npm run ops:build-taoyuan-review-all
+      - name: Validate city review status
+        run: npm run ops:taoyuan-review-index
+      - name: Package pending source-text reviews
+        run: npm run ops:package-taoyuan-reviews
+      - name: Summarize source review handoff
+        if: always()
+        run: npm run ops:append-workflow-summary -- --append-file .tmp/taoyuan-city-review-status.md --append-file .tmp/taoyuan-source-review-handoff.md
+      - name: Upload source review handoff
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: taoyuan-source-review-handoff
+          path: |
+            .tmp/taoyuan-city-review-status.md
+            .tmp/taoyuan-city-review-status.json
+            .tmp/taoyuan-source-review-handoff.md
+            .tmp/taoyuan-source-review-handoff.json
+            .tmp/taoyuan-source-review-handoff/*.zip
+            .tmp/taoyuan-source-review-handoff/*.sha256
+          if-no-files-found: error
+          retention-days: 30
