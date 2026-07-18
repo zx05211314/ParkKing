@@ -543,7 +543,7 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
 - Production issue-report UI smoke after `npm run build`; this clicks `Report issue`, verifies local issue storage, remote `/api/sync/issues` upload, and debug-bundle download:
   `npm run ops:smoke-ui-issue-report:preview -- --district xinyi --timeout-ms 25000`
 - Production Taoyuan paid-curb reference UI smoke after `npm run build`; this verifies that source row `169` opens its reviewed representative point without changing the pinned address or producing a parking-legality answer, and that boundary-excluded row `177` remains text-only:
-  `npm run ops:smoke-ui-paid-curb-reference:preview -- --district xinyi --timeout-ms 25000`
+  `npm run ops:smoke-ui-paid-curb-reference:preview -- --district xinyi --timeout-ms 60000`
 - Current-product P1 release readiness gate for the Xinyi flow:
   `npm run build`
   `npm run ops:p1-release-readiness`

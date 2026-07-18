@@ -436,6 +436,25 @@ const waitForState = async <T>(params: {
   return state
 }
 
+const isPaidCurbReferenceMapReady = (
+  state: PaidCurbReferenceMapState,
+) =>
+  state.mapMode &&
+  state.selectedReferenceId === AVAILABLE_SOURCE_ID &&
+  state.mapDetailFound &&
+  state.mapDetailHasExpectedRecord
+
+const buildUnavailableExcludedState = (
+  bodyText: string,
+): PaidCurbReferenceExcludedState => ({
+  bodyText,
+  excludedRowFound: false,
+  excludedActionCount: 0,
+  excludedBoundaryNoteFound: false,
+  queryValue: '',
+  selectionCleared: false,
+})
+
 export const validateSmokeUiPaidCurbReferenceSummary = (
   summary: SmokeUiPaidCurbReferenceSummary,
 ) => {
@@ -586,6 +605,22 @@ export const renderSmokeUiPaidCurbReferenceSummary = (
     .filter((line): line is string => Boolean(line))
     .join('\n')
 
+const assertSmokeUiPaidCurbReferenceSummary = (
+  summary: SmokeUiPaidCurbReferenceSummary,
+) => {
+  if (summary.pass) {
+    return
+  }
+  throw new Error(
+    [
+      'UI paid-curb reference smoke failed:',
+      ...summary.errors,
+      '',
+      renderSmokeUiPaidCurbReferenceSummary(summary),
+    ].join('\n'),
+  )
+}
+
 export const runSmokeUiPaidCurbReference = async (
   options: SmokeUiPaidCurbReferenceOptions = {},
 ) => {
@@ -627,13 +662,20 @@ export const runSmokeUiPaidCurbReference = async (
 
     const map = await waitForState({
       read: () => readMapState(client as CdpClient),
-      isReady: (state) =>
-        state.mapMode &&
-        state.selectedReferenceId === AVAILABLE_SOURCE_ID &&
-        state.mapDetailFound &&
-        state.mapDetailHasExpectedRecord,
+      isReady: isPaidCurbReferenceMapReady,
       timeoutMs,
     })
+    if (!isPaidCurbReferenceMapReady(map)) {
+      const summary = buildSmokeUiPaidCurbReferenceSummary({
+        appUrl,
+        url,
+        district,
+        list,
+        map,
+        excluded: buildUnavailableExcludedState(map.bodyText),
+      })
+      assertSmokeUiPaidCurbReferenceSummary(summary)
+    }
     await closeDetailAndFilterExcludedReference(client)
 
     const excluded = await waitForState({
@@ -653,16 +695,7 @@ export const runSmokeUiPaidCurbReference = async (
       map,
       excluded,
     })
-    if (!summary.pass) {
-      throw new Error(
-        [
-          'UI paid-curb reference smoke failed:',
-          ...summary.errors,
-          '',
-          renderSmokeUiPaidCurbReferenceSummary(summary),
-        ].join('\n'),
-      )
-    }
+    assertSmokeUiPaidCurbReferenceSummary(summary)
     return summary
   } finally {
     try {

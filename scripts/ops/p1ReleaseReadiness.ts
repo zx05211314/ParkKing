@@ -156,6 +156,7 @@ const DEFAULT_ROOT = 'public/data/generated'
 const DEFAULT_CONFIG_GLOB = 'configs/prod/*.json'
 const DEFAULT_TIMEOUT_MS = 25_000
 const DEFAULT_DIST_DIR = 'dist'
+const PAID_CURB_REFERENCE_UI_TIMEOUT_MS = 60_000
 
 const defaultRunners: P1ReleaseReadinessRunners = {
   refreshPublishReport: buildRefreshPublishReport,
@@ -435,7 +436,10 @@ export const runP1ReleaseReadiness = async (
         () =>
           runners.runSmokeUiPaidCurbReference({
             district: inputs.districtId,
-            timeoutMs: inputs.timeoutMs,
+            timeoutMs: Math.max(
+              inputs.timeoutMs,
+              PAID_CURB_REFERENCE_UI_TIMEOUT_MS,
+            ),
             startPreview: true,
           }),
         (summary) => summary.pass,

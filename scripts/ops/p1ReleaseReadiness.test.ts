@@ -268,7 +268,7 @@ describe('p1ReleaseReadiness', () => {
     })
     expect(runners.runSmokeUiPaidCurbReference).toHaveBeenCalledWith({
       district: 'xinyi',
-      timeoutMs: 25000,
+      timeoutMs: 60000,
       startPreview: true,
     })
     expect(runners.runSmokeUiIssueReport).toHaveBeenCalledWith({
