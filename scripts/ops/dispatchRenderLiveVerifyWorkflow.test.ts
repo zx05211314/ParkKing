@@ -19,6 +19,7 @@ const baseOptions: RenderLiveVerifyDispatchOptions = {
     'https://github.com/zx05211314/ParkKing/releases/download/data-1/release_manifest_1.json',
   useGithubToken: false,
   skipSyncIssueRoundtrip: false,
+  allParkingAnswerCases: true,
   dryRun: true,
   token: null,
 }
@@ -42,6 +43,7 @@ describe('dispatch render live verify workflow', () => {
             'https://github.com/zx05211314/ParkKing/releases/download/data-1/release_manifest_1.json',
           useGithubToken: 'false',
           skipSyncIssueRoundtrip: 'false',
+          allParkingAnswerCases: 'true',
         },
       },
     })
@@ -65,6 +67,7 @@ describe('dispatch render live verify workflow', () => {
       'https://parkking.onrender.com',
       '--use-github-token=true',
       '--skip-sync-issue-roundtrip',
+      '--all-parking-answer-cases=false',
       '--dry-run',
     ])
     const plan = renderRenderLiveVerifyDispatchPlan({
@@ -78,10 +81,12 @@ describe('dispatch render live verify workflow', () => {
       appUrl: 'https://parkking.onrender.com',
       useGithubToken: true,
       skipSyncIssueRoundtrip: true,
+      allParkingAnswerCases: false,
       dryRun: true,
     })
     expect(options.manifestUrl).toContain('release_manifest_1.json')
     expect(plan).toContain('"useGithubToken": "true"')
+    expect(plan).toContain('"allParkingAnswerCases": "false"')
     expect(plan).not.toContain('secret-token')
   })
 

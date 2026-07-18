@@ -197,6 +197,12 @@ describe('releaseHandoffStatus', () => {
     expect(result.commands.renderLiveVerifyDryRun).toContain(
       '--app-url https://parkking.onrender.com',
     )
+    expect(result.commands.renderLiveVerifyDryRun).toContain(
+      '--all-parking-answer-cases true',
+    )
+    expect(result.commands.renderLiveVerify).toContain(
+      '--all-parking-answer-cases true',
+    )
     expect(result.commands.renderEnvSyncServiceIdDryRun).toContain(
       'npm run ops:render-runtime-env-sync -- --service-id "<Render service ID>" --handoff-json',
     )

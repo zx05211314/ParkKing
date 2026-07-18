@@ -223,7 +223,7 @@ const buildCommands = (
     renderLiveVerify: status.commands.renderLiveVerify,
     localRenderVerify: `npm run ops:render-deployment-verify -- --app-url ${quoteCommandValue(
       appUrl,
-    )} --handoff-json ${quotedHandoffJsonPath}`,
+    )} --handoff-json ${quotedHandoffJsonPath} --all-parking-answer-cases`,
   }
 }
 

@@ -511,8 +511,8 @@ const buildCommands = (params: {
     renderEnvSyncApply: `npm run ops:render-runtime-env-sync -- --service-name parkking --handoff-json ${handoffJsonPath} --execute --deploy`,
     renderEnvSyncDispatchDryRun: `npm run ops:render-runtime-env-sync-dispatch -- --repo ${params.repository} --ref ${params.ref} --handoff-json ${handoffJsonPath} --dry-run`,
     renderEnvSyncDispatch: `npm run ops:render-runtime-env-sync-dispatch -- --repo ${params.repository} --ref ${params.ref} --handoff-json ${handoffJsonPath} --execute`,
-    renderLiveVerifyDryRun: `npm run ops:render-live-verify-dispatch -- --repo ${params.repository} --ref ${params.ref} --app-url ${quoteCommandValue(appUrl)} --manifest-url ${params.manifestUrl} --dry-run`,
-    renderLiveVerify: `npm run ops:render-live-verify-dispatch -- --repo ${params.repository} --ref ${params.ref} --app-url ${quoteCommandValue(appUrl)} --manifest-url ${params.manifestUrl}`,
+    renderLiveVerifyDryRun: `npm run ops:render-live-verify-dispatch -- --repo ${params.repository} --ref ${params.ref} --app-url ${quoteCommandValue(appUrl)} --manifest-url ${params.manifestUrl} --all-parking-answer-cases true --dry-run`,
+    renderLiveVerify: `npm run ops:render-live-verify-dispatch -- --repo ${params.repository} --ref ${params.ref} --app-url ${quoteCommandValue(appUrl)} --manifest-url ${params.manifestUrl} --all-parking-answer-cases true`,
   }
 }
 
