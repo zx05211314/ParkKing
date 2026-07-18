@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   buildRenderLiveVerifyDispatchRequest,
   dispatchRenderLiveVerifyWorkflow,
+  preflightRenderLiveVerifyManifest,
   renderRenderLiveVerifyDispatchPlan,
   resolveRenderLiveVerifyDispatchOptions,
   type RenderLiveVerifyDispatchOptions,
@@ -116,10 +117,15 @@ describe('dispatch render live verify workflow', () => {
   })
 
   it('dispatches with token and treats HTTP 204 as success', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue({
+    const dispatchFetch = vi.fn().mockResolvedValue({
       status: 204,
       statusText: 'No Content',
       text: async () => '',
+    })
+    const manifestFetch = vi.fn().mockResolvedValue({
+      status: 200,
+      statusText: 'OK',
+      text: async () => '{"releaseId":"data-1"}',
     })
     const result = await dispatchRenderLiveVerifyWorkflow(
       {
@@ -127,20 +133,79 @@ describe('dispatch render live verify workflow', () => {
         dryRun: false,
         token: 'token',
       },
-      fetchImpl,
+      dispatchFetch,
+      manifestFetch,
     )
 
     expect(result).toMatchObject({
       dispatched: true,
       status: 204,
     })
-    expect(fetchImpl).toHaveBeenCalledWith(
+    expect(manifestFetch).toHaveBeenCalledWith(
+      baseOptions.manifestUrl,
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.not.objectContaining({
+          authorization: expect.anything(),
+        }),
+      }),
+    )
+    expect(dispatchFetch).toHaveBeenCalledWith(
       'https://api.github.com/repos/zx05211314/ParkKing/actions/workflows/render_live_verify.yml/dispatches',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
           authorization: 'Bearer token',
           'x-github-api-version': '2022-11-28',
+        }),
+      }),
+    )
+  })
+
+  it('blocks dispatch when the release manifest is not published', async () => {
+    const dispatchFetch = vi.fn()
+    const manifestFetch = vi.fn().mockResolvedValue({
+      status: 404,
+      statusText: 'Not Found',
+      text: async () => 'not found',
+    })
+
+    await expect(
+      dispatchRenderLiveVerifyWorkflow(
+        {
+          ...baseOptions,
+          dryRun: false,
+          token: 'token',
+        },
+        dispatchFetch,
+        manifestFetch,
+      ),
+    ).rejects.toThrow('Release manifest preflight failed: HTTP 404 Not Found')
+    expect(dispatchFetch).not.toHaveBeenCalled()
+  })
+
+  it('sends auth only when preflighting a private GitHub manifest', async () => {
+    const manifestFetch = vi.fn().mockResolvedValue({
+      status: 200,
+      statusText: 'OK',
+      text: async () => '{"releaseId":"data-1"}',
+    })
+
+    await preflightRenderLiveVerifyManifest(
+      {
+        ...baseOptions,
+        dryRun: false,
+        token: 'private-token',
+        useGithubToken: true,
+      },
+      manifestFetch,
+    )
+
+    expect(manifestFetch).toHaveBeenCalledWith(
+      baseOptions.manifestUrl,
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          authorization: 'Bearer private-token',
         }),
       }),
     )

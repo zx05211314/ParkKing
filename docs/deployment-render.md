@@ -293,15 +293,18 @@ npm run ops:render-live-verify-dispatch -- --app-url https://<service>.onrender.
 
 By default this command reads the manifest URL from
 `.tmp/render-deployment-handoff.json`; pass `--manifest-url` to verify a
-different published release.
+different published release. Non-dry-run dispatches first fetch and parse the
+manifest, so an unpublished or invalid handoff is rejected before a GitHub
+Actions run is created.
 
 Pass the live Render service URL and the published release manifest URL. Enable
 `useGithubToken` only when the manifest URL is a private GitHub Release asset
 from this repository. Leave `skipSyncIssueRoundtrip` false unless the live
 environment intentionally rejects sync smoke writes; dataset hash checks and
 health/ready probes still run when only the roundtrip is skipped. The workflow
-uploads `.tmp/render-deployment-verify.md` and `.tmp/render-deployment-verify.json`
-as `render-live-verify`.
+also runs the live Taoyuan paid-curb source-to-map UI smoke after the API and
+dataset contract passes. It uploads `.tmp/render-deployment-verify.md` and
+`.tmp/render-deployment-verify.json` as `render-live-verify`.
 
 The `Release Data Package` workflow summary also prints
 `VERIFY_RENDER_DEPLOY_WORKFLOW_INPUTS`; keep `skipSyncIssueRoundtrip=false` and
