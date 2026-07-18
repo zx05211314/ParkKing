@@ -132,4 +132,44 @@ describe('validateTaoyuanPaidCurbReview', () => {
       'Row 2: UNCLEAR requires source_text_review_note.',
     )
   })
+
+  it('rejects a promoted manifest when its review CSV hash drifts', () => {
+    const result = validateTaoyuanPaidCurbReview({
+      pack,
+      manifest: {
+        ...manifest,
+        reviewSha256: 'b'.repeat(64),
+        approvedRecordCount: 1,
+      },
+      rows: [{ ...row, source_text_review_status: 'APPROVED_SOURCE_TEXT' }],
+      districtId: 'taoyuan-district',
+      reviewSha256: 'c'.repeat(64),
+      requireApproved: true,
+    })
+
+    expect(result.pass).toBe(false)
+    expect(result.errors).toContain(
+      'Review manifest reviewSha256 does not match the review CSV.',
+    )
+  })
+
+  it('requires hash and approved count pins for promoted evidence', () => {
+    const result = validateTaoyuanPaidCurbReview({
+      pack,
+      manifest,
+      rows: [{ ...row, source_text_review_status: 'APPROVED_SOURCE_TEXT' }],
+      districtId: 'taoyuan-district',
+      reviewSha256: 'a'.repeat(64),
+      requirePinnedReview: true,
+      requireApproved: true,
+    })
+
+    expect(result.pass).toBe(false)
+    expect(result.errors).toContain(
+      'Review manifest must pin reviewSha256 for promoted evidence.',
+    )
+    expect(result.errors).toContain(
+      'Review manifest must pin approvedRecordCount for promoted evidence.',
+    )
+  })
 })

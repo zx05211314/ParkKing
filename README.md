@@ -360,8 +360,16 @@ bundle under `.tmp/taoyuan-human-review/`. The current official XML contains 944
 including 270 for Taoyuan District, but no geometry. Human approval of this CSV confirms
 source transcription only and never confirms parking legality. Rebuilds refresh the
 `.template.csv` file but preserve an existing review CSV. Check structure, source hash,
-and pending counts with `npm run ops:taoyuan-review-status`; require every row to be
-explicitly approved with `npm run ops:taoyuan-review-gate`. With TDX
+and pending counts in a draft bundle with
+`npm run ops:taoyuan-review-status -- --review-dir .tmp/taoyuan-human-review`;
+require every draft row to be explicitly approved with
+`npm run ops:taoyuan-review-gate -- --review-dir .tmp/taoyuan-human-review`.
+After project-owner approval, run `npm run ops:promote-taoyuan-review`; the command
+revalidates every immutable field and source hash before installing the approved CSV
+and manifest under `configs/reviews/taoyuan/`. The promoted manifest pins the reviewed
+CSV SHA-256 and approved row count. The default status, gate, readiness,
+and CI commands read this tracked evidence so a clean checkout reproduces the decision.
+With TDX
 guest access, or credentials in `TDX_CLIENT_ID` and `TDX_CLIENT_SECRET`, run
 `npm run ops:fetch-taoyuan-paid-curb` to normalize paid curb segment geometry/reference
 points. Guest access is used only when credentials are absent and can be disabled with

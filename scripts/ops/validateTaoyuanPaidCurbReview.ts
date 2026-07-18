@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseCsv } from 'csv-parse/sync'
@@ -8,7 +9,7 @@ import {
 } from '../../src/data/paidCurbReference'
 
 const DEFAULT_DISTRICT = 'taoyuan-district'
-const DEFAULT_REVIEW_DIR = '.tmp/taoyuan-human-review'
+const DEFAULT_REVIEW_DIR = 'configs/reviews/taoyuan'
 const DEFAULT_REFERENCE = 'public/data/reference/taoyuan-paid-curb.json'
 
 const ALLOWED_STATUSES = new Set([
@@ -26,6 +27,10 @@ export interface ReviewManifest {
   geometryAvailable: false
   legalAnswerEligible: false
   allowedStatuses: string[]
+  reviewCsv?: string
+  reviewSha256?: string
+  approvedRecordCount?: number
+  templateCsv?: string
 }
 
 export type CsvRow = Record<string, string>
@@ -44,6 +49,8 @@ const validateManifest = (
   manifest: ReviewManifest,
   pack: PaidCurbReferencePack,
   districtId: string,
+  reviewSha256?: string,
+  requirePinnedReview?: boolean,
 ) => {
   const errors: string[] = []
   const district = pack.districts.find(
@@ -75,6 +82,26 @@ const validateManifest = (
   ) {
     errors.push('Review manifest allowedStatuses do not match the source-text contract.')
   }
+  if (requirePinnedReview && manifest.reviewSha256 === undefined) {
+    errors.push('Review manifest must pin reviewSha256 for promoted evidence.')
+  } else if (
+    manifest.reviewSha256 !== undefined &&
+    manifest.reviewSha256 !== reviewSha256
+  ) {
+    errors.push('Review manifest reviewSha256 does not match the review CSV.')
+  }
+  if (requirePinnedReview && manifest.approvedRecordCount === undefined) {
+    errors.push(
+      'Review manifest must pin approvedRecordCount for promoted evidence.',
+    )
+  } else if (
+    manifest.approvedRecordCount !== undefined &&
+    manifest.approvedRecordCount !== district.recordCount
+  ) {
+    errors.push(
+      `Review manifest approvedRecordCount is ${String(manifest.approvedRecordCount)}, expected ${district.recordCount}.`,
+    )
+  }
   return { errors, district }
 }
 
@@ -83,6 +110,8 @@ export const validateTaoyuanPaidCurbReview = (params: {
   manifest: ReviewManifest
   rows: CsvRow[]
   districtId: string
+  reviewSha256?: string
+  requirePinnedReview?: boolean
   requireComplete?: boolean
   requireApproved?: boolean
 }) => {
@@ -90,6 +119,8 @@ export const validateTaoyuanPaidCurbReview = (params: {
     params.manifest,
     params.pack,
     params.districtId,
+    params.reviewSha256,
+    params.requirePinnedReview,
   )
   const errors = [...manifestResult.errors]
   const district = manifestResult.district
@@ -220,6 +251,9 @@ export const validateTaoyuanPaidCurbReview = (params: {
 const readJson = async <T>(filePath: string): Promise<T> =>
   JSON.parse(await fs.readFile(filePath, 'utf-8')) as T
 
+const sha256 = (buffer: Buffer) =>
+  createHash('sha256').update(buffer).digest('hex')
+
 const getArgValue = (argv: string[], flag: string) => {
   const index = argv.indexOf(flag)
   return index >= 0 ? argv[index + 1] ?? null : null
@@ -248,6 +282,10 @@ const renderReport = (
 ].join('\n')
 
 const run = async () => {
+  const explicitReviewPaths =
+    process.argv.includes('--review-dir') ||
+    process.argv.includes('--input') ||
+    process.argv.includes('--manifest')
   const districtId = getArgValue(process.argv, '--district') ?? DEFAULT_DISTRICT
   const reviewDir = path.resolve(
     getArgValue(process.argv, '--review-dir') ?? DEFAULT_REVIEW_DIR,
@@ -264,7 +302,8 @@ const run = async () => {
   const referencePath = path.resolve(
     getArgValue(process.argv, '--reference') ?? DEFAULT_REFERENCE,
   )
-  const rows = parseCsv(await fs.readFile(reviewPath, 'utf-8'), {
+  const reviewBuffer = await fs.readFile(reviewPath)
+  const rows = parseCsv(reviewBuffer, {
     bom: true,
     columns: true,
     skip_empty_lines: true,
@@ -274,6 +313,8 @@ const run = async () => {
     manifest: await readJson<ReviewManifest>(manifestPath),
     rows,
     districtId,
+    reviewSha256: sha256(reviewBuffer),
+    requirePinnedReview: !explicitReviewPaths,
     requireComplete:
       process.argv.includes('--require-complete') ||
       process.argv.includes('--require-approved'),
