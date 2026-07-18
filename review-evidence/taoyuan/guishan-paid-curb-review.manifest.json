@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "districtId": "guishan",
-  "sourceSha256": "a84e80ca8049c32bfdf9b06291b6eb6302dd81314ad5c02fadf53f2e89fc673e",
+  "sourceSha256": "fb2a71771da7d21ee7d3fd689d1748c2669b2bc10113cec04d4a47a5b62a2d4a",
   "sourceRecordCount": 944,
   "reviewRecordCount": 141,
   "geometryAvailable": false,
@@ -12,6 +12,6 @@
     "UNCLEAR"
   ],
   "reviewCsv": "guishan-paid-curb-review.csv",
-  "reviewSha256": "47a98e3c41ba262937ea438dd1caba8b345254b66c32d938a240ba599a6804da",
+  "reviewSha256": "7caf75938eb3b24c69e69b577952359f202a1e4005428cdf2ec5c4d783bc61c4",
   "approvedRecordCount": 141
 }
