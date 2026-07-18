@@ -17,6 +17,8 @@ const writeJson = async (filePath: string, value: unknown) => {
   await fs.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf-8')
 }
 
+const PUBLISHED_AT = '2026-05-01T00:00:00Z'
+
 const startJsonServer = async (
   parkingReadyPayload: unknown,
   parkingReadyStatus = 200,
@@ -235,7 +237,9 @@ describe('renderDeploymentVerify', () => {
             district: 'xinyi',
             ready: true,
             datasetHash: 'hash-xinyi',
+            publishedAt: PUBLISHED_AT,
             latestDatasetHash: 'hash-xinyi',
+            latestPublishedAt: PUBLISHED_AT,
           },
         ],
       },
@@ -274,6 +278,7 @@ describe('renderDeploymentVerify', () => {
         {
           districtId: 'xinyi',
           datasetHash: 'hash-xinyi',
+          publishedAt: PUBLISHED_AT,
         },
       ],
     })
@@ -284,7 +289,9 @@ describe('renderDeploymentVerify', () => {
           district: 'xinyi',
           ready: true,
           datasetHash: 'hash-xinyi',
+          publishedAt: PUBLISHED_AT,
           latestDatasetHash: 'hash-xinyi',
+          latestPublishedAt: PUBLISHED_AT,
         },
       ],
     })
@@ -335,6 +342,7 @@ describe('renderDeploymentVerify', () => {
         {
           districtId: 'xinyi',
           datasetHash: 'hash-expected',
+          publishedAt: PUBLISHED_AT,
         },
       ],
     })
@@ -345,7 +353,9 @@ describe('renderDeploymentVerify', () => {
           district: 'xinyi',
           ready: true,
           datasetHash: 'hash-live',
+          publishedAt: PUBLISHED_AT,
           latestDatasetHash: 'hash-live',
+          latestPublishedAt: PUBLISHED_AT,
         },
       ],
     })
@@ -362,7 +372,7 @@ describe('renderDeploymentVerify', () => {
         'does not match expected hash-expected',
       )
       expect(result.errors.join('\n')).toContain(
-        'parking-answer dataset hash mismatch',
+        'parking-answer release dataset mismatch',
       )
       expect(result.releasePackageRemediation?.requiredRenderEnv).toMatchObject({
         PARKKING_RELEASE_PACKAGE_URL:
@@ -386,6 +396,90 @@ describe('renderDeploymentVerify', () => {
     }
   })
 
+  it('fails when unchanged hashes are served by an older published release', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'render-verify-identity-'))
+    const manifestPath = path.join(base, 'release_manifest.json')
+    await writeJson(manifestPath, {
+      releaseId: 'release-new',
+      districts: [
+        {
+          districtId: 'xinyi',
+          datasetHash: 'unchanged-hash',
+          publishedAt: '2026-05-02T00:00:00Z',
+        },
+      ],
+    })
+    const server = await startJsonServer({
+      status: 'ok',
+      districts: [
+        {
+          district: 'xinyi',
+          ready: true,
+          datasetHash: 'unchanged-hash',
+          publishedAt: '2026-05-01T00:00:00Z',
+          latestDatasetHash: 'unchanged-hash',
+          latestPublishedAt: '2026-05-01T00:00:00Z',
+        },
+      ],
+    })
+
+    try {
+      const result = await verifyRenderDeployment({
+        appUrl: server.baseUrl,
+        manifestPath,
+        timeoutMs: 1000,
+        skipApiServices: true,
+      })
+
+      expect(result.pass).toBe(false)
+      expect(result.districts[0]).toMatchObject({
+        expectedDatasetHash: 'unchanged-hash',
+        actualDatasetHash: 'unchanged-hash',
+        expectedPublishedAt: '2026-05-02T00:00:00Z',
+        actualPublishedAt: '2026-05-01T00:00:00Z',
+      })
+      expect(result.districts[0]?.errors.join('\n')).toContain(
+        'publishedAt 2026-05-01T00:00:00Z does not match expected 2026-05-02T00:00:00Z',
+      )
+      expect(result.errors.join('\n')).toContain(
+        'parking-answer release dataset mismatch',
+      )
+    } finally {
+      await server.close()
+    }
+  })
+
+  it('fails closed when an old handoff omits publishedAt', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'render-verify-old-handoff-'))
+    const handoffPath = path.join(base, 'handoff.json')
+    await writeJson(handoffPath, {
+      ready: true,
+      expectedDatasets: [
+        {
+          districtId: 'xinyi',
+          datasetHash: 'hash-xinyi',
+        },
+      ],
+    })
+    const server = await startJsonServer({ status: 'ok', districts: [] })
+
+    try {
+      const result = await verifyRenderDeployment({
+        appUrl: server.baseUrl,
+        handoffJsonPath: handoffPath,
+        timeoutMs: 1000,
+        skipApiServices: true,
+      })
+
+      expect(result.pass).toBe(false)
+      expect(result.errors.join('\n')).toContain(
+        'expectedDatasets has incomplete district identities: xinyi',
+      )
+    } finally {
+      await server.close()
+    }
+  })
+
   it('fails when mounted live API service probes fail', async () => {
     const base = await fs.mkdtemp(path.join(tmpdir(), 'render-verify-api-fail-'))
     const handoffPath = path.join(base, 'handoff.json')
@@ -395,6 +489,7 @@ describe('renderDeploymentVerify', () => {
         {
           districtId: 'xinyi',
           datasetHash: 'hash-xinyi',
+          publishedAt: PUBLISHED_AT,
         },
       ],
     })
@@ -406,7 +501,9 @@ describe('renderDeploymentVerify', () => {
             district: 'xinyi',
             ready: true,
             datasetHash: 'hash-xinyi',
+            publishedAt: PUBLISHED_AT,
             latestDatasetHash: 'hash-xinyi',
+            latestPublishedAt: PUBLISHED_AT,
           },
         ],
       },
@@ -438,6 +535,7 @@ describe('renderDeploymentVerify', () => {
         {
           districtId: 'xinyi',
           datasetHash: 'hash-xinyi',
+          publishedAt: PUBLISHED_AT,
         },
       ],
     })
@@ -449,7 +547,9 @@ describe('renderDeploymentVerify', () => {
             district: 'xinyi',
             ready: true,
             datasetHash: 'hash-xinyi',
+            publishedAt: PUBLISHED_AT,
             latestDatasetHash: 'hash-xinyi',
+            latestPublishedAt: PUBLISHED_AT,
           },
         ],
       },
@@ -502,6 +602,7 @@ describe('renderDeploymentVerify', () => {
         {
           districtId: 'xinyi',
           datasetHash: 'hash-xinyi',
+          publishedAt: PUBLISHED_AT,
         },
       ],
     })
@@ -513,7 +614,9 @@ describe('renderDeploymentVerify', () => {
             district: 'xinyi',
             ready: true,
             datasetHash: 'hash-xinyi',
+            publishedAt: PUBLISHED_AT,
             latestDatasetHash: 'hash-xinyi',
+            latestPublishedAt: PUBLISHED_AT,
           },
         ],
       },
@@ -570,7 +673,9 @@ describe('renderDeploymentVerify', () => {
           district: 'xinyi',
           ready: true,
           datasetHash: 'hash-xinyi',
+          publishedAt: PUBLISHED_AT,
           latestDatasetHash: 'hash-xinyi',
+          latestPublishedAt: PUBLISHED_AT,
         },
       ],
     })
@@ -641,7 +746,9 @@ describe('renderDeploymentVerify', () => {
           district: 'xinyi',
           ready: true,
           datasetHash: 'hash-xinyi',
+          publishedAt: PUBLISHED_AT,
           latestDatasetHash: 'hash-xinyi',
+          latestPublishedAt: PUBLISHED_AT,
         },
       ],
     })
@@ -713,7 +820,11 @@ describe('renderDeploymentVerify', () => {
       ],
     })
     const expectedDatasets = [
-      { districtId: 'xinyi', datasetHash: 'hash-xinyi' },
+      {
+        districtId: 'xinyi',
+        datasetHash: 'hash-xinyi',
+        publishedAt: PUBLISHED_AT,
+      },
     ]
     const transientServer = await startJsonServer(
       {
@@ -723,7 +834,9 @@ describe('renderDeploymentVerify', () => {
             district: 'xinyi',
             ready: true,
             datasetHash: 'hash-xinyi',
+            publishedAt: PUBLISHED_AT,
             latestDatasetHash: 'hash-xinyi',
+            latestPublishedAt: PUBLISHED_AT,
           },
         ],
       },
@@ -761,7 +874,9 @@ describe('renderDeploymentVerify', () => {
             district: 'xinyi',
             ready: true,
             datasetHash: 'hash-xinyi',
+            publishedAt: PUBLISHED_AT,
             latestDatasetHash: 'hash-xinyi',
+            latestPublishedAt: PUBLISHED_AT,
           },
         ],
       },
@@ -812,7 +927,9 @@ describe('renderDeploymentVerify', () => {
           district: 'xinyi',
           ready: true,
           datasetHash: 'hash-xinyi',
+          publishedAt: PUBLISHED_AT,
           latestDatasetHash: 'hash-xinyi',
+          latestPublishedAt: PUBLISHED_AT,
         },
       ],
     })
@@ -851,13 +968,22 @@ describe('renderDeploymentVerify', () => {
         status: 200,
         serviceStatus: 'ok',
         readinessAttempts: 1,
-        expectedDatasets: [{ districtId: 'xinyi', datasetHash: 'hash-xinyi' }],
+        expectedDatasets: [
+          {
+            districtId: 'xinyi',
+            datasetHash: 'hash-xinyi',
+            publishedAt: PUBLISHED_AT,
+          },
+        ],
         districts: [
           {
             districtId: 'xinyi',
             expectedDatasetHash: 'hash-xinyi',
+            expectedPublishedAt: PUBLISHED_AT,
             actualDatasetHash: 'hash-xinyi',
+            actualPublishedAt: PUBLISHED_AT,
             latestDatasetHash: 'hash-xinyi',
+            latestPublishedAt: PUBLISHED_AT,
             ready: true,
             pass: true,
             errors: [],

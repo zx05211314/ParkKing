@@ -188,11 +188,11 @@ export const renderWaitForRenderRelease = (
     `- Poll interval: ${result.intervalMs}ms`,
     `- Release ID: ${result.lastVerify?.releaseId ?? '-'}`,
     '',
-    '| Status | District | Expected hash | Actual hash | Ready | Error |',
-    '| --- | --- | --- | --- | --- | --- |',
+    '| Status | District | Expected hash | Actual hash | Expected published | Actual published | Ready | Error |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- |',
     ...districts.map(
       (district) =>
-        `| ${district.pass ? 'PASS' : 'WAIT'} | ${district.districtId} | ${shortHash(district.expectedDatasetHash)} | ${shortHash(district.actualDatasetHash)} | ${String(district.ready)} | ${district.errors.join('; ')} |`,
+        `| ${district.pass ? 'PASS' : 'WAIT'} | ${district.districtId} | ${shortHash(district.expectedDatasetHash)} | ${shortHash(district.actualDatasetHash)} | ${district.expectedPublishedAt} | ${district.actualPublishedAt ?? '-'} | ${String(district.ready)} | ${district.errors.join('; ')} |`,
     ),
     '',
     '## Errors',

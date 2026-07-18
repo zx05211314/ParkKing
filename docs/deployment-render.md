@@ -251,12 +251,13 @@ URLs and exact Render env values, including `PARKKING_RELEASE_PACKAGE_URL`,
 `PARKKING_ROUTING_REQUEST_TIMEOUT_MS`. The handoff also copies the local
 zip/manifest into `.tmp/release-handoff-assets/<release-id>/` and stores those
 copied paths in `releaseAssetPaths` for local publishing. The JSON and markdown
-also include the expected per-district dataset hashes that the live Render
-service must expose from `/api/parking-answer/ready`. Those URLs become live
-after the `Release Data Package` workflow publishes the same release ID. If you
-run the workflow later and let it generate a fresh release ID, use the URLs
-printed by that workflow summary or its uploaded handoff artifact instead of
-the earlier local preview.
+also include the expected per-district dataset identity (`datasetHash` and
+`publishedAt`) that the live Render service must expose from
+`/api/parking-answer/ready`. The release manifest is authoritative for those
+values. Those URLs become live after the `Release Data Package` workflow
+publishes the same release ID. If you run the workflow later and let it generate
+a fresh release ID, use the URLs printed by that workflow summary or its
+uploaded handoff artifact instead of the earlier local preview.
 
 After publishing GitHub Release assets, verify the URLs before assigning them to
 Render:
@@ -300,7 +301,7 @@ Actions run is created.
 Pass the live Render service URL and the published release manifest URL. Enable
 `useGithubToken` only when the manifest URL is a private GitHub Release asset
 from this repository. Leave `skipSyncIssueRoundtrip` false unless the live
-environment intentionally rejects sync smoke writes; dataset hash checks and
+environment intentionally rejects sync smoke writes; dataset identity checks and
 health/ready probes still run when only the roundtrip is skipped. The workflow
 also runs the live Taoyuan paid-curb source-to-map UI smoke after the API and
 dataset contract passes. It uploads `.tmp/render-deployment-verify.md` and
@@ -311,9 +312,11 @@ The `Release Data Package` workflow summary also prints
 choose `useGithubToken=true` for private release assets or `false` for public
 release assets.
 
-This reads the release manifest dataset-hash contract, fetches
+This reads the release manifest dataset identity contract, fetches
 `/api/parking-answer/ready`, and fails if any reviewed district is missing, not
-ready, or serving a dataset hash different from the released package. It also
+ready, or serving a `datasetHash` or `publishedAt` different from the released
+package. Requiring `publishedAt` prevents unchanged content hashes from allowing
+an older Render deployment to pass as the new release. It also
 probes the live same-origin geocode, route, sync, and parking-answer
 health/ready endpoints, verifies geocoder/routing readiness exposes positive
 upstream request timeouts, runs a sync issue-report roundtrip, and verifies sync
@@ -381,7 +384,7 @@ production rollout automatically. It downloads the exact upstream
 branch name. It then syncs the release/runtime env vars with
 `--execute --deploy`, triggers a full Render deploy, and runs:
 
-1. `ops:wait-render-release` until all 12 live dataset hashes match the handoff.
+1. `ops:wait-render-release` until all 12 live dataset hashes and publication timestamps match the handoff.
 2. `ops:render-deployment-verify --all-parking-answer-cases`.
 3. The live smoke for every published Taoyuan paid-curb reference UI.
 4. GitHub Latest promotion for the verified data release.

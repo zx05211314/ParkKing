@@ -44,7 +44,13 @@ const writeRolloutFixture = async (base: string) => {
         `https://github.com/owner/repo/releases/download/${tag}/park-king-data_${releaseId}.zip`,
       manifestUrl:
         `https://github.com/owner/repo/releases/download/${tag}/release_manifest_${releaseId}.json`,
-      expectedDatasets: [{ districtId: 'xinyi', datasetHash: 'hash-xinyi' }],
+      expectedDatasets: [
+        {
+          districtId: 'xinyi',
+          datasetHash: 'hash-xinyi',
+          publishedAt: '2026-05-31T00:00:00Z',
+        },
+      ],
       releaseAssetPaths: [
         path.join(base, 'missing.zip'),
         path.join(base, 'missing.json'),
@@ -72,7 +78,13 @@ const publishedReleaseFetch = (): typeof fetch =>
       return new Response(
         JSON.stringify({
           releaseId: '20260531_abc1234',
-          districts: [{ districtId: 'xinyi', datasetHash: 'hash-xinyi' }],
+          districts: [
+            {
+              districtId: 'xinyi',
+              datasetHash: 'hash-xinyi',
+              publishedAt: '2026-05-31T00:00:00Z',
+            },
+          ],
         }),
         { status: 200 },
       )

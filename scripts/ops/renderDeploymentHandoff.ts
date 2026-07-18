@@ -70,6 +70,7 @@ export interface RenderDeploymentHandoffOptions {
 export interface RenderDeploymentHandoffDataset {
   districtId: string
   datasetHash: string
+  publishedAt: string
 }
 
 export interface RenderDeploymentHandoffResult {
@@ -143,9 +144,14 @@ const toRecord = (value: unknown): Record<string, unknown> | null =>
 const getStringField = (record: Record<string, unknown> | null, key: string) =>
   typeof record?.[key] === 'string' ? record[key] : null
 
-const toExpectedDatasets = (
+interface GeneratedDataset {
+  districtId: string
+  datasetHash: string
+}
+
+const toGeneratedDatasets = (
   packResults: unknown,
-): RenderDeploymentHandoffDataset[] => {
+): GeneratedDataset[] => {
   if (!Array.isArray(packResults)) {
     return []
   }
@@ -159,6 +165,27 @@ const toExpectedDatasets = (
         getStringField(parkingSummary, 'datasetHash') ??
         getStringField(exactSummary, 'datasetHash')
       return districtId && datasetHash ? { districtId, datasetHash } : null
+    })
+    .filter((entry): entry is GeneratedDataset => entry !== null)
+    .sort((left, right) => left.districtId.localeCompare(right.districtId))
+}
+
+const toManifestDatasets = (
+  manifest: Record<string, unknown> | null,
+): RenderDeploymentHandoffDataset[] => {
+  const districts = manifest?.districts
+  if (!Array.isArray(districts)) {
+    return []
+  }
+  return districts
+    .map((district) => {
+      const record = toRecord(district)
+      const districtId = getStringField(record, 'districtId')
+      const datasetHash = getStringField(record, 'datasetHash')
+      const publishedAt = getStringField(record, 'publishedAt')
+      return districtId && datasetHash && publishedAt
+        ? { districtId, datasetHash, publishedAt }
+        : null
     })
     .filter((entry): entry is RenderDeploymentHandoffDataset => entry !== null)
     .sort((left, right) => left.districtId.localeCompare(right.districtId))
@@ -274,12 +301,13 @@ export const buildRenderDeploymentHandoff = async (
     toStringArray(p3Release?.districtIds).length > 0
       ? toStringArray(p3Release?.districtIds)
       : toStringArray(p3.inputs?.districtIds)
-  const expectedDatasets = toExpectedDatasets(
+  const generatedDatasets = toGeneratedDatasets(
     deploy.generatedPacks?.result?.packResults,
   )
-  const expectedDatasetMap = new Map(
-    expectedDatasets.map((entry) => [entry.districtId, entry.datasetHash]),
+  const generatedDatasetMap = new Map(
+    generatedDatasets.map((entry) => [entry.districtId, entry.datasetHash]),
   )
+  let expectedDatasets: RenderDeploymentHandoffDataset[] = []
 
   if (!p3ReadinessPass) {
     blockers.push(`${p3ReadinessJsonPath} is not passing`)
@@ -298,12 +326,12 @@ export const buildRenderDeploymentHandoff = async (
   if (deploy.appServer?.pass !== true) {
     blockers.push('Deploy readiness app server smoke is not passing')
   }
-  const missingExpectedDatasetDistricts = districts.filter(
-    (districtId) => !expectedDatasetMap.has(districtId),
+  const missingGeneratedDatasetDistricts = districts.filter(
+    (districtId) => !generatedDatasetMap.has(districtId),
   )
-  if (districts.length > 0 && missingExpectedDatasetDistricts.length > 0) {
+  if (districts.length > 0 && missingGeneratedDatasetDistricts.length > 0) {
     blockers.push(
-      `Deploy readiness did not record dataset hashes for: ${missingExpectedDatasetDistricts.join(', ')}`,
+      `Deploy readiness did not record dataset hashes for: ${missingGeneratedDatasetDistricts.join(', ')}`,
     )
   }
   if (releaseAssetPaths.length === 0) {
@@ -324,6 +352,82 @@ export const buildRenderDeploymentHandoff = async (
   if (missingReleaseAssets.length > 0) {
     blockers.push(
       `Release assets are missing locally: ${missingReleaseAssets.join(', ')}. Run npm run ops:p3-release-readiness after npm run build, then rerun npm run ops:deploy-readiness.`,
+    )
+  }
+  const releaseManifestPath =
+    typeof deploy.release?.manifestPath === 'string'
+      ? deploy.release.manifestPath
+      : null
+  if (releaseManifestPath && !missingReleaseAssets.includes(releaseManifestPath)) {
+    try {
+      const manifest = toRecord(
+        await readJsonFile<Record<string, unknown>>(releaseManifestPath),
+      )
+      expectedDatasets = toManifestDatasets(manifest)
+      const manifestReleaseId = getStringField(manifest, 'releaseId')
+      if (manifestReleaseId !== release.releaseId) {
+        blockers.push(
+          `Release manifest ID ${manifestReleaseId ?? 'missing'} does not match ${release.releaseId}`,
+        )
+      }
+      const manifestDistricts = Array.isArray(manifest?.districts)
+        ? manifest.districts
+        : []
+      if (expectedDatasets.length !== manifestDistricts.length) {
+        blockers.push(
+          'Release manifest districts must each include districtId, datasetHash, and publishedAt',
+        )
+      }
+      const duplicateManifestDistricts = expectedDatasets
+        .map((entry) => entry.districtId)
+        .filter(
+          (districtId, index, allDistrictIds) =>
+            allDistrictIds.indexOf(districtId) !== index,
+        )
+      if (duplicateManifestDistricts.length > 0) {
+        blockers.push(
+          `Release manifest has duplicate district identities: ${[
+            ...new Set(duplicateManifestDistricts),
+          ].join(', ')}`,
+        )
+      }
+    } catch (error) {
+      blockers.push(
+        `Could not read release manifest contract ${releaseManifestPath}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      )
+    }
+  }
+  const expectedDatasetMap = new Map(
+    expectedDatasets.map((entry) => [entry.districtId, entry]),
+  )
+  const missingExpectedDatasetDistricts = districts.filter(
+    (districtId) => !expectedDatasetMap.has(districtId),
+  )
+  if (districts.length > 0 && missingExpectedDatasetDistricts.length > 0) {
+    blockers.push(
+      `Release manifest did not record complete dataset identities for: ${missingExpectedDatasetDistricts.join(', ')}`,
+    )
+  }
+  const unexpectedExpectedDatasetDistricts = expectedDatasets
+    .map((entry) => entry.districtId)
+    .filter((districtId) => !districts.includes(districtId))
+  if (districts.length > 0 && unexpectedExpectedDatasetDistricts.length > 0) {
+    blockers.push(
+      `Release manifest has unexpected district identities: ${unexpectedExpectedDatasetDistricts.join(', ')}`,
+    )
+  }
+  const mismatchedGeneratedDatasets = expectedDatasets.filter(
+    (entry) =>
+      generatedDatasetMap.has(entry.districtId) &&
+      generatedDatasetMap.get(entry.districtId) !== entry.datasetHash,
+  )
+  if (mismatchedGeneratedDatasets.length > 0) {
+    blockers.push(
+      `Release manifest dataset hashes do not match deploy readiness for: ${mismatchedGeneratedDatasets
+        .map((entry) => entry.districtId)
+        .join(', ')}`,
     )
   }
   if (blockers.length === 0) {
@@ -361,7 +465,7 @@ export const buildRenderDeploymentHandoff = async (
     externalSteps: [
       'Merge or deploy the branch that contains the release workflow and render.yaml changes.',
       'Run GitHub Actions -> Release Data Package with configsGlob=configs/prod/*.json, or push the generated data-* tag and wait for that workflow to finish.',
-      `Do not manually create or upload assets to workflow-managed tag ${release.tag}. Creating that tag triggers Release Data Package, which re-ingests sources and may replace assets; use the completed workflow handoff, package URL, manifest URL, and dataset hashes as the authoritative contract.`,
+      `Do not manually create or upload assets to workflow-managed tag ${release.tag}. Creating that tag triggers Release Data Package, which re-ingests sources and may replace assets; use the completed workflow handoff, package URL, manifest URL, and dataset identities as the authoritative contract.`,
       'Set Render environment variables exactly as listed in this handoff or the published workflow summary, plus a download token/header if the repository is private.',
       'Deploy the Render Blueprint.',
       `Run npm run ops:render-live-verify-dispatch -- --repo ${repository} --ref main --app-url <Render service URL> --manifest-url ${urls.manifestUrl} --all-parking-answer-cases true --dry-run, then rerun without --dry-run when GH_TOKEN/GITHUB_TOKEN is set; or use GitHub Actions -> Render Live Verify with useGithubToken=true only for private GitHub Release assets, skipSyncIssueRoundtrip=false unless the live environment intentionally rejects sync smoke writes, and allParkingAnswerCases=true.`,
@@ -388,7 +492,10 @@ export const renderRenderDeploymentHandoff = (
     `- Local assets: ${result.releaseAssetPaths.join(', ') || '-'}`,
     `- Expected datasets: ${
       result.expectedDatasets
-        .map((entry) => `${entry.districtId}:${entry.datasetHash.slice(0, 12)}`)
+        .map(
+          (entry) =>
+            `${entry.districtId}:${entry.datasetHash.slice(0, 12)}@${entry.publishedAt}`,
+        )
         .join(', ') || '-'
     }`,
     '',

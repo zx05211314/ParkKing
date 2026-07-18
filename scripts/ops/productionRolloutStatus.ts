@@ -156,7 +156,10 @@ const parseManifestDatasets = (manifest: Record<string, unknown>) => {
     const record = toRecord(entry)
     const districtId = getString(record, 'districtId')
     const datasetHash = getString(record, 'datasetHash')
-    return districtId && datasetHash ? [{ districtId, datasetHash }] : []
+    const publishedAt = getString(record, 'publishedAt')
+    return districtId && datasetHash && publishedAt
+      ? [{ districtId, datasetHash, publishedAt }]
+      : []
   })
 }
 
@@ -225,8 +228,20 @@ const writeSynthesizedHandoffFromManifest = async (params: {
     )
   }
   const expectedDatasets = parseManifestDatasets(manifest)
-  if (expectedDatasets.length === 0) {
-    throw new Error(`Release manifest ${params.manifestUrl} has no district hashes`)
+  const manifestDistricts = Array.isArray(manifest.districts)
+    ? manifest.districts
+    : []
+  const uniqueDistricts = new Set(
+    expectedDatasets.map((dataset) => dataset.districtId),
+  )
+  if (
+    expectedDatasets.length === 0 ||
+    expectedDatasets.length !== manifestDistricts.length ||
+    uniqueDistricts.size !== expectedDatasets.length
+  ) {
+    throw new Error(
+      `Release manifest ${params.manifestUrl} does not have complete unique district identities`,
+    )
   }
   const handoffJsonPath = '.tmp/production-rollout-handoff.json'
   await fs.mkdir(path.dirname(path.resolve(handoffJsonPath)), { recursive: true })

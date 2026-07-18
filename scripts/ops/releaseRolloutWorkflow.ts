@@ -125,6 +125,29 @@ export const readReleaseRolloutHandoff = async (
   const expectedDatasets = Array.isArray(parsed?.expectedDatasets)
     ? parsed.expectedDatasets
     : []
+  const incompleteDatasetIdentities = expectedDatasets.flatMap(
+    (entry, index) => {
+      const record = toRecord(entry)
+      const districtId = getString(record, 'districtId')
+      return districtId &&
+        getString(record, 'datasetHash') &&
+        getString(record, 'publishedAt')
+        ? []
+        : [districtId || `entry ${index + 1}`]
+    },
+  )
+  const datasetDistrictIds = expectedDatasets.flatMap((entry) => {
+    const districtId = getString(toRecord(entry), 'districtId')
+    return districtId ? [districtId] : []
+  })
+  const duplicateDatasetIdentities = [
+    ...new Set(
+      datasetDistrictIds.filter(
+        (districtId, index) =>
+          datasetDistrictIds.indexOf(districtId) !== index,
+      ),
+    ),
+  ]
   const handoff = {
     ready: parsed?.ready === true,
     releaseId: getString(release, 'releaseId'),
@@ -142,6 +165,16 @@ export const readReleaseRolloutHandoff = async (
     ...(handoff.packageUrl ? [] : ['packageUrl is missing']),
     ...(handoff.manifestUrl ? [] : ['manifestUrl is missing']),
     ...(handoff.districtCount > 0 ? [] : ['expectedDatasets is empty']),
+    ...(incompleteDatasetIdentities.length > 0
+      ? [
+          `expectedDatasets has incomplete district identities: ${incompleteDatasetIdentities.join(', ')}`,
+        ]
+      : []),
+    ...(duplicateDatasetIdentities.length > 0
+      ? [
+          `expectedDatasets has duplicate district identities: ${duplicateDatasetIdentities.join(', ')}`,
+        ]
+      : []),
   ]
   if (errors.length > 0) {
     throw new Error(

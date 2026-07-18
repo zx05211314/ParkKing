@@ -21,6 +21,7 @@ const validHandoff = {
     {
       districtId: 'xinyi',
       datasetHash: 'hash-xinyi',
+      publishedAt: '2026-07-18T18:46:26Z',
     },
   ],
 }
@@ -137,6 +138,28 @@ describe('releaseRolloutWorkflow', () => {
 
     await expect(readReleaseRolloutHandoff(handoffJsonPath)).rejects.toThrow(
       'handoff is not marked ready',
+    )
+  })
+
+  it('rejects a handoff without complete district release identities', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'release-identity-'))
+    const handoffJsonPath = path.join(base, 'handoff.json')
+    await fs.writeFile(
+      handoffJsonPath,
+      `${JSON.stringify({
+        ...validHandoff,
+        expectedDatasets: [
+          {
+            districtId: 'xinyi',
+            datasetHash: 'hash-xinyi',
+          },
+        ],
+      })}\n`,
+      'utf-8',
+    )
+
+    await expect(readReleaseRolloutHandoff(handoffJsonPath)).rejects.toThrow(
+      'expectedDatasets has incomplete district identities: xinyi',
     )
   })
 })

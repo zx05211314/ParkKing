@@ -56,7 +56,22 @@ describe('renderDeploymentHandoff', () => {
     const manifestPath = path.join(base, 'release.json')
     const handoffAssetDir = path.join(base, 'handoff-assets')
     await fs.writeFile(zipPath, 'zip')
-    await fs.writeFile(manifestPath, '{}')
+    const manifest = {
+      releaseId: '20260529_abcd123',
+      districts: [
+        {
+          districtId: 'daan',
+          datasetHash: 'hash-daan',
+          publishedAt: '2026-05-29T00:00:00Z',
+        },
+        {
+          districtId: 'xinyi',
+          datasetHash: 'hash-xinyi',
+          publishedAt: '2026-05-29T00:00:01Z',
+        },
+      ],
+    }
+    await fs.writeFile(manifestPath, JSON.stringify(manifest))
     await writeJson(p3Json, {
       pass: true,
       inputs: {
@@ -134,7 +149,9 @@ describe('renderDeploymentHandoff', () => {
       path.join(handoffAssetDir, '20260529_abcd123', 'release_manifest_20260529_abcd123.json'),
     ])
     await expect(fs.readFile(result.releaseAssetPaths[0], 'utf-8')).resolves.toBe('zip')
-    await expect(fs.readFile(result.releaseAssetPaths[1], 'utf-8')).resolves.toBe('{}')
+    await expect(fs.readFile(result.releaseAssetPaths[1], 'utf-8')).resolves.toBe(
+      JSON.stringify(manifest),
+    )
     await fs.rm(zipPath)
     await fs.rm(manifestPath)
     await expect(fs.readFile(result.releaseAssetPaths[0], 'utf-8')).resolves.toBe('zip')
@@ -145,14 +162,16 @@ describe('renderDeploymentHandoff', () => {
       {
         districtId: 'daan',
         datasetHash: 'hash-daan',
+        publishedAt: '2026-05-29T00:00:00Z',
       },
       {
         districtId: 'xinyi',
         datasetHash: 'hash-xinyi',
+        publishedAt: '2026-05-29T00:00:01Z',
       },
     ])
     expect(renderRenderDeploymentHandoff(result)).toContain(
-      'Expected datasets: daan:hash-daan, xinyi:hash-xinyi',
+      'Expected datasets: daan:hash-daan@2026-05-29T00:00:00Z, xinyi:hash-xinyi@2026-05-29T00:00:01Z',
     )
     expect(result.externalSteps.join('\n')).toContain(
       'npm run ops:render-live-verify-dispatch',
@@ -246,7 +265,13 @@ describe('renderDeploymentHandoff', () => {
       releaseTotalBytes: 2,
       installedFileCount: 1,
       releaseAssetPaths: ['release.zip', 'release.json'],
-      expectedDatasets: [{ districtId: 'xinyi', datasetHash: 'hash-xinyi' }],
+      expectedDatasets: [
+        {
+          districtId: 'xinyi',
+          datasetHash: 'hash-xinyi',
+          publishedAt: '2026-05-29T00:00:00Z',
+        },
+      ],
       blockers: [],
       renderEnv: {
         PARKKING_RELEASE_PACKAGE_URL: 'package-url',
@@ -301,5 +326,62 @@ describe('renderDeploymentHandoff', () => {
 
     expect(result.ready).toBe(false)
     expect(result.blockers.join('\n')).toContain('Release assets are missing locally')
+  })
+
+  it('blocks release manifests that omit per-district publishedAt', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'render-handoff-identity-'))
+    const p3Json = path.join(base, 'p3.json')
+    const deployJson = path.join(base, 'deploy.json')
+    const zipPath = path.join(base, 'release.zip')
+    const manifestPath = path.join(base, 'release.json')
+    await fs.writeFile(zipPath, 'zip')
+    await writeJson(manifestPath, {
+      releaseId: 'release-a',
+      districts: [{ districtId: 'xinyi', datasetHash: 'hash-xinyi' }],
+    })
+    await writeJson(p3Json, {
+      pass: true,
+      inputs: { districtIds: ['xinyi'] },
+      releasePackage: {
+        summary: {
+          releaseId: 'release-a',
+          districtIds: ['xinyi'],
+        },
+      },
+    })
+    await writeJson(deployJson, {
+      pass: true,
+      release: {
+        releaseId: 'release-a',
+        zipPath,
+        manifestPath,
+      },
+      parkingAnswerApis: { pass: true },
+      appServer: { pass: true },
+      generatedPacks: {
+        result: {
+          packResults: [
+            {
+              districtId: 'xinyi',
+              parkingSummary: { datasetHash: 'hash-xinyi' },
+            },
+          ],
+        },
+      },
+    })
+
+    const result = await buildRenderDeploymentHandoff({
+      p3ReadinessJsonPath: p3Json,
+      deployReadinessJsonPath: deployJson,
+      repository: 'owner/repo',
+    })
+
+    expect(result.ready).toBe(false)
+    expect(result.blockers.join('\n')).toContain(
+      'districtId, datasetHash, and publishedAt',
+    )
+    expect(result.blockers.join('\n')).toContain(
+      'complete dataset identities for: xinyi',
+    )
   })
 })

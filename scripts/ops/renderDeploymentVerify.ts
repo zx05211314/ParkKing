@@ -49,8 +49,11 @@ export interface RenderDeploymentVerifyOptions {
 export interface RenderDeploymentVerifyDistrict {
   districtId: string
   expectedDatasetHash: string
+  expectedPublishedAt: string
   actualDatasetHash: string | null
+  actualPublishedAt: string | null
   latestDatasetHash: string | null
+  latestPublishedAt: string | null
   ready: boolean | null
   pass: boolean
   errors: string[]
@@ -253,7 +256,10 @@ const getExpectedDatasets = (
       const record = toRecord(entry)
       const districtId = getString(record, 'districtId')
       const datasetHash = getString(record, 'datasetHash')
-      return districtId && datasetHash ? { districtId, datasetHash } : null
+      const publishedAt = getString(record, 'publishedAt')
+      return districtId && datasetHash && publishedAt
+        ? { districtId, datasetHash, publishedAt }
+        : null
     })
     .filter((entry): entry is RenderDeploymentHandoffDataset => entry !== null)
     .sort((left, right) => left.districtId.localeCompare(right.districtId))
@@ -271,7 +277,10 @@ const getExpectedDatasetsFromManifest = (
       const record = toRecord(entry)
       const districtId = getString(record, 'districtId')
       const datasetHash = getString(record, 'datasetHash')
-      return districtId && datasetHash ? { districtId, datasetHash } : null
+      const publishedAt = getString(record, 'publishedAt')
+      return districtId && datasetHash && publishedAt
+        ? { districtId, datasetHash, publishedAt }
+        : null
     })
     .filter((entry): entry is RenderDeploymentHandoffDataset => entry !== null)
     .sort((left, right) => left.districtId.localeCompare(right.districtId))
@@ -290,6 +299,47 @@ const buildDownloadHeaders = (params: {
     headers.authorization = `Bearer ${params.downloadToken}`
   }
   return headers
+}
+
+const getDatasetIdentityContractErrors = (
+  value: unknown,
+  sourceLabel: string,
+) => {
+  if (!Array.isArray(value)) {
+    return []
+  }
+  const incompleteEntries = value.flatMap((entry, index) => {
+    const record = toRecord(entry)
+    const districtId = getString(record, 'districtId') ?? `entry ${index + 1}`
+    return getString(record, 'districtId') &&
+      getString(record, 'datasetHash') &&
+      getString(record, 'publishedAt')
+      ? []
+      : [districtId]
+  })
+  const districtIds = value.flatMap((entry) => {
+    const districtId = getString(toRecord(entry), 'districtId')
+    return districtId ? [districtId] : []
+  })
+  const duplicateDistricts = [
+    ...new Set(
+      districtIds.filter(
+        (districtId, index) => districtIds.indexOf(districtId) !== index,
+      ),
+    ),
+  ]
+  return [
+    ...(incompleteEntries.length > 0
+      ? [
+          `${sourceLabel} has incomplete district identities: ${incompleteEntries.join(', ')}`,
+        ]
+      : []),
+    ...(duplicateDistricts.length > 0
+      ? [
+          `${sourceLabel} has duplicate district identities: ${duplicateDistricts.join(', ')}`,
+        ]
+      : []),
+  ]
 }
 
 export const normalizeRenderAppUrl = (value: string | null | undefined) => {
@@ -399,6 +449,10 @@ const loadExpectedDatasetContract = async (
           }),
     )
     const expectedDatasets = parsed ? getExpectedDatasetsFromManifest(parsed) : []
+    const identityErrors = getDatasetIdentityContractErrors(
+      parsed?.districts,
+      `${source} districts`,
+    )
     return {
       contractSource: source,
       verifyArgName: manifestPath ? '--manifest' : '--manifest-url',
@@ -407,10 +461,12 @@ const loadExpectedDatasetContract = async (
       releasePackageUrl: null,
       releaseManifestUrl: manifestUrl ?? null,
       expectedDatasets,
-      errors:
-        expectedDatasets.length > 0
+      errors: [
+        ...identityErrors,
+        ...(expectedDatasets.length > 0
           ? []
-          : [`${source} has no districts dataset contract`],
+          : [`${source} has no complete districts dataset identity contract`]),
+      ],
     }
   }
 
@@ -418,6 +474,10 @@ const loadExpectedDatasetContract = async (
   const handoff = await readJsonFile<Record<string, unknown>>(handoffJsonPath)
   const release = toRecord(handoff.release)
   const expectedDatasets = getExpectedDatasets(handoff)
+  const identityErrors = getDatasetIdentityContractErrors(
+    handoff.expectedDatasets,
+    `${handoffJsonPath} expectedDatasets`,
+  )
   return {
     contractSource: handoffJsonPath,
     verifyArgName: '--handoff-json',
@@ -428,9 +488,10 @@ const loadExpectedDatasetContract = async (
     expectedDatasets,
     errors: [
       ...(handoff.ready === true ? [] : [`${handoffJsonPath} is not marked ready`]),
+      ...identityErrors,
       ...(expectedDatasets.length > 0
         ? []
-        : [`${handoffJsonPath} has no expectedDatasets contract`]),
+        : [`${handoffJsonPath} has no complete expectedDatasets identity contract`]),
     ],
   }
 }
@@ -449,7 +510,9 @@ const parseReadyDistricts = (payload: unknown) => {
         ? {
             districtId,
             datasetHash: getString(entry, 'datasetHash'),
+            publishedAt: getString(entry, 'publishedAt'),
             latestDatasetHash: getString(entry, 'latestDatasetHash'),
+            latestPublishedAt: getString(entry, 'latestPublishedAt'),
             ready: getBoolean(entry, 'ready'),
           }
         : null
@@ -457,7 +520,9 @@ const parseReadyDistricts = (payload: unknown) => {
     .filter((entry): entry is {
       districtId: string
       datasetHash: string | null
+      publishedAt: string | null
       latestDatasetHash: string | null
+      latestPublishedAt: string | null
       ready: boolean | null
     } => entry !== null)
 }
@@ -790,7 +855,7 @@ const buildReleasePackageRemediation = (params: {
   }
 
   const reasons = [
-    `Live parking-answer dataset hashes do not match ${params.contract.contractSource}; Render may be serving fallback public/data/generated, a stale release package, or an old build.`,
+    `Live parking-answer dataset identities do not match ${params.contract.contractSource}; Render may be serving fallback public/data/generated, a stale release package, or an old build.`,
     ...(failedDistricts.length > 0
       ? [
           `Mismatched districts: ${failedDistricts
@@ -823,7 +888,7 @@ const buildReleasePackageRemediation = (params: {
       'If only the Render service name is known, set RENDER_API_KEY and use npm run ops:render-runtime-env-sync -- --service-name parkking --handoff-json .tmp/render-deployment-handoff.json --execute --deploy so the service ID can be resolved through the Render API.',
       'Redeploy with a full build; the build log must show npm run ops:install-release-package -- --require-manifest completing before npm run build.',
       'If those env vars are already set, trigger a fresh build/deploy instead of only restarting the service so dist/data/generated is rebuilt from the release package.',
-      'Rerun the verification command and require district hashes to match before treating production data as current.',
+      'Rerun the verification command and require district hashes and publication timestamps to match before treating production data as current.',
     ],
     verifyCommand: buildRenderDeploymentVerifyCommand(params),
   }
@@ -894,6 +959,11 @@ export const verifyRenderDeployment = async (
           `datasetHash ${actual.datasetHash ?? 'missing'} does not match expected ${expected.datasetHash}`,
         )
       }
+      if (actual.publishedAt !== expected.publishedAt) {
+        districtErrors.push(
+          `publishedAt ${actual.publishedAt ?? 'missing'} does not match expected ${expected.publishedAt}`,
+        )
+      }
       if (
         actual.latestDatasetHash !== null &&
         actual.latestDatasetHash !== expected.datasetHash
@@ -902,12 +972,23 @@ export const verifyRenderDeployment = async (
           `latestDatasetHash ${actual.latestDatasetHash} does not match expected ${expected.datasetHash}`,
         )
       }
+      if (
+        actual.latestPublishedAt !== null &&
+        actual.latestPublishedAt !== expected.publishedAt
+      ) {
+        districtErrors.push(
+          `latestPublishedAt ${actual.latestPublishedAt} does not match expected ${expected.publishedAt}`,
+        )
+      }
     }
     return {
       districtId: expected.districtId,
       expectedDatasetHash: expected.datasetHash,
+      expectedPublishedAt: expected.publishedAt,
       actualDatasetHash: actual?.datasetHash ?? null,
+      actualPublishedAt: actual?.publishedAt ?? null,
       latestDatasetHash: actual?.latestDatasetHash ?? null,
+      latestPublishedAt: actual?.latestPublishedAt ?? null,
       ready: actual?.ready ?? null,
       pass: districtErrors.length === 0,
       errors: districtErrors,
@@ -920,7 +1001,7 @@ export const verifyRenderDeployment = async (
   const failedDistricts = districts.filter((district) => !district.pass)
   if (failedDistricts.length > 0) {
     errors.push(
-      `parking-answer dataset hash mismatch: ${failedDistricts
+      `parking-answer release dataset mismatch: ${failedDistricts
         .map((district) => `${district.districtId}: ${district.errors.join('; ')}`)
         .join(' | ')}`,
     )
@@ -1071,11 +1152,11 @@ export const renderRenderDeploymentVerify = (
     `- Readiness attempts: ${result.readinessAttempts}`,
     `- Unexpected live districts: ${result.unexpectedDistricts.join(', ') || '-'}`,
     '',
-    '| Status | District | Expected hash | Actual hash | Latest hash | Ready | Error |',
-    '| --- | --- | --- | --- | --- | --- | --- |',
+    '| Status | District | Expected hash | Actual hash | Expected published | Actual published | Latest published | Ready | Error |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
     ...result.districts.map(
       (district) =>
-        `| ${district.pass ? 'PASS' : 'FAIL'} | ${district.districtId} | ${shortHash(district.expectedDatasetHash)} | ${shortHash(district.actualDatasetHash)} | ${shortHash(district.latestDatasetHash)} | ${String(district.ready)} | ${district.errors.join('; ')} |`,
+        `| ${district.pass ? 'PASS' : 'FAIL'} | ${district.districtId} | ${shortHash(district.expectedDatasetHash)} | ${shortHash(district.actualDatasetHash)} | ${district.expectedPublishedAt} | ${district.actualPublishedAt ?? '-'} | ${district.latestPublishedAt ?? '-'} | ${String(district.ready)} | ${district.errors.join('; ')} |`,
     ),
     ...(result.apiServices
       ? [

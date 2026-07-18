@@ -39,14 +39,18 @@ const verifyResult = (
     {
       districtId: 'xinyi',
       datasetHash: 'expected-hash',
+      publishedAt: '2026-07-18T18:46:26Z',
     },
   ],
   districts: [
     {
       districtId: 'xinyi',
       expectedDatasetHash: 'expected-hash',
+      expectedPublishedAt: '2026-07-18T18:46:26Z',
       actualDatasetHash,
+      actualPublishedAt: '2026-07-18T18:46:26Z',
       latestDatasetHash: actualDatasetHash,
+      latestPublishedAt: '2026-07-18T18:46:26Z',
       ready: true,
       pass,
       errors: pass ? [] : ['dataset hash is still stale'],
