@@ -73,6 +73,7 @@ import { getDataBaseUrl } from './data/datasetResolver'
 import { buildPinnedCoverageBoundary } from './data/coverageDisplay'
 import { findCoverageDistrictByLocation } from './data/coverageCatalog'
 import { usePaidCurbReferenceState } from './ui/usePaidCurbReferenceState'
+import { resolvePaidCurbReferenceMapSelection } from './ui/paidCurbReferenceMapSelection'
 import type { RiskMode } from './domain/ranking/policy'
 import {
   getLatestReportsBySegment,
@@ -105,6 +106,11 @@ function App() {
     () => readSharedAppState(typeof window === 'undefined' ? '' : window.location.search),
     [],
   )
+  const [paidCurbReferenceSelection, setPaidCurbReferenceSelection] =
+    useState<{
+      contextKey: string
+      parkingSegmentId: string
+    } | null>(null)
   const {
     actionFilter,
     activeView,
@@ -374,6 +380,51 @@ function App() {
     districtId: paidCurbCoverageDistrict?.districtId ?? null,
     referenceData: paidCurbCoverageDistrict?.referenceData ?? null,
   })
+  const paidCurbSelectionContextKey =
+    paidCurbCoverageDistrict && searchLocation
+      ? `${paidCurbCoverageDistrict.districtId}:${searchLocation[0].toFixed(6)},${searchLocation[1].toFixed(6)}`
+      : 'none'
+  const requestedPaidCurbReferenceId =
+    paidCurbReferenceSelection?.contextKey === paidCurbSelectionContextKey
+      ? paidCurbReferenceSelection.parkingSegmentId
+      : null
+  const selectedPaidCurbReference = useMemo(
+    () =>
+      resolvePaidCurbReferenceMapSelection(
+        paidCurbReferenceState.spatialReference,
+        requestedPaidCurbReferenceId,
+      ),
+    [
+      paidCurbReferenceState.spatialReference,
+      requestedPaidCurbReferenceId,
+    ],
+  )
+  const activePaidCurbReferenceId =
+    selectedPaidCurbReference?.parkingSegmentId ?? null
+  const handleSelectPaidCurbReference = (
+    parkingSegmentId: string | null,
+  ) => {
+    if (
+      parkingSegmentId &&
+      !resolvePaidCurbReferenceMapSelection(
+        paidCurbReferenceState.spatialReference,
+        parkingSegmentId,
+      )
+    ) {
+      return
+    }
+    setPaidCurbReferenceSelection(
+      parkingSegmentId
+        ? {
+            contextKey: paidCurbSelectionContextKey,
+            parkingSegmentId,
+          }
+        : null,
+    )
+    if (parkingSegmentId) {
+      setActiveView('MAP')
+    }
+  }
   const pinnedCoverageBoundary = useMemo(
     () => buildPinnedCoverageBoundary(runtimeCoverageCatalog, searchLocation),
     [runtimeCoverageCatalog, searchLocation],
@@ -866,6 +917,12 @@ function App() {
     addressRecommendationTargets,
     recommendedSegmentIds,
   })
+  const paidCurbReferenceFocus = selectedPaidCurbReference
+    ? {
+        key: `paid-curb-reference:${selectedPaidCurbReference.parkingSegmentId}`,
+        center: selectedPaidCurbReference.coordinates,
+      }
+    : null
   const {
     handleSaveListSegment,
     handleSaveBestRecommendationPlan,
@@ -1141,6 +1198,7 @@ function App() {
     parkingCoverageReferenceAddressLabel: paidCurbCoverageDistrict
       ? searchLocationLabel
       : null,
+    selectedPaidCurbReferenceId: activePaidCurbReferenceId,
     parkingAnswerReport,
     nearbySnapshot,
     bestAddressRecommendation,
@@ -1165,6 +1223,7 @@ function App() {
     alternativeRecommendationOffset,
     onRecommendationRankModeChange: handleRecommendationRankModeChange,
     onParkingAnswerReport: handleParkingAnswerReport,
+    onSelectPaidCurbReference: handleSelectPaidCurbReference,
     onSelectAddressRecommendation: handleSelectAddressRecommendation,
     onSaveBestRecommendationPlan: handleSaveBestRecommendationPlan,
     onNavigateToRecommendation: handleNavigateToRecommendation,
@@ -1281,13 +1340,14 @@ function App() {
     selectedId,
     districtBounds,
     districtBoundsKey,
-    activeFocusBounds,
-    activeFocusCenter,
+    activeFocusBounds: paidCurbReferenceFocus ? null : activeFocusBounds,
+    activeFocusCenter: paidCurbReferenceFocus ?? activeFocusCenter,
     recommendedSegmentIds,
     searchLocation,
     searchLocationLabel,
     coverageBoundary: pinnedCoverageBoundary,
     paidCurbReferencePoints: paidCurbReferenceState.spatialReference,
+    selectedPaidCurbReferenceId: activePaidCurbReferenceId,
     selectedCenter,
     selectedArrivalKind,
     selectedArrivalLabel,
@@ -1300,6 +1360,7 @@ function App() {
     onSelectMapSegment: handleSelect,
     onSelectRecommendedTarget: handleSelectRecommendedTarget,
     onSelectParkingSpace: handleSelectSelectedParkingSpace,
+    onSelectPaidCurbReference: handleSelectPaidCurbReference,
     onPickMapLocation: handlePickMapLocation,
     searchAnchor,
     parkingSpaceCount,

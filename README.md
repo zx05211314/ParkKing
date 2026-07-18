@@ -425,7 +425,9 @@ Chinese road name and show the reviewed representative points on the map. Text r
 road-description matches rather than proximity matches, and map points remain references
 rather than curb geometry or legality answers. Clicking a reference point opens its
 official segment ID, road description, fare text, charging flag, and representative
-coordinates without moving the parking-evaluation pin.
+coordinates without moving the parking-evaluation pin. Filtered source-text rows with
+a reviewed point can highlight and focus that point on the map; rows excluded by the
+official district-boundary review remain text-only and never receive synthetic geometry.
 
 Legacy per-district raw source scaffold:
    `npm run ops:new-district -- --districtId <id> --districtName "<Name>" --sourceRoot "data/raw/<id>"`

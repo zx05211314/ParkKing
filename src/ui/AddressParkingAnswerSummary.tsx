@@ -55,9 +55,11 @@ export function AddressParkingAnswerSummary({
   parkingCoverageNotice,
   parkingCoverageReferenceState,
   parkingCoverageReferenceAddressLabel,
+  selectedPaidCurbReferenceId,
   parkingAnswerReport,
   formatDistanceMeters,
   onParkingAnswerReport,
+  onSelectPaidCurbReference,
 }: AddressParkingAnswerSummaryProps) {
   const [reportNote, setReportNote] = useState('')
   const serviceNotice = getServiceNotice(
@@ -90,6 +92,8 @@ export function AddressParkingAnswerSummary({
             key={parkingCoverageReferenceAddressLabel ?? ''}
             state={parkingCoverageReferenceState}
             addressLabel={parkingCoverageReferenceAddressLabel ?? null}
+            selectedReferencePointId={selectedPaidCurbReferenceId}
+            onSelectReferencePoint={onSelectPaidCurbReference}
           />
         ) : null}
       </>

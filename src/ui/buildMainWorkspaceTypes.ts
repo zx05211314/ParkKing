@@ -33,6 +33,7 @@ export interface BuildMainWorkspacePropsOptions {
   searchLocationLabel: MainWorkspaceProps['mapViewProps']['searchLocationLabel']
   coverageBoundary: MainWorkspaceProps['mapViewProps']['coverageBoundary']
   paidCurbReferencePoints: MainWorkspaceProps['mapViewProps']['paidCurbReferencePoints']
+  selectedPaidCurbReferenceId: MainWorkspaceProps['mapViewProps']['selectedPaidCurbReferenceId']
   selectedCenter: MainWorkspaceProps['mapViewProps']['arrivalLocation']
   selectedArrivalKind: MainWorkspaceProps['selectedArrivalKind']
   selectedArrivalLabel: string | null
@@ -47,6 +48,7 @@ export interface BuildMainWorkspacePropsOptions {
   onSelectMapSegment: MainWorkspaceProps['mapViewProps']['onSelect']
   onSelectRecommendedTarget: MainWorkspaceProps['mapViewProps']['onSelectRecommendedTarget']
   onSelectParkingSpace: MainWorkspaceProps['mapViewProps']['onSelectParkingSpace']
+  onSelectPaidCurbReference: MainWorkspaceProps['mapViewProps']['onSelectPaidCurbReference']
   onPickMapLocation: MainWorkspaceProps['mapViewProps']['onPickLocation']
   searchAnchor: unknown
   parkingSpaceCount: MainWorkspaceProps['parkingSpaceCount']

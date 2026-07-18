@@ -23,6 +23,7 @@ export const buildMapViewProps = ({
   searchLocationLabel,
   coverageBoundary,
   paidCurbReferencePoints,
+  selectedPaidCurbReferenceId,
   selectedCenter,
   selectedArrivalKind,
   selectedArrivalLabel,
@@ -34,6 +35,7 @@ export const buildMapViewProps = ({
   onSelectMapSegment,
   onSelectRecommendedTarget,
   onSelectParkingSpace,
+  onSelectPaidCurbReference,
   onPickMapLocation,
 }: BuildMainWorkspacePropsOptions): MainWorkspaceProps['mapViewProps'] => ({
   center,
@@ -59,6 +61,7 @@ export const buildMapViewProps = ({
   searchLocationLabel,
   coverageBoundary,
   paidCurbReferencePoints,
+  selectedPaidCurbReferenceId,
   arrivalLocation: selectedCenter,
   arrivalLocationKind: selectedArrivalKind,
   arrivalLocationLabel: selectedArrivalLabel ? `Arrival: ${selectedArrivalLabel}` : null,
@@ -70,5 +73,6 @@ export const buildMapViewProps = ({
   onSelect: onSelectMapSegment,
   onSelectRecommendedTarget,
   onSelectParkingSpace,
+  onSelectPaidCurbReference,
   onPickLocation: onPickMapLocation,
 })
