@@ -14,8 +14,9 @@ import {
   parsePaidCurbReferencePack,
 } from '../../src/data/paidCurbReference'
 import {
-  getTaoyuanDistrictPaidCurbSpatialReferenceUrl,
+  getPaidCurbSpatialReferenceUrl,
   parsePaidCurbSpatialReferencePack,
+  type PaidCurbSpatialReferencePack,
 } from '../../src/data/paidCurbSpatialReference'
 import {
   parseRuntimeCoverageCatalog,
@@ -36,8 +37,7 @@ const DEFAULT_TAOYUAN_BOUNDARIES =
 const DEFAULT_OUTPUT = 'public/data/coverage.json'
 const DEFAULT_TAOYUAN_REFERENCE =
   'public/data/reference/taoyuan-paid-curb.json'
-const DEFAULT_TAOYUAN_SPATIAL_REFERENCE =
-  'public/data/reference/taoyuan-district-paid-curb-points.geojson'
+const DEFAULT_TAOYUAN_SPATIAL_REFERENCE_DIR = 'public/data/reference'
 const DEFAULT_SIMPLIFY_TOLERANCE = 0.00002
 
 const REGION_BOUNDARY_ID_KEYS: Record<string, string[]> = {
@@ -179,48 +179,91 @@ const sha256 = (buffer: Buffer) =>
 
 export const loadTaoyuanCoverageReferences = async (
   filePath: string,
-  spatialReferencePath?: string | null,
+  spatialReferencePaths?: string | readonly string[] | null,
 ) => {
   const pack = parsePaidCurbReferencePack(await readJson<unknown>(filePath))
-  const spatialBuffer = spatialReferencePath
-    ? await fs.readFile(spatialReferencePath)
-    : null
-  const spatialPack = spatialBuffer
-    ? parsePaidCurbSpatialReferencePack(
-        JSON.parse(spatialBuffer.toString('utf-8')) as unknown,
+  const paths =
+    typeof spatialReferencePaths === 'string'
+      ? [spatialReferencePaths]
+      : [...(spatialReferencePaths ?? [])]
+  const spatialPacks = new Map<
+    string,
+    { buffer: Buffer; pack: PaidCurbSpatialReferencePack }
+  >()
+  const districtIds = new Set(pack.districts.map(({ districtId }) => districtId))
+  for (const spatialReferencePath of paths) {
+    const buffer = await fs.readFile(spatialReferencePath)
+    const spatialPack = parsePaidCurbSpatialReferencePack(
+      JSON.parse(buffer.toString('utf-8')) as unknown,
+    )
+    if (!districtIds.has(spatialPack.metadata.districtId)) {
+      throw new Error(
+        `Paid-curb spatial reference has unknown Taoyuan district ${spatialPack.metadata.districtId}`,
       )
-    : null
+    }
+    if (spatialPacks.has(spatialPack.metadata.districtId)) {
+      throw new Error(
+        `Duplicate paid-curb spatial reference for ${spatialPack.metadata.districtId}`,
+      )
+    }
+    spatialPacks.set(spatialPack.metadata.districtId, {
+      buffer,
+      pack: spatialPack,
+    })
+  }
   return new Map<string, RuntimeCoverageReferenceData>(
-    pack.districts.map((district) => [
-      district.boundaryFeatureId,
-      {
-        kind: pack.evidenceKind,
-        url: getPaidCurbReferenceUrl(),
-        recordCount: district.recordCount,
-        sourceSha256: pack.source.sha256,
-        geometryAvailable: false,
-        legalAnswerEligible: false,
-        requiresHumanReview: true,
-        ...(spatialPack?.metadata.districtId === district.districtId &&
-        spatialBuffer
-          ? {
-              spatialReference: {
-                kind: spatialPack.metadata.evidenceKind,
-                url: getTaoyuanDistrictPaidCurbSpatialReferenceUrl(),
-                dataSha256: sha256(spatialBuffer),
-                sourceSha256: spatialPack.metadata.sourceSha256,
-                reviewSha256: spatialPack.metadata.reviewSha256,
-                featureCount: spatialPack.metadata.featureCount,
-                excludedFeatureCount:
-                  spatialPack.metadata.excludedFeatureCount,
-                geometryPrecision: spatialPack.metadata.geometryPrecision,
-                legalAnswerEligible: false,
-              },
-            }
-          : {}),
-      },
-    ]),
+    pack.districts.map((district) => {
+      const spatial = spatialPacks.get(district.districtId)
+      return [
+        district.boundaryFeatureId,
+        {
+          kind: pack.evidenceKind,
+          url: getPaidCurbReferenceUrl(),
+          recordCount: district.recordCount,
+          sourceSha256: pack.source.sha256,
+          geometryAvailable: false,
+          legalAnswerEligible: false,
+          requiresHumanReview: true,
+          ...(spatial
+            ? {
+                spatialReference: {
+                  kind: spatial.pack.metadata.evidenceKind,
+                  url: getPaidCurbSpatialReferenceUrl(district.districtId),
+                  dataSha256: sha256(spatial.buffer),
+                  sourceSha256: spatial.pack.metadata.sourceSha256,
+                  reviewSha256: spatial.pack.metadata.reviewSha256,
+                  featureCount: spatial.pack.metadata.featureCount,
+                  excludedFeatureCount:
+                    spatial.pack.metadata.excludedFeatureCount,
+                  geometryPrecision: spatial.pack.metadata.geometryPrecision,
+                  legalAnswerEligible: false,
+                },
+              }
+            : {}),
+        },
+      ]
+    }),
   )
+}
+
+export const discoverTaoyuanSpatialReferencePaths = async (
+  directoryPath: string,
+) => {
+  try {
+    const entries = await fs.readdir(directoryPath, { withFileTypes: true })
+    return entries
+      .filter(
+        (entry) =>
+          entry.isFile() && entry.name.endsWith('-paid-curb-points.geojson'),
+      )
+      .map((entry) => path.join(directoryPath, entry.name))
+      .sort((left, right) => left.localeCompare(right))
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return []
+    }
+    throw error
+  }
 }
 
 const resolveTaipeiBoundarySource = async (
@@ -300,6 +343,18 @@ const run = async () => {
     ),
   })
   const toleranceArg = getArgValue(process.argv, '--simplify-tolerance')
+  const explicitSpatialReference = getArgValue(
+    process.argv,
+    '--taoyuan-spatial-reference',
+  )
+  const spatialReferencePaths = explicitSpatialReference
+    ? [path.resolve(explicitSpatialReference)]
+    : await discoverTaoyuanSpatialReferencePaths(
+        path.resolve(
+          getArgValue(process.argv, '--taoyuan-spatial-reference-dir') ??
+            DEFAULT_TAOYUAN_SPATIAL_REFERENCE_DIR,
+        ),
+      )
   const referencesByBoundaryFeatureId = manifest.regions.some(
     ({ regionId }) => regionId === 'taoyuan',
   )
@@ -308,10 +363,7 @@ const run = async () => {
           getArgValue(process.argv, '--taoyuan-reference') ??
             DEFAULT_TAOYUAN_REFERENCE,
         ),
-        path.resolve(
-          getArgValue(process.argv, '--taoyuan-spatial-reference') ??
-            DEFAULT_TAOYUAN_SPATIAL_REFERENCE,
-        ),
+        spatialReferencePaths,
       )
     : undefined
   const catalog = buildRuntimeCoverageCatalog(manifest, collections, {

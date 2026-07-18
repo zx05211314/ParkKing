@@ -11,6 +11,7 @@ import {
 } from '../../src/data/coverageCatalog'
 import { parsePaidCurbReferencePack } from '../../src/data/paidCurbReference'
 import {
+  getPaidCurbSpatialReferenceFileName,
   parsePaidCurbSpatialReferencePack,
   type PaidCurbSpatialReferencePack,
   type PaidCurbSpatialReferenceProperties,
@@ -27,14 +28,7 @@ const DEFAULT_DISTRICT = 'taoyuan-district'
 const DEFAULT_INPUT =
   '.tmp/taoyuan-spatial-reference/paid_curb_segments.geojson'
 const DEFAULT_REFERENCE = 'public/data/reference/taoyuan-paid-curb.json'
-const DEFAULT_REVIEW =
-  'review-evidence/taoyuan/taoyuan-district-paid-curb-review.csv'
-const DEFAULT_REVIEW_MANIFEST =
-  'review-evidence/taoyuan/taoyuan-district-paid-curb-review.manifest.json'
 const DEFAULT_COVERAGE = 'public/data/coverage.json'
-const DEFAULT_OUTPUT =
-  'public/data/reference/taoyuan-district-paid-curb-points.geojson'
-const DEFAULT_RECEIPT = '.tmp/taoyuan-spatial-reference-promotion.json'
 
 interface SourceSpatialFeature {
   type: 'Feature'
@@ -61,7 +55,53 @@ export interface PromoteTaoyuanSpatialReferenceOptions {
   outputPath?: string | null
   receiptPath?: string | null
   expectedPath?: string | null
+  expectedPathIfPresent?: string | null
   now?: Date
+}
+
+export const resolveTaoyuanSpatialPromotionPaths = (
+  districtId: string,
+  options: PromoteTaoyuanSpatialReferenceOptions = {},
+) => {
+  if (options.expectedPath && options.expectedPathIfPresent) {
+    throw new Error(
+      'Use either expectedPath or expectedPathIfPresent, not both.',
+    )
+  }
+  const reviewBaseName = `${districtId}-paid-curb-review`
+  return {
+    inputPath: path.resolve(options.inputPath ?? DEFAULT_INPUT),
+    referencePath: path.resolve(options.referencePath ?? DEFAULT_REFERENCE),
+    reviewPath: path.resolve(
+      options.reviewPath ??
+        path.join('review-evidence/taoyuan', `${reviewBaseName}.csv`),
+    ),
+    reviewManifestPath: path.resolve(
+      options.reviewManifestPath ??
+        path.join(
+          'review-evidence/taoyuan',
+          `${reviewBaseName}.manifest.json`,
+        ),
+    ),
+    coveragePath: path.resolve(options.coveragePath ?? DEFAULT_COVERAGE),
+    outputPath: path.resolve(
+      options.outputPath ??
+        path.join(
+          'public/data/reference',
+          getPaidCurbSpatialReferenceFileName(districtId),
+        ),
+    ),
+    receiptPath: path.resolve(
+      options.receiptPath ??
+        path.join('.tmp', `${districtId}-spatial-reference-promotion.json`),
+    ),
+    expectedPath: options.expectedPath
+      ? path.resolve(options.expectedPath)
+      : null,
+    expectedPathIfPresent: options.expectedPathIfPresent
+      ? path.resolve(options.expectedPathIfPresent)
+      : null,
+  }
 }
 
 const sha256 = (buffer: Buffer) =>
@@ -176,20 +216,28 @@ export const promoteTaoyuanSpatialReference = async (
   options: PromoteTaoyuanSpatialReferenceOptions = {},
 ) => {
   const districtId = options.districtId ?? DEFAULT_DISTRICT
-  const inputPath = path.resolve(options.inputPath ?? DEFAULT_INPUT)
-  const referencePath = path.resolve(
-    options.referencePath ?? DEFAULT_REFERENCE,
-  )
-  const reviewPath = path.resolve(options.reviewPath ?? DEFAULT_REVIEW)
-  const reviewManifestPath = path.resolve(
-    options.reviewManifestPath ?? DEFAULT_REVIEW_MANIFEST,
-  )
-  const coveragePath = path.resolve(options.coveragePath ?? DEFAULT_COVERAGE)
-  const outputPath = path.resolve(options.outputPath ?? DEFAULT_OUTPUT)
-  const receiptPath = path.resolve(options.receiptPath ?? DEFAULT_RECEIPT)
-  const expectedPath = options.expectedPath
-    ? path.resolve(options.expectedPath)
-    : null
+  const {
+    inputPath,
+    referencePath,
+    reviewPath,
+    reviewManifestPath,
+    coveragePath,
+    outputPath,
+    receiptPath,
+    expectedPath: requiredExpectedPath,
+    expectedPathIfPresent,
+  } = resolveTaoyuanSpatialPromotionPaths(districtId, options)
+  let expectedPath = requiredExpectedPath
+  if (!expectedPath && expectedPathIfPresent) {
+    try {
+      await fs.access(expectedPathIfPresent)
+      expectedPath = expectedPathIfPresent
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error
+      }
+    }
+  }
 
   const [
     sourceBuffer,
@@ -396,6 +444,10 @@ const run = async () => {
     outputPath: getArgValue(process.argv, '--out'),
     receiptPath: getArgValue(process.argv, '--receipt'),
     expectedPath: getArgValue(process.argv, '--expected'),
+    expectedPathIfPresent: getArgValue(
+      process.argv,
+      '--expected-if-present',
+    ),
   })
   console.log(
     `Promoted ${result.pack.metadata.featureCount}/${result.pack.metadata.reviewRecordCount} reviewed Taoyuan representative points.`,

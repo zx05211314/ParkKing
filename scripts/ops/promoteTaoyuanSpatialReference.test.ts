@@ -3,7 +3,10 @@ import * as fs from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { promoteTaoyuanSpatialReference } from './promoteTaoyuanSpatialReference'
+import {
+  promoteTaoyuanSpatialReference,
+  resolveTaoyuanSpatialPromotionPaths,
+} from './promoteTaoyuanSpatialReference'
 
 const sha256 = (buffer: Buffer) =>
   createHash('sha256').update(buffer).digest('hex')
@@ -159,6 +162,31 @@ const createFixture = async () => {
 }
 
 describe('promoteTaoyuanSpatialReference', () => {
+  it('isolates default review, output, and receipt paths by district', () => {
+    const resolved = resolveTaoyuanSpatialPromotionPaths('zhongli')
+
+    expect(resolved.reviewPath.replace(/\\/g, '/')).toMatch(
+      /review-evidence\/taoyuan\/zhongli-paid-curb-review\.csv$/,
+    )
+    expect(resolved.reviewManifestPath.replace(/\\/g, '/')).toMatch(
+      /review-evidence\/taoyuan\/zhongli-paid-curb-review\.manifest\.json$/,
+    )
+    expect(resolved.outputPath.replace(/\\/g, '/')).toMatch(
+      /public\/data\/reference\/zhongli-paid-curb-points\.geojson$/,
+    )
+    expect(resolved.receiptPath.replace(/\\/g, '/')).toMatch(
+      /\.tmp\/zhongli-spatial-reference-promotion\.json$/,
+    )
+    expect(
+      resolveTaoyuanSpatialPromotionPaths('zhongli', {
+        expectedPathIfPresent:
+          'public/data/reference/zhongli-paid-curb-points.geojson',
+      }).expectedPathIfPresent?.replace(/\\/g, '/'),
+    ).toMatch(
+      /public\/data\/reference\/zhongli-paid-curb-points\.geojson$/,
+    )
+  })
+
   it('publishes reviewed in-boundary points and records exclusions', async () => {
     const fixture = await createFixture()
     const result = await promoteTaoyuanSpatialReference({
@@ -239,6 +267,17 @@ describe('promoteTaoyuanSpatialReference', () => {
         ignoredProvenanceFields: ['metadata.sourceSha256'],
       },
     })
+  })
+
+  it('allows a first-time district pack when an optional expected file is absent', async () => {
+    const fixture = await createFixture()
+    const result = await promoteTaoyuanSpatialReference({
+      ...fixture,
+      expectedPathIfPresent: path.join(fixture.root, 'missing.geojson'),
+    })
+
+    expect(result.receipt).not.toHaveProperty('expectedRuntimePack')
+    expect(result.pack.metadata.featureCount).toBe(1)
   })
 
   it('writes review artifacts and fails when tracked runtime content drifts', async () => {

@@ -160,5 +160,17 @@ export const parsePaidCurbSpatialReferencePack = (
   return value as unknown as PaidCurbSpatialReferencePack
 }
 
+const DISTRICT_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+
+export const getPaidCurbSpatialReferenceFileName = (districtId: string) => {
+  if (!DISTRICT_ID_PATTERN.test(districtId)) {
+    throw new Error(`Invalid paid-curb spatial reference district: ${districtId}`)
+  }
+  return `${districtId}-paid-curb-points.geojson`
+}
+
+export const getPaidCurbSpatialReferenceUrl = (districtId: string) =>
+  `/data/reference/${getPaidCurbSpatialReferenceFileName(districtId)}`
+
 export const getTaoyuanDistrictPaidCurbSpatialReferenceUrl = () =>
-  '/data/reference/taoyuan-district-paid-curb-points.geojson'
+  getPaidCurbSpatialReferenceUrl('taoyuan-district')

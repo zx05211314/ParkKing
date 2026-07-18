@@ -263,55 +263,64 @@ export const writeTaoyuanPaidCurbReference = async (params: {
   const reviewDistrictId = params.reviewDistrictId
   const reviewDir = params.reviewDir ? path.resolve(params.reviewDir) : null
   if (reviewDistrictId && reviewDir) {
-    const district = pack.districts.find(
-      (candidate) => candidate.districtId === reviewDistrictId,
-    )
-    if (!district) {
+    const districts =
+      reviewDistrictId === 'all'
+        ? pack.districts.filter(({ recordCount }) => recordCount > 0)
+        : pack.districts.filter(
+            (candidate) => candidate.districtId === reviewDistrictId,
+          )
+    if (districts.length === 0 && reviewDistrictId !== 'all') {
       throw new Error(`Reference pack is missing district ${reviewDistrictId}`)
     }
     await fs.mkdir(reviewDir, { recursive: true })
-    const baseName = `${reviewDistrictId}-paid-curb-review`
-    const reviewCsv = buildReviewCsv(pack, reviewDistrictId)
-    await fs.writeFile(
-      path.join(reviewDir, `${baseName}.template.csv`),
-      reviewCsv,
-      'utf-8',
-    )
-    await writeFileIfMissing(
-      path.join(reviewDir, `${baseName}.csv`),
-      reviewCsv,
-    )
-    await fs.writeFile(
-      path.join(reviewDir, `${baseName}.manifest.json`),
-      `${JSON.stringify(
-        {
-          schemaVersion: 1,
-          districtId: reviewDistrictId,
-          sourceSha256: pack.source.sha256,
-          sourceRecordCount: pack.source.recordCount,
-          reviewRecordCount: district.recordCount,
-          geometryAvailable: false,
-          legalAnswerEligible: false,
-          allowedStatuses: [
-            'APPROVED_SOURCE_TEXT',
-            'NEEDS_CORRECTION',
-            'UNCLEAR',
-          ],
-          reviewCsv: `${baseName}.csv`,
-          templateCsv: `${baseName}.template.csv`,
-        },
-        null,
-        2,
-      )}\n`,
-      'utf-8',
-    )
+    for (const district of districts) {
+      const baseName = `${district.districtId}-paid-curb-review`
+      const reviewCsv = buildReviewCsv(pack, district.districtId)
+      await fs.writeFile(
+        path.join(reviewDir, `${baseName}.template.csv`),
+        reviewCsv,
+        'utf-8',
+      )
+      await writeFileIfMissing(
+        path.join(reviewDir, `${baseName}.csv`),
+        reviewCsv,
+      )
+      await fs.writeFile(
+        path.join(reviewDir, `${baseName}.manifest.json`),
+        `${JSON.stringify(
+          {
+            schemaVersion: 1,
+            districtId: district.districtId,
+            sourceSha256: pack.source.sha256,
+            sourceRecordCount: pack.source.recordCount,
+            reviewRecordCount: district.recordCount,
+            geometryAvailable: false,
+            legalAnswerEligible: false,
+            allowedStatuses: [
+              'APPROVED_SOURCE_TEXT',
+              'NEEDS_CORRECTION',
+              'UNCLEAR',
+            ],
+            reviewCsv: `${baseName}.csv`,
+            templateCsv: `${baseName}.template.csv`,
+          },
+          null,
+          2,
+        )}\n`,
+        'utf-8',
+      )
+    }
     await fs.writeFile(
       path.join(reviewDir, 'README.md'),
       [
         '# Taoyuan paid-curb source review',
         '',
-        `Review ${district.recordCount} source rows in ${baseName}.csv.`,
-        `The generated ${baseName}.template.csv may be replaced on rebuild; the review CSV is preserved once created.`,
+        ...districts.map(
+          (district) =>
+            `- ${district.districtId}: review ${district.recordCount} source rows in ${district.districtId}-paid-curb-review.csv.`,
+        ),
+        '',
+        'Generated *.template.csv files may be replaced on rebuild; existing review CSVs are preserved.',
         'Set source_text_review_status to APPROVED_SOURCE_TEXT, NEEDS_CORRECTION, or UNCLEAR.',
         'Approval confirms source transcription only. It does not confirm geometry or parking legality.',
         '',

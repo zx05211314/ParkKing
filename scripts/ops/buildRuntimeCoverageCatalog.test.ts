@@ -1,11 +1,19 @@
+import * as fs from 'node:fs/promises'
+import * as path from 'node:path'
+import { tmpdir } from 'node:os'
 import { featureCollection, polygon } from '@turf/turf'
 import { describe, expect, it } from 'vitest'
 import type { CoverageManifest } from './coverageStatus'
-import { buildRuntimeCoverageCatalog } from './buildRuntimeCoverageCatalog'
+import {
+  buildRuntimeCoverageCatalog,
+  discoverTaoyuanSpatialReferencePaths,
+  loadTaoyuanCoverageReferences,
+} from './buildRuntimeCoverageCatalog'
 import {
   validateRuntimeCoverageCatalog,
   validateRuntimeCoverageReferences,
   validateRuntimeCoverageSpatialReference,
+  validateRuntimeCoverageSpatialReferences,
 } from './validateRuntimeCoverageCatalog'
 import type { PaidCurbReferencePack } from '../../src/data/paidCurbReference'
 import type { PaidCurbSpatialReferencePack } from '../../src/data/paidCurbSpatialReference'
@@ -286,6 +294,148 @@ describe('buildRuntimeCoverageCatalog', () => {
       ),
     ).toContain(
       `taoyuan-district: spatial reference dataSha256 is ${'b'.repeat(64)}, expected ${'e'.repeat(64)}`,
+    )
+    expect(
+      validateRuntimeCoverageSpatialReferences(catalog, [
+        { pack: spatialPack, dataSha256: 'b'.repeat(64) },
+      ]),
+    ).toEqual([])
+    expect(validateRuntimeCoverageSpatialReferences(catalog, [])).toContain(
+      'taoyuan-district: catalog spatialReference has no matching runtime pack',
+    )
+  })
+
+  it('discovers and attaches one reviewed spatial pack per district', async () => {
+    const root = await fs.mkdtemp(
+      path.join(tmpdir(), 'taoyuan-coverage-references-'),
+    )
+    const referencePath = path.join(root, 'taoyuan-paid-curb.json')
+    const sourceSha256 = 'a'.repeat(64)
+    const referencePack: PaidCurbReferencePack = {
+      schemaVersion: 1,
+      regionId: 'taoyuan',
+      evidenceKind: 'PAID_CURB_SEGMENT_TEXT',
+      geometryAvailable: false,
+      legalAnswerEligible: false,
+      requiresHumanReview: true,
+      source: {
+        dataset: 'Taoyuan City curb parking segment list',
+        relativePath: 'source.xml',
+        sha256: sourceSha256,
+        recordCount: 2,
+      },
+      districts: [
+        {
+          districtId: 'taoyuan-district',
+          districtName: 'Taoyuan',
+          boundaryFeatureId: '68000010',
+          recordCount: 1,
+          records: [
+            {
+              parkingSegmentId: 'taoyuan-1',
+              description: 'Road A',
+              fareDescription: null,
+              hasChargingPoint: false,
+              sourceTownName: 'Taoyuan',
+            },
+          ],
+        },
+        {
+          districtId: 'zhongli',
+          districtName: 'Zhongli',
+          boundaryFeatureId: '68000020',
+          recordCount: 1,
+          records: [
+            {
+              parkingSegmentId: 'zhongli-1',
+              description: 'Road B',
+              fareDescription: null,
+              hasChargingPoint: false,
+              sourceTownName: 'Zhongli',
+            },
+          ],
+        },
+      ],
+    }
+    await fs.writeFile(referencePath, JSON.stringify(referencePack), 'utf-8')
+
+    for (const [districtId, boundaryFeatureId, parkingSegmentId] of [
+      ['taoyuan-district', '68000010', 'taoyuan-1'],
+      ['zhongli', '68000020', 'zhongli-1'],
+    ] as const) {
+      const spatialPack: PaidCurbSpatialReferencePack = {
+        type: 'FeatureCollection',
+        metadata: {
+          schemaVersion: 1,
+          districtId,
+          boundaryFeatureId,
+          evidenceKind: 'PAID_CURB_SEGMENT',
+          sourceDataset: 'TDX OnStreet ParkingSegment v1',
+          sourceSha256: 'b'.repeat(64),
+          sourceFeatureCount: 2,
+          reviewSha256: 'c'.repeat(64),
+          reviewRecordCount: 1,
+          featureCount: 1,
+          excludedFeatureCount: 0,
+          excluded: [],
+          geometryPrecision: 'REPRESENTATIVE_POINT',
+          legalAnswerEligible: false,
+        },
+        features: [
+          {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [121.3, 25] },
+            properties: {
+              evidenceKind: 'PAID_CURB_SEGMENT',
+              parkingSegmentId,
+              districtId,
+              description: 'Road',
+              fareDescription: null,
+              hasChargingPoint: false,
+              geometryPrecision: 'REPRESENTATIVE_POINT',
+              legalAnswerEligible: false,
+              sourceDataset: 'TDX OnStreet ParkingSegment v1',
+            },
+          },
+        ],
+      }
+      await fs.writeFile(
+        path.join(root, `${districtId}-paid-curb-points.geojson`),
+        JSON.stringify(spatialPack),
+        'utf-8',
+      )
+    }
+    await fs.writeFile(path.join(root, 'unrelated.geojson'), '{}', 'utf-8')
+
+    const spatialPaths = await discoverTaoyuanSpatialReferencePaths(root)
+    const references = await loadTaoyuanCoverageReferences(
+      referencePath,
+      spatialPaths,
+    )
+
+    expect(spatialPaths).toHaveLength(2)
+    expect(
+      references.get('68000010')?.spatialReference?.url,
+    ).toBe('/data/reference/taoyuan-district-paid-curb-points.geojson')
+    expect(
+      references.get('68000020')?.spatialReference?.url,
+    ).toBe('/data/reference/zhongli-paid-curb-points.geojson')
+
+    const roguePath = path.join(root, 'outside-paid-curb-points.geojson')
+    const roguePack = JSON.parse(
+      await fs.readFile(
+        path.join(root, 'zhongli-paid-curb-points.geojson'),
+        'utf-8',
+      ),
+    ) as PaidCurbSpatialReferencePack
+    roguePack.metadata.districtId = 'outside'
+    roguePack.features[0]!.properties.districtId = 'outside'
+    await fs.writeFile(roguePath, JSON.stringify(roguePack), 'utf-8')
+
+    await expect(
+      loadTaoyuanCoverageReferences(referencePath, [roguePath]),
+    ).rejects.toThrow(
+      'Paid-curb spatial reference has unknown Taoyuan district outside',
     )
   })
 })

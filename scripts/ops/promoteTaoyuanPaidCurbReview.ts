@@ -15,7 +15,6 @@ const DEFAULT_DISTRICT = 'taoyuan-district'
 const DEFAULT_INPUT_DIR = '.tmp/taoyuan-human-review'
 const DEFAULT_OUTPUT_DIR = 'review-evidence/taoyuan'
 const DEFAULT_REFERENCE = 'public/data/reference/taoyuan-paid-curb.json'
-const DEFAULT_RECEIPT = '.tmp/taoyuan-review-promotion.json'
 
 export interface PromoteTaoyuanPaidCurbReviewOptions {
   districtId?: string
@@ -66,6 +65,10 @@ const portablePath = (targetPath: string) => {
 const sha256 = (buffer: Buffer) =>
   createHash('sha256').update(buffer).digest('hex')
 
+export const getTaoyuanPaidCurbReviewPromotionReceiptPath = (
+  districtId: string,
+) => `.tmp/${districtId}-paid-curb-review-promotion.json`
+
 const replaceFileAtomically = async (targetPath: string, buffer: Buffer) => {
   await fs.mkdir(path.dirname(targetPath), { recursive: true })
   const suffix = `${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`
@@ -110,7 +113,10 @@ export const promoteTaoyuanPaidCurbReview = async (
     outputDir,
     `${baseName}.manifest.json`,
   )
-  const receiptPath = path.resolve(options.receiptPath ?? DEFAULT_RECEIPT)
+  const receiptPath = path.resolve(
+    options.receiptPath ??
+      getTaoyuanPaidCurbReviewPromotionReceiptPath(districtId),
+  )
 
   const [reviewBuffer, manifestBuffer, pack] = await Promise.all([
     fs.readFile(inputPath),

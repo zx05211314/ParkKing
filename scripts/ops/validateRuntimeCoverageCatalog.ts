@@ -12,18 +12,18 @@ import {
   type PaidCurbReferencePack,
 } from '../../src/data/paidCurbReference'
 import {
-  getTaoyuanDistrictPaidCurbSpatialReferenceUrl,
+  getPaidCurbSpatialReferenceUrl,
   parsePaidCurbSpatialReferencePack,
   type PaidCurbSpatialReferencePack,
 } from '../../src/data/paidCurbSpatialReference'
+import { discoverTaoyuanSpatialReferencePaths } from './buildRuntimeCoverageCatalog'
 import type { CoverageManifest } from './coverageStatus'
 
 const DEFAULT_MANIFEST = 'configs/coverage.expansion.json'
 const DEFAULT_CATALOG = 'public/data/coverage.json'
 const DEFAULT_TAOYUAN_REFERENCE =
   'public/data/reference/taoyuan-paid-curb.json'
-const DEFAULT_TAOYUAN_SPATIAL_REFERENCE =
-  'public/data/reference/taoyuan-district-paid-curb-points.geojson'
+const DEFAULT_TAOYUAN_SPATIAL_REFERENCE_DIR = 'public/data/reference'
 
 const readJson = async (filePath: string): Promise<unknown> =>
   JSON.parse(await fs.readFile(filePath, 'utf-8')) as unknown
@@ -192,7 +192,11 @@ export const validateRuntimeCoverageSpatialReference = (
       district.boundaryFeatureId,
       pack.metadata.boundaryFeatureId,
     ],
-    ['url', spatialReference.url, getTaoyuanDistrictPaidCurbSpatialReferenceUrl()],
+    [
+      'url',
+      spatialReference.url,
+      getPaidCurbSpatialReferenceUrl(pack.metadata.districtId),
+    ],
     ['dataSha256', spatialReference.dataSha256, dataSha256],
     ['sourceSha256', spatialReference.sourceSha256, pack.metadata.sourceSha256],
     ['reviewSha256', spatialReference.reviewSha256, pack.metadata.reviewSha256],
@@ -216,13 +220,29 @@ export const validateRuntimeCoverageSpatialReference = (
       )
     }
   })
-  catalog.districts.forEach((candidate) => {
+  return errors
+}
+
+export const validateRuntimeCoverageSpatialReferences = (
+  catalog: RuntimeCoverageCatalog,
+  references: Array<{
+    pack: PaidCurbSpatialReferencePack
+    dataSha256: string
+  }>,
+) => {
+  const errors = references.flatMap(({ pack, dataSha256 }) =>
+    validateRuntimeCoverageSpatialReference(catalog, pack, dataSha256),
+  )
+  const referenceDistrictIds = new Set(
+    references.map(({ pack }) => pack.metadata.districtId),
+  )
+  catalog.districts.forEach((district) => {
     if (
-      candidate.districtId !== pack.metadata.districtId &&
-      candidate.referenceData?.spatialReference
+      district.referenceData?.spatialReference &&
+      !referenceDistrictIds.has(district.districtId)
     ) {
       errors.push(
-        `${candidate.districtId}: unexpected Taoyuan spatialReference metadata`,
+        `${district.districtId}: catalog spatialReference has no matching runtime pack`,
       )
     }
   })
@@ -244,10 +264,18 @@ const run = async () => {
   const manifest = (await readJson(manifestPath)) as CoverageManifest
   const catalog = parseRuntimeCoverageCatalog(await readJson(catalogPath))
   const result = validateRuntimeCoverageCatalog(manifest, catalog)
-  const spatialReferencePath = path.resolve(
-    getArgValue(process.argv, '--taoyuan-spatial-reference') ??
-      DEFAULT_TAOYUAN_SPATIAL_REFERENCE,
+  const explicitSpatialReference = getArgValue(
+    process.argv,
+    '--taoyuan-spatial-reference',
   )
+  const spatialReferencePaths = explicitSpatialReference
+    ? [path.resolve(explicitSpatialReference)]
+    : await discoverTaoyuanSpatialReferencePaths(
+        path.resolve(
+          getArgValue(process.argv, '--taoyuan-spatial-reference-dir') ??
+            DEFAULT_TAOYUAN_SPATIAL_REFERENCE_DIR,
+        ),
+      )
   const referenceErrors = manifest.regions.some(
     ({ regionId }) => regionId === 'taoyuan',
   )
@@ -263,20 +291,25 @@ const run = async () => {
         ),
       )
     : []
-  const spatialReferenceBuffer = manifest.regions.some(
+  const spatialReferences = manifest.regions.some(
     ({ regionId }) => regionId === 'taoyuan',
   )
-    ? await fs.readFile(spatialReferencePath)
-    : null
-  const spatialReferenceErrors = spatialReferenceBuffer
-    ? validateRuntimeCoverageSpatialReference(
-        catalog,
-        parsePaidCurbSpatialReferencePack(
-          JSON.parse(spatialReferenceBuffer.toString('utf-8')) as unknown,
-        ),
-        createHash('sha256').update(spatialReferenceBuffer).digest('hex'),
+    ? await Promise.all(
+        spatialReferencePaths.map(async (spatialReferencePath) => {
+          const buffer = await fs.readFile(spatialReferencePath)
+          return {
+            pack: parsePaidCurbSpatialReferencePack(
+              JSON.parse(buffer.toString('utf-8')) as unknown,
+            ),
+            dataSha256: createHash('sha256').update(buffer).digest('hex'),
+          }
+        }),
       )
     : []
+  const spatialReferenceErrors = validateRuntimeCoverageSpatialReferences(
+    catalog,
+    spatialReferences,
+  )
   const errors = [
     ...result.errors,
     ...referenceErrors,
