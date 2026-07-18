@@ -77,7 +77,7 @@ describe('usePaidCurbReferenceState loader', () => {
     ).rejects.toThrow('source hash does not match')
   })
 
-  it('verifies and loads non-legal representative points', async () => {
+  it('verifies canonical LF hashes for a CRLF runtime checkout', async () => {
     const spatialPack = {
       type: 'FeatureCollection',
       metadata: {
@@ -114,7 +114,11 @@ describe('usePaidCurbReferenceState loader', () => {
         },
       ],
     }
-    const buffer = Buffer.from(`${JSON.stringify(spatialPack)}\n`, 'utf-8')
+    const canonicalBuffer = Buffer.from(
+      `${JSON.stringify(spatialPack)}\n`,
+      'utf-8',
+    )
+    const buffer = Buffer.from(`${JSON.stringify(spatialPack)}\r\n`, 'utf-8')
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -133,7 +137,9 @@ describe('usePaidCurbReferenceState loader', () => {
         spatialReference: {
           kind: 'PAID_CURB_SEGMENT',
           url: '/data/reference/points.geojson',
-          dataSha256: createHash('sha256').update(buffer).digest('hex'),
+          dataSha256: createHash('sha256')
+            .update(canonicalBuffer)
+            .digest('hex'),
           sourceSha256: 'b'.repeat(64),
           reviewSha256: 'c'.repeat(64),
           featureCount: 1,
