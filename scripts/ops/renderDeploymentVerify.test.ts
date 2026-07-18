@@ -8,6 +8,7 @@ import {
   parseRenderDeploymentVerifyArgs,
   renderRenderDeploymentVerify,
   verifyRenderDeployment,
+  verifyRenderParkingAnswers,
   writeRenderDeploymentVerifyOutputs,
 } from './renderDeploymentVerify'
 
@@ -23,10 +24,18 @@ const startJsonServer = async (
     failApiPaths?: string[]
     allowUntrustedSyncCors?: boolean
     omitProxyTimeouts?: boolean
+    parkingAnswerFailureStatuses?: number[]
+    parkingReadyFailureStatuses?: number[]
   } = {},
 ) => {
   const issues: unknown[] = []
   const failApiPaths = new Set(options.failApiPaths ?? [])
+  const parkingAnswerFailureStatuses = [
+    ...(options.parkingAnswerFailureStatuses ?? []),
+  ]
+  const parkingReadyFailureStatuses = [
+    ...(options.parkingReadyFailureStatuses ?? []),
+  ]
   const sendJson = (
     response: http.ServerResponse,
     responseStatus: number,
@@ -43,10 +52,20 @@ const startJsonServer = async (
       return
     }
     if (url.pathname === '/api/parking-answer/ready') {
+      const failureStatus = parkingReadyFailureStatuses.shift()
+      if (failureStatus !== undefined) {
+        sendJson(response, failureStatus, { status: 'error' })
+        return
+      }
       sendJson(response, parkingReadyStatus, parkingReadyPayload)
       return
     }
     if (url.pathname === '/api/parking-answer') {
+      const failureStatus = parkingAnswerFailureStatuses.shift()
+      if (failureStatus !== undefined) {
+        sendJson(response, failureStatus, { status: 'error' })
+        return
+      }
       const districtId = url.searchParams.get('district')
       const readyRecord =
         parkingReadyPayload &&
@@ -161,6 +180,7 @@ describe('renderDeploymentVerify', () => {
         '--skip-sync-issue-roundtrip',
         '--skip-sync-cors-check',
         '--skip-parking-answer-cases',
+        '--all-parking-answer-cases',
         '--out',
         '.tmp/verify.md',
         '--json-out',
@@ -177,6 +197,7 @@ describe('renderDeploymentVerify', () => {
       syncCorsCheck: false,
       answerCasesDir: 'configs/prod',
       skipParkingAnswerCases: true,
+      allParkingAnswerCases: true,
       outPath: '.tmp/verify.md',
       jsonOutPath: '.tmp/verify.json',
     })
@@ -190,6 +211,54 @@ describe('renderDeploymentVerify', () => {
 
     expect(script).toContain('scripts/ops/renderDeploymentVerify.ts')
     expect(script).not.toContain('--handoff-json')
+  })
+
+  it('retries transient readiness failures before evaluating dataset hashes', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'render-verify-ready-retry-'))
+    const manifestPath = path.join(base, 'release_manifest.json')
+    await writeJson(manifestPath, {
+      releaseId: 'release-a',
+      districts: [
+        {
+          districtId: 'xinyi',
+          datasetHash: 'hash-xinyi',
+          publishedAt: '2026-05-01T00:00:00Z',
+        },
+      ],
+      files: [],
+    })
+    const server = await startJsonServer(
+      {
+        status: 'ok',
+        districts: [
+          {
+            district: 'xinyi',
+            ready: true,
+            datasetHash: 'hash-xinyi',
+            latestDatasetHash: 'hash-xinyi',
+          },
+        ],
+      },
+      200,
+      { parkingReadyFailureStatuses: [503] },
+    )
+
+    try {
+      const result = await verifyRenderDeployment({
+        appUrl: server.baseUrl,
+        manifestPath,
+        timeoutMs: 1000,
+        skipApiServices: true,
+      })
+
+      expect(result.pass).toBe(true)
+      expect(result.readinessAttempts).toBe(2)
+      expect(renderRenderDeploymentVerify(result)).toContain(
+        '- Readiness attempts: 2',
+      )
+    } finally {
+      await server.close()
+    }
   })
 
   it('passes when live readiness matches the handoff dataset hashes', async () => {
@@ -521,7 +590,7 @@ describe('renderDeploymentVerify', () => {
     }
   })
 
-  it('verifies one reviewed live parking answer per release district', async () => {
+  it('defaults to one reviewed case and supports all cases per release district', async () => {
     const base = await fs.mkdtemp(path.join(tmpdir(), 'render-verify-answers-'))
     const manifestPath = path.join(base, 'release_manifest.json')
     const answerCasesDir = path.join(base, 'cases')
@@ -547,6 +616,16 @@ describe('renderDeploymentVerify', () => {
           lat: 25.03,
           hhmm: '21:00',
           searchRadiusMeters: 25,
+          expectedKind: 'PARK',
+          expectedEvidenceKind: 'MARKED_SPACE',
+          expectedPrimarySegmentId: 'seg-1',
+          expectedFinalConfidence: 'HIGH',
+          minParkingSpaceCount: 1,
+        },
+        {
+          id: 'xinyi-live-case-2',
+          lng: 121.561,
+          lat: 25.031,
           expectedKind: 'PARK',
           expectedEvidenceKind: 'MARKED_SPACE',
           expectedPrimarySegmentId: 'seg-1',
@@ -590,8 +669,125 @@ describe('renderDeploymentVerify', () => {
       expect(renderRenderDeploymentVerify(result)).toContain(
         '## Reviewed Live Parking Answers',
       )
+
+      const allResult = await verifyRenderDeployment({
+        appUrl: server.baseUrl,
+        manifestPath,
+        answerCasesDir,
+        allParkingAnswerCases: true,
+        timeoutMs: 1000,
+      })
+
+      expect(allResult.pass).toBe(true)
+      expect(
+        allResult.parkingAnswers?.map(({ id, pass }) => ({ id, pass })),
+      ).toEqual([
+        { id: 'xinyi-live-case', pass: true },
+        { id: 'xinyi-live-case-2', pass: true },
+      ])
+      expect(renderRenderDeploymentVerify(allResult)).toContain(
+        '- Cases: 2; passed=2; failed=0',
+      )
     } finally {
       await server.close()
+    }
+  })
+
+  it('retries transient 5xx answers but not 4xx contract failures', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'render-verify-retry-'))
+    const answerCasesDir = path.join(base, 'cases')
+    await writeJson(path.join(answerCasesDir, 'xinyi.answer-cases.json'), {
+      schemaVersion: 1,
+      districtId: 'xinyi',
+      cases: [
+        {
+          id: 'xinyi-retry-case',
+          lng: 121.56,
+          lat: 25.03,
+          expectedKind: 'PARK',
+          expectedEvidenceKind: 'MARKED_SPACE',
+          expectedPrimarySegmentId: 'seg-1',
+          expectedFinalConfidence: 'HIGH',
+          minParkingSpaceCount: 1,
+        },
+      ],
+    })
+    const expectedDatasets = [
+      { districtId: 'xinyi', datasetHash: 'hash-xinyi' },
+    ]
+    const transientServer = await startJsonServer(
+      {
+        status: 'ok',
+        districts: [
+          {
+            district: 'xinyi',
+            ready: true,
+            datasetHash: 'hash-xinyi',
+            latestDatasetHash: 'hash-xinyi',
+          },
+        ],
+      },
+      200,
+      { parkingAnswerFailureStatuses: [502] },
+    )
+
+    try {
+      const results = await verifyRenderParkingAnswers({
+        appUrl: transientServer.baseUrl,
+        timeoutMs: 1000,
+        answerCasesDir,
+        expectedDatasets,
+        allCases: true,
+        retryDelayMs: 0,
+      })
+
+      expect(results).toEqual([
+        expect.objectContaining({
+          id: 'xinyi-retry-case',
+          status: 200,
+          attempts: 2,
+          pass: true,
+        }),
+      ])
+    } finally {
+      await transientServer.close()
+    }
+
+    const clientErrorServer = await startJsonServer(
+      {
+        status: 'ok',
+        districts: [
+          {
+            district: 'xinyi',
+            ready: true,
+            datasetHash: 'hash-xinyi',
+            latestDatasetHash: 'hash-xinyi',
+          },
+        ],
+      },
+      200,
+      { parkingAnswerFailureStatuses: [400] },
+    )
+    try {
+      const results = await verifyRenderParkingAnswers({
+        appUrl: clientErrorServer.baseUrl,
+        timeoutMs: 1000,
+        answerCasesDir,
+        expectedDatasets,
+        allCases: true,
+        retryDelayMs: 0,
+      })
+
+      expect(results).toEqual([
+        expect.objectContaining({
+          id: 'xinyi-retry-case',
+          status: 400,
+          attempts: 1,
+          pass: false,
+        }),
+      ])
+    } finally {
+      await clientErrorServer.close()
     }
   })
 
@@ -654,6 +850,7 @@ describe('renderDeploymentVerify', () => {
         releaseTag: 'data-release-a',
         status: 200,
         serviceStatus: 'ok',
+        readinessAttempts: 1,
         expectedDatasets: [{ districtId: 'xinyi', datasetHash: 'hash-xinyi' }],
         districts: [
           {

@@ -121,8 +121,10 @@ describe('release workflow contracts', () => {
       "PARKKING_RELEASE_DOWNLOAD_TOKEN: ${{ inputs.useGithubToken && github.token || '' }}",
     )
     expect(workflow).toContain(
-      "run: npm run ops:render-deployment-verify -- ${{ inputs.skipSyncIssueRoundtrip && '--skip-sync-issue-roundtrip' || '' }}",
+      "run: npm run ops:render-deployment-verify -- ${{ inputs.skipSyncIssueRoundtrip && '--skip-sync-issue-roundtrip' || '' }} ${{ inputs.allParkingAnswerCases && '--all-parking-answer-cases' || '' }}",
     )
+    expect(workflow).toContain('allParkingAnswerCases:')
+    expect(workflow).toContain('default: true')
     expect(workflow).toMatch(
       /- name: Summarize verification\s+if: always\(\)\s+run: npm run ops:append-workflow-summary -- --append-file \.tmp\/render-deployment-verify\.md/,
     )
@@ -255,6 +257,7 @@ describe('release workflow contracts', () => {
       'manifestUrl',
       'useGithubToken',
       'skipSyncIssueRoundtrip',
+      'allParkingAnswerCases',
     ])
   })
 

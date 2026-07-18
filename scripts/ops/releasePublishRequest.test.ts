@@ -253,6 +253,9 @@ describe('releasePublishRequest', () => {
       `--handoff-json ${fixture.handoffJsonPath}`,
     )
     expect(renderReleasePublishRequest(result)).toContain(
+      '--all-parking-answer-cases',
+    )
+    expect(renderReleasePublishRequest(result)).toContain(
       'npm run ops:render-runtime-env-sync -- --service-id "<Render service ID>"',
     )
   })

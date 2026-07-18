@@ -364,8 +364,8 @@ export const buildRenderDeploymentHandoff = async (
       `Do not manually create or upload assets to workflow-managed tag ${release.tag}. Creating that tag triggers Release Data Package, which re-ingests sources and may replace assets; use the completed workflow handoff, package URL, manifest URL, and dataset hashes as the authoritative contract.`,
       'Set Render environment variables exactly as listed in this handoff or the published workflow summary, plus a download token/header if the repository is private.',
       'Deploy the Render Blueprint.',
-      `Run npm run ops:render-live-verify-dispatch -- --repo ${repository} --ref main --app-url <Render service URL> --manifest-url ${urls.manifestUrl} --dry-run, then rerun without --dry-run when GH_TOKEN/GITHUB_TOKEN is set; or use GitHub Actions -> Render Live Verify with useGithubToken=true only for private GitHub Release assets and skipSyncIssueRoundtrip=false unless the live environment intentionally rejects sync smoke writes.`,
-      `Or run npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl} locally; require PASS before treating the deploy as live.`,
+      `Run npm run ops:render-live-verify-dispatch -- --repo ${repository} --ref main --app-url <Render service URL> --manifest-url ${urls.manifestUrl} --all-parking-answer-cases true --dry-run, then rerun without --dry-run when GH_TOKEN/GITHUB_TOKEN is set; or use GitHub Actions -> Render Live Verify with useGithubToken=true only for private GitHub Release assets, skipSyncIssueRoundtrip=false unless the live environment intentionally rejects sync smoke writes, and allParkingAnswerCases=true.`,
+      `Or run npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl} --all-parking-answer-cases locally; require PASS before treating the deploy as live.`,
     ],
   }
 }

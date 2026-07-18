@@ -792,8 +792,8 @@ export const buildReleaseDataSummaryLines = (urls: {
     '',
     '## Live deploy verification',
     '',
-    `GitHub Actions: Render Live Verify with appUrl=<Render service URL>, manifestUrl=${urls.manifestUrl}, useGithubToken=true only for private GitHub Release assets, skipSyncIssueRoundtrip=false unless the live environment intentionally rejects sync smoke writes.`,
-    `Local: \`npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl}\``,
+    `GitHub Actions: Render Live Verify with appUrl=<Render service URL>, manifestUrl=${urls.manifestUrl}, useGithubToken=true only for private GitHub Release assets, skipSyncIssueRoundtrip=false unless the live environment intentionally rejects sync smoke writes, and allParkingAnswerCases=true.`,
+    `Local: \`npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl} --all-parking-answer-cases\``,
   ]
 }
 
@@ -802,8 +802,8 @@ export const buildReleaseDataConsoleLines = (urls: {
   manifestUrl: string
 }) => [
   ...renderEnvAssignments(buildRenderDeploymentEnv(urls)),
-  `VERIFY_RENDER_DEPLOY_WORKFLOW_INPUTS=appUrl=<Render service URL> manifestUrl=${urls.manifestUrl} useGithubToken=<true for private release assets, false for public assets> skipSyncIssueRoundtrip=false`,
-  `VERIFY_RENDER_DEPLOY_LOCAL=npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl}`,
+  `VERIFY_RENDER_DEPLOY_WORKFLOW_INPUTS=appUrl=<Render service URL> manifestUrl=${urls.manifestUrl} useGithubToken=<true for private release assets, false for public assets> skipSyncIssueRoundtrip=false allParkingAnswerCases=true`,
+  `VERIFY_RENDER_DEPLOY_LOCAL=npm run ops:render-deployment-verify -- --app-url <Render service URL> --manifest-url ${urls.manifestUrl} --all-parking-answer-cases`,
 ]
 
 const runResolveMetadata = async () => {

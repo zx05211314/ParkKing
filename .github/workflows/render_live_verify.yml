@@ -19,6 +19,11 @@ on:
         required: false
         type: boolean
         default: false
+      allParkingAnswerCases:
+        description: Verify every reviewed parking-answer case instead of one case per district
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -40,7 +45,7 @@ jobs:
           PARKKING_RENDER_APP_URL: ${{ inputs.appUrl }}
           PARKKING_RELEASE_MANIFEST_URL: ${{ inputs.manifestUrl }}
           PARKKING_RELEASE_DOWNLOAD_TOKEN: ${{ inputs.useGithubToken && github.token || '' }}
-        run: npm run ops:render-deployment-verify -- ${{ inputs.skipSyncIssueRoundtrip && '--skip-sync-issue-roundtrip' || '' }}
+        run: npm run ops:render-deployment-verify -- ${{ inputs.skipSyncIssueRoundtrip && '--skip-sync-issue-roundtrip' || '' }} ${{ inputs.allParkingAnswerCases && '--all-parking-answer-cases' || '' }}
       - name: Summarize verification
         if: always()
         run: npm run ops:append-workflow-summary -- --append-file .tmp/render-deployment-verify.md

@@ -110,7 +110,9 @@ describe('releaseDataWorkflow', () => {
     )
     expect(lines).toContain('useGithubToken=true only for private')
     expect(lines).toContain('skipSyncIssueRoundtrip=false unless')
+    expect(lines).toContain('allParkingAnswerCases=true')
     expect(lines).toContain('npm run ops:render-deployment-verify')
+    expect(lines).toContain('--all-parking-answer-cases')
   })
 
   it('prints non-misleading Render workflow dispatch inputs', () => {
@@ -135,6 +137,8 @@ describe('releaseDataWorkflow', () => {
       'useGithubToken=<true for private release assets, false for public assets>',
     )
     expect(lines).toContain('skipSyncIssueRoundtrip=false')
+    expect(lines).toContain('allParkingAnswerCases=true')
+    expect(lines).toContain('--all-parking-answer-cases')
     expect(lines).not.toContain('useGithubToken=false')
   })
 

@@ -175,6 +175,12 @@ describe('renderDeploymentHandoff', () => {
     expect(result.externalSteps.join('\n')).toContain(
       'skipSyncIssueRoundtrip=false unless',
     )
+    expect(result.externalSteps.join('\n')).toContain(
+      'allParkingAnswerCases=true',
+    )
+    expect(result.externalSteps.join('\n')).toContain(
+      '--all-parking-answer-cases',
+    )
   })
 
   it('blocks when deploy readiness points at a different release', async () => {

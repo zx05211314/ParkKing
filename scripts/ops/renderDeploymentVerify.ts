@@ -24,6 +24,8 @@ import {
 const DEFAULT_HANDOFF_JSON = '.tmp/render-deployment-handoff.json'
 const DEFAULT_TIMEOUT_MS = 15_000
 const DEFAULT_ANSWER_CASES_DIR = 'configs/prod'
+const DEFAULT_TRANSIENT_MAX_ATTEMPTS = 3
+const DEFAULT_TRANSIENT_RETRY_DELAY_MS = 500
 
 export interface RenderDeploymentVerifyOptions {
   appUrl?: string | null
@@ -39,6 +41,7 @@ export interface RenderDeploymentVerifyOptions {
   syncCorsCheck?: boolean | null
   answerCasesDir?: string | null
   skipParkingAnswerCases?: boolean | null
+  allParkingAnswerCases?: boolean | null
   outPath?: string | null
   jsonOutPath?: string | null
 }
@@ -62,6 +65,7 @@ export interface RenderDeploymentVerifyResult {
   releaseTag: string | null
   status: number | null
   serviceStatus: string | null
+  readinessAttempts: number
   expectedDatasets: RenderDeploymentHandoffDataset[]
   districts: RenderDeploymentVerifyDistrict[]
   unexpectedDistricts: string[]
@@ -89,6 +93,7 @@ export interface RenderDeploymentVerifyParkingAnswerResult
   url: string
   datasetHash: string | null
   elapsedMs: number
+  attempts: number
 }
 
 export interface RenderDeploymentVerifyProxyRuntimeResult {
@@ -213,6 +218,11 @@ export const parseRenderDeploymentVerifyArgs = (
     '--skip-parking-answer-cases',
     '--skipParkingAnswerCases',
   ),
+  allParkingAnswerCases: hasFlag(
+    argv,
+    '--all-parking-answer-cases',
+    '--allParkingAnswerCases',
+  ),
   outPath: getArgValue(argv, '--out'),
   jsonOutPath: getArgValue(argv, '--json-out', '--jsonOut'),
 })
@@ -326,6 +336,45 @@ const fetchJsonWithTimeout = async (
     }
   } finally {
     clearTimeout(timeout)
+  }
+}
+
+const wait = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+const fetchJsonWithTransientRetry = async (params: {
+  url: string
+  timeoutMs: number
+  maxAttempts?: number
+  retryDelayMs?: number
+}) => {
+  const maxAttempts = Math.max(
+    1,
+    Math.floor(params.maxAttempts ?? DEFAULT_TRANSIENT_MAX_ATTEMPTS),
+  )
+  const retryDelayMs = Math.max(
+    0,
+    params.retryDelayMs ?? DEFAULT_TRANSIENT_RETRY_DELAY_MS,
+  )
+  let attempts = 0
+  while (attempts < maxAttempts) {
+    attempts += 1
+    try {
+      const result = await fetchJsonWithTimeout(params.url, params.timeoutMs)
+      if (result.status < 500 || attempts >= maxAttempts) {
+        return { result, attempts, error: null }
+      }
+    } catch (error) {
+      if (attempts >= maxAttempts) {
+        return { result: null, attempts, error }
+      }
+    }
+    await wait(retryDelayMs)
+  }
+  return {
+    result: null,
+    attempts,
+    error: new Error('Transient retry loop completed without a response'),
   }
 }
 
@@ -454,21 +503,31 @@ export const verifyRenderParkingAnswers = async (params: {
   timeoutMs: number
   answerCasesDir: string
   expectedDatasets: RenderDeploymentHandoffDataset[]
+  allCases?: boolean
+  maxAttempts?: number
+  retryDelayMs?: number
 }): Promise<RenderDeploymentVerifyParkingAnswerResult[]> => {
   const results: RenderDeploymentVerifyParkingAnswerResult[] = []
+  const maxAttempts = Math.max(
+    1,
+    Math.floor(params.maxAttempts ?? DEFAULT_TRANSIENT_MAX_ATTEMPTS),
+  )
+  const retryDelayMs = Math.max(
+    0,
+    params.retryDelayMs ?? DEFAULT_TRANSIENT_RETRY_DELAY_MS,
+  )
   for (const dataset of params.expectedDatasets) {
     const casesPath = path.resolve(
       params.answerCasesDir,
       `${dataset.districtId}.answer-cases.json`,
     )
-    let answerCase: SmokeExactParkingAnswerCase
+    let answerCases: SmokeExactParkingAnswerCase[]
     try {
       const caseFile = await loadSmokeExactParkingAnswerCases(casesPath)
-      const firstCase = caseFile.cases[0]
-      if (!firstCase) {
+      if (caseFile.cases.length === 0) {
         throw new Error(`No reviewed answer cases found in ${casesPath}`)
       }
-      answerCase = firstCase
+      answerCases = params.allCases ? caseFile.cases : caseFile.cases.slice(0, 1)
     } catch (error) {
       results.push({
         districtId: dataset.districtId,
@@ -477,6 +536,7 @@ export const verifyRenderParkingAnswers = async (params: {
         status: 0,
         datasetHash: null,
         elapsedMs: 0,
+        attempts: 0,
         pass: false,
         errors: [error instanceof Error ? error.message : String(error)],
         expectedKind: '',
@@ -490,46 +550,64 @@ export const verifyRenderParkingAnswers = async (params: {
       continue
     }
 
-    const url = buildRenderParkingAnswerUrl({
-      appUrl: params.appUrl,
-      districtId: dataset.districtId,
-      answerCase,
-    })
-    const startedAt = performance.now()
-    try {
-      const response = await fetchJsonWithTimeout(url, params.timeoutMs)
-      const elapsedMs = Math.round(performance.now() - startedAt)
-      const caseResult = buildSmokeParkingAnswerServiceCaseResult({
+    for (const answerCase of answerCases) {
+      const url = buildRenderParkingAnswerUrl({
+        appUrl: params.appUrl,
+        districtId: dataset.districtId,
         answerCase,
-        responseStatus: response.status,
-        payload: response.payload,
-        expectedDatasetHash: dataset.datasetHash,
       })
-      results.push({
-        districtId: dataset.districtId,
-        url,
-        datasetHash: getString(toRecord(response.payload), 'datasetHash'),
-        elapsedMs,
-        ...caseResult,
-      })
-    } catch (error) {
-      results.push({
-        districtId: dataset.districtId,
-        id: answerCase.id,
-        url,
-        status: 0,
-        datasetHash: null,
-        elapsedMs: Math.round(performance.now() - startedAt),
-        pass: false,
-        errors: [error instanceof Error ? error.message : String(error)],
-        expectedKind: answerCase.expectedKind,
-        answerKind: null,
-        expectedEvidenceKind: answerCase.expectedEvidenceKind ?? null,
-        evidenceKind: null,
-        expectedPrimarySegmentId: answerCase.expectedPrimarySegmentId ?? null,
-        primarySegmentId: null,
-        trustLabel: null,
-      })
+      const startedAt = performance.now()
+      let attempts = 0
+      try {
+        const fetchResult = await fetchJsonWithTransientRetry({
+          url,
+          timeoutMs: params.timeoutMs,
+          maxAttempts,
+          retryDelayMs,
+        })
+        attempts = fetchResult.attempts
+        if (fetchResult.error) {
+          throw fetchResult.error
+        }
+        const response = fetchResult.result
+        if (!response) {
+          throw new Error('Parking-answer request completed without a response')
+        }
+        const elapsedMs = Math.round(performance.now() - startedAt)
+        const caseResult = buildSmokeParkingAnswerServiceCaseResult({
+          answerCase,
+          responseStatus: response.status,
+          payload: response.payload,
+          expectedDatasetHash: dataset.datasetHash,
+        })
+        results.push({
+          districtId: dataset.districtId,
+          url,
+          datasetHash: getString(toRecord(response.payload), 'datasetHash'),
+          elapsedMs,
+          attempts,
+          ...caseResult,
+        })
+      } catch (error) {
+        results.push({
+          districtId: dataset.districtId,
+          id: answerCase.id,
+          url,
+          status: 0,
+          datasetHash: null,
+          elapsedMs: Math.round(performance.now() - startedAt),
+          attempts,
+          pass: false,
+          errors: [error instanceof Error ? error.message : String(error)],
+          expectedKind: answerCase.expectedKind,
+          answerKind: null,
+          expectedEvidenceKind: answerCase.expectedEvidenceKind ?? null,
+          evidenceKind: null,
+          expectedPrimarySegmentId: answerCase.expectedPrimarySegmentId ?? null,
+          primarySegmentId: null,
+          trustLabel: null,
+        })
+      }
     }
   }
   return results
@@ -645,14 +723,18 @@ const quoteCommandArg = (value: string) =>
 const buildRenderDeploymentVerifyCommand = (params: {
   appUrl: string
   contract: ExpectedDatasetContract
+  allParkingAnswerCases: boolean
 }) =>
   `npm run ops:render-deployment-verify -- --app-url ${quoteCommandArg(
     params.appUrl,
-  )} ${params.contract.verifyArgName} ${quoteCommandArg(params.contract.contractSource)}`
+  )} ${params.contract.verifyArgName} ${quoteCommandArg(params.contract.contractSource)}${
+    params.allParkingAnswerCases ? ' --all-parking-answer-cases' : ''
+  }`
 
 const buildRuntimeRemediation = (params: {
   appUrl: string
   contract: ExpectedDatasetContract
+  allParkingAnswerCases: boolean
   syncCors: RenderDeploymentVerifySyncCorsResult | null
   proxyRuntime: RenderDeploymentVerifyProxyRuntimeResult[] | null
 }): RenderDeploymentVerifyRemediation | null => {
@@ -698,6 +780,7 @@ const buildRuntimeRemediation = (params: {
 const buildReleasePackageRemediation = (params: {
   appUrl: string
   contract: ExpectedDatasetContract
+  allParkingAnswerCases: boolean
   districts: RenderDeploymentVerifyDistrict[]
   unexpectedDistricts: string[]
 }): RenderDeploymentVerifyRemediation | null => {
@@ -757,9 +840,21 @@ export const verifyRenderDeployment = async (
 
   let status: number | null = null
   let serviceStatus: string | null = null
+  let readinessAttempts = 0
   let actualDistricts: ReturnType<typeof parseReadyDistricts> = []
   try {
-    const response = await fetchJsonWithTimeout(readinessUrl, timeoutMs)
+    const fetchResult = await fetchJsonWithTransientRetry({
+      url: readinessUrl,
+      timeoutMs,
+    })
+    readinessAttempts = fetchResult.attempts
+    if (fetchResult.error) {
+      throw fetchResult.error
+    }
+    const response = fetchResult.result
+    if (!response) {
+      throw new Error('Readiness request completed without a response')
+    }
     status = response.status
     const payload = toRecord(response.payload)
     serviceStatus = getString(payload, 'status')
@@ -879,6 +974,7 @@ export const verifyRenderDeployment = async (
         timeoutMs,
         answerCasesDir: options.answerCasesDir,
         expectedDatasets: contract.expectedDatasets,
+        allCases: options.allParkingAnswerCases ?? false,
       })
       const failures = parkingAnswers.filter((result) => !result.pass)
       if (failures.length > 0) {
@@ -886,7 +982,7 @@ export const verifyRenderDeployment = async (
           `reviewed live parking answers failed: ${failures
             .map(
               (result) =>
-                `${result.districtId}: ${result.errors.join('; ')}`,
+                `${result.districtId}/${result.id}: ${result.errors.join('; ')}`,
             )
             .join(' | ')}`,
         )
@@ -922,12 +1018,14 @@ export const verifyRenderDeployment = async (
   const remediation = buildRuntimeRemediation({
     appUrl,
     contract,
+    allParkingAnswerCases: options.allParkingAnswerCases ?? false,
     syncCors,
     proxyRuntime,
   })
   const releasePackageRemediation = buildReleasePackageRemediation({
     appUrl,
     contract,
+    allParkingAnswerCases: options.allParkingAnswerCases ?? false,
     districts,
     unexpectedDistricts,
   })
@@ -941,6 +1039,7 @@ export const verifyRenderDeployment = async (
     releaseTag: contract.releaseTag,
     status,
     serviceStatus,
+    readinessAttempts,
     expectedDatasets: contract.expectedDatasets,
     districts,
     unexpectedDistricts,
@@ -969,6 +1068,7 @@ export const renderRenderDeploymentVerify = (
     `- Release tag: ${result.releaseTag ?? '-'}`,
     `- HTTP status: ${result.status ?? '-'}`,
     `- Service status: ${result.serviceStatus ?? '-'}`,
+    `- Readiness attempts: ${result.readinessAttempts}`,
     `- Unexpected live districts: ${result.unexpectedDistricts.join(', ') || '-'}`,
     '',
     '| Status | District | Expected hash | Actual hash | Latest hash | Ready | Error |',
@@ -990,11 +1090,13 @@ export const renderRenderDeploymentVerify = (
           '',
           '## Reviewed Live Parking Answers',
           '',
-          '| Status | District | Case | HTTP | Answer | Evidence | Primary | Dataset hash | Elapsed | Error |',
-          '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+          `- Cases: ${result.parkingAnswers.length}; passed=${result.parkingAnswers.filter((entry) => entry.pass).length}; failed=${result.parkingAnswers.filter((entry) => !entry.pass).length}`,
+          '',
+          '| Status | District | Case | HTTP | Answer | Evidence | Primary | Dataset hash | Attempts | Elapsed | Error |',
+          '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
           ...result.parkingAnswers.map(
             (entry) =>
-              `| ${entry.pass ? 'PASS' : 'FAIL'} | ${entry.districtId} | ${entry.id} | ${entry.status} | ${entry.answerKind ?? '-'} | ${entry.evidenceKind ?? '-'} | ${entry.primarySegmentId ?? '-'} | ${shortHash(entry.datasetHash)} | ${entry.elapsedMs}ms | ${entry.errors.join('; ')} |`,
+              `| ${entry.pass ? 'PASS' : 'FAIL'} | ${entry.districtId} | ${entry.id} | ${entry.status} | ${entry.answerKind ?? '-'} | ${entry.evidenceKind ?? '-'} | ${entry.primarySegmentId ?? '-'} | ${shortHash(entry.datasetHash)} | ${entry.attempts} | ${entry.elapsedMs}ms | ${entry.errors.join('; ')} |`,
           ),
         ]
       : []),

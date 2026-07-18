@@ -325,6 +325,7 @@ const runLiveVerify = async (
     appUrl: options.appUrl,
     handoffJsonPath: options.handoffJsonPath ?? DEFAULT_HANDOFF_JSON,
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    allParkingAnswerCases: true,
   }
   try {
     const result = await verifyRenderDeployment(verifyOptions)

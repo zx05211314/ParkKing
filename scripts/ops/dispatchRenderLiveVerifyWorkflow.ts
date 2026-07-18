@@ -36,6 +36,7 @@ export interface RenderLiveVerifyDispatchOptions {
   manifestUrl: string
   useGithubToken: boolean
   skipSyncIssueRoundtrip: boolean
+  allParkingAnswerCases: boolean
   dryRun: boolean
   token?: string | null
 }
@@ -45,6 +46,7 @@ type RenderLiveVerifyDispatchInputs = WorkflowDispatchInputs & {
   manifestUrl: string
   useGithubToken: string
   skipSyncIssueRoundtrip: string
+  allParkingAnswerCases: string
 }
 
 export type RenderLiveVerifyDispatchRequest =
@@ -126,6 +128,11 @@ export const resolveRenderLiveVerifyDispatchOptions = async (
       '--skip-sync-issue-roundtrip',
       false,
     ),
+    allParkingAnswerCases: parseBooleanArg(
+      argv,
+      '--all-parking-answer-cases',
+      true,
+    ),
     dryRun: hasFlag(argv, '--dry-run'),
     token: resolveWorkflowDispatchToken(argv),
   }
@@ -138,6 +145,7 @@ const buildRenderLiveVerifyDispatchInputs = (
   manifestUrl: options.manifestUrl,
   useGithubToken: String(options.useGithubToken),
   skipSyncIssueRoundtrip: String(options.skipSyncIssueRoundtrip),
+  allParkingAnswerCases: String(options.allParkingAnswerCases),
 })
 
 export const buildRenderLiveVerifyDispatchRequest = (
@@ -163,6 +171,7 @@ export const renderRenderLiveVerifyDispatchPlan = (
   `- Manifest URL: ${options.manifestUrl}`,
   `- Use GitHub token for release asset reads: ${options.useGithubToken}`,
   `- Skip sync issue roundtrip: ${options.skipSyncIssueRoundtrip}`,
+  `- Verify all reviewed parking-answer cases: ${options.allParkingAnswerCases}`,
   `- Endpoint: POST ${request.url}`,
   '',
   '## Payload',
@@ -204,6 +213,7 @@ const run = async () => {
         '  --handoff-json <path>               Defaults to .tmp/render-deployment-handoff.json',
         '  --use-github-token [true|false]     Workflow input for private release assets',
         '  --skip-sync-issue-roundtrip         Workflow input for live environments that reject smoke writes',
+        '  --all-parking-answer-cases [bool]   Verify all reviewed cases; defaults to true',
         '  --workflow <file>                   Defaults to render_live_verify.yml',
         '  --token-env <name>                  Dispatch token env var; defaults to GH_TOKEN then GITHUB_TOKEN',
         '  --dry-run                           Print request without dispatching',
