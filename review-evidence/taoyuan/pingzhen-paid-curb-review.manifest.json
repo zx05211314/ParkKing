@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "districtId": "pingzhen",
+  "sourceSha256": "a84e80ca8049c32bfdf9b06291b6eb6302dd81314ad5c02fadf53f2e89fc673e",
+  "sourceRecordCount": 944,
+  "reviewRecordCount": 66,
+  "geometryAvailable": false,
+  "legalAnswerEligible": false,
+  "allowedStatuses": [
+    "APPROVED_SOURCE_TEXT",
+    "NEEDS_CORRECTION",
+    "UNCLEAR"
+  ],
+  "reviewCsv": "pingzhen-paid-curb-review.csv",
+  "reviewSha256": "6327ddfc5100c4cc98854c802f138848868588737f52d7b50efc5c98099e08c1",
+  "approvedRecordCount": 66
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "districtId": "zhongli",
+  "sourceSha256": "a84e80ca8049c32bfdf9b06291b6eb6302dd81314ad5c02fadf53f2e89fc673e",
+  "sourceRecordCount": 944,
+  "reviewRecordCount": 155,
+  "geometryAvailable": false,
+  "legalAnswerEligible": false,
+  "allowedStatuses": [
+    "APPROVED_SOURCE_TEXT",
+    "NEEDS_CORRECTION",
+    "UNCLEAR"
+  ],
+  "reviewCsv": "zhongli-paid-curb-review.csv",
+  "reviewSha256": "30376259888ff971f2308df56a86f595d9db6941445c9cb8de607e15f7e61765",
+  "approvedRecordCount": 155
+}

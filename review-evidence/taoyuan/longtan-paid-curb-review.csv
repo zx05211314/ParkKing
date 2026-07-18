@@ -1,0 +1,13 @@
+parking_segment_id,district_id,district_name,description,fare_description,has_charging_point,geometry_available,legal_answer_eligible,source_text_review_status,source_text_review_note
+507,longtan,Longtan,中正路(中豐路-大昌路),"一般小型車格 週一至週日 08:00~20:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
+508,longtan,Longtan,北龍路(元龍路-大昌路),"一般小型車格 週一至週日 08:00~20:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
+509,longtan,Longtan,神龍路(龍元路-新龍路),"一般小型車格 週一至週日 08:00~20:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
+511,longtan,Longtan,新龍路(中正路-金龍路),"一般小型車格 週一至週五 08:00~19:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
+514,longtan,Longtan,中豐路(龍城路-龍元路),"一般小型車格 週一至週日 08:00~20:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
+515,longtan,Longtan,神龍路2(新龍路-龍華路),"一般小型車格 週一至週日 08:00~20:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
+516,longtan,Longtan,東龍路(龍華路-新龍路),"一般小型車格 週一至週日 08:00~20:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
+518,longtan,Longtan,龍元路(中豐路-神龍路),"一般小型車格 週一至週日 08:00~20:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
+519,longtan,Longtan,龍潭區行政園區周邊(中興路-中興路),"一般小型車格 週一至週五 08:00~18:00收費 第一30分鐘收費15元，第二30分鐘收費20元，第三30分鐘收費25元,",false,false,false,APPROVED_SOURCE_TEXT,
+521,longtan,Longtan,大昌路二段(北龍路-五福街),"一般小型車格 週一至週五 08:00~18:00收費 10元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
+522,longtan,Longtan,干城路(聖亭街-干城路19巷),"一般小型車格 週一至週五 08:00~18:00收費 0元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,
+523,longtan,Longtan,北龍路(機車計時)(大昌路二段-龍元路),"機車車格 週一至週日 08:00~20:00收費 5元/30分鐘,",false,false,false,APPROVED_SOURCE_TEXT,

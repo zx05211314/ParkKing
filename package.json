@@ -61,6 +61,7 @@
     "ops:human-review-index": "tsx scripts/ops/humanReviewBundleIndex.ts",
     "ops:taoyuan-review-index": "tsx scripts/ops/humanReviewBundleIndex.ts --review-root .tmp/taoyuan-human-review --no-publish-gate-summary --out .tmp/taoyuan-city-review-status.md --json-out .tmp/taoyuan-city-review-status.json",
     "ops:package-taoyuan-reviews": "tsx scripts/ops/packageTaoyuanSourceReviews.ts",
+    "ops:approve-taoyuan-review-package": "tsx scripts/ops/approveTaoyuanSourceReviewPackage.ts",
     "ops:promote-ready-taoyuan-reviews": "tsx scripts/ops/promoteReadyTaoyuanPaidCurbReviews.ts",
     "ops:package-human-reviews": "tsx scripts/ops/packageHumanReviews.ts",
     "ops:review-handoff-audit": "tsx scripts/ops/reviewHandoffAudit.ts",

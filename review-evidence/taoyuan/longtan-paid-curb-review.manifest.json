@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "districtId": "longtan",
+  "sourceSha256": "a84e80ca8049c32bfdf9b06291b6eb6302dd81314ad5c02fadf53f2e89fc673e",
+  "sourceRecordCount": 944,
+  "reviewRecordCount": 12,
+  "geometryAvailable": false,
+  "legalAnswerEligible": false,
+  "allowedStatuses": [
+    "APPROVED_SOURCE_TEXT",
+    "NEEDS_CORRECTION",
+    "UNCLEAR"
+  ],
+  "reviewCsv": "longtan-paid-curb-review.csv",
+  "reviewSha256": "328e2efc0c2723a3dbeeeba9a1022a31dffefd2497f0228dfbdbfa05cd42750f",
+  "approvedRecordCount": 12
+}
