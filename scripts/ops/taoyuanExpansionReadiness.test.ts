@@ -237,6 +237,7 @@ describe('taoyuanExpansionReadiness', () => {
       referencePath: '.tmp/reference.json',
       reviewPath: '.tmp/review.csv',
       reviewManifestPath: '.tmp/review.manifest.json',
+      requirePinnedReview: false,
       spatialPath: '.tmp/spatial.geojson',
       tdxInputPath: '.tmp/tdx.json',
       requireReady: true,
@@ -244,6 +245,21 @@ describe('taoyuanExpansionReadiness', () => {
       outPath: '.tmp/readiness.md',
       jsonOutPath: '.tmp/readiness.json',
       json: true,
+    })
+  })
+
+  it('requires pinned review evidence when default tracked paths are used', () => {
+    const options = parseTaoyuanExpansionReadinessArgs([
+      'node',
+      'readiness',
+    ])
+
+    expect(options).toMatchObject({
+      reviewPath:
+        'review-evidence/taoyuan/taoyuan-district-paid-curb-review.csv',
+      reviewManifestPath:
+        'review-evidence/taoyuan/taoyuan-district-paid-curb-review.manifest.json',
+      requirePinnedReview: true,
     })
   })
 

@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseCsv } from 'csv-parse/sync'
@@ -18,9 +19,9 @@ const DEFAULT_BOUNDARY =
   'data/sources/taoyuan/town_boundaries/town_boundaries.shp'
 const DEFAULT_REFERENCE = 'public/data/reference/taoyuan-paid-curb.json'
 const DEFAULT_REVIEW =
-  '.tmp/taoyuan-human-review/taoyuan-district-paid-curb-review.csv'
+  'review-evidence/taoyuan/taoyuan-district-paid-curb-review.csv'
 const DEFAULT_REVIEW_MANIFEST =
-  '.tmp/taoyuan-human-review/taoyuan-district-paid-curb-review.manifest.json'
+  'review-evidence/taoyuan/taoyuan-district-paid-curb-review.manifest.json'
 const DEFAULT_SPATIAL = 'data/sources/taoyuan/paid_curb_segments.geojson'
 
 type ReadinessStatus =
@@ -45,6 +46,7 @@ export interface TaoyuanExpansionReadinessOptions {
   referencePath?: string
   reviewPath?: string
   reviewManifestPath?: string
+  requirePinnedReview?: boolean
   spatialPath?: string
   tdxInputPath?: string | null
   requireReady?: boolean
@@ -128,27 +130,34 @@ const hasFlag = (argv: string[], ...flags: string[]) =>
 
 export const parseTaoyuanExpansionReadinessArgs = (
   argv: string[],
-): TaoyuanExpansionReadinessOptions => ({
-  districtId: getArgValue(argv, '--district') ?? DEFAULT_DISTRICT,
-  boundaryPath: getArgValue(argv, '--boundary') ?? DEFAULT_BOUNDARY,
-  boundaryCatalogPath: getArgValue(
+): TaoyuanExpansionReadinessOptions => {
+  const reviewPath = getArgValue(argv, '--review')
+  const reviewManifestPath = getArgValue(
     argv,
-    '--boundary-catalog',
-    '--boundaryCatalog',
-  ),
-  referencePath: getArgValue(argv, '--reference') ?? DEFAULT_REFERENCE,
-  reviewPath: getArgValue(argv, '--review') ?? DEFAULT_REVIEW,
-  reviewManifestPath:
-    getArgValue(argv, '--review-manifest', '--reviewManifest') ??
-    DEFAULT_REVIEW_MANIFEST,
-  spatialPath: getArgValue(argv, '--spatial') ?? DEFAULT_SPATIAL,
-  tdxInputPath: getArgValue(argv, '--tdx-input', '--tdxInput'),
-  requireReady: hasFlag(argv, '--require-ready', '--requireReady'),
-  requireSpatial: hasFlag(argv, '--require-spatial', '--requireSpatial'),
-  outPath: getArgValue(argv, '--out'),
-  jsonOutPath: getArgValue(argv, '--json-out', '--jsonOut'),
-  json: hasFlag(argv, '--json'),
-})
+    '--review-manifest',
+    '--reviewManifest',
+  )
+  return {
+    districtId: getArgValue(argv, '--district') ?? DEFAULT_DISTRICT,
+    boundaryPath: getArgValue(argv, '--boundary') ?? DEFAULT_BOUNDARY,
+    boundaryCatalogPath: getArgValue(
+      argv,
+      '--boundary-catalog',
+      '--boundaryCatalog',
+    ),
+    referencePath: getArgValue(argv, '--reference') ?? DEFAULT_REFERENCE,
+    reviewPath: reviewPath ?? DEFAULT_REVIEW,
+    reviewManifestPath: reviewManifestPath ?? DEFAULT_REVIEW_MANIFEST,
+    requirePinnedReview: reviewPath === null && reviewManifestPath === null,
+    spatialPath: getArgValue(argv, '--spatial') ?? DEFAULT_SPATIAL,
+    tdxInputPath: getArgValue(argv, '--tdx-input', '--tdxInput'),
+    requireReady: hasFlag(argv, '--require-ready', '--requireReady'),
+    requireSpatial: hasFlag(argv, '--require-spatial', '--requireSpatial'),
+    outPath: getArgValue(argv, '--out'),
+    jsonOutPath: getArgValue(argv, '--json-out', '--jsonOut'),
+    json: hasFlag(argv, '--json'),
+  }
+}
 
 const fileExists = async (targetPath: string) => {
   try {
@@ -161,6 +170,9 @@ const fileExists = async (targetPath: string) => {
 
 const readJson = async <T>(targetPath: string): Promise<T> =>
   JSON.parse(await fs.readFile(targetPath, 'utf-8')) as T
+
+const sha256 = (buffer: Buffer) =>
+  createHash('sha256').update(buffer).digest('hex')
 
 const toRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value)
@@ -316,6 +328,10 @@ export const runTaoyuanExpansionReadiness = async (
     ? path.resolve(options.tdxInputPath)
     : null
   const env = options.env ?? process.env
+  const requirePinnedReview =
+    options.requirePinnedReview ??
+    (options.reviewPath === undefined &&
+      options.reviewManifestPath === undefined)
   const credentialsConfigured = Boolean(
     env.TDX_ACCESS_TOKEN?.trim() ||
       (env.TDX_CLIENT_ID?.trim() && env.TDX_CLIENT_SECRET?.trim()),
@@ -420,11 +436,13 @@ export const runTaoyuanExpansionReadiness = async (
     errors: [],
   }
   if (!reviewExists) {
-    blockers.push('Taoyuan source-text review bundle has not been generated.')
+    blockers.push('Promoted Taoyuan source-text review evidence is missing.')
     nextActions.push('npm run ops:build-taoyuan-reference')
+    nextActions.push('npm run ops:promote-taoyuan-review')
   } else if (referencePack) {
     try {
-      const rows = parseCsv(await fs.readFile(reviewPath, 'utf-8'), {
+      const reviewBuffer = await fs.readFile(reviewPath)
+      const rows = parseCsv(reviewBuffer, {
         bom: true,
         columns: true,
         skip_empty_lines: true,
@@ -434,6 +452,8 @@ export const runTaoyuanExpansionReadiness = async (
         manifest: await readJson<ReviewManifest>(reviewManifestPath),
         rows,
         districtId,
+        reviewSha256: sha256(reviewBuffer),
+        requirePinnedReview,
       })
       sourceTextReview.structureValid = result.structureValid
       sourceTextReview.complete = result.complete

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "districtId": "taoyuan-district",
+  "sourceSha256": "a84e80ca8049c32bfdf9b06291b6eb6302dd81314ad5c02fadf53f2e89fc673e",
+  "sourceRecordCount": 944,
+  "reviewRecordCount": 270,
+  "geometryAvailable": false,
+  "legalAnswerEligible": false,
+  "allowedStatuses": [
+    "APPROVED_SOURCE_TEXT",
+    "NEEDS_CORRECTION",
+    "UNCLEAR"
+  ],
+  "reviewCsv": "taoyuan-district-paid-curb-review.csv",
+  "reviewSha256": "6ae0ee844e9db79f264553101e94293680fb5bd7b1b6d81decc65df967927e81",
+  "approvedRecordCount": 270
+}
