@@ -431,13 +431,14 @@ The installer validates every feature before atomically replacing
 artifacts never replace an existing reference.
 Each promoted district receives its own
 `public/data/reference/<district>-paid-curb-points.geojson` browser pack, and coverage
-catalog generation discovers all such packs. The tracked Taoyuan District pack currently
-publishes 264 of its 270 reviewed
-records as `REPRESENTATIVE_POINT` features. Six source points are excluded because they
-fall outside the official district boundary. These points help users locate and inspect
-official paid-curb source records, but they are not curb-line geometry, parking-space
-inventory, or proof that parking is legal. The runtime parser, coverage catalog, and UI
-all keep `legalAnswerEligible: false`.
+catalog generation discovers all such packs. The tracked packs currently cover 10
+districts and publish 769 of 803 reviewed records as `REPRESENTATIVE_POINT` features.
+Thirty-four source points are excluded because they fall outside the official district
+boundary. A district with any live TDX/source-text mismatch remains text-only until the
+changed text is reviewed. These points help users locate and inspect official paid-curb
+source records, but they are not curb-line geometry, parking-space inventory, or proof
+that parking is legal. The runtime parser, coverage catalog, and UI all keep
+`legalAnswerEligible: false`.
 Run `npm run ops:taoyuan-expansion-readiness:report` to verify the 13 official boundaries,
 944-row text pack, 270-row source-text review, optional saved/guest/credentialed TDX geometry,
 and the non-legal safety contract in one report. The report exits successfully when the
