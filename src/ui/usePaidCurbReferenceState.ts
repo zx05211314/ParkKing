@@ -33,11 +33,17 @@ const IDLE_STATE: PaidCurbReferenceState = {
   error: null,
 }
 
-const sha256ArrayBuffer = async (buffer: ArrayBuffer) => {
+const decodeCanonicalText = (buffer: ArrayBuffer) =>
+  new TextDecoder().decode(buffer).replace(/\r\n?/g, '\n')
+
+const sha256CanonicalText = async (text: string) => {
   if (typeof crypto === 'undefined' || !crypto.subtle) {
     throw new Error('WebCrypto unavailable for paid-curb spatial verification')
   }
-  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)
+  const hashBuffer = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(text),
+  )
   return Array.from(new Uint8Array(hashBuffer))
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('')
@@ -59,11 +65,15 @@ export const loadPaidCurbSpatialReference = async (params: {
     )
   }
   const buffer = await response.arrayBuffer()
-  if ((await sha256ArrayBuffer(buffer)) !== params.spatialReference.dataSha256) {
+  const canonicalText = decodeCanonicalText(buffer)
+  if (
+    (await sha256CanonicalText(canonicalText)) !==
+    params.spatialReference.dataSha256
+  ) {
     throw new Error('Paid-curb spatial reference data hash does not match catalog')
   }
   const pack = parsePaidCurbSpatialReferencePack(
-    JSON.parse(new TextDecoder().decode(buffer)) as unknown,
+    JSON.parse(canonicalText) as unknown,
   )
   const metadata = pack.metadata
   const comparisons: Array<[string, unknown, unknown]> = [

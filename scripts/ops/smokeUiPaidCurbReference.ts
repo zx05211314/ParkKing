@@ -1,4 +1,12 @@
+import * as fs from 'node:fs/promises'
+import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { parseRuntimeCoverageCatalog } from '../../src/data/coverageCatalog'
+import {
+  parsePaidCurbReferencePack,
+  type PaidCurbReferenceRecord,
+} from '../../src/data/paidCurbReference'
+import { parsePaidCurbSpatialReferencePack } from '../../src/data/paidCurbSpatialReference'
 import {
   assertSmokeUiAppReachable,
   chooseAvailablePort,
@@ -20,6 +28,7 @@ import {
 export interface SmokeUiPaidCurbReferenceOptions {
   appUrl?: string
   district?: string
+  referenceDistrict?: string
   chromePath?: string
   cdpPort?: number
   timeoutMs?: number
@@ -27,10 +36,34 @@ export interface SmokeUiPaidCurbReferenceOptions {
   previewPort?: number
 }
 
+export interface PaidCurbReferenceSmokeFixture {
+  referenceDistrict: string
+  coverageStage: string
+  address: string
+  latitude: number
+  longitude: number
+  availableSourceId: string
+  availableSourceDescription: string
+  availableQuery: string
+  expectedCoordinates: string
+  excludedSourceId: string
+  excludedQuery: string
+  expectedSourceRecordCount: number
+  expectedReferencePointCount: number
+  expectedExcludedPointCount: number
+}
+
 export interface SmokeUiPaidCurbReferenceSummary {
   appUrl: string
   url: string
   district: string
+  referenceDistrict: string
+  availableSourceId: string
+  excludedSourceId: string
+  expectedSourceRecordCount: number
+  expectedReferencePointCount: number
+  expectedExcludedPointCount: number
+  expectedCoverageStage: string
   pass: boolean
   sourceRecordCount: number | null
   referencePointCount: number | null
@@ -93,20 +126,126 @@ interface PaidCurbReferenceExcludedState {
 
 const DEFAULT_APP_URL = 'http://127.0.0.1:4173'
 const DEFAULT_DISTRICT = 'xinyi'
+const DEFAULT_REFERENCE_DISTRICT = 'taoyuan-district'
 const DEFAULT_TIMEOUT_MS = 25_000
-const TAOYUAN_ADDRESS = '桃園市桃園區縣府路1號'
-const TAOYUAN_LATITUDE = 24.99493
-const TAOYUAN_LONGITUDE = 121.30074
-const AVAILABLE_SOURCE_ID = '169'
-const AVAILABLE_SOURCE_DESCRIPTION =
-  '縣府路園區(桃園區公所-民安路含調查局周邊)'
-const EXCLUDED_SOURCE_ID = '177'
-const EXPECTED_SOURCE_RECORD_COUNT = 270
-const EXPECTED_REFERENCE_POINT_COUNT = 264
-const EXPECTED_EXCLUDED_POINT_COUNT = 6
-const EXPECTED_COVERAGE_DISTRICT = 'taoyuan-district'
-const EXPECTED_COVERAGE_STAGE = 'source-only'
-const EXPECTED_COORDINATES = '24.994930, 121.300740'
+
+const readJson = async (filePath: string): Promise<unknown> =>
+  JSON.parse(await fs.readFile(filePath, 'utf-8')) as unknown
+
+const resolvePublicDataPath = (publicRoot: string, url: string) =>
+  path.join(publicRoot, ...url.replace(/^\/+/, '').split('/'))
+
+const compareSourceIds = (
+  left: { parkingSegmentId: string },
+  right: { parkingSegmentId: string },
+) => left.parkingSegmentId.localeCompare(right.parkingSegmentId, 'en')
+
+const requireRecord = (
+  records: PaidCurbReferenceRecord[],
+  parkingSegmentId: string,
+  context: string,
+) => {
+  const record = records.find(
+    (candidate) => candidate.parkingSegmentId === parkingSegmentId,
+  )
+  if (!record) {
+    throw new Error(
+      `${context} source ${parkingSegmentId} is missing from the text pack`,
+    )
+  }
+  return record
+}
+
+export const loadSmokeUiPaidCurbReferenceFixture = async (
+  referenceDistrict: string,
+  publicRoot = path.join(process.cwd(), 'public'),
+): Promise<PaidCurbReferenceSmokeFixture> => {
+  const coverage = parseRuntimeCoverageCatalog(
+    await readJson(path.join(publicRoot, 'data', 'coverage.json')),
+  )
+  const coverageDistrict = coverage.districts.find(
+    (candidate) => candidate.districtId === referenceDistrict,
+  )
+  if (
+    !coverageDistrict?.referenceData ||
+    !coverageDistrict.referenceData.spatialReference
+  ) {
+    throw new Error(
+      `Reference district ${referenceDistrict} has no runtime paid-curb spatial pack`,
+    )
+  }
+
+  const referenceData = coverageDistrict.referenceData
+  const spatialReference = referenceData.spatialReference
+  const textPack = parsePaidCurbReferencePack(
+    await readJson(resolvePublicDataPath(publicRoot, referenceData.url)),
+  )
+  const spatialPack = parsePaidCurbSpatialReferencePack(
+    await readJson(resolvePublicDataPath(publicRoot, spatialReference.url)),
+  )
+  const textDistrict = textPack.districts.find(
+    (candidate) => candidate.districtId === referenceDistrict,
+  )
+  if (!textDistrict) {
+    throw new Error(
+      `Reference district ${referenceDistrict} is missing from the text pack`,
+    )
+  }
+  if (
+    spatialPack.metadata.districtId !== referenceDistrict ||
+    referenceData.recordCount !== textDistrict.recordCount ||
+    spatialReference.featureCount !== spatialPack.metadata.featureCount ||
+    spatialReference.excludedFeatureCount !==
+      spatialPack.metadata.excludedFeatureCount
+  ) {
+    throw new Error(
+      `Reference district ${referenceDistrict} runtime metadata does not match its packs`,
+    )
+  }
+
+  const availableFeature = [...spatialPack.features].sort((left, right) =>
+    compareSourceIds(left.properties, right.properties),
+  )[0]
+  const excluded = [...spatialPack.metadata.excluded].sort(compareSourceIds)[0]
+  if (!availableFeature || !excluded) {
+    throw new Error(
+      `Reference district ${referenceDistrict} needs at least one mapped and one excluded source`,
+    )
+  }
+
+  const availableRecord = requireRecord(
+    textDistrict.records,
+    availableFeature.properties.parkingSegmentId,
+    referenceDistrict,
+  )
+  const excludedRecord = requireRecord(
+    textDistrict.records,
+    excluded.parkingSegmentId,
+    referenceDistrict,
+  )
+  if (availableFeature.properties.description !== availableRecord.description) {
+    throw new Error(
+      `Reference district ${referenceDistrict} mapped source text does not match the text pack`,
+    )
+  }
+  const [longitude, latitude] = availableFeature.geometry.coordinates
+  return {
+    referenceDistrict,
+    coverageStage: coverageDistrict.publishStage,
+    address: `${availableRecord.sourceTownName}${availableRecord.description}`,
+    latitude,
+    longitude,
+    availableSourceId: availableRecord.parkingSegmentId,
+    availableSourceDescription: availableRecord.description,
+    availableQuery: availableRecord.description,
+    expectedCoordinates: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+    excludedSourceId: excludedRecord.parkingSegmentId,
+    excludedQuery: excludedRecord.description,
+    expectedSourceRecordCount: textDistrict.recordCount,
+    expectedReferencePointCount: spatialPack.metadata.featureCount,
+    expectedExcludedPointCount: spatialPack.metadata.excludedFeatureCount,
+  }
+}
 
 const getArgValue = (argv: string[], ...flags: string[]) => {
   for (const flag of flags) {
@@ -138,6 +277,9 @@ export const parseSmokeUiPaidCurbReferenceArgs = (
 ): SmokeUiPaidCurbReferenceOptions => ({
   appUrl: getArgValue(argv, '--app-url', '--appUrl') ?? DEFAULT_APP_URL,
   district: getArgValue(argv, '--district') ?? DEFAULT_DISTRICT,
+  referenceDistrict:
+    getArgValue(argv, '--reference-district', '--referenceDistrict') ??
+    DEFAULT_REFERENCE_DISTRICT,
   chromePath:
     getArgValue(argv, '--chrome-path', '--chromePath') ??
     process.env.CHROME_PATH ??
@@ -157,12 +299,13 @@ export const parseSmokeUiPaidCurbReferenceArgs = (
 export const buildSmokeUiPaidCurbReferenceUrl = (params: {
   appUrl: string
   district: string
+  fixture: PaidCurbReferenceSmokeFixture
 }) => {
   const url = new URL(params.appUrl)
   url.searchParams.set('dataset', params.district)
-  url.searchParams.set('address', TAOYUAN_ADDRESS)
-  url.searchParams.set('lat', String(TAOYUAN_LATITUDE))
-  url.searchParams.set('lng', String(TAOYUAN_LONGITUDE))
+  url.searchParams.set('address', params.fixture.address)
+  url.searchParams.set('lat', String(params.fixture.latitude))
+  url.searchParams.set('lng', String(params.fixture.longitude))
   url.searchParams.set('view', 'LIST')
   return url.toString()
 }
@@ -201,6 +344,7 @@ const evaluateByValue = async (
 
 const readListState = async (
   client: CdpClient,
+  fixture: PaidCurbReferenceSmokeFixture,
 ): Promise<PaidCurbReferenceListState> => {
   const value = await evaluateByValue(
     client,
@@ -215,7 +359,7 @@ const readListState = async (
       const row = Array.from(document.querySelectorAll('.paid-curb-reference-row')).find(
         (candidate) =>
           candidate.querySelector('.paid-curb-reference-row-meta')?.textContent?.trim() ===
-          ${JSON.stringify(`Source ID ${AVAILABLE_SOURCE_ID}`)}
+          ${JSON.stringify(`Source ID ${fixture.availableSourceId}`)}
       );
       const query = panel?.querySelector('.paid-curb-reference-search input');
       return {
@@ -250,14 +394,42 @@ const readListState = async (
   }
 }
 
-const clickAvailableReference = async (client: CdpClient) => {
+const setPaidCurbReferenceQuery = async (
+  client: CdpClient,
+  query: string,
+) => {
+  const value = await evaluateByValue(
+    client,
+    `(() => {
+      const input = document.querySelector('.paid-curb-reference-search input');
+      if (!(input instanceof HTMLInputElement)) {
+        return { changed: false };
+      }
+      const setter = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        'value'
+      )?.set;
+      setter?.call(input, ${JSON.stringify(query)});
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return { changed: true };
+    })()`,
+  )
+  if (!getBooleanField(value, 'changed')) {
+    throw new Error('Paid-curb source filter is unavailable.')
+  }
+}
+
+const clickAvailableReference = async (
+  client: CdpClient,
+  fixture: PaidCurbReferenceSmokeFixture,
+) => {
   const value = await evaluateByValue(
     client,
     `(() => {
       const row = Array.from(document.querySelectorAll('.paid-curb-reference-row')).find(
         (candidate) =>
           candidate.querySelector('.paid-curb-reference-row-meta')?.textContent?.trim() ===
-          ${JSON.stringify(`Source ID ${AVAILABLE_SOURCE_ID}`)}
+          ${JSON.stringify(`Source ID ${fixture.availableSourceId}`)}
       );
       const button = row?.querySelector('.paid-curb-reference-map-action');
       if (!(button instanceof HTMLButtonElement)) {
@@ -269,13 +441,14 @@ const clickAvailableReference = async (client: CdpClient) => {
   )
   if (!getBooleanField(value, 'clicked')) {
     throw new Error(
-      `Paid-curb source ${AVAILABLE_SOURCE_ID} did not expose a clickable map action.`,
+      `Paid-curb source ${fixture.availableSourceId} did not expose a clickable map action.`,
     )
   }
 }
 
 const readMapState = async (
   client: CdpClient,
+  fixture: PaidCurbReferenceSmokeFixture,
 ): Promise<PaidCurbReferenceMapState> => {
   const value = await evaluateByValue(
     client,
@@ -288,7 +461,7 @@ const readMapState = async (
       const row = Array.from(document.querySelectorAll('.paid-curb-reference-row')).find(
         (candidate) =>
           candidate.querySelector('.paid-curb-reference-row-meta')?.textContent?.trim() ===
-          ${JSON.stringify(`Source ID ${AVAILABLE_SOURCE_ID}`)}
+          ${JSON.stringify(`Source ID ${fixture.availableSourceId}`)}
       );
       const action = row?.querySelector('.paid-curb-reference-map-action');
       const address = document.querySelector('input[placeholder="Address or place"]');
@@ -313,9 +486,9 @@ const readMapState = async (
           normalizedDetailText.includes('not exact curb geometry') &&
           normalizedDetailText.includes('parking legality answer'),
         mapDetailHasExpectedRecord:
-          normalizedDetailText.includes(${JSON.stringify(AVAILABLE_SOURCE_DESCRIPTION)}) &&
-          normalizedDetailText.includes(${JSON.stringify(`Segment ID ${AVAILABLE_SOURCE_ID}`)}) &&
-          normalizedDetailText.includes(${JSON.stringify(EXPECTED_COORDINATES)}),
+          normalizedDetailText.includes(${JSON.stringify(fixture.availableSourceDescription)}) &&
+          normalizedDetailText.includes(${JSON.stringify(`Segment ID ${fixture.availableSourceId}`)}) &&
+          normalizedDetailText.includes(${JSON.stringify(fixture.expectedCoordinates)}),
         outsideCoverageNotEvaluated:
           bodyText.includes('NOT EVALUATED') &&
           bodyText.includes(
@@ -349,7 +522,10 @@ const readMapState = async (
   }
 }
 
-const closeDetailAndFilterExcludedReference = async (client: CdpClient) => {
+const closeDetailAndFilterExcludedReference = async (
+  client: CdpClient,
+  fixture: PaidCurbReferenceSmokeFixture,
+) => {
   const value = await evaluateByValue(
     client,
     `(() => {
@@ -363,7 +539,7 @@ const closeDetailAndFilterExcludedReference = async (client: CdpClient) => {
         HTMLInputElement.prototype,
         'value'
       )?.set;
-      setter?.call(input, '民族路');
+      setter?.call(input, ${JSON.stringify(fixture.excludedQuery)});
       input.dispatchEvent(new Event('input', { bubbles: true }));
       return { changed: true };
     })()`,
@@ -377,6 +553,7 @@ const closeDetailAndFilterExcludedReference = async (client: CdpClient) => {
 
 const readExcludedState = async (
   client: CdpClient,
+  fixture: PaidCurbReferenceSmokeFixture,
 ): Promise<PaidCurbReferenceExcludedState> => {
   const value = await evaluateByValue(
     client,
@@ -386,7 +563,7 @@ const readExcludedState = async (
       const row = Array.from(document.querySelectorAll('.paid-curb-reference-row')).find(
         (candidate) =>
           candidate.querySelector('.paid-curb-reference-row-meta')?.textContent?.trim() ===
-          ${JSON.stringify(`Source ID ${EXCLUDED_SOURCE_ID}`)}
+          ${JSON.stringify(`Source ID ${fixture.excludedSourceId}`)}
       );
       const note = row?.querySelector('.paid-curb-reference-point-note');
       const input = document.querySelector('.paid-curb-reference-search input');
@@ -438,9 +615,10 @@ const waitForState = async <T>(params: {
 
 const isPaidCurbReferenceMapReady = (
   state: PaidCurbReferenceMapState,
+  fixture: PaidCurbReferenceSmokeFixture,
 ) =>
   state.mapMode &&
-  state.selectedReferenceId === AVAILABLE_SOURCE_ID &&
+  state.selectedReferenceId === fixture.availableSourceId &&
   state.mapDetailFound &&
   state.mapDetailHasExpectedRecord
 
@@ -459,46 +637,46 @@ export const validateSmokeUiPaidCurbReferenceSummary = (
   summary: SmokeUiPaidCurbReferenceSummary,
 ) => {
   const errors: string[] = []
-  if (summary.sourceRecordCount !== EXPECTED_SOURCE_RECORD_COUNT) {
+  if (summary.sourceRecordCount !== summary.expectedSourceRecordCount) {
     errors.push(
-      `source record count ${summary.sourceRecordCount ?? 'missing'} does not match ${EXPECTED_SOURCE_RECORD_COUNT}`,
+      `source record count ${summary.sourceRecordCount ?? 'missing'} does not match ${summary.expectedSourceRecordCount}`,
     )
   }
-  if (summary.referencePointCount !== EXPECTED_REFERENCE_POINT_COUNT) {
+  if (summary.referencePointCount !== summary.expectedReferencePointCount) {
     errors.push(
-      `reference point count ${summary.referencePointCount ?? 'missing'} does not match ${EXPECTED_REFERENCE_POINT_COUNT}`,
+      `reference point count ${summary.referencePointCount ?? 'missing'} does not match ${summary.expectedReferencePointCount}`,
     )
   }
-  if (summary.excludedPointCount !== EXPECTED_EXCLUDED_POINT_COUNT) {
+  if (summary.excludedPointCount !== summary.expectedExcludedPointCount) {
     errors.push(
-      `excluded point count ${summary.excludedPointCount ?? 'missing'} does not match ${EXPECTED_EXCLUDED_POINT_COUNT}`,
+      `excluded point count ${summary.excludedPointCount ?? 'missing'} does not match ${summary.expectedExcludedPointCount}`,
     )
   }
   if (!summary.initialListMode) {
     errors.push('initial shared link did not render LIST mode')
   }
   if (!summary.availableRowFound) {
-    errors.push(`source row ${AVAILABLE_SOURCE_ID} was not rendered`)
+    errors.push(`source row ${summary.availableSourceId} was not rendered`)
   }
   if (!summary.availableActionFound) {
-    errors.push(`source row ${AVAILABLE_SOURCE_ID} has no map action`)
+    errors.push(`source row ${summary.availableSourceId} has no map action`)
   }
   if (!summary.mapMode) {
     errors.push('source map action did not switch to MAP mode')
   }
-  if (summary.coverageDistrict !== EXPECTED_COVERAGE_DISTRICT) {
+  if (summary.coverageDistrict !== summary.referenceDistrict) {
     errors.push(
-      `coverage district ${summary.coverageDistrict ?? 'missing'} does not match ${EXPECTED_COVERAGE_DISTRICT}`,
+      `coverage district ${summary.coverageDistrict ?? 'missing'} does not match ${summary.referenceDistrict}`,
     )
   }
-  if (summary.coverageStage !== EXPECTED_COVERAGE_STAGE) {
+  if (summary.coverageStage !== summary.expectedCoverageStage) {
     errors.push(
-      `coverage stage ${summary.coverageStage ?? 'missing'} does not match ${EXPECTED_COVERAGE_STAGE}`,
+      `coverage stage ${summary.coverageStage ?? 'missing'} does not match ${summary.expectedCoverageStage}`,
     )
   }
-  if (summary.selectedReferenceId !== AVAILABLE_SOURCE_ID) {
+  if (summary.selectedReferenceId !== summary.availableSourceId) {
     errors.push(
-      `selected reference ${summary.selectedReferenceId ?? 'missing'} does not match ${AVAILABLE_SOURCE_ID}`,
+      `selected reference ${summary.selectedReferenceId ?? 'missing'} does not match ${summary.availableSourceId}`,
     )
   }
   if (!summary.selectedActionPressed) {
@@ -514,22 +692,28 @@ export const validateSmokeUiPaidCurbReferenceSummary = (
     errors.push('selected map detail is missing the non-legality safety boundary')
   }
   if (!summary.mapDetailHasExpectedRecord) {
-    errors.push('selected map detail does not identify source 169 and its coordinates')
+    errors.push(
+      `selected map detail does not identify source ${summary.availableSourceId} and its coordinates`,
+    )
   }
   if (!summary.outsideCoverageNotEvaluated) {
-    errors.push('Taoyuan pinned location was presented as a parking recommendation')
+    errors.push(
+      `${summary.referenceDistrict} pinned location was presented as a parking recommendation`,
+    )
   }
   if (!summary.excludedRowFound) {
-    errors.push(`excluded source row ${EXCLUDED_SOURCE_ID} was not rendered`)
+    errors.push(
+      `excluded source row ${summary.excludedSourceId} was not rendered`,
+    )
   }
   if (summary.excludedActionCount !== 0) {
     errors.push(
-      `excluded source row ${EXCLUDED_SOURCE_ID} exposed ${summary.excludedActionCount} map actions`,
+      `excluded source row ${summary.excludedSourceId} exposed ${summary.excludedActionCount} map actions`,
     )
   }
   if (!summary.excludedBoundaryNoteFound) {
     errors.push(
-      `excluded source row ${EXCLUDED_SOURCE_ID} is missing its boundary-review note`,
+      `excluded source row ${summary.excludedSourceId} is missing its boundary-review note`,
     )
   }
   if (!summary.selectionCleared) {
@@ -542,6 +726,7 @@ export const buildSmokeUiPaidCurbReferenceSummary = (params: {
   appUrl: string
   url: string
   district: string
+  fixture: PaidCurbReferenceSmokeFixture
   list: PaidCurbReferenceListState
   map: PaidCurbReferenceMapState
   excluded: PaidCurbReferenceExcludedState
@@ -550,6 +735,13 @@ export const buildSmokeUiPaidCurbReferenceSummary = (params: {
     appUrl: params.appUrl,
     url: params.url,
     district: params.district,
+    referenceDistrict: params.fixture.referenceDistrict,
+    availableSourceId: params.fixture.availableSourceId,
+    excludedSourceId: params.fixture.excludedSourceId,
+    expectedSourceRecordCount: params.fixture.expectedSourceRecordCount,
+    expectedReferencePointCount: params.fixture.expectedReferencePointCount,
+    expectedExcludedPointCount: params.fixture.expectedExcludedPointCount,
+    expectedCoverageStage: params.fixture.coverageStage,
     pass: false,
     sourceRecordCount: params.list.sourceRecordCount,
     referencePointCount:
@@ -563,7 +755,7 @@ export const buildSmokeUiPaidCurbReferenceSummary = (params: {
     coverageStage: params.map.coverageStage,
     selectedReferenceId: params.map.selectedReferenceId,
     selectedActionPressed: params.map.selectedActionPressed,
-    addressPreserved: params.map.addressValue === TAOYUAN_ADDRESS,
+    addressPreserved: params.map.addressValue === params.fixture.address,
     mapDetailFound: params.map.mapDetailFound,
     mapDetailHasSafetyBoundary: params.map.mapDetailHasSafetyBoundary,
     mapDetailHasExpectedRecord: params.map.mapDetailHasExpectedRecord,
@@ -586,17 +778,18 @@ export const renderSmokeUiPaidCurbReferenceSummary = (
   [
     `UI paid-curb reference smoke: ${summary.pass ? 'PASS' : 'FAIL'}`,
     `Active dataset: ${summary.district}`,
+    `Reference district: ${summary.referenceDistrict}`,
     `App: ${summary.appUrl}`,
     `URL: ${summary.url}`,
-    `Taoyuan source records: ${summary.sourceRecordCount ?? 'missing'}`,
+    `District source records: ${summary.sourceRecordCount ?? 'missing'}`,
     `Reviewed points: ${summary.referencePointCount ?? 'missing'}`,
     `Boundary exclusions: ${summary.excludedPointCount ?? 'missing'}`,
-    `Available source ${AVAILABLE_SOURCE_ID}: ${summary.availableRowFound && summary.availableActionFound ? 'map action available' : 'missing'}`,
+    `Available source ${summary.availableSourceId}: ${summary.availableRowFound && summary.availableActionFound ? 'map action available' : 'missing'}`,
     `Selected map reference: ${summary.selectedReferenceId ?? 'missing'}`,
     `Coverage boundary: ${summary.coverageDistrict ?? 'missing'} / ${summary.coverageStage ?? 'missing'}`,
     `Address preserved: ${summary.addressPreserved ? 'yes' : 'no'}`,
     `Safety boundary: ${summary.mapDetailHasSafetyBoundary && summary.outsideCoverageNotEvaluated ? 'preserved' : 'missing'}`,
-    `Excluded source ${EXCLUDED_SOURCE_ID}: ${summary.excludedRowFound && summary.excludedActionCount === 0 && summary.excludedBoundaryNoteFound ? 'text only' : 'invalid'}`,
+    `Excluded source ${summary.excludedSourceId}: ${summary.excludedRowFound && summary.excludedActionCount === 0 && summary.excludedBoundaryNoteFound ? 'text only' : 'invalid'}`,
     summary.errors.length > 0
       ? `Errors: ${summary.errors.join('; ')}`
       : 'Errors: none',
@@ -626,6 +819,10 @@ export const runSmokeUiPaidCurbReference = async (
 ) => {
   let appUrl = options.appUrl ?? DEFAULT_APP_URL
   const district = options.district?.trim() || DEFAULT_DISTRICT
+  const referenceDistrict =
+    options.referenceDistrict?.trim() || DEFAULT_REFERENCE_DISTRICT
+  const fixture =
+    await loadSmokeUiPaidCurbReferenceFixture(referenceDistrict)
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const chromePath = await resolveChromePath(options.chromePath)
   const cdpPort = await chooseAvailablePort(options.cdpPort)
@@ -641,7 +838,11 @@ export const runSmokeUiPaidCurbReference = async (
     }
 
     await assertSmokeUiAppReachable(appUrl)
-    const url = buildSmokeUiPaidCurbReferenceUrl({ appUrl, district })
+    const url = buildSmokeUiPaidCurbReferenceUrl({
+      appUrl,
+      district,
+      fixture,
+    })
     launchedChrome = await launchChrome({ chromePath, cdpPort })
     await waitForCdp(cdpPort, timeoutMs)
     client = await connectCdp(await openCdpTab(cdpPort))
@@ -649,39 +850,53 @@ export const runSmokeUiPaidCurbReference = async (
     await client.send('Runtime.enable')
     await client.send('Page.navigate', { url })
 
-    const list = await waitForState({
-      read: () => readListState(client as CdpClient),
+    const initial = await waitForState({
+      read: () => readListState(client as CdpClient, fixture),
       isReady: (state) =>
         state.listMode &&
-        state.queryValue === '縣府路' &&
+        state.sourceRecordCount === fixture.expectedSourceRecordCount,
+      timeoutMs,
+    })
+    if (initial.sourceRecordCount !== fixture.expectedSourceRecordCount) {
+      throw new Error(
+        `Paid-curb reference panel for ${referenceDistrict} did not load: ${bodySnippet(initial.bodyText)}`,
+      )
+    }
+    await setPaidCurbReferenceQuery(client, fixture.availableQuery)
+    const list = await waitForState({
+      read: () => readListState(client as CdpClient, fixture),
+      isReady: (state) =>
+        state.listMode &&
+        state.queryValue === fixture.availableQuery &&
         state.availableRowFound &&
         state.availableActionFound,
       timeoutMs,
     })
-    await clickAvailableReference(client)
+    await clickAvailableReference(client, fixture)
 
     const map = await waitForState({
-      read: () => readMapState(client as CdpClient),
-      isReady: isPaidCurbReferenceMapReady,
+      read: () => readMapState(client as CdpClient, fixture),
+      isReady: (state) => isPaidCurbReferenceMapReady(state, fixture),
       timeoutMs,
     })
-    if (!isPaidCurbReferenceMapReady(map)) {
+    if (!isPaidCurbReferenceMapReady(map, fixture)) {
       const summary = buildSmokeUiPaidCurbReferenceSummary({
         appUrl,
         url,
         district,
+        fixture,
         list,
         map,
         excluded: buildUnavailableExcludedState(map.bodyText),
       })
       assertSmokeUiPaidCurbReferenceSummary(summary)
     }
-    await closeDetailAndFilterExcludedReference(client)
+    await closeDetailAndFilterExcludedReference(client, fixture)
 
     const excluded = await waitForState({
-      read: () => readExcludedState(client as CdpClient),
+      read: () => readExcludedState(client as CdpClient, fixture),
       isReady: (state) =>
-        state.queryValue === '民族路' &&
+        state.queryValue === fixture.excludedQuery &&
         state.excludedRowFound &&
         state.excludedBoundaryNoteFound &&
         state.selectionCleared,
@@ -691,6 +906,7 @@ export const runSmokeUiPaidCurbReference = async (
       appUrl,
       url,
       district,
+      fixture,
       list,
       map,
       excluded,

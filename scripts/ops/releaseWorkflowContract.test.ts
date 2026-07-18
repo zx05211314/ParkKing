@@ -125,7 +125,8 @@ describe('release workflow contracts', () => {
     )
     expectCommandsInOrder(workflow, [
       'npm run ops:render-deployment-verify',
-      'npm run ops:smoke-ui-paid-curb-reference -- --app-url "${{ inputs.appUrl }}" --district xinyi --timeout-ms 90000',
+      'npm run ops:smoke-ui-paid-curb-reference -- --app-url "${{ inputs.appUrl }}" --district xinyi --reference-district taoyuan-district --timeout-ms 90000',
+      'npm run ops:smoke-ui-paid-curb-reference -- --app-url "${{ inputs.appUrl }}" --district xinyi --reference-district guishan --timeout-ms 90000',
     ])
     expect(workflow).toContain('allParkingAnswerCases:')
     expect(workflow).toContain('default: true')
