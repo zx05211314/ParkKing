@@ -71,10 +71,8 @@ jobs:
         run: npm run ops:build-parking-answer-indexes
       - name: Build UI with CI fixtures
         run: npm run build
-      - name: Smoke Taoyuan District paid-curb reference UI
-        run: npm run ops:smoke-ui-paid-curb-reference:preview -- --reference-district taoyuan-district --timeout-ms 60000
-      - name: Smoke Guishan paid-curb reference UI
-        run: npm run ops:smoke-ui-paid-curb-reference:preview -- --reference-district guishan --timeout-ms 60000
+      - name: Smoke all Taoyuan paid-curb reference UIs
+        run: npm run ops:smoke-ui-paid-curb-reference:preview -- --all-reference-districts --timeout-ms 60000
       - name: Smoke latest pack
         run: npm run ops:smoke-latest -- --latestName LATEST_CI
       - name: Smoke parking answers

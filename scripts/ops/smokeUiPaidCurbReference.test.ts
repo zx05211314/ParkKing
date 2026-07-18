@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest'
 import {
   buildSmokeUiPaidCurbReferenceSummary,
   buildSmokeUiPaidCurbReferenceUrl,
+  loadSmokeUiPaidCurbReferenceDistrictIds,
   loadSmokeUiPaidCurbReferenceFixture,
   parseSmokeUiPaidCurbReferenceArgs,
+  renderSmokeUiPaidCurbReferenceMatrixSummary,
   renderSmokeUiPaidCurbReferenceSummary,
   validateSmokeUiPaidCurbReferenceSummary,
   type PaidCurbReferenceSmokeFixture,
@@ -27,48 +29,65 @@ const fixture: PaidCurbReferenceSmokeFixture = {
   expectedExcludedPointCount: 6,
 }
 
-const buildPassingSummary = () =>
+const zeroExclusionFixture: PaidCurbReferenceSmokeFixture = {
+  ...fixture,
+  referenceDistrict: 'yangmei',
+  address: 'Yangmei paid-curb smoke address',
+  availableSourceId: 'fixture-available',
+  excludedSourceId: null,
+  excludedQuery: null,
+  expectedSourceRecordCount: 43,
+  expectedReferencePointCount: 43,
+  expectedExcludedPointCount: 0,
+}
+
+const buildPassingSummary = (
+  smokeFixture: PaidCurbReferenceSmokeFixture = fixture,
+) =>
   buildSmokeUiPaidCurbReferenceSummary({
     appUrl: 'http://127.0.0.1:4173',
     url: 'http://127.0.0.1:4173/?dataset=xinyi',
     district: 'xinyi',
-    fixture,
+    fixture: smokeFixture,
     list: {
       bodyText: 'Mode: List only',
       listMode: true,
-      sourceRecordCount: 270,
-      referencePointCount: 264,
-      excludedPointCount: 6,
+      sourceRecordCount: smokeFixture.expectedSourceRecordCount,
+      referencePointCount: smokeFixture.expectedReferencePointCount,
+      excludedPointCount: smokeFixture.expectedExcludedPointCount,
       availableRowFound: true,
       availableActionFound: true,
-      queryValue: fixture.availableQuery,
+      queryValue: smokeFixture.availableQuery,
     },
     map: {
       bodyText: 'Mode: Map + list NOT EVALUATED',
       mapMode: true,
-      coverageDistrict: 'taoyuan-district',
-      coverageStage: 'source-only',
-      referencePointCount: 264,
-      selectedReferenceId: '169',
+      coverageDistrict: smokeFixture.referenceDistrict,
+      coverageStage: smokeFixture.coverageStage,
+      referencePointCount: smokeFixture.expectedReferencePointCount,
+      selectedReferenceId: smokeFixture.availableSourceId,
       selectedActionPressed: true,
-      addressValue: fixture.address,
+      addressValue: smokeFixture.address,
       mapDetailFound: true,
       mapDetailHasSafetyBoundary: true,
       mapDetailHasExpectedRecord: true,
       outsideCoverageNotEvaluated: true,
     },
     excluded: {
-      bodyText: 'Source ID 177',
-      excludedRowFound: true,
+      bodyText: smokeFixture.excludedSourceId
+        ? `Source ID ${smokeFixture.excludedSourceId}`
+        : 'No exclusions',
+      excludedRowFound: Boolean(smokeFixture.excludedSourceId),
       excludedActionCount: 0,
-      excludedBoundaryNoteFound: true,
-      queryValue: fixture.excludedQuery,
+      excludedBoundaryNoteFound: Boolean(smokeFixture.excludedSourceId),
+      queryValue:
+        smokeFixture.excludedQuery ?? smokeFixture.availableQuery,
       selectionCleared: true,
     },
   })
 
 describe('smokeUiPaidCurbReference', () => {
-  it('parses preview smoke options', () => {
+  it('parses preview and full-matrix smoke options', () => {
     expect(
       parseSmokeUiPaidCurbReferenceArgs([
         'node',
@@ -79,6 +98,7 @@ describe('smokeUiPaidCurbReference', () => {
         'xinyi',
         '--reference-district',
         'guishan',
+        '--all-reference-districts',
         '--chrome-path',
         'C:\\Chrome\\chrome.exe',
         '--cdp-port',
@@ -93,6 +113,7 @@ describe('smokeUiPaidCurbReference', () => {
       appUrl: 'http://127.0.0.1:4174',
       district: 'xinyi',
       referenceDistrict: 'guishan',
+      allReferenceDistricts: true,
       chromePath: 'C:\\Chrome\\chrome.exe',
       cdpPort: 9333,
       timeoutMs: 30000,
@@ -101,8 +122,25 @@ describe('smokeUiPaidCurbReference', () => {
     })
   })
 
-  it('loads a deterministic Guishan fixture from reviewed runtime packs', async () => {
+  it('discovers every published Taoyuan spatial-reference district', async () => {
+    await expect(loadSmokeUiPaidCurbReferenceDistrictIds()).resolves.toEqual([
+      'taoyuan-district',
+      'zhongli',
+      'daxi',
+      'yangmei',
+      'luzhu',
+      'dayuan',
+      'guishan',
+      'bade',
+      'longtan',
+      'pingzhen',
+      'guanyin',
+    ])
+  })
+
+  it('loads deterministic Guishan and zero-exclusion fixtures', async () => {
     const guishan = await loadSmokeUiPaidCurbReferenceFixture('guishan')
+    const yangmei = await loadSmokeUiPaidCurbReferenceFixture('yangmei')
 
     expect(guishan).toMatchObject({
       referenceDistrict: 'guishan',
@@ -115,6 +153,15 @@ describe('smokeUiPaidCurbReference', () => {
       latitude: 25.05945,
       longitude: 121.36794,
       expectedCoordinates: '25.059450, 121.367940',
+    })
+    expect(yangmei).toMatchObject({
+      referenceDistrict: 'yangmei',
+      coverageStage: 'source-only',
+      excludedSourceId: null,
+      excludedQuery: null,
+      expectedSourceRecordCount: 43,
+      expectedReferencePointCount: 43,
+      expectedExcludedPointCount: 0,
     })
   })
 
@@ -136,32 +183,44 @@ describe('smokeUiPaidCurbReference', () => {
     expect(url.searchParams.get('view')).toBe('LIST')
   })
 
-  it('runs both district smokes only after fixture data is built', async () => {
+  it('runs the full matrix only after fixture data is built', async () => {
     const workflow = await fs.readFile('.github/workflows/ci.yml', 'utf-8')
     const ingestPosition = workflow.indexOf('name: Ingest CI fixtures')
     const fixtureBuildPosition = workflow.indexOf('name: Build UI with CI fixtures')
-    const taoyuanSmokePosition = workflow.indexOf(
-      'name: Smoke Taoyuan District paid-curb reference UI',
-    )
-    const guishanSmokePosition = workflow.indexOf(
-      'name: Smoke Guishan paid-curb reference UI',
+    const matrixSmokePosition = workflow.indexOf(
+      'name: Smoke all Taoyuan paid-curb reference UIs',
     )
 
     expect(ingestPosition).toBeGreaterThanOrEqual(0)
     expect(fixtureBuildPosition).toBeGreaterThan(ingestPosition)
-    expect(taoyuanSmokePosition).toBeGreaterThan(fixtureBuildPosition)
-    expect(guishanSmokePosition).toBeGreaterThan(taoyuanSmokePosition)
+    expect(matrixSmokePosition).toBeGreaterThan(fixtureBuildPosition)
+    expect(workflow).toContain('--all-reference-districts')
   })
 
-  it('accepts the complete source-to-map and excluded-row contract', () => {
+  it('accepts excluded-row and zero-exclusion safety contracts', () => {
     const summary = buildPassingSummary()
-    const rendered = renderSmokeUiPaidCurbReferenceSummary(summary)
+    const zeroExclusionSummary = buildPassingSummary(zeroExclusionFixture)
 
     expect(summary.pass).toBe(true)
     expect(summary.errors).toEqual([])
-    expect(rendered).toContain('UI paid-curb reference smoke: PASS')
-    expect(rendered).toContain('Reference district: taoyuan-district')
-    expect(rendered).toContain('Excluded source 177: text only')
+    expect(renderSmokeUiPaidCurbReferenceSummary(summary)).toContain(
+      'Excluded source 177: text only',
+    )
+    expect(zeroExclusionSummary.pass).toBe(true)
+    expect(zeroExclusionSummary.errors).toEqual([])
+    expect(
+      renderSmokeUiPaidCurbReferenceSummary(zeroExclusionSummary),
+    ).toContain('Excluded source: not applicable (0 reviewed exclusions)')
+    expect(
+      renderSmokeUiPaidCurbReferenceMatrixSummary({
+        appUrl: 'http://127.0.0.1:4173',
+        district: 'xinyi',
+        pass: true,
+        districtCount: 2,
+        passedDistrictCount: 2,
+        summaries: [summary, zeroExclusionSummary],
+      }),
+    ).toContain('Districts: 2/2 passed')
   })
 
   it('reports safety, selection, and boundary regressions', () => {
