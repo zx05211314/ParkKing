@@ -28,12 +28,14 @@ type ReadinessStatus =
   | 'human-and-external-input-required'
   | 'human-review-required'
   | 'external-input-required'
+  | 'spatial-acquisition-ready'
   | 'spatial-reference-ready'
 
 type SpatialAcquisition =
   | 'available'
   | 'saved-input'
   | 'credentials'
+  | 'guest'
   | 'blocked'
 
 export interface TaoyuanExpansionReadinessOptions {
@@ -318,6 +320,9 @@ export const runTaoyuanExpansionReadiness = async (
     env.TDX_ACCESS_TOKEN?.trim() ||
       (env.TDX_CLIENT_ID?.trim() && env.TDX_CLIENT_SECRET?.trim()),
   )
+  const guestAcquisitionEnabled = !['0', 'false', 'no', 'off'].includes(
+    env.TDX_ALLOW_GUEST?.trim().toLowerCase() ?? '',
+  )
   const automationErrors: string[] = []
   const blockers: string[] = []
   const nextActions: string[] = []
@@ -464,7 +469,9 @@ export const runTaoyuanExpansionReadiness = async (
       ? 'saved-input'
       : credentialsConfigured
         ? 'credentials'
-        : 'blocked'
+        : guestAcquisitionEnabled
+          ? 'guest'
+          : 'blocked'
   const spatial: SpatialSummary = {
     path: spatialPath,
     exists: spatialExists,
@@ -497,7 +504,7 @@ export const runTaoyuanExpansionReadiness = async (
       nextActions.push(
         `npm run ops:fetch-taoyuan-paid-curb -- --input ${quoteArg(savedInputPath)}`,
       )
-    } else if (credentialsConfigured) {
+    } else if (credentialsConfigured || guestAcquisitionEnabled) {
       nextActions.push('npm run ops:fetch-taoyuan-paid-curb')
     } else {
       nextActions.push(
@@ -512,7 +519,10 @@ export const runTaoyuanExpansionReadiness = async (
     sourceTextReview.approved &&
     spatial.valid
   const needsHumanReview = !sourceTextReview.approved
-  const needsExternalInput = !spatial.exists
+  const needsExternalInput =
+    !spatial.exists && spatial.acquisition === 'blocked'
+  const canAcquireSpatial =
+    !spatial.exists && spatial.acquisition !== 'blocked'
   const status: ReadinessStatus =
     automationErrors.length > 0
       ? 'automation-error'
@@ -522,7 +532,11 @@ export const runTaoyuanExpansionReadiness = async (
           ? 'human-and-external-input-required'
           : needsHumanReview
             ? 'human-review-required'
-            : 'external-input-required'
+            : needsExternalInput
+              ? 'external-input-required'
+              : canAcquireSpatial
+                ? 'spatial-acquisition-ready'
+                : 'external-input-required'
   const gatePass =
     automationErrors.length === 0 &&
     (!options.requireReady || readyForSpatialReference) &&
