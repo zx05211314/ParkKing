@@ -2,6 +2,7 @@ import { access, open, readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { PARKING_ANSWER_SCHEMA_VERSION } from './parkingAnswerServiceDefaults'
 import { ZONE_PARAMS_VERSION } from '../../src/domain/zones/makeZones'
+import { buildZoneIndex } from '../../src/domain/zones/zoneIndex'
 import type {
   ParkingAnswerServiceConfig,
   ParkingAnswerServiceDistrictReadiness,
@@ -21,6 +22,19 @@ export const REQUIRED_PARKING_ANSWER_DATASET_FILES = [
 ] as const
 
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/g, '')
+
+export const inspectParkingAnswerSpatialRuntime = (
+  buildIndex: typeof buildZoneIndex = buildZoneIndex,
+) => {
+  try {
+    const zoneIndex = buildIndex([], 'runtime-readiness', ZONE_PARAMS_VERSION)
+    zoneIndex.index.search({ minX: 0, minY: 0, maxX: 0, maxY: 0 })
+    return []
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return [`runtime/spatial-index: ${message}`]
+  }
+}
 
 export const joinParkingAnswerServicePath = (
   basePath: string,
@@ -193,11 +207,13 @@ const inspectPreparedIndex = async (
 
 export const buildParkingAnswerServiceDistrictReadiness = async (
   config: ParkingAnswerServiceConfig,
-): Promise<ParkingAnswerServiceDistrictReadiness[]> =>
-  await Promise.all(
+): Promise<ParkingAnswerServiceDistrictReadiness[]> => {
+  const runtimeInvalidFiles = inspectParkingAnswerSpatialRuntime()
+  return await Promise.all(
     getReadinessDistricts(config).map(async (district) => {
       const datasetDir = resolve(config.districtDatasetRoot, district)
       const { missing, invalid } = await inspectRequiredFiles(datasetDir)
+      invalid.push(...runtimeInvalidFiles)
       const metadata = await readDistrictReadinessMetadata(datasetDir)
       const indexState = await inspectPreparedIndex(
         config.preparedIndexRoot,
@@ -216,6 +232,7 @@ export const buildParkingAnswerServiceDistrictReadiness = async (
       }
     }),
   )
+}
 
 export const buildParkingAnswerServiceHealth = (
   config: ParkingAnswerServiceConfig,

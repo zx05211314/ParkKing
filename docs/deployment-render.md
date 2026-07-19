@@ -142,7 +142,9 @@ Vite copies `/data/generated` into `dist` for browser-side static data reads.
 - Node version: `NODE_VERSION=24.16.0`, matching CI and bounded by the
   `package.json` engines range.
 - Health check: `/api/parking-answer/ready`, so deploys fail if core parking
-  answer data is unavailable.
+  answer data is unavailable or the bundled spatial index cannot initialize.
+  Spatial runtime failures are reported in `invalidFiles` with the
+  `runtime/spatial-index` prefix.
 - Sync CORS: `PARKKING_SYNC_CORS_ORIGINS` is set to the deployed app origin
   (`https://parkking.onrender.com` in the checked-in blueprint). Update it to
   the exact Render/custom-domain origin before deploying a different public
