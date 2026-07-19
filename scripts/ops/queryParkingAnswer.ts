@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { pathToFileURL } from 'node:url'
 import type { FeatureCollection, LineString, MultiLineString, Point } from 'geojson'
 import {
   applySignOverrides,
@@ -447,7 +447,13 @@ const main = async () => {
   )
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+const isMainModule = () => {
+  const entry = process.argv[1]
+  const moduleUrl = import.meta.url
+  return entry ? pathToFileURL(entry).href === moduleUrl : false
+}
+
+if (isMainModule()) {
   main().catch((error) => {
     console.error(error)
     process.exit(1)

@@ -38,6 +38,8 @@
     "scripts/ops/installReleasePackage.test.ts",
     "scripts/ops/assertBrowserEnvBundle.ts",
     "scripts/ops/assertBrowserEnvBundle.test.ts",
+    "scripts/ops/buildAppServer.ts",
+    "scripts/ops/buildAppServer.test.ts",
     "scripts/ops/packageRelease*.ts",
     "scripts/ops/precompressStaticData.ts",
     "scripts/ops/precompressStaticData.test.ts",
