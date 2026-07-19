@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import {
   DEFAULT_SYNC_CORS_ORIGINS,
+  DEFAULT_SYNC_MODE,
   DEFAULT_SYNC_PATH,
   DEFAULT_SYNC_SCOPE,
   DEFAULT_SYNC_MAX_BODY_BYTES,
@@ -50,6 +51,37 @@ const isSyncServiceWriteRequest = (
   (pathname === paths.savedPlansPath && method === 'PUT') ||
   (pathname === paths.reportsPath && method === 'POST') ||
   (pathname === paths.issuesPath && method === 'POST')
+
+const isSyncServiceModeRequestAllowed = (
+  mode: SyncServiceConfig['mode'],
+  pathname: string,
+  method: string | undefined,
+  requestedMethod: string | null,
+  paths: {
+    healthPath: string
+    readinessPath: string
+    statusPath: string
+    issuesPath: string
+  },
+) => {
+  if ((mode ?? DEFAULT_SYNC_MODE) === 'full') {
+    return true
+  }
+  if (
+    pathname === paths.healthPath ||
+    pathname === paths.readinessPath ||
+    pathname === paths.statusPath
+  ) {
+    return true
+  }
+  if (pathname !== paths.issuesPath) {
+    return false
+  }
+  return (
+    method === 'POST' ||
+    (method === 'OPTIONS' && requestedMethod?.toUpperCase() === 'POST')
+  )
+}
 
 export const createSyncServiceMiddleware = (
   service: SyncService,
@@ -108,6 +140,29 @@ export const createSyncServiceMiddleware = (
     ) {
       writeSyncServiceJson(res, 403, {
         error: 'Origin is not allowed by sync service CORS policy.',
+      })
+      return true
+    }
+
+    const requestedMethod = resolveHeaderText(
+      req.headers?.['access-control-request-method'],
+    )
+    if (
+      !isSyncServiceModeRequestAllowed(
+        config?.mode,
+        url.pathname,
+        req.method,
+        requestedMethod,
+        {
+          healthPath,
+          readinessPath,
+          statusPath,
+          issuesPath,
+        },
+      )
+    ) {
+      writeSyncServiceJson(res, 403, {
+        error: 'Sync resource is disabled in issue-upload-only mode.',
       })
       return true
     }

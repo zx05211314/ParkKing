@@ -15,7 +15,7 @@ on:
         type: boolean
         default: false
       skipSyncIssueRoundtrip:
-        description: Skip the live sync issue-report write/read roundtrip; health and readiness probes still run
+        description: Skip the live issue upload/status-confirmation roundtrip; health and readiness probes still run
         required: false
         type: boolean
         default: false

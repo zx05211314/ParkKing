@@ -16,6 +16,8 @@ describe('resolveSyncServiceConfig', () => {
       port: 8789,
       storageFile: 'C:\\tmp\\parkking\\.tmp\\sync-service.json',
       defaultScope: 'default',
+      mode: 'full',
+      durability: 'persistent',
       maxBodyBytes: 1048576,
       maxIssueReports: 1000,
       corsOrigins: ['*'],
@@ -33,6 +35,8 @@ describe('resolveSyncServiceConfig', () => {
           'https://parkking.example, https://ops.parkking.example',
         PARKKING_SYNC_WRITE_RATE_LIMIT_WINDOW_MS: '5000',
         PARKKING_SYNC_WRITE_RATE_LIMIT_MAX: '9',
+        PARKKING_SYNC_MODE: 'issue-upload-only',
+        PARKKING_SYNC_DURABILITY: 'ephemeral',
       },
       'C:/tmp/parkking',
     )
@@ -45,6 +49,8 @@ describe('resolveSyncServiceConfig', () => {
     ])
     expect(config.writeRateLimitWindowMs).toBe(5000)
     expect(config.writeRateLimitMax).toBe(9)
+    expect(config.mode).toBe('issue-upload-only')
+    expect(config.durability).toBe('ephemeral')
   })
 })
 

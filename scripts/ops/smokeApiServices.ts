@@ -467,8 +467,18 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const readIssueId = (value: unknown) =>
   isRecord(value) && typeof value.issueId === 'string' ? value.issueId : null
 
-const readIssueArray = (value: unknown) =>
-  isRecord(value) && Array.isArray(value.issues) ? value.issues : []
+const readFiniteNumber = (value: unknown, key: string) =>
+  isRecord(value) &&
+  typeof value[key] === 'number' &&
+  Number.isFinite(value[key])
+    ? value[key]
+    : null
+
+const buildSyncStatusUrl = (issuesUrl: URL) => {
+  const statusUrl = new URL(issuesUrl)
+  statusUrl.pathname = statusUrl.pathname.replace(/\/issues\/?$/, '/status')
+  return statusUrl
+}
 
 const makeSmokeIssueReport = (
   issueId: string,
@@ -528,18 +538,28 @@ export const runSyncIssueReportRoundtrip = async (params: {
       }
     }
 
-    const get = await fetchJsonWithTimeout(params.url, params.timeoutMs)
-    const found = readIssueArray(get.payload).some(
-      (candidate) => readIssueId(candidate) === issueId,
+    const postedRevision = readFiniteNumber(post.payload, 'revision')
+    const statusUrl = buildSyncStatusUrl(params.url)
+    const status = await fetchJsonWithTimeout(statusUrl, params.timeoutMs)
+    const storedRevision = readFiniteNumber(
+      status.payload,
+      'issueReportsRevision',
     )
+    const storedCount = readFiniteNumber(status.payload, 'issueReportsCount')
+    const persisted =
+      postedRevision !== null &&
+      storedRevision !== null &&
+      storedRevision >= postedRevision &&
+      storedCount !== null &&
+      storedCount > 0
     return {
       ...actionBase,
-      status: get.response.status,
-      ok: get.response.ok && found,
+      status: status.response.status,
+      ok: status.response.ok && persisted,
       detail:
-        get.response.ok && found
-          ? `POST 201 and GET ${get.response.status} returned issue ${issueId}`
-          : `GET expected issue ${issueId}, got ${get.response.status} found=${found}`,
+        status.response.ok && persisted
+          ? `POST 201 and status ${status.response.status} confirmed revision ${storedRevision}, count ${storedCount}`
+          : `status expected revision >= ${postedRevision ?? 'missing'} and positive count, got HTTP ${status.response.status}, revision ${storedRevision ?? 'missing'}, count ${storedCount ?? 'missing'}`,
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)

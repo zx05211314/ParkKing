@@ -1,11 +1,15 @@
 import type {
   SyncServiceConfig,
+  SyncServiceDurability,
+  SyncServiceMode,
   SyncStatusSnapshot,
 } from './syncServiceTypes'
 import {
   DEFAULT_SYNC_CORS_ORIGINS,
+  DEFAULT_SYNC_DURABILITY,
   DEFAULT_SYNC_MAX_BODY_BYTES,
   DEFAULT_SYNC_MAX_ISSUE_REPORTS,
+  DEFAULT_SYNC_MODE,
   DEFAULT_SYNC_WRITE_RATE_LIMIT_MAX,
   DEFAULT_SYNC_WRITE_RATE_LIMIT_WINDOW_MS,
 } from './syncServiceConfig'
@@ -23,6 +27,16 @@ export interface SyncServiceHealthResponse {
   reportsPath: string
   issuesPath: string
   defaultScope: string
+  mode: SyncServiceMode
+  durability: SyncServiceDurability
+  capabilities: {
+    savedPlansRead: boolean
+    savedPlansWrite: boolean
+    reportsRead: boolean
+    reportsWrite: boolean
+    issueReportsRead: boolean
+    issueReportsWrite: boolean
+  }
   storageFile: string | null
   maxBodyBytes: number | null
   maxIssueReports: number | null
@@ -34,6 +48,18 @@ export interface SyncServiceHealthResponse {
 }
 
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/g, '')
+
+const buildSyncServiceCapabilities = (mode: SyncServiceMode) => {
+  const full = mode === 'full'
+  return {
+    savedPlansRead: full,
+    savedPlansWrite: full,
+    reportsRead: full,
+    reportsWrite: full,
+    issueReportsRead: full,
+    issueReportsWrite: true,
+  }
+}
 
 export const joinSyncServicePath = (basePath: string, suffix: string) =>
   `${trimTrailingSlash(basePath)}/${suffix.replace(/^\/+/g, '')}`
@@ -105,6 +131,11 @@ export const buildSyncServiceHealth = (
   reportsPath: joinSyncServicePath(pathname, 'reports'),
   issuesPath: joinSyncServicePath(pathname, 'issues'),
   defaultScope,
+  mode: config?.mode ?? DEFAULT_SYNC_MODE,
+  durability: config?.durability ?? DEFAULT_SYNC_DURABILITY,
+  capabilities: buildSyncServiceCapabilities(
+    config?.mode ?? DEFAULT_SYNC_MODE,
+  ),
   storageFile: config?.storageFile ?? null,
   maxBodyBytes: config ? config.maxBodyBytes ?? DEFAULT_SYNC_MAX_BODY_BYTES : null,
   maxIssueReports: config

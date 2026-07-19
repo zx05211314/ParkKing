@@ -145,12 +145,15 @@ describe('smokeApiServices', () => {
     ).toContain('sync/issue-report-roundtrip: FAIL http=400 detail=POST failed')
   })
 
-  it('roundtrips sync issue reports through POST then GET', async () => {
+  it('confirms issue uploads through non-content status metadata', async () => {
     const issues: unknown[] = []
     const server = createServer((req, res) => {
       void (async () => {
         const url = new URL(req.url ?? '/', 'http://localhost')
-        if (url.pathname !== '/api/sync/issues') {
+        if (
+          url.pathname !== '/api/sync/issues' &&
+          url.pathname !== '/api/sync/status'
+        ) {
           res.statusCode = 404
           res.end('Not found')
           return
@@ -171,10 +174,15 @@ describe('smokeApiServices', () => {
           return
         }
 
-        if (req.method === 'GET') {
+        if (url.pathname === '/api/sync/status' && req.method === 'GET') {
           res.setHeader('content-type', 'application/json')
           res.statusCode = 200
-          res.end(JSON.stringify({ issues, revision: issues.length }))
+          res.end(
+            JSON.stringify({
+              issueReportsCount: issues.length,
+              issueReportsRevision: issues.length,
+            }),
+          )
           return
         }
 
