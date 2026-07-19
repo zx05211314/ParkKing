@@ -3,7 +3,63 @@ import { createServer } from 'node:net'
 import * as path from 'node:path'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
+import { ZONE_PARAMS_VERSION } from '../../src/domain/zones/makeZones'
 import { buildAppServer } from './buildAppServer'
+import { REQUIRED_PARKING_ANSWER_DATASET_FILES } from './parkingAnswerServiceHealth'
+
+const TEST_DISTRICT = 'bundle-test'
+const TEST_DATASET_HASH = 'bundle-test-hash'
+const TEST_SEGMENT_ID = 'seg-bundle-test'
+
+const createParkingAnswerFixture = async (base: string) => {
+  const datasetRoot = path.join(base, 'generated')
+  const datasetDir = path.join(datasetRoot, TEST_DISTRICT)
+  const indexRoot = path.join(base, 'parking-answer-index')
+  await fs.mkdir(datasetDir, { recursive: true })
+  await fs.mkdir(indexRoot, { recursive: true })
+  await Promise.all(
+    REQUIRED_PARKING_ANSWER_DATASET_FILES.map((fileName) =>
+      fs.writeFile(
+        path.join(datasetDir, fileName),
+        JSON.stringify(
+          fileName === 'dataset_meta.json'
+            ? { datasetHash: TEST_DATASET_HASH }
+            : { type: 'FeatureCollection', features: [] },
+        ),
+        'utf-8',
+      ),
+    ),
+  )
+  await fs.writeFile(
+    path.join(indexRoot, `${TEST_DISTRICT}.json`),
+    JSON.stringify({
+      schemaVersion: 1,
+      districtId: TEST_DISTRICT,
+      datasetHash: TEST_DATASET_HASH,
+      zoneParamsVersion: ZONE_PARAMS_VERSION,
+      reviewedSignOverridesCount: 1,
+      appliedSignOverridesCount: 1,
+      segments: [
+        {
+          id: TEST_SEGMENT_ID,
+          name: 'Bundle test yellow curb',
+          curbMarking: 'YELLOW',
+          confidence: 'HIGH',
+          path: [
+            [121.56, 25.03],
+            [121.561, 25.03],
+          ],
+          parkingSpaceCount: 1,
+          sourceReliability: 'HIGH',
+          dataFreshnessDays: 1,
+        },
+      ],
+      zones: [],
+    }),
+    'utf-8',
+  )
+  return { datasetRoot, indexRoot }
+}
 
 const reservePort = async () => {
   const server = createServer()
@@ -47,6 +103,8 @@ describe('buildAppServer', () => {
       '<div id="root">ParkKing</div>\n',
       'utf-8',
     )
+    const { datasetRoot, indexRoot } =
+      await createParkingAnswerFixture(base)
     const result = await buildAppServer({ outPath })
     const port = await reservePort()
     const child = spawn(process.execPath, [result.outPath], {
@@ -58,8 +116,12 @@ describe('buildAppServer', () => {
         PARKKING_APP_STATIC_DIR: staticDir,
         PARKKING_APP_ENABLE_GEOCODER: 'false',
         PARKKING_APP_ENABLE_ROUTING: 'false',
-        PARKKING_APP_ENABLE_PARKING_ANSWER: 'false',
+        PARKKING_APP_ENABLE_PARKING_ANSWER: 'true',
         PARKKING_APP_ENABLE_SYNC: 'false',
+        PARKKING_PARKING_ANSWER_DATASET_ROOT: datasetRoot,
+        PARKKING_PARKING_ANSWER_INDEX_ROOT: indexRoot,
+        PARKKING_PARKING_ANSWER_DEFAULT_DISTRICT: TEST_DISTRICT,
+        PARKKING_PARKING_ANSWER_DISTRICTS: TEST_DISTRICT,
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
@@ -85,10 +147,34 @@ describe('buildAppServer', () => {
       const rootResponse = await fetch(`http://127.0.0.1:${port}/`)
       expect(rootResponse.status).toBe(200)
       await expect(rootResponse.text()).resolves.toContain('ParkKing')
+      const readyResponse = await fetch(
+        `http://127.0.0.1:${port}/api/parking-answer/ready`,
+      )
+      expect(readyResponse.status).toBe(200)
+      const answerUrl = new URL(`http://127.0.0.1:${port}/api/parking-answer`)
+      answerUrl.search = new URLSearchParams({
+        district: TEST_DISTRICT,
+        lng: '121.5605',
+        lat: '25.03005',
+        hhmm: '21:00',
+        radius: '25',
+      }).toString()
+      const answerResponse = await fetch(answerUrl)
+      const answerPayload = (await answerResponse.json()) as {
+        schemaVersion?: unknown
+        answer?: {
+          kind?: unknown
+          primary?: { id?: unknown }
+        }
+      }
+      expect(answerResponse.status, JSON.stringify(answerPayload)).toBe(200)
+      expect(answerPayload.schemaVersion).toBe(1)
+      expect(answerPayload.answer?.kind).toBe('PARK')
+      expect(answerPayload.answer?.primary?.id).toBe(TEST_SEGMENT_ID)
       expect(result.bytes).toBeGreaterThan(0)
     } finally {
       await stopChild(child)
       await fs.rm(base, { recursive: true, force: true })
     }
-  }, 20_000)
+  }, 30_000)
 })
