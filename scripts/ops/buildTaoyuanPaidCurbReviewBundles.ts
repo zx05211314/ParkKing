@@ -19,6 +19,7 @@ export const buildTaoyuanPaidCurbReviewBundles = async (options: {
   reviewDistrictId?: string
   reviewDir?: string
   reviewEvidenceDir?: string | null
+  refreshApprovedEvidence?: boolean
 } = {}) => {
   const referencePath = path.resolve(
     options.referencePath ?? DEFAULT_REFERENCE,
@@ -35,6 +36,7 @@ export const buildTaoyuanPaidCurbReviewBundles = async (options: {
       options.reviewEvidenceDir === undefined
         ? DEFAULT_REVIEW_EVIDENCE_DIR
         : options.reviewEvidenceDir,
+    refreshApprovedEvidence: options.refreshApprovedEvidence,
   })
   return {
     ...result,
@@ -53,11 +55,17 @@ const run = async () => {
     reviewEvidenceDir: process.argv.includes('--no-review-evidence')
       ? null
       : (getArgValue(process.argv, '--review-evidence-dir') ?? undefined),
+    refreshApprovedEvidence: process.argv.includes(
+      '--refresh-approved-evidence',
+    ),
   })
   console.log(`Taoyuan paid-curb review districts: ${result.districtIds.length}`)
   console.log(`Source rows: ${result.sourceRecordCount}`)
   console.log(
     `Seeded approved districts: ${result.seededDistrictIds.join(', ') || 'none'}`,
+  )
+  console.log(
+    `Refreshed approved districts: ${result.refreshedDistrictIds.join(', ') || 'none'}`,
   )
   console.log(`Wrote human-review bundle to ${result.reviewDir}`)
   console.log(

@@ -318,6 +318,7 @@ export const writeTaoyuanPaidCurbReviewBundles = async (params: {
   reviewDistrictId: string
   reviewDir: string
   reviewEvidenceDir?: string | null
+  refreshApprovedEvidence?: boolean
 }) => {
   const reviewDir = path.resolve(params.reviewDir)
   const reviewEvidenceDir = params.reviewEvidenceDir
@@ -337,8 +338,10 @@ export const writeTaoyuanPaidCurbReviewBundles = async (params: {
 
   await fs.mkdir(reviewDir, { recursive: true })
   const seededDistrictIds: string[] = []
+  const refreshedDistrictIds: string[] = []
   for (const district of districts) {
     const baseName = `${district.districtId}-paid-curb-review`
+    const reviewPath = path.join(reviewDir, `${baseName}.csv`)
     const reviewCsv = buildReviewCsv(params.pack, district.districtId)
     await fs.writeFile(
       path.join(reviewDir, `${baseName}.template.csv`),
@@ -350,10 +353,19 @@ export const writeTaoyuanPaidCurbReviewBundles = async (params: {
       districtId: district.districtId,
       reviewEvidenceDir,
     })
-    const seeded = await writeFileIfMissing(
-      path.join(reviewDir, `${baseName}.csv`),
-      approvedSeed ?? reviewCsv,
-    )
+    const reviewExists = await fileExists(reviewPath)
+    if (approvedSeed && params.refreshApprovedEvidence) {
+      await fs.writeFile(reviewPath, approvedSeed)
+      if (reviewExists) {
+        refreshedDistrictIds.push(district.districtId)
+      } else {
+        seededDistrictIds.push(district.districtId)
+      }
+    }
+    const seeded =
+      approvedSeed && params.refreshApprovedEvidence
+        ? false
+        : await writeFileIfMissing(reviewPath, approvedSeed ?? reviewCsv)
     if (seeded && approvedSeed) {
       seededDistrictIds.push(district.districtId)
     }
@@ -394,6 +406,7 @@ export const writeTaoyuanPaidCurbReviewBundles = async (params: {
       '',
       'Generated *.template.csv files may be replaced on rebuild; existing review CSVs are preserved.',
       'A clean bundle may seed only tracked review evidence that passes the pinned approval gate.',
+      'Use --refresh-approved-evidence only to intentionally replace local review CSVs with pinned approved tracked evidence.',
       'Set source_text_review_status to APPROVED_SOURCE_TEXT, NEEDS_CORRECTION, or UNCLEAR.',
       'Approval confirms source transcription only. It does not confirm geometry or parking legality.',
       '',
@@ -404,6 +417,7 @@ export const writeTaoyuanPaidCurbReviewBundles = async (params: {
     reviewDir,
     districtIds: districts.map(({ districtId }) => districtId),
     seededDistrictIds,
+    refreshedDistrictIds,
   }
 }
 

@@ -233,6 +233,38 @@ describe('buildTaoyuanPaidCurbReference', () => {
     })
 
     expect(result.seededDistrictIds).toEqual(['taoyuan-district'])
+    expect(result.refreshedDistrictIds).toEqual([])
+    await expect(
+      fs.readFile(path.join(reviewDir, `${baseName}.csv`)),
+    ).resolves.toEqual(approvedBuffer)
+
+    await fs.writeFile(
+      path.join(reviewDir, `${baseName}.csv`),
+      'unpromoted local review\n',
+      'utf-8',
+    )
+    const preserved = await writeTaoyuanPaidCurbReviewBundles({
+      pack,
+      reviewDistrictId: 'all',
+      reviewDir,
+      reviewEvidenceDir: evidenceDir,
+    })
+
+    expect(preserved.refreshedDistrictIds).toEqual([])
+    await expect(
+      fs.readFile(path.join(reviewDir, `${baseName}.csv`), 'utf-8'),
+    ).resolves.toBe('unpromoted local review\n')
+
+    const refreshed = await writeTaoyuanPaidCurbReviewBundles({
+      pack,
+      reviewDistrictId: 'all',
+      reviewDir,
+      reviewEvidenceDir: evidenceDir,
+      refreshApprovedEvidence: true,
+    })
+
+    expect(refreshed.seededDistrictIds).toEqual([])
+    expect(refreshed.refreshedDistrictIds).toEqual(['taoyuan-district'])
     await expect(
       fs.readFile(path.join(reviewDir, `${baseName}.csv`)),
     ).resolves.toEqual(approvedBuffer)
