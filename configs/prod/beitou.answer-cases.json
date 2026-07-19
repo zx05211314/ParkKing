@@ -58,6 +58,7 @@
     {
       "id": "beitou-reviewed-legal-seg-2440-part-3",
       "label": "Reviewed legal parking answer with marked-space evidence",
+      "coverageAreaId": "shipai",
       "lng": 121.5154344534964,
       "lat": 25.114325329060243,
       "hhmm": "21:00",
@@ -84,6 +85,7 @@
     {
       "id": "beitou-reviewed-legal-seg-2480",
       "label": "Reviewed legal parking answer with marked-space evidence",
+      "coverageAreaId": "shipai",
       "lng": 121.51524829300801,
       "lat": 25.114592203990806,
       "hhmm": "21:00",

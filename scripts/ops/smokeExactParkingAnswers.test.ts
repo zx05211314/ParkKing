@@ -307,6 +307,7 @@ describe('smokeExactParkingAnswers', () => {
           cases: [
             {
               id: 'case-1',
+              coverageAreaId: 'shipai',
               lng: 121.5645,
               lat: 25.0335,
               expectedKind: 'PARK',
@@ -320,7 +321,7 @@ describe('smokeExactParkingAnswers', () => {
     )
 
     await expect(loadSmokeExactParkingAnswerCases(casesPath)).resolves.toMatchObject({
-      cases: [{ expectedFinalConfidence: 'MED' }],
+      cases: [{ coverageAreaId: 'shipai', expectedFinalConfidence: 'MED' }],
     })
   })
 

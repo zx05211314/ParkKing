@@ -8,6 +8,7 @@ import type { SmokeExactParkingAnswerCase } from './smokeExactParkingAnswers'
 
 const answerCase: SmokeExactParkingAnswerCase = {
   id: 'case-1',
+  coverageAreaId: 'shipai',
   lng: 121.56,
   lat: 25.03,
   expectedKind: 'PARK',
@@ -127,6 +128,7 @@ describe('smokeParkingAnswerService', () => {
       }),
     ).toMatchObject({
       id: 'case-1',
+      coverageAreaId: 'shipai',
       pass: true,
       answerKind: 'PARK',
       primarySegmentId: 'seg-1',

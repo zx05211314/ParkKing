@@ -1,6 +1,14 @@
+import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import fg from 'fast-glob'
+import {
+  findCoverageDistrictById,
+  isLocationInCoverageAlias,
+  isLocationInCoverageDistrict,
+  parseRuntimeCoverageCatalog,
+  type RuntimeCoverageCatalog,
+} from '../../src/data/coverageCatalog'
 import {
   loadSmokeExactParkingAnswerCases,
   type SmokeExactParkingAnswerCase,
@@ -9,6 +17,7 @@ import {
 
 export interface ValidateAnswerCasesOptions {
   casesGlob?: string
+  coverageCatalogPath?: string
   minCases?: number
   requirePinned?: boolean
   requireUiCompatibleTimes?: boolean
@@ -28,6 +37,7 @@ export interface ValidateAnswerCaseFileIssue {
 }
 
 const DEFAULT_CASES_GLOB = 'configs/prod/*.answer-cases.json'
+const DEFAULT_COVERAGE_CATALOG = 'public/data/coverage.json'
 const DEFAULT_MIN_CASES = 1
 
 const getArgValue = (argv: string[], ...flags: string[]) => {
@@ -60,6 +70,13 @@ export const parseValidateAnswerCasesArgs = (
   casesGlob:
     getArgValue(argv, '--cases', '--casesGlob', '--cases-glob') ??
     DEFAULT_CASES_GLOB,
+  coverageCatalogPath:
+    getArgValue(
+      argv,
+      '--coverage-catalog',
+      '--coverageCatalog',
+      '--coverageCatalogPath',
+    ) ?? DEFAULT_COVERAGE_CATALOG,
   minCases:
     parseNonNegativeInteger(getArgValue(argv, '--min-cases', '--minCases'), 'min-cases') ??
     DEFAULT_MIN_CASES,
@@ -219,12 +236,72 @@ export const validateAnswerCaseFile = (
   }
 }
 
+export const validateAnswerCaseCoverageAreas = (
+  caseFile: SmokeExactParkingAnswerCaseFile,
+  catalog: RuntimeCoverageCatalog,
+) => {
+  const errors: string[] = []
+  for (const answerCase of caseFile.cases) {
+    if (!answerCase.coverageAreaId) {
+      continue
+    }
+    const label = `case ${answerCase.id}`
+    if (!caseFile.districtId) {
+      errors.push(
+        `${label}: districtId is required for coverage area ${answerCase.coverageAreaId}`,
+      )
+      continue
+    }
+    const district = findCoverageDistrictById(catalog, caseFile.districtId)
+    const alias = district?.aliases.find(
+      ({ areaId }) => areaId === answerCase.coverageAreaId,
+    )
+    if (!district || !alias) {
+      errors.push(
+        `${label}: coverage area ${answerCase.coverageAreaId} is not owned by district ${caseFile.districtId}`,
+      )
+      continue
+    }
+    const location: [number, number] = [answerCase.lng, answerCase.lat]
+    if (
+      !alias.boundary ||
+      alias.boundary.parkingAnswerOwnerDistrictId !== district.districtId
+    ) {
+      errors.push(
+        `${label}: coverage area ${answerCase.coverageAreaId} has no valid standalone boundary owned by ${district.districtId}`,
+      )
+      continue
+    }
+    if (
+      !isLocationInCoverageDistrict(district, location) ||
+      !isLocationInCoverageAlias(alias, location)
+    ) {
+      errors.push(
+        `${label}: location is outside coverage area ${answerCase.coverageAreaId}`,
+      )
+    }
+  }
+  return errors
+}
+
 export const validateAnswerCases = async (
   options: ValidateAnswerCasesOptions = {},
 ) => {
   const casesGlob = options.casesGlob ?? DEFAULT_CASES_GLOB
   const files = await fg(casesGlob, { onlyFiles: true, dot: false, absolute: false })
   const issues: ValidateAnswerCaseFileIssue[] = []
+  let coverageCatalogPromise: Promise<RuntimeCoverageCatalog> | null = null
+  const loadCoverageCatalog = () => {
+    coverageCatalogPromise ??= fs
+      .readFile(
+        path.resolve(
+          options.coverageCatalogPath ?? DEFAULT_COVERAGE_CATALOG,
+        ),
+        'utf-8',
+      )
+      .then((value) => parseRuntimeCoverageCatalog(JSON.parse(value) as unknown))
+    return coverageCatalogPromise
+  }
 
   if (files.length === 0 && !options.allowMissing) {
     issues.push({
@@ -239,7 +316,24 @@ export const validateAnswerCases = async (
   for (const casesPath of files) {
     try {
       const caseFile = await loadSmokeExactParkingAnswerCases(casesPath)
-      issues.push(validateAnswerCaseFile(casesPath, caseFile, options))
+      const issue = validateAnswerCaseFile(casesPath, caseFile, options)
+      if (caseFile.cases.some(({ coverageAreaId }) => coverageAreaId)) {
+        try {
+          issue.errors.push(
+            ...validateAnswerCaseCoverageAreas(
+              caseFile,
+              await loadCoverageCatalog(),
+            ),
+          )
+        } catch (error) {
+          issue.errors.push(
+            `coverage catalog validation failed: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          )
+        }
+      }
+      issues.push(issue)
     } catch (error) {
       issues.push({
         casesPath,
