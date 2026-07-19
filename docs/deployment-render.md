@@ -319,7 +319,11 @@ This reads the release manifest dataset identity contract, fetches
 `/api/parking-answer/ready`, and fails if any reviewed district is missing, not
 ready, or serving a `datasetHash` or `publishedAt` different from the released
 package. Requiring `publishedAt` prevents unchanged content hashes from allowing
-an older Render deployment to pass as the new release. It also
+an older Render deployment to pass as the new release. The readiness probe uses
+a 30-second per-attempt timeout and three transient attempts by default so a
+Render Free cold start does not produce a false release failure; other requests
+retain the 15-second timeout. Use `--readiness-timeout-ms` and `--timeout-ms` to
+override those budgets independently. It also
 probes the live same-origin geocode, route, sync, and parking-answer
 health/ready endpoints, verifies geocoder/routing readiness exposes positive
 upstream request timeouts, runs a sync issue-report roundtrip, and verifies sync

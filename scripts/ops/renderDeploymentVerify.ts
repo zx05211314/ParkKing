@@ -23,6 +23,7 @@ import {
 
 const DEFAULT_HANDOFF_JSON = '.tmp/render-deployment-handoff.json'
 const DEFAULT_TIMEOUT_MS = 15_000
+const DEFAULT_READINESS_TIMEOUT_MS = 30_000
 const DEFAULT_ANSWER_CASES_DIR = 'configs/prod'
 const DEFAULT_TRANSIENT_MAX_ATTEMPTS = 3
 const DEFAULT_TRANSIENT_RETRY_DELAY_MS = 500
@@ -35,6 +36,7 @@ export interface RenderDeploymentVerifyOptions {
   downloadToken?: string | null
   downloadAuthHeader?: string | null
   timeoutMs?: number | null
+  readinessTimeoutMs?: number | null
   skipApiServices?: boolean | null
   apiServices?: SmokeApiServiceId[] | null
   syncIssueRoundtrip?: boolean | null
@@ -68,6 +70,7 @@ export interface RenderDeploymentVerifyResult {
   releaseTag: string | null
   status: number | null
   serviceStatus: string | null
+  readinessTimeoutMs: number
   readinessAttempts: number
   expectedDatasets: RenderDeploymentHandoffDataset[]
   districts: RenderDeploymentVerifyDistrict[]
@@ -182,53 +185,65 @@ const parseApiServices = (value: string | null): SmokeApiServiceId[] | null => {
 
 export const parseRenderDeploymentVerifyArgs = (
   argv: string[],
-): RenderDeploymentVerifyOptions => ({
-  appUrl:
-    getArgValue(argv, '--app-url', '--appUrl', '--url') ??
-    process.env.PARKKING_RENDER_APP_URL ??
-    null,
-  handoffJsonPath:
-    getArgValue(argv, '--handoff-json', '--handoffJson') ?? null,
-  manifestPath:
-    getArgValue(argv, '--manifest', '--manifest-path', '--manifestPath') ?? null,
-  manifestUrl:
-    getArgValue(argv, '--manifest-url', '--manifestUrl') ??
-    process.env.PARKKING_RELEASE_MANIFEST_URL ??
-    null,
-  downloadToken:
-    getArgValue(argv, '--download-token', '--downloadToken') ??
-    process.env.PARKKING_RELEASE_DOWNLOAD_TOKEN ??
-    null,
-  downloadAuthHeader:
-    getArgValue(argv, '--download-auth-header', '--downloadAuthHeader') ??
-    process.env.PARKKING_RELEASE_DOWNLOAD_AUTH_HEADER ??
-    null,
-  timeoutMs:
+): RenderDeploymentVerifyOptions => {
+  const timeoutMs =
     parsePositiveInteger(
       getArgValue(argv, '--timeout-ms', '--timeoutMs'),
       'timeout-ms',
-    ) ?? DEFAULT_TIMEOUT_MS,
-  skipApiServices: hasFlag(argv, '--skip-api-services', '--skipApiServices'),
-  apiServices: parseApiServices(getArgValue(argv, '--api-services', '--apiServices')),
-  syncIssueRoundtrip:
-    !hasFlag(argv, '--skip-sync-issue-roundtrip', '--skipSyncIssueRoundtrip'),
-  syncCorsCheck: !hasFlag(argv, '--skip-sync-cors-check', '--skipSyncCorsCheck'),
-  answerCasesDir:
-    getArgValue(argv, '--answer-cases-dir', '--answerCasesDir') ??
-    DEFAULT_ANSWER_CASES_DIR,
-  skipParkingAnswerCases: hasFlag(
-    argv,
-    '--skip-parking-answer-cases',
-    '--skipParkingAnswerCases',
-  ),
-  allParkingAnswerCases: hasFlag(
-    argv,
-    '--all-parking-answer-cases',
-    '--allParkingAnswerCases',
-  ),
-  outPath: getArgValue(argv, '--out'),
-  jsonOutPath: getArgValue(argv, '--json-out', '--jsonOut'),
-})
+    ) ?? DEFAULT_TIMEOUT_MS
+  const readinessTimeoutMs =
+    parsePositiveInteger(
+      getArgValue(argv, '--readiness-timeout-ms', '--readinessTimeoutMs'),
+      'readiness-timeout-ms',
+    ) ?? Math.max(DEFAULT_READINESS_TIMEOUT_MS, timeoutMs)
+
+  return {
+    appUrl:
+      getArgValue(argv, '--app-url', '--appUrl', '--url') ??
+      process.env.PARKKING_RENDER_APP_URL ??
+      null,
+    handoffJsonPath:
+      getArgValue(argv, '--handoff-json', '--handoffJson') ?? null,
+    manifestPath:
+      getArgValue(argv, '--manifest', '--manifest-path', '--manifestPath') ?? null,
+    manifestUrl:
+      getArgValue(argv, '--manifest-url', '--manifestUrl') ??
+      process.env.PARKKING_RELEASE_MANIFEST_URL ??
+      null,
+    downloadToken:
+      getArgValue(argv, '--download-token', '--downloadToken') ??
+      process.env.PARKKING_RELEASE_DOWNLOAD_TOKEN ??
+      null,
+    downloadAuthHeader:
+      getArgValue(argv, '--download-auth-header', '--downloadAuthHeader') ??
+      process.env.PARKKING_RELEASE_DOWNLOAD_AUTH_HEADER ??
+      null,
+    timeoutMs,
+    readinessTimeoutMs,
+    skipApiServices: hasFlag(argv, '--skip-api-services', '--skipApiServices'),
+    apiServices: parseApiServices(
+      getArgValue(argv, '--api-services', '--apiServices'),
+    ),
+    syncIssueRoundtrip:
+      !hasFlag(argv, '--skip-sync-issue-roundtrip', '--skipSyncIssueRoundtrip'),
+    syncCorsCheck: !hasFlag(argv, '--skip-sync-cors-check', '--skipSyncCorsCheck'),
+    answerCasesDir:
+      getArgValue(argv, '--answer-cases-dir', '--answerCasesDir') ??
+      DEFAULT_ANSWER_CASES_DIR,
+    skipParkingAnswerCases: hasFlag(
+      argv,
+      '--skip-parking-answer-cases',
+      '--skipParkingAnswerCases',
+    ),
+    allParkingAnswerCases: hasFlag(
+      argv,
+      '--all-parking-answer-cases',
+      '--allParkingAnswerCases',
+    ),
+    outPath: getArgValue(argv, '--out'),
+    jsonOutPath: getArgValue(argv, '--json-out', '--jsonOut'),
+  }
+}
 
 const readJsonFile = async <T>(filePath: string) =>
   JSON.parse(await fs.readFile(filePath, 'utf-8')) as T
@@ -898,6 +913,8 @@ export const verifyRenderDeployment = async (
   options: RenderDeploymentVerifyOptions = {},
 ): Promise<RenderDeploymentVerifyResult> => {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const readinessTimeoutMs =
+    options.readinessTimeoutMs ?? Math.max(DEFAULT_READINESS_TIMEOUT_MS, timeoutMs)
   const contract = await loadExpectedDatasetContract(options, timeoutMs)
   const appUrl = normalizeRenderAppUrl(options.appUrl ?? process.env.PARKKING_RENDER_APP_URL)
   const readinessUrl = buildRenderReadinessUrl(appUrl)
@@ -910,7 +927,7 @@ export const verifyRenderDeployment = async (
   try {
     const fetchResult = await fetchJsonWithTransientRetry({
       url: readinessUrl,
-      timeoutMs,
+      timeoutMs: readinessTimeoutMs,
     })
     readinessAttempts = fetchResult.attempts
     if (fetchResult.error) {
@@ -1120,6 +1137,7 @@ export const verifyRenderDeployment = async (
     releaseTag: contract.releaseTag,
     status,
     serviceStatus,
+    readinessTimeoutMs,
     readinessAttempts,
     expectedDatasets: contract.expectedDatasets,
     districts,
@@ -1149,6 +1167,7 @@ export const renderRenderDeploymentVerify = (
     `- Release tag: ${result.releaseTag ?? '-'}`,
     `- HTTP status: ${result.status ?? '-'}`,
     `- Service status: ${result.serviceStatus ?? '-'}`,
+    `- Readiness timeout per attempt: ${result.readinessTimeoutMs}ms`,
     `- Readiness attempts: ${result.readinessAttempts}`,
     `- Unexpected live districts: ${result.unexpectedDistricts.join(', ') || '-'}`,
     '',

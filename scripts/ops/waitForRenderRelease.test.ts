@@ -34,6 +34,7 @@ const verifyResult = (
   releaseTag: 'data-20260718185036_fda8323',
   status: 200,
   serviceStatus: 'ok',
+  readinessTimeoutMs: options.requestTimeoutMs,
   readinessAttempts: 1,
   expectedDatasets: [
     {
