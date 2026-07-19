@@ -56,6 +56,7 @@
     "ops:taoyuan-expansion-readiness:ci": "npm run ops:taoyuan-expansion-readiness:report -- --boundary-catalog public/data/coverage.json",
     "ops:taoyuan-expansion-readiness:strict": "tsx scripts/ops/taoyuanExpansionReadiness.ts --require-ready",
     "ops:probe-taoyuan-legal-evidence": "tsx scripts/ops/probeTaoyuanLegalEvidence.ts",
+    "ops:validate-taoyuan-legal-candidate": "tsx scripts/ops/validateTaoyuanLegalEvidenceCandidate.ts",
     "ops:sync-public-data": "tsx scripts/ops/syncPublicData.ts",
     "ops:smoke-public-data": "tsx scripts/ops/smokePublicData.ts",
     "ops:generated-pack-inventory": "tsx scripts/ops/generatedPackInventory.ts",
