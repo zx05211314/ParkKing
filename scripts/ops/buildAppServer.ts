@@ -30,7 +30,6 @@ export const buildAppServer = async (
     platform: 'node',
     format: 'cjs',
     target: 'node24',
-    packages: 'external',
     logOverride: {
       'empty-import-meta': 'silent',
     },

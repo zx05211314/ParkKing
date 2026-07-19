@@ -58,8 +58,12 @@ describe('buildAppServer', () => {
         PARKKING_APP_STATIC_DIR: staticDir,
         PARKKING_APP_ENABLE_GEOCODER: 'false',
         PARKKING_APP_ENABLE_ROUTING: 'false',
-        PARKKING_APP_ENABLE_PARKING_ANSWER: 'false',
+        PARKKING_APP_ENABLE_PARKING_ANSWER: 'true',
         PARKKING_APP_ENABLE_SYNC: 'false',
+        PARKKING_PARKING_ANSWER_DATASET_ROOT: path.resolve(
+          'public/data/generated',
+        ),
+        PARKKING_PARKING_ANSWER_DISTRICTS: 'beitou',
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
@@ -85,10 +89,30 @@ describe('buildAppServer', () => {
       const rootResponse = await fetch(`http://127.0.0.1:${port}/`)
       expect(rootResponse.status).toBe(200)
       await expect(rootResponse.text()).resolves.toContain('ParkKing')
+      const answerUrl = new URL(`http://127.0.0.1:${port}/api/parking-answer`)
+      answerUrl.search = new URLSearchParams({
+        district: 'beitou',
+        lng: '121.50954553948952',
+        lat: '25.14190206349811',
+        hhmm: '21:00',
+        radius: '25',
+      }).toString()
+      const answerResponse = await fetch(answerUrl)
+      const answerPayload = (await answerResponse.json()) as {
+        schemaVersion?: unknown
+        answer?: {
+          kind?: unknown
+          primary?: { id?: unknown }
+        }
+      }
+      expect(answerResponse.status, JSON.stringify(answerPayload)).toBe(200)
+      expect(answerPayload.schemaVersion).toBe(1)
+      expect(answerPayload.answer?.kind).toBe('PARK')
+      expect(answerPayload.answer?.primary?.id).toBe('seg-1326-part-1')
       expect(result.bytes).toBeGreaterThan(0)
     } finally {
       await stopChild(child)
       await fs.rm(base, { recursive: true, force: true })
     }
-  }, 20_000)
+  }, 30_000)
 })
