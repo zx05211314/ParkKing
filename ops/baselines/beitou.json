@@ -1,12 +1,12 @@
 {
-  "baselineCreatedAt": "2026-07-18T17:31:10.822Z",
-  "baselineDatasetHash": "a7bd803de5b566012ad05de45e24603520ced2f45a66f5c8e743daac1d1493f8",
+  "baselineCreatedAt": "2026-07-19T11:18:54.616Z",
+  "baselineDatasetHash": "1c18f5671ea8a34a7e833d7797f0f14245c16f7326fdede24f056cb686419a7a",
   "baselineSchemaVersion": 1,
-  "baselineSourceMetaSha256": "87731099a495fb7ca5b7782a3cc4150670737fc630a18569b8b99f7d48c8ada6",
+  "baselineSourceMetaSha256": "96c278e71643c90054120e90b37f899fa0af51eb4393055452df987b2e77aecd",
   "baselineDistrictName": "Beitou",
-  "generatedAt": "2026-07-18T17:31:10.823Z",
+  "generatedAt": "2026-07-19T11:18:54.617Z",
   "districtId": "beitou",
-  "datasetHash": "a7bd803de5b566012ad05de45e24603520ced2f45a66f5c8e743daac1d1493f8",
+  "datasetHash": "1c18f5671ea8a34a7e833d7797f0f14245c16f7326fdede24f056cb686419a7a",
   "counts": {
     "segments": 11092,
     "intersections": 239,
@@ -16,25 +16,24 @@
   },
   "distributions": {
     "day": {
-      "RED|NO_STOP": 21426,
-      "YELLOW|TEMP_STOP": 4456,
-      "GREEN|PARK": 5
+      "RED|NO_STOP": 21420,
+      "YELLOW|TEMP_STOP": 4467
     },
     "night": {
-      "RED|NO_STOP": 21426,
-      "GREEN|PARK": 285,
+      "RED|NO_STOP": 21420,
+      "GREEN|PARK": 291,
       "YELLOW|PARK": 4155,
       "YELLOW|TEMP_STOP": 21
     }
   },
   "performance": {
     "day": {
-      "evalFirstMsMedian": 1356,
-      "evalSecondMsMedian": 1312
+      "evalFirstMsMedian": 1434,
+      "evalSecondMsMedian": 1387
     },
     "night": {
-      "evalFirstMsMedian": 1329,
-      "evalSecondMsMedian": 1301
+      "evalFirstMsMedian": 1417,
+      "evalSecondMsMedian": 1407
     }
   },
   "reasonCodes": {
@@ -42,7 +41,7 @@
       "top": {
         "DATA_FRESHNESS_STALE": 17164,
         "RULE_RED_NO_STOP": 16359,
-        "RULE_YELLOW_DAY_NO_PARK": 9474,
+        "RULE_YELLOW_DAY_NO_PARK": 9491,
         "DATA_FRESHNESS_UNKNOWN": 8723,
         "COVERAGE_LOW": 8718,
         "INFERRED_CAPPED": 8718,
@@ -51,11 +50,8 @@
         "ZONE_HYDRANT": 3969,
         "ZONE_INTERSECTION": 1866,
         "ZONE_BUS_STOP": 1328,
-        "PARKING_SPACE_EVIDENCE": 387,
-        "UNKNOWN_MARKING": 37,
-        "OVERRIDE_APPLIED": 17,
-        "OVERRIDE_STATUS_ILLEGAL": 10,
-        "OVERRIDE_STATUS_LEGAL": 7
+        "PARKING_SPACE_EVIDENCE": 397,
+        "UNKNOWN_MARKING": 37
       },
       "other": 0,
       "total": 25887,
@@ -65,7 +61,7 @@
       "top": {
         "DATA_FRESHNESS_STALE": 17164,
         "RULE_RED_NO_STOP": 16359,
-        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 9474,
+        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 9483,
         "DATA_FRESHNESS_UNKNOWN": 8723,
         "COVERAGE_LOW": 8718,
         "INFERRED_CAPPED": 8718,
@@ -74,11 +70,11 @@
         "ZONE_HYDRANT": 3969,
         "ZONE_INTERSECTION": 1866,
         "ZONE_BUS_STOP": 1328,
-        "PARKING_SPACE_EVIDENCE": 387,
+        "PARKING_SPACE_EVIDENCE": 393,
         "UNKNOWN_MARKING": 37,
-        "OVERRIDE_APPLIED": 17,
-        "OVERRIDE_STATUS_ILLEGAL": 10,
-        "OVERRIDE_STATUS_LEGAL": 7
+        "OVERRIDE_APPLIED": 8,
+        "OVERRIDE_STATUS_ILLEGAL": 4,
+        "OVERRIDE_STATUS_LEGAL": 4
       },
       "other": 0,
       "total": 25887,

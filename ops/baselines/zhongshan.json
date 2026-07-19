@@ -1,12 +1,12 @@
 {
-  "baselineCreatedAt": "2026-07-16T13:00:47.423Z",
-  "baselineDatasetHash": "2c97f35f346eab5959eb9444d063a8977b98c9a7c9a4922c6e6a9a6207ea2a6d",
+  "baselineCreatedAt": "2026-07-19T11:21:49.510Z",
+  "baselineDatasetHash": "672425fa5861bd4e9b0a5b86ad531c5fbb8ce0e34e47bd045f5cd32e5efa16d3",
   "baselineSchemaVersion": 1,
-  "baselineSourceMetaSha256": "585ec7e9c92d647c495fa3bb13852287923d05555a7291ddc53960b9e11555ff",
+  "baselineSourceMetaSha256": "19f2ddf1a4220e24e8257ca997a645f192f4587aca6d8b2618d4ec011e9c8c02",
   "baselineDistrictName": "Zhongshan",
-  "generatedAt": "2026-07-16T13:00:47.423Z",
+  "generatedAt": "2026-07-19T11:21:49.510Z",
   "districtId": "zhongshan",
-  "datasetHash": "2c97f35f346eab5959eb9444d063a8977b98c9a7c9a4922c6e6a9a6207ea2a6d",
+  "datasetHash": "672425fa5861bd4e9b0a5b86ad531c5fbb8ce0e34e47bd045f5cd32e5efa16d3",
   "counts": {
     "segments": 15071,
     "intersections": 267,
@@ -16,25 +16,23 @@
   },
   "distributions": {
     "day": {
-      "RED|NO_STOP": 28587,
-      "YELLOW|TEMP_STOP": 4693,
-      "GREEN|PARK": 4,
-      "YELLOW|PARK": 1
+      "RED|NO_STOP": 28585,
+      "YELLOW|TEMP_STOP": 4700
     },
     "night": {
-      "RED|NO_STOP": 28587,
-      "GREEN|PARK": 476,
+      "RED|NO_STOP": 28585,
+      "GREEN|PARK": 478,
       "YELLOW|PARK": 4222
     }
   },
   "performance": {
     "day": {
-      "evalFirstMsMedian": 1932,
-      "evalSecondMsMedian": 1820
+      "evalFirstMsMedian": 1851,
+      "evalSecondMsMedian": 1816
     },
     "night": {
-      "evalFirstMsMedian": 1729,
-      "evalSecondMsMedian": 1625
+      "evalFirstMsMedian": 1837,
+      "evalSecondMsMedian": 1818
     }
   },
   "reasonCodes": {
@@ -42,7 +40,7 @@
       "top": {
         "DATA_FRESHNESS_STALE": 23483,
         "RULE_RED_NO_STOP": 22411,
-        "RULE_YELLOW_DAY_NO_PARK": 10864,
+        "RULE_YELLOW_DAY_NO_PARK": 10874,
         "DATA_FRESHNESS_UNKNOWN": 9802,
         "COVERAGE_LOW": 9786,
         "INFERRED_CAPPED": 9786,
@@ -51,10 +49,7 @@
         "ZONE_HYDRANT": 5450,
         "ZONE_INTERSECTION": 1569,
         "ZONE_BUS_STOP": 673,
-        "PARKING_SPACE_EVIDENCE": 666,
-        "OVERRIDE_APPLIED": 10,
-        "OVERRIDE_STATUS_ILLEGAL": 5,
-        "OVERRIDE_STATUS_LEGAL": 5
+        "PARKING_SPACE_EVIDENCE": 671
       },
       "other": 0,
       "total": 33285,
@@ -64,7 +59,7 @@
       "top": {
         "DATA_FRESHNESS_STALE": 23483,
         "RULE_RED_NO_STOP": 22411,
-        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 10864,
+        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 10866,
         "DATA_FRESHNESS_UNKNOWN": 9802,
         "COVERAGE_LOW": 9786,
         "INFERRED_CAPPED": 9786,
@@ -73,10 +68,10 @@
         "ZONE_HYDRANT": 5450,
         "ZONE_INTERSECTION": 1569,
         "ZONE_BUS_STOP": 673,
-        "PARKING_SPACE_EVIDENCE": 666,
-        "OVERRIDE_APPLIED": 10,
-        "OVERRIDE_STATUS_ILLEGAL": 5,
-        "OVERRIDE_STATUS_LEGAL": 5
+        "PARKING_SPACE_EVIDENCE": 668,
+        "OVERRIDE_APPLIED": 8,
+        "OVERRIDE_STATUS_LEGAL": 5,
+        "OVERRIDE_STATUS_ILLEGAL": 3
       },
       "other": 0,
       "total": 33285,

@@ -1,12 +1,12 @@
 {
-  "baselineCreatedAt": "2026-07-18T17:33:12.547Z",
-  "baselineDatasetHash": "55b6dfccb516cf1fe21d7f954cdd0460cfdfc4db5d73891829a59af1001ccb99",
+  "baselineCreatedAt": "2026-07-19T11:20:49.430Z",
+  "baselineDatasetHash": "6fc60c8cc5a3293bf98ed9f0062deaeef4d1b23d379e0228a410c1fd76282e67",
   "baselineSchemaVersion": 1,
-  "baselineSourceMetaSha256": "6f27e8495e7d7d28dbe2ad94c4a306712a849c8a4ce656ae00c275471eb68e8e",
+  "baselineSourceMetaSha256": "d07c16c6710a091714f8c17a9cc253f8393d9260c479d17d62825713618a1e61",
   "baselineDistrictName": "Wanhua",
-  "generatedAt": "2026-07-18T17:33:12.548Z",
+  "generatedAt": "2026-07-19T11:20:49.430Z",
   "districtId": "wanhua",
-  "datasetHash": "55b6dfccb516cf1fe21d7f954cdd0460cfdfc4db5d73891829a59af1001ccb99",
+  "datasetHash": "6fc60c8cc5a3293bf98ed9f0062deaeef4d1b23d379e0228a410c1fd76282e67",
   "counts": {
     "segments": 7262,
     "intersections": 191,
@@ -16,25 +16,24 @@
   },
   "distributions": {
     "day": {
-      "YELLOW|TEMP_STOP": 2471,
-      "RED|NO_STOP": 13722,
-      "GREEN|PARK": 2
+      "YELLOW|TEMP_STOP": 2475,
+      "RED|NO_STOP": 13720
     },
     "night": {
-      "GREEN|PARK": 208,
-      "RED|NO_STOP": 13722,
+      "GREEN|PARK": 210,
+      "RED|NO_STOP": 13720,
       "YELLOW|PARK": 2212,
       "YELLOW|TEMP_STOP": 53
     }
   },
   "performance": {
     "day": {
-      "evalFirstMsMedian": 286,
-      "evalSecondMsMedian": 285
+      "evalFirstMsMedian": 523,
+      "evalSecondMsMedian": 459
     },
     "night": {
-      "evalFirstMsMedian": 278,
-      "evalSecondMsMedian": 279
+      "evalFirstMsMedian": 312,
+      "evalSecondMsMedian": 314
     }
   },
   "reasonCodes": {
@@ -42,7 +41,7 @@
       "top": {
         "DATA_FRESHNESS_STALE": 10804,
         "RULE_RED_NO_STOP": 9998,
-        "RULE_YELLOW_DAY_NO_PARK": 6109,
+        "RULE_YELLOW_DAY_NO_PARK": 6115,
         "DATA_FRESHNESS_UNKNOWN": 5391,
         "COVERAGE_LOW": 5390,
         "INFERRED_CAPPED": 5390,
@@ -51,11 +50,8 @@
         "ZONE_HYDRANT": 2503,
         "ZONE_INTERSECTION": 1289,
         "ZONE_BUS_STOP": 594,
-        "PARKING_SPACE_EVIDENCE": 302,
-        "UNKNOWN_MARKING": 82,
-        "OVERRIDE_APPLIED": 6,
-        "OVERRIDE_STATUS_ILLEGAL": 4,
-        "OVERRIDE_STATUS_LEGAL": 2
+        "PARKING_SPACE_EVIDENCE": 306,
+        "UNKNOWN_MARKING": 82
       },
       "other": 0,
       "total": 16195,
@@ -65,7 +61,7 @@
       "top": {
         "DATA_FRESHNESS_STALE": 10804,
         "RULE_RED_NO_STOP": 9998,
-        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 6109,
+        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 6111,
         "DATA_FRESHNESS_UNKNOWN": 5391,
         "COVERAGE_LOW": 5390,
         "INFERRED_CAPPED": 5390,
@@ -74,10 +70,10 @@
         "ZONE_HYDRANT": 2503,
         "ZONE_INTERSECTION": 1289,
         "ZONE_BUS_STOP": 594,
-        "PARKING_SPACE_EVIDENCE": 302,
+        "PARKING_SPACE_EVIDENCE": 304,
         "UNKNOWN_MARKING": 82,
-        "OVERRIDE_APPLIED": 6,
-        "OVERRIDE_STATUS_ILLEGAL": 4,
+        "OVERRIDE_APPLIED": 4,
+        "OVERRIDE_STATUS_ILLEGAL": 2,
         "OVERRIDE_STATUS_LEGAL": 2
       },
       "other": 0,
