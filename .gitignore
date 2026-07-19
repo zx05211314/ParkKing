@@ -17,6 +17,8 @@ dist-ssr
 build/
 output/playwright/
 .playwright-cli/
+.wrangler/
+infra/issue-sink/wrangler.jsonc
 *.local
 **/*.log
 data/sources/

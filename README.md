@@ -101,6 +101,10 @@ PARKKING_SYNC_WRITE_RATE_LIMIT_MAX=120
 PARKKING_SYNC_ISSUE_SINK_URL=
 PARKKING_SYNC_ISSUE_SINK_BEARER_TOKEN=
 PARKKING_SYNC_ISSUE_SINK_TIMEOUT_MS=5000
+
+PARKKING_ISSUE_SINK_D1_DATABASE_ID=
+PARKKING_ISSUE_SINK_ADMIN_URL=
+PARKKING_ISSUE_SINK_ADMIN_TOKEN=
 ```
 
 Basemap env vars:
@@ -199,6 +203,7 @@ Sync service env vars:
 - `PARKKING_SYNC_ISSUE_SINK_URL`: optional durable HTTP intake for issue reports. When configured, the sync service sends a versioned envelope to this URL before acknowledging the browser write.
 - `PARKKING_SYNC_ISSUE_SINK_BEARER_TOKEN`: optional bearer credential for the durable issue sink. It is never exposed through health/readiness responses.
 - `PARKKING_SYNC_ISSUE_SINK_TIMEOUT_MS`: durable sink request timeout. Defaults to `5000`; sink rejection, timeout, or network failure returns HTTP 503 so the browser retains the local report for retry.
+- The first-party Cloudflare Worker + D1 deployment and credential runbook is in `docs/issue-sink-deploy.md`.
 
 Proxy runtime:
 - `npm run dev` and `npm run preview` already mount the proxy route at `/api/geocode`.
@@ -286,6 +291,7 @@ Current issue report strategy:
 3. Full-mode development services can read synced issue reports for local triage. The Render production service is intentionally upload-only: clients cannot read issue content back through the API.
 4. The issue response includes `durable` and `durability`. The UI distinguishes a confirmed durable sink from temporary remote storage and always retains its browser-local copy.
 5. Render advertises `ephemeral` durability until `PARKKING_SYNC_ISSUE_SINK_URL` is connected. After a sink is configured, every accepted report is delivered with an `Idempotency-Key` before the API returns HTTP 201; failed delivery returns HTTP 503.
+6. Nightly pulls the protected D1 admin export into `.tmp/sync-service.json` before building the existing issue-triage artifacts. Missing repository secrets produce a clean skip rather than an empty overwrite.
 
 Notes:
 - The app and proxy expect a Nominatim-style JSON response with `display_name`, `lat`, `lon`, and optional `boundingbox`.
