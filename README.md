@@ -368,6 +368,10 @@ evidence that still passes its pinned CSV hash and full approval gate. Run
 `npm run ops:taoyuan-review-index` for one live-validated status table across all manifests
 in the authoritative bundle directory; this writes
 `.tmp/taoyuan-city-review-status.md/json` and does not rely on stale status snapshots.
+If the local handoff predates already promoted tracked evidence, run
+`npm run ops:refresh-taoyuan-review-all` to explicitly replace only those local CSVs with
+tracked reviews that still pass the pinned full-approval gate. The normal build command
+continues to preserve local review work.
 Run `npm run ops:package-taoyuan-reviews` to create one checksummed ZIP containing only
 pending or needs-resolution district CSVs, templates, manifests, and the source reference.
 Invalid evidence blocks packaging, while approved districts are listed but excluded from
@@ -431,9 +435,9 @@ The installer validates every feature before atomically replacing
 artifacts never replace an existing reference.
 Each promoted district receives its own
 `public/data/reference/<district>-paid-curb-points.geojson` browser pack, and coverage
-catalog generation discovers all such packs. The tracked packs currently cover 10
-districts and publish 769 of 803 reviewed records as `REPRESENTATIVE_POINT` features.
-Thirty-four source points are excluded because they fall outside the official district
+catalog generation discovers all such packs. The tracked packs currently cover 11
+districts and publish 859 of 944 reviewed records as `REPRESENTATIVE_POINT` features.
+Eighty-five source points are excluded because they fall outside the official district
 boundary. A district with any live TDX/source-text mismatch remains text-only until the
 changed text is reviewed. These points help users locate and inspect official paid-curb
 source records, but they are not curb-line geometry, parking-space inventory, or proof
