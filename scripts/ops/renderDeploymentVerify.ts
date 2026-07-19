@@ -21,7 +21,6 @@ import {
   type SmokeExactParkingAnswerCase,
 } from './smokeExactParkingAnswers'
 
-const DEFAULT_HANDOFF_JSON = '.tmp/render-deployment-handoff.json'
 const DEFAULT_TIMEOUT_MS = 15_000
 const DEFAULT_READINESS_TIMEOUT_MS = 30_000
 const DEFAULT_ANSWER_CASES_DIR = 'configs/prod'
@@ -483,6 +482,12 @@ const loadExpectedDatasetContract = async (
   const manifestPath = options.manifestPath?.trim()
   const manifestUrl = options.manifestUrl?.trim()
 
+  if (!explicitHandoffJsonPath && !manifestPath && !manifestUrl) {
+    throw new Error(
+      'A dataset identity contract is required. Pass --manifest-url <published manifest URL>, --manifest <manifest path>, or --handoff-json .tmp/render-deployment-handoff.json. Implicit local handoff selection is disabled to prevent stale deployment verification.',
+    )
+  }
+
   if (!explicitHandoffJsonPath && (manifestPath || manifestUrl)) {
     const source = manifestPath ? path.resolve(manifestPath) : manifestUrl ?? ''
     const parsed = toRecord(
@@ -517,7 +522,10 @@ const loadExpectedDatasetContract = async (
     }
   }
 
-  const handoffJsonPath = explicitHandoffJsonPath || DEFAULT_HANDOFF_JSON
+  const handoffJsonPath = explicitHandoffJsonPath
+  if (!handoffJsonPath) {
+    throw new Error('Dataset identity contract selection failed')
+  }
   const handoff = await readJsonFile<Record<string, unknown>>(handoffJsonPath)
   const release = toRecord(handoff.release)
   const expectedDatasets = getExpectedDatasets(handoff)

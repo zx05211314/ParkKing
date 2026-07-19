@@ -283,6 +283,11 @@ against the handoff contract:
 npm run ops:render-deployment-verify -- --app-url https://<service>.onrender.com --manifest-url <PARKKING_RELEASE_MANIFEST_URL>
 ```
 
+The verifier requires an explicit `--manifest-url`, `--manifest`, or
+`--handoff-json` contract source. It never selects a local handoff implicitly,
+which prevents an old `.tmp/render-deployment-handoff.json` from being mistaken
+for the deployed release.
+
 The same check can run from GitHub Actions:
 
 ```text
@@ -421,7 +426,8 @@ npm run ops:render-runtime-env-sync-dispatch -- --repo <owner/repo> --ref main -
 
 If you are
 verifying from the same machine that generated the handoff, the command can use
-`.tmp/render-deployment-handoff.json` instead of `--manifest-url`.
+`--handoff-json .tmp/render-deployment-handoff.json` instead of
+`--manifest-url`.
 
 Validate the checked-in Blueprint contract before relying on a deploy:
 
