@@ -137,7 +137,7 @@ Vite copies `/data/generated` into `dist` for browser-side static data reads.
 `render.yaml` defines a single `node` web service:
 
 - Build command: installs dependencies, restores release data, builds the UI.
-- Start command: `npm start`.
+- Start command: `npm start` (runs the prebuilt `dist-server/appServer.cjs`).
 - Bind host: `0.0.0.0`.
 - Node version: `NODE_VERSION=24.16.0`, matching CI and bounded by the
   `package.json` engines range.

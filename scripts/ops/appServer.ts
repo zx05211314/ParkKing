@@ -471,13 +471,9 @@ export const startParkKingAppServer = (
   return server
 }
 
-const isMainModule = () => {
-  const entry = process.argv[1]
-  return entry ? pathToFileURL(entry).href === import.meta.url : false
-}
-
-if (isMainModule()) {
-  const config = resolveParkKingAppServerConfig()
+export const runParkKingAppServer = (
+  config: ParkKingAppServerConfig = resolveParkKingAppServerConfig(),
+) => {
   const server = startParkKingAppServer({ config })
   server.on('listening', () => {
     const host = config.host ?? '0.0.0.0'
@@ -485,4 +481,14 @@ if (isMainModule()) {
       `ParkKing app server listening on http://${host}:${config.port} (static ${config.staticDir})`,
     )
   })
+  return server
+}
+
+const isMainModule = () => {
+  const entry = process.argv[1]
+  return entry ? pathToFileURL(entry).href === import.meta.url : false
+}
+
+if (isMainModule()) {
+  runParkKingAppServer()
 }
