@@ -41,6 +41,8 @@ interface OverrideReport {
   status?: string
   note?: string | null
   createdAt?: string
+  reviewedSegmentId?: string
+  reviewedHhmm?: string
 }
 
 const fileExists = async (filePath: string) => {
@@ -138,7 +140,7 @@ const isReportStatus = (value: string): value is ReportStatus => {
   return value === 'LEGAL' || value === 'ILLEGAL' || value === 'UNCLEAR'
 }
 
-const OVERRIDE_SCHEMA_VERSION = 1
+const OVERRIDE_SCHEMA_VERSION = 2
 
 const parseSchemaVersion = (value: unknown) => {
   const parsed =
@@ -152,6 +154,14 @@ const buildOverrideNote = (status: ReportStatus, note?: string | null) => {
     return `User report: ${status} - ${trimmed}`
   }
   return `User report: ${status}`
+}
+
+const isValidHHMM = (value: string) => {
+  if (!/^\d{2}:\d{2}$/.test(value)) {
+    return false
+  }
+  const [hours, minutes] = value.split(':').map(Number)
+  return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59
 }
 
 const loadOverrideReports = async (
@@ -175,14 +185,29 @@ const loadOverrideReports = async (
       if (districtId && districtId !== config.districtId) {
         return
       }
-      const segmentId =
-        typeof parsed.segmentId === 'string' ? normalizeSegmentId(parsed.segmentId) : null
+      const reportSegmentId =
+        typeof parsed.segmentId === 'string' ? parsed.segmentId.trim() : ''
+      const reviewedSegmentId =
+        typeof parsed.reviewedSegmentId === 'string'
+          ? parsed.reviewedSegmentId.trim()
+          : ''
+      const reviewedHhmm =
+        typeof parsed.reviewedHhmm === 'string' ? parsed.reviewedHhmm.trim() : ''
+      const segmentId = reportSegmentId ? normalizeSegmentId(reportSegmentId) : null
       const status =
         typeof parsed.status === 'string' ? parsed.status.trim().toUpperCase() : ''
       const userNote = typeof parsed.note === 'string' ? parsed.note.trim() : ''
       const verifiedAt =
         typeof parsed.createdAt === 'string' ? parsed.createdAt.trim() : ''
-      if (!segmentId || !isReportStatus(status) || !userNote || !verifiedAt) {
+      if (
+        !segmentId ||
+        !reviewedSegmentId ||
+        normalizeSegmentId(reviewedSegmentId) !== segmentId ||
+        !isValidHHMM(reviewedHhmm) ||
+        !isReportStatus(status) ||
+        !userNote ||
+        !verifiedAt
+      ) {
         return
       }
       const schemaVersion = parseSchemaVersion(parsed.schemaVersion)
@@ -205,6 +230,8 @@ const loadOverrideReports = async (
           override_schema_version: schemaVersion,
           override_source: 'USER',
           override_geometry_source: geometrySource,
+          override_reviewed_segment_id: reviewedSegmentId,
+          override_reviewed_hhmm: reviewedHhmm,
         },
       })
     } catch {

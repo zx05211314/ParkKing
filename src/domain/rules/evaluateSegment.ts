@@ -11,14 +11,59 @@ import type { ZoneIndex } from '../zones/zoneIndex'
 import { queryZonesForLine } from '../zones/zoneIndex'
 import type { ReasonCode } from '../reasons/reasonCodes'
 import { reasonTexts } from '../reasons/reasonText'
-import { isDaytime, YELLOW_TIME_WINDOWS } from './time'
+import {
+  isDaytime,
+  isSameParkingTimeMode,
+  isTimeWithinWindow,
+  YELLOW_TIME_WINDOWS,
+} from './time'
+
+const baseSegmentId = (segmentId: string) =>
+  segmentId.replace(/-part-\d+$/i, '')
+
+const isOverrideTargetMatch = (
+  reviewedSegmentId: string | undefined,
+  segmentId: string,
+) => {
+  if (!reviewedSegmentId) {
+    return true
+  }
+  if (/-part-\d+$/i.test(reviewedSegmentId)) {
+    return reviewedSegmentId === segmentId
+  }
+  return reviewedSegmentId === baseSegmentId(segmentId)
+}
+
+const isOverrideApplicable = (
+  override: NonNullable<Segment['signOverride']>,
+  segmentId: string,
+  nowHHMM: string,
+) => {
+  if (!isOverrideTargetMatch(override.reviewedSegmentId, segmentId)) {
+    return false
+  }
+  if (
+    override.reviewedHhmm &&
+    !isSameParkingTimeMode(override.reviewedHhmm, nowHHMM)
+  ) {
+    return false
+  }
+  return (
+    override.timeWindows.length === 0 ||
+    override.timeWindows.some((window) => isTimeWithinWindow(nowHHMM, window))
+  )
+}
 
 export const evaluateSegment = (
   segment: Segment,
   nowHHMM: string,
 ): EvaluatedSegment => {
   const daytime = isDaytime(nowHHMM)
-  const override = segment.signOverride
+  const override =
+    segment.signOverride &&
+    isOverrideApplicable(segment.signOverride, segment.id, nowHHMM)
+      ? segment.signOverride
+      : undefined
   const overrideReasonCodes: ReasonCode[] = []
   if (override) {
     overrideReasonCodes.push('OVERRIDE_APPLIED')
@@ -329,6 +374,15 @@ export const evaluateSegmentWithZones = (
   return clipped.map((piece, index) => {
     const partId = `${segment.id}-part-${index + 1}`
     const partName = `${segment.name} - Part ${index + 1}`
+    const evaluatedPart = evaluateSegment(
+      {
+        ...segment,
+        id: partId,
+        name: partName,
+        path: piece.line,
+      },
+      nowHHMM,
+    )
     const intersectingZones = piece.insideAnyPolygon
       ? findIntersectingZonesForLine(piece.line, candidateZones)
       : []
@@ -349,19 +403,16 @@ export const evaluateSegmentWithZones = (
     }) as ReasonCode[]
 
     const reasonCodes = piece.insideAnyPolygon
-      ? Array.from(new Set([...base.reasonCodes, ...zoneReasonCodes]))
-      : base.reasonCodes
+      ? Array.from(new Set([...evaluatedPart.reasonCodes, ...zoneReasonCodes]))
+      : evaluatedPart.reasonCodes
     const reasons = reasonTexts(reasonCodes)
 
     return {
-      ...base,
-      id: partId,
-      name: partName,
-      path: piece.line,
+      ...evaluatedPart,
       reasonCodes,
       reasons,
-      tier: piece.insideAnyPolygon ? 'RED' : base.tier,
-      allowedNow: piece.insideAnyPolygon ? 'NO_STOP' : base.allowedNow,
+      tier: piece.insideAnyPolygon ? 'RED' : evaluatedPart.tier,
+      allowedNow: piece.insideAnyPolygon ? 'NO_STOP' : evaluatedPart.allowedNow,
     }
   })
 }

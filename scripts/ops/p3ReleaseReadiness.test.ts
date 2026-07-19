@@ -174,6 +174,7 @@ describe('p3ReleaseReadiness', () => {
       expect.objectContaining({
         districtIds: ['xinyi', 'daan', 'zhongshan'],
         answerCasesGlob: 'configs/prod/*.answer-cases.json',
+        allowAnswerCaseReviewFallback: true,
       }),
     )
     expect(runners.runSmokeGeneratedPacks).toHaveBeenCalledWith(

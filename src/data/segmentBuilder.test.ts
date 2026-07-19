@@ -89,6 +89,8 @@ describe('segmentBuilder', () => {
             status: 'LEGAL',
             note: 'Official marked spaces on-site',
             confidence: 'HIGH',
+            override_reviewed_segment_id: 'seg-1-part-2',
+            override_reviewed_hhmm: '21:00',
           },
         },
       ],
@@ -102,6 +104,8 @@ describe('segmentBuilder', () => {
       expect.objectContaining({
         status: 'LEGAL',
         note: 'Official marked spaces on-site',
+        reviewedSegmentId: 'seg-1-part-2',
+        reviewedHhmm: '21:00',
       }),
     )
   })

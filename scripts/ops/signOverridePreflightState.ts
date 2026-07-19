@@ -14,6 +14,7 @@ import { sanitizeSegmentReport } from './exportOverrideNormalization'
 import { selectLatestReports } from './exportOverrideSelection'
 import { parseReportInputFile } from './exportOverrideStore'
 import { isValidReviewTimestamp } from './reviewTimestamp'
+import { isValidHHMM } from '../../src/domain/rules/time'
 import type {
   SignOverrideInvalidReportIssue,
   SignOverridePreflightIssue,
@@ -170,6 +171,19 @@ const buildInvalidReportIssues = (
       }
       if (!segmentId) {
         reasons.push('segmentId is required')
+      }
+      const reviewedSegmentId = normalizeText(report.reviewedSegmentId)
+      if (!reviewedSegmentId) {
+        reasons.push('reviewedSegmentId is required')
+      } else if (
+        segmentId &&
+        reviewedSegmentId.replace(/-part-\d+$/i, '') !==
+          segmentId.replace(/-part-\d+$/i, '')
+      ) {
+        reasons.push('reviewedSegmentId must target segmentId or one of its parts')
+      }
+      if (!isValidHHMM(normalizeText(report.reviewedHhmm))) {
+        reasons.push('reviewedHhmm must use 24-hour HH:MM format')
       }
       if (!status || !['LEGAL', 'ILLEGAL', 'UNCLEAR'].includes(status)) {
         reasons.push('reviewStatus must be LEGAL, ILLEGAL, or UNCLEAR')

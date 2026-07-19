@@ -8,6 +8,10 @@ import {
   type ParkingAnswerOptions,
 } from '../../src/domain/answers/parkingAnswer'
 import { getPathMidpoint } from '../../src/map/geo'
+import {
+  isDaytime,
+  isSameParkingTimeMode,
+} from '../../src/domain/rules/time'
 import { loadEvaluatedSegmentsForAnswer } from './queryParkingAnswer'
 import { resolveReviewedCaseHashMismatchAllowance } from './reviewedCaseHashMismatch'
 
@@ -413,6 +417,69 @@ const buildCaseResult = (params: {
   }
 }
 
+const oppositeParkingTimeModeHhmm = (reviewedHhmm: string) =>
+  isDaytime(reviewedHhmm) ? '21:00' : '13:00'
+
+export const validateReviewedOverrideScope = (params: {
+  answerCase: SmokeExactParkingAnswerCase
+  caseHhmm: string
+  activeSegments: EvaluatedSegment[]
+  inactiveSegments: EvaluatedSegment[]
+}) => {
+  const expectedSegmentId = params.answerCase.expectedPrimarySegmentId
+  if (!expectedSegmentId) {
+    return []
+  }
+  const activeTarget = params.activeSegments.find(
+    (segment) => segment.id === expectedSegmentId,
+  )
+  const override = activeTarget?.signOverride
+  if (
+    !activeTarget ||
+    !override?.reviewedSegmentId ||
+    !override.reviewedHhmm
+  ) {
+    return []
+  }
+
+  const errors: string[] = []
+  if (override.reviewedSegmentId !== expectedSegmentId) {
+    errors.push(
+      `reviewed override target ${override.reviewedSegmentId} does not match answer case target ${expectedSegmentId}`,
+    )
+  }
+  if (!isSameParkingTimeMode(override.reviewedHhmm, params.caseHhmm)) {
+    errors.push(
+      `answer case time ${params.caseHhmm} is outside reviewed context ${override.reviewedHhmm}`,
+    )
+  }
+  if (!activeTarget.reasonCodes.includes('OVERRIDE_APPLIED')) {
+    errors.push('reviewed override was not applied in its approved time context')
+  }
+
+  const inactiveTarget = params.inactiveSegments.find(
+    (segment) => segment.id === expectedSegmentId,
+  )
+  if (inactiveTarget?.reasonCodes.includes('OVERRIDE_APPLIED')) {
+    errors.push('reviewed override leaked outside its approved time context')
+  }
+
+  if (/-part-\d+$/i.test(override.reviewedSegmentId)) {
+    const baseId = override.reviewedSegmentId.replace(/-part-\d+$/i, '')
+    const pollutedSibling = params.activeSegments.find(
+      (segment) =>
+        segment.id !== override.reviewedSegmentId &&
+        segment.id.startsWith(`${baseId}-part-`) &&
+        segment.reasonCodes.includes('OVERRIDE_APPLIED'),
+    )
+    if (pollutedSibling) {
+      errors.push(`reviewed override leaked to sibling ${pollutedSibling.id}`)
+    }
+  }
+
+  return errors
+}
+
 export const buildSmokeExactParkingAnswersSummary = (params: {
   datasetDir: string
   datasetHash: string
@@ -620,14 +687,35 @@ export const runSmokeExactParkingAnswers = async (
         appliedSignOverridesCount: loaded.appliedSignOverridesCount,
       },
     )
-    caseResults.push(
-      buildCaseResult({
-        answerCase,
-        answer,
-        hhmm: caseHhmm,
-        searchRadiusMeters: caseRadius,
-      }),
-    )
+    const result = buildCaseResult({
+      answerCase,
+      answer,
+      hhmm: caseHhmm,
+      searchRadiusMeters: caseRadius,
+    })
+    const activeTarget = answerCase.expectedPrimarySegmentId
+      ? loaded.segments.find(
+          (segment) => segment.id === answerCase.expectedPrimarySegmentId,
+        )
+      : null
+    if (
+      activeTarget?.signOverride?.reviewedSegmentId &&
+      activeTarget.signOverride.reviewedHhmm
+    ) {
+      const inactive = await getLoadedForHhmm(
+        oppositeParkingTimeModeHhmm(activeTarget.signOverride.reviewedHhmm),
+      )
+      result.errors.push(
+        ...validateReviewedOverrideScope({
+          answerCase,
+          caseHhmm,
+          activeSegments: loaded.segments,
+          inactiveSegments: inactive.segments,
+        }),
+      )
+      result.pass = result.errors.length === 0
+    }
+    caseResults.push(result)
   }
   const summary = buildSmokeExactParkingAnswersSummary({
     datasetDir,

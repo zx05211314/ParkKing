@@ -50,5 +50,32 @@ export const buildPublishGateOverrideFeatureWarnings = (params: {
     })
   }
 
+  if (feature.schemaVersion === 2) {
+    if (!feature.reviewedSegmentId) {
+      warnings.push({
+        severity: 'FAIL',
+        code: 'OVERRIDES_REVIEW_TARGET_MISSING',
+        message: `overrides_applied feature ${feature.index + 1} missing reviewedSegmentId (${districtId})`,
+      })
+    } else if (
+      feature.normalizedSegmentId &&
+      feature.normalizedReviewedSegmentId !== feature.normalizedSegmentId
+    ) {
+      warnings.push({
+        severity: 'FAIL',
+        code: 'OVERRIDES_REVIEW_TARGET_MISMATCH',
+        message: `overrides_applied reviewedSegmentId ${feature.reviewedSegmentId} does not match segmentId ${feature.segmentId} (${districtId})`,
+      })
+    }
+    if (!feature.hasValidReviewedHhmm) {
+      warnings.push({
+        severity: 'FAIL',
+        code: 'OVERRIDES_REVIEW_TIME_INVALID',
+        message: `overrides_applied feature ${feature.index + 1} missing valid reviewedHhmm (${districtId})`,
+        metric: { reviewedHhmm: feature.reviewedHhmm },
+      })
+    }
+  }
+
   return warnings
 }

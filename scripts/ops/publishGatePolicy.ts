@@ -9,7 +9,7 @@ export const METRIC_THRESHOLDS = {
   signOverrideUnmatchedNamedCount: 0,
 }
 
-export const OVERRIDE_SCHEMA_VERSIONS = new Set([1])
+export const OVERRIDE_SCHEMA_VERSIONS = new Set([1, 2])
 export const DIFF_SCHEMA_VERSIONS = new Set([1])
 export const BOOTSTRAP_OVERRIDE_REASON = 'taipei-real-bootstrap'
 export const BOOTSTRAP_MODE_FLAG = 'BOOTSTRAP_ALLOW_FAIL_ON_FIRST_PUBLISH'

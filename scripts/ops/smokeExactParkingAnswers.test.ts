@@ -9,6 +9,7 @@ import {
   parseSmokeExactParkingAnswersArgs,
   renderSmokeExactParkingAnswersSummary,
   runSmokeExactParkingAnswers,
+  validateReviewedOverrideScope,
   validateSmokeExactParkingAnswersSummary,
 } from './smokeExactParkingAnswers'
 
@@ -208,6 +209,52 @@ describe('smokeExactParkingAnswers', () => {
     expect(renderSmokeExactParkingAnswersSummary(summary)).toContain(
       'Answer cases: 0/1 passed',
     )
+  })
+
+  it('rejects reviewed override leakage across time and sibling parts', () => {
+    const signOverride = {
+      note: 'Reviewed no-stop part',
+      confidence: 'HIGH' as const,
+      status: 'ILLEGAL' as const,
+      timeWindows: [],
+      reviewedSegmentId: 'seg-1-part-2',
+      reviewedHhmm: '21:00',
+    }
+    const activeTarget = makeSegment({
+      id: 'seg-1-part-2',
+      path: [[121.56, 25.03], [121.5602, 25.03]],
+      signOverride,
+      reasonCodes: ['OVERRIDE_APPLIED', 'OVERRIDE_STATUS_ILLEGAL'],
+    })
+    const pollutedSibling = makeSegment({
+      id: 'seg-1-part-1',
+      path: [[121.5598, 25.03], [121.56, 25.03]],
+      signOverride,
+      reasonCodes: ['OVERRIDE_APPLIED', 'OVERRIDE_STATUS_ILLEGAL'],
+    })
+    const pollutedDayTarget = makeSegment({
+      ...activeTarget,
+      reasonCodes: ['OVERRIDE_APPLIED', 'OVERRIDE_STATUS_ILLEGAL'],
+    })
+
+    expect(
+      validateReviewedOverrideScope({
+        answerCase: {
+          id: 'case-1',
+          lng: 121.56,
+          lat: 25.03,
+          hhmm: '21:00',
+          expectedKind: 'NO_STOP',
+          expectedPrimarySegmentId: 'seg-1-part-2',
+        },
+        caseHhmm: '21:00',
+        activeSegments: [activeTarget, pollutedSibling],
+        inactiveSegments: [pollutedDayTarget],
+      }),
+    ).toEqual([
+      'reviewed override leaked outside its approved time context',
+      'reviewed override leaked to sibling seg-1-part-1',
+    ])
   })
 
   it('fails fast when answer cases are not pinned to a dataset hash', async () => {

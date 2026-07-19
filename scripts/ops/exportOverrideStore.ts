@@ -1,7 +1,10 @@
 import * as fs from 'node:fs/promises'
+import * as path from 'node:path'
 import { parse as parseCsv } from 'csv-parse/sync'
 
+import { isValidHHMM } from '../../src/domain/rules/time'
 import {
+  REPORT_SCHEMA_VERSION,
   REPORTS_STORAGE_KEY,
   type ReportStore,
   type ReportStatus,
@@ -62,7 +65,10 @@ const looksLikeReportCsv = (raw: string) => {
   return headers.includes('districtid') && headers.includes('segmentid')
 }
 
-export const parseReportCsvPayload = (raw: string): SegmentReport[] => {
+export const parseReportCsvPayload = (
+  raw: string,
+  defaults: { reviewedHhmm?: string | null } = {},
+): SegmentReport[] => {
   if (!looksLikeReportCsv(raw)) {
     return []
   }
@@ -84,6 +90,21 @@ export const parseReportCsvPayload = (raw: string): SegmentReport[] => {
       const normalizedStatus = status.trim().toUpperCase()
       const districtId = getCsvValue(row, ['districtId', 'district_id', 'district'])
       const segmentId = getCsvValue(row, ['segmentId', 'segment_id', 'segment'])
+      const reviewedSegmentId =
+        getCsvValue(row, [
+          'reviewedSegmentId',
+          'reviewed_segment_id',
+          'targetSegmentId',
+          'target_segment_id',
+        ]) || segmentId
+      const reviewedHhmm =
+        getCsvValue(row, [
+          'reviewedHhmm',
+          'reviewed_hhmm',
+          'evaluationHhmm',
+          'evaluation_hhmm',
+          'hhmm',
+        ]) || defaults.reviewedHhmm?.trim() || ''
       const note = getCsvValue(row, ['reviewNote', 'note', 'overrideNote'])
       const createdAt = getCsvValue(row, ['createdAt', 'reviewedAt', 'verifiedAt'])
       const rowNumber = index + 2
@@ -99,6 +120,13 @@ export const parseReportCsvPayload = (raw: string): SegmentReport[] => {
       if (!segmentId) {
         errors.push(`row ${rowNumber}: segmentId is required when reviewStatus is set`)
       }
+      if (!reviewedHhmm) {
+        errors.push(
+          `row ${rowNumber}: reviewedHhmm is required in the CSV or adjacent review manifest when reviewStatus is set`,
+        )
+      } else if (!isValidHHMM(reviewedHhmm)) {
+        errors.push(`row ${rowNumber}: reviewedHhmm must use 24-hour HH:MM format`)
+      }
       if (!note) {
         errors.push(`row ${rowNumber}: reviewNote is required when reviewStatus is set`)
       }
@@ -108,12 +136,14 @@ export const parseReportCsvPayload = (raw: string): SegmentReport[] => {
         errors.push(`row ${rowNumber}: ${REVIEW_TIMESTAMP_MESSAGE} when reviewStatus is set`)
       }
       return {
-        schemaVersion: 1,
+        schemaVersion: REPORT_SCHEMA_VERSION,
         districtId,
         segmentId,
         status: normalizedStatus,
         note,
         createdAt,
+        reviewedSegmentId,
+        reviewedHhmm,
       } satisfies SegmentReport
     })
     .filter((report): report is SegmentReport => Boolean(report))
@@ -123,6 +153,29 @@ export const parseReportCsvPayload = (raw: string): SegmentReport[] => {
   }
 
   return reports
+}
+
+const adjacentManifestPath = (inputPath: string) => {
+  const ext = path.extname(inputPath)
+  const basePath = ext ? inputPath.slice(0, -ext.length) : inputPath
+  return `${basePath}.manifest.json`
+}
+
+const readManifestReviewedHhmm = async (inputPath: string) => {
+  try {
+    const raw = await fs.readFile(adjacentManifestPath(inputPath), 'utf-8')
+    const parsed = JSON.parse(raw) as {
+      params?: { hhmm?: unknown }
+      hhmm?: unknown
+    }
+    const value = parsed.params?.hhmm ?? parsed.hhmm
+    return typeof value === 'string' ? value.trim() : null
+  } catch (error) {
+    if (error instanceof Error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return null
+    }
+    throw error
+  }
 }
 
 export const parseReportPayload = (payload: unknown): SegmentReport[] => {
@@ -169,7 +222,9 @@ export const parseReportInputFile = async (inputPath: string): Promise<SegmentRe
   try {
     return parseReportPayload(JSON.parse(raw) as unknown)
   } catch {
-    const csvReports = parseReportCsvPayload(raw)
+    const csvReports = parseReportCsvPayload(raw, {
+      reviewedHhmm: await readManifestReviewedHhmm(inputPath),
+    })
     if (csvReports.length > 0) {
       return csvReports
     }

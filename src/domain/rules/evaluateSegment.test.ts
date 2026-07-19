@@ -179,4 +179,67 @@ describe('evaluateSegment', () => {
     expect(evaluated.tier).toBe('RED')
     expect(evaluated.reasonCodes).toContain('OVERRIDE_STATUS_ILLEGAL')
   })
+
+  it('applies reviewed overrides only in the reviewed parking time mode', () => {
+    const segment: Segment = {
+      ...baseSegment,
+      curbMarking: 'YELLOW',
+      signOverride: {
+        note: 'Reviewed at night',
+        confidence: 'HIGH',
+        status: 'ILLEGAL',
+        timeWindows: [],
+        reviewedSegmentId: 'seg-test',
+        reviewedHhmm: '21:00',
+      },
+    }
+
+    expect(evaluateSegment(segment, '21:00').allowedNow).toBe('NO_STOP')
+    expect(evaluateSegment(segment, '06:30').allowedNow).toBe('NO_STOP')
+    expect(evaluateSegment(segment, '13:00').allowedNow).toBe('TEMP_STOP')
+    expect(evaluateSegment(segment, '13:00').reasonCodes).not.toContain(
+      'OVERRIDE_APPLIED',
+    )
+  })
+
+  it('applies a part-scoped override only to the reviewed part', () => {
+    const segment: Segment = {
+      ...baseSegment,
+      curbMarking: 'YELLOW',
+      signOverride: {
+        note: 'Reviewed no-stop part',
+        confidence: 'HIGH',
+        status: 'ILLEGAL',
+        timeWindows: [],
+        reviewedSegmentId: 'seg-test-part-2',
+        reviewedHhmm: '21:00',
+      },
+    }
+
+    expect(evaluateSegment(segment, '21:00').allowedNow).toBe('PARK')
+    expect(
+      evaluateSegment({ ...segment, id: 'seg-test-part-1' }, '21:00').allowedNow,
+    ).toBe('PARK')
+    expect(
+      evaluateSegment({ ...segment, id: 'seg-test-part-2' }, '21:00').allowedNow,
+    ).toBe('NO_STOP')
+  })
+
+  it('does not apply status overrides outside explicit sign windows', () => {
+    const segment: Segment = {
+      ...baseSegment,
+      curbMarking: 'YELLOW',
+      signOverride: {
+        note: 'Night restriction',
+        confidence: 'HIGH',
+        status: 'ILLEGAL',
+        timeWindows: [
+          { label: 'Night restriction', startHHMM: '22:00', endHHMM: '06:00' },
+        ],
+      },
+    }
+
+    expect(evaluateSegment(segment, '23:00').allowedNow).toBe('NO_STOP')
+    expect(evaluateSegment(segment, '21:00').allowedNow).toBe('PARK')
+  })
 })

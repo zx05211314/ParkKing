@@ -18,7 +18,12 @@ describe('publishGateOverrideFeatureState', () => {
       normalizedSegmentId: ' xinyi:seg-1 ',
       hasValidStatus: true,
       schemaRaw: '1',
+      schemaVersion: 1,
       hasKnownSchemaVersion: true,
+      reviewedSegmentId: null,
+      normalizedReviewedSegmentId: null,
+      reviewedHhmm: null,
+      hasValidReviewedHhmm: false,
     })
   })
 })

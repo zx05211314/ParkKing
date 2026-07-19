@@ -7,6 +7,8 @@ export interface SegmentReport {
   status: ReportStatus
   note?: string | null
   createdAt: string
+  reviewedSegmentId?: string
+  reviewedHhmm?: string
 }
 
 export interface ReportStore {
@@ -30,4 +32,4 @@ export interface ExportOverridesResult {
 }
 
 export const REPORTS_STORAGE_KEY = 'pk.segmentReports.v1'
-export const REPORT_SCHEMA_VERSION = 1
+export const REPORT_SCHEMA_VERSION = 2
