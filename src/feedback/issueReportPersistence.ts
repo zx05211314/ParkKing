@@ -67,6 +67,7 @@ export const readIssueReports = (): IssueReport[] => readIssueReportStore().issu
 
 interface PostIssueReportToRemoteResult {
   ok: boolean
+  durable: boolean
   failureReason: string | null
 }
 
@@ -78,6 +79,7 @@ const postIssueReportToRemote = async (
   if (!config.endpoint) {
     return {
       ok: false,
+      durable: false,
       failureReason: 'Issue reports are stored locally only.',
     }
   }
@@ -101,13 +103,20 @@ const postIssueReportToRemote = async (
           : `Issue sync failed with ${response.status}.`
       throw new Error(fallback)
     }
+    const durable =
+      payload !== null &&
+      typeof payload === 'object' &&
+      'durable' in payload &&
+      payload.durable === true
     return {
       ok: true,
+      durable,
       failureReason: null,
     }
   } catch (error) {
     return {
       ok: false,
+      durable: false,
       failureReason: getIssueSyncFailureReason(error),
     }
   }
@@ -163,9 +172,12 @@ export const appendIssueReport = async (
 
   const remoteResult = await postIssueReportToRemote(issue, config, fetchImpl)
   if (remoteResult.ok) {
+    const durableMessage = remoteResult.durable
+      ? 'Issue reports are durably synced.'
+      : 'Issue reports were uploaded, but remote storage is temporary.'
     setSyncRuntimeResourceStatus('issueReports', {
       mode: 'remote',
-      message: 'Issue reports are synced.',
+      message: durableMessage,
       pendingCount: 0,
       lastRemoteCount: localIssueCount,
       remoteEvent: 'push',
@@ -175,7 +187,9 @@ export const appendIssueReport = async (
       issue,
       remoteSynced: true,
       mode: 'remote',
-      message: 'Issue submitted to ParkKing Sync.',
+      message: remoteResult.durable
+        ? 'Issue submitted to durable ParkKing storage.'
+        : 'Issue uploaded temporarily; the device copy was retained.',
       failureReason: null,
     }
   }
@@ -226,6 +240,7 @@ export const retryIssueReportsSync = async ({
   })
 
   let syncedCount = 0
+  let durableCount = 0
   for (const issue of issues) {
     const remoteResult = await postIssueReportToRemote(issue, config, fetchImpl)
     if (!remoteResult.ok) {
@@ -242,11 +257,17 @@ export const retryIssueReportsSync = async ({
       }
     }
     syncedCount += 1
+    if (remoteResult.durable) {
+      durableCount += 1
+    }
   }
 
   setSyncRuntimeResourceStatus('issueReports', {
     mode: 'remote',
-    message: 'Issue reports are synced.',
+    message:
+      durableCount === issues.length
+        ? 'Issue reports are durably synced.'
+        : 'Issue reports were uploaded, but remote storage is temporary.',
     pendingCount: 0,
     lastRemoteCount: issues.length,
     remoteEvent: 'push',

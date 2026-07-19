@@ -1,5 +1,8 @@
 export type SyncServiceMode = 'full' | 'issue-upload-only'
 export type SyncServiceDurability = 'persistent' | 'ephemeral'
+export type SyncIssueReportDurability =
+  | SyncServiceDurability
+  | 'external'
 
 export interface SyncServiceConfig {
   path: string
@@ -13,6 +16,15 @@ export interface SyncServiceConfig {
   corsOrigins?: string[]
   writeRateLimitWindowMs?: number
   writeRateLimitMax?: number
+  issueSinkUrl?: string | null
+  issueSinkBearerToken?: string | null
+  issueSinkTimeoutMs?: number
+}
+
+export interface SyncIssueSinkReceipt {
+  configured: boolean
+  delivered: boolean
+  durability: SyncIssueReportDurability
 }
 
 export interface SyncServiceBucket {
@@ -112,5 +124,7 @@ export interface SyncService {
   ): Promise<{
     issue: unknown
     revision: number
+    durable?: boolean
+    durability?: SyncIssueReportDurability
   }>
 }

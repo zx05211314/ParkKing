@@ -7,12 +7,14 @@ import type {
 import {
   DEFAULT_SYNC_CORS_ORIGINS,
   DEFAULT_SYNC_DURABILITY,
+  DEFAULT_SYNC_ISSUE_SINK_TIMEOUT_MS,
   DEFAULT_SYNC_MAX_BODY_BYTES,
   DEFAULT_SYNC_MAX_ISSUE_REPORTS,
   DEFAULT_SYNC_MODE,
   DEFAULT_SYNC_WRITE_RATE_LIMIT_MAX,
   DEFAULT_SYNC_WRITE_RATE_LIMIT_WINDOW_MS,
 } from './syncServiceConfig'
+import { validateSyncIssueSinkConfig } from './syncServiceIssueSink'
 
 export interface SyncServiceHealthResponse {
   schemaVersion: 1
@@ -43,6 +45,10 @@ export interface SyncServiceHealthResponse {
   corsOrigins: string[] | null
   writeRateLimitWindowMs: number | null
   writeRateLimitMax: number | null
+  issueSink: {
+    configured: boolean
+    timeoutMs: number | null
+  }
   issues: string[]
   snapshot?: SyncStatusSnapshot
 }
@@ -109,6 +115,17 @@ export const buildSyncServiceReadinessIssues = (
   ) {
     issues.push('write rate limit max must be positive')
   }
+  if (
+    config.issueSinkTimeoutMs !== undefined &&
+    (!Number.isFinite(config.issueSinkTimeoutMs) ||
+      config.issueSinkTimeoutMs <= 0)
+  ) {
+    issues.push('issue sink timeout must be positive')
+  }
+  const issueSinkError = validateSyncIssueSinkConfig(config)
+  if (issueSinkError) {
+    issues.push(issueSinkError)
+  }
   return issues
 }
 
@@ -148,6 +165,12 @@ export const buildSyncServiceHealth = (
   writeRateLimitMax: config
     ? config.writeRateLimitMax ?? DEFAULT_SYNC_WRITE_RATE_LIMIT_MAX
     : null,
+  issueSink: {
+    configured: Boolean(config?.issueSinkUrl?.trim()),
+    timeoutMs: config
+      ? config.issueSinkTimeoutMs ?? DEFAULT_SYNC_ISSUE_SINK_TIMEOUT_MS
+      : null,
+  },
   issues,
   snapshot,
 })

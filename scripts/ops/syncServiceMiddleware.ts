@@ -29,6 +29,7 @@ import {
 } from './syncServiceHealth'
 import { createSyncServiceWriteRateLimiter } from './syncServiceRateLimit'
 import type { SyncService, SyncServiceConfig } from './syncServiceTypes'
+import { SyncIssueSinkDeliveryError } from './syncServiceIssueSink'
 
 const resolveHeaderText = (value: string | string[] | undefined) =>
   Array.isArray(value) ? normalizeSyncText(value[0]) : normalizeSyncText(value)
@@ -298,7 +299,11 @@ export const createSyncServiceMiddleware = (
         error instanceof Error ? error.message : 'Sync service request failed.'
       writeSyncServiceJson(
         res,
-        error instanceof SyncServicePayloadTooLargeError ? 413 : 400,
+        error instanceof SyncServicePayloadTooLargeError
+          ? 413
+          : error instanceof SyncIssueSinkDeliveryError
+            ? 503
+            : 400,
         { error: message },
       )
       return true

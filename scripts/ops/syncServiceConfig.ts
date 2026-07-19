@@ -17,6 +17,7 @@ export const DEFAULT_SYNC_MAX_ISSUE_REPORTS = 1_000
 export const DEFAULT_SYNC_CORS_ORIGINS = ['*']
 export const DEFAULT_SYNC_WRITE_RATE_LIMIT_WINDOW_MS = 60_000
 export const DEFAULT_SYNC_WRITE_RATE_LIMIT_MAX = 120
+export const DEFAULT_SYNC_ISSUE_SINK_TIMEOUT_MS = 5_000
 export const STORE_SCHEMA_VERSION = 1
 
 export const normalizeSyncText = (value?: string | null) => {
@@ -107,5 +108,13 @@ export const resolveSyncServiceConfig = (
   writeRateLimitMax: parsePositiveInteger(
     env.PARKKING_SYNC_WRITE_RATE_LIMIT_MAX,
     DEFAULT_SYNC_WRITE_RATE_LIMIT_MAX,
+  ),
+  issueSinkUrl: normalizeSyncText(env.PARKKING_SYNC_ISSUE_SINK_URL),
+  issueSinkBearerToken: normalizeSyncText(
+    env.PARKKING_SYNC_ISSUE_SINK_BEARER_TOKEN,
+  ),
+  issueSinkTimeoutMs: parsePositiveInteger(
+    env.PARKKING_SYNC_ISSUE_SINK_TIMEOUT_MS,
+    DEFAULT_SYNC_ISSUE_SINK_TIMEOUT_MS,
   ),
 })

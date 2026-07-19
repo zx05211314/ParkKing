@@ -1,9 +1,18 @@
 import { readSyncStoreFile, writeSyncStoreFile } from './syncServiceStore'
-import type { SyncServiceConfig, SyncServiceStore } from './syncServiceTypes'
+import { createSyncIssueSink } from './syncServiceIssueSink'
+import type {
+  SyncIssueSinkReceipt,
+  SyncServiceConfig,
+  SyncServiceStore,
+} from './syncServiceTypes'
 
 export interface SyncServiceRuntime {
   ensureStore(): Promise<SyncServiceStore>
   persistStore(store: SyncServiceStore): Promise<void>
+  deliverIssueReport?(
+    issue: unknown,
+    scope?: string | null,
+  ): Promise<SyncIssueSinkReceipt>
 }
 
 export const createSyncServiceRuntime = (
@@ -21,9 +30,11 @@ export const createSyncServiceRuntime = (
   const persistStore = async (store: SyncServiceStore) => {
     await writeSyncStoreFile(config.storageFile, store)
   }
+  const deliverIssueReport = createSyncIssueSink(config)
 
   return {
     ensureStore,
     persistStore,
+    deliverIssueReport,
   }
 }

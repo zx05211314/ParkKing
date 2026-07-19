@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { ISSUE_REPORT_SYNC_UPLOAD_ONLY_NOTE } from './issueReportSyncPresentation'
 import { buildSharePanelResourceCards } from './sharePanelResourceCards'
 import type { SharePanelSyncStatus } from './sharePanelTypes'
 
@@ -174,8 +175,7 @@ describe('sharePanelResourceCards', () => {
         modeLabel: 'Device only',
         modeClassName: 'status-warning',
         capabilityLabel: 'Write-only',
-        note:
-          'New issue reports upload from this device when sync is available. Shared scopes do not pull them back down.',
+        note: ISSUE_REPORT_SYNC_UPLOAD_ONLY_NOTE,
         hasRemoteUpdates: false,
         diagnostics: [],
         pendingCount: 0,

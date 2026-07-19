@@ -23,6 +23,9 @@ describe('resolveSyncServiceConfig', () => {
       corsOrigins: ['*'],
       writeRateLimitWindowMs: 60000,
       writeRateLimitMax: 120,
+      issueSinkUrl: null,
+      issueSinkBearerToken: null,
+      issueSinkTimeoutMs: 5000,
     })
   })
 
@@ -37,6 +40,9 @@ describe('resolveSyncServiceConfig', () => {
         PARKKING_SYNC_WRITE_RATE_LIMIT_MAX: '9',
         PARKKING_SYNC_MODE: 'issue-upload-only',
         PARKKING_SYNC_DURABILITY: 'ephemeral',
+        PARKKING_SYNC_ISSUE_SINK_URL: 'https://issues.parkking.test/intake',
+        PARKKING_SYNC_ISSUE_SINK_BEARER_TOKEN: 'secret',
+        PARKKING_SYNC_ISSUE_SINK_TIMEOUT_MS: '2500',
       },
       'C:/tmp/parkking',
     )
@@ -51,6 +57,9 @@ describe('resolveSyncServiceConfig', () => {
     expect(config.writeRateLimitMax).toBe(9)
     expect(config.mode).toBe('issue-upload-only')
     expect(config.durability).toBe('ephemeral')
+    expect(config.issueSinkUrl).toBe('https://issues.parkking.test/intake')
+    expect(config.issueSinkBearerToken).toBe('secret')
+    expect(config.issueSinkTimeoutMs).toBe(2500)
   })
 })
 
