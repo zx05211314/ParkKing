@@ -448,7 +448,8 @@ Run `npm run ops:taoyuan-expansion-readiness:report` to verify the 13 official b
 944-row text pack, all 11 non-empty districts' pinned source-text reviews, the two
 zero-row districts that require no review artifact, optional saved/guest/credentialed TDX
 geometry, and the non-legal safety contract in one report. Any missing, stale, or
-unapproved non-empty district now blocks the strict city-wide CI gate. Use
+unapproved non-empty district now blocks the city-wide CI source-review gate even
+when the untracked TDX spatial artifact is unavailable on a clean runner. Use
 `npm run ops:taoyuan-expansion-readiness:strict:all` when a city milestone must remain
 non-zero until every source-text review is approved and a valid TDX spatial-reference
 artifact exists. `npm run ops:taoyuan-expansion-readiness:strict -- --district zhongli`

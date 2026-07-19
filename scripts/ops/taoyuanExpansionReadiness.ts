@@ -48,6 +48,7 @@ export interface TaoyuanExpansionReadinessOptions {
   requirePinnedReview?: boolean
   spatialPath?: string
   tdxInputPath?: string | null
+  requireSourceReview?: boolean
   requireReady?: boolean
   requireSpatial?: boolean
   outPath?: string | null
@@ -123,8 +124,10 @@ interface SpatialSummary {
 export interface TaoyuanExpansionReadinessResult {
   status: ReadinessStatus
   gatePass: boolean
+  requireSourceReview: boolean
   requireReady: boolean
   requireSpatial: boolean
+  sourceReviewReady: boolean
   readyForSpatialReference: boolean
   legalAnswerEligible: false
   boundary: BoundarySummary
@@ -188,6 +191,11 @@ export const parseTaoyuanExpansionReadinessArgs = (
     requirePinnedReview: reviewPath === null && reviewManifestPath === null,
     spatialPath: getArgValue(argv, '--spatial') ?? DEFAULT_SPATIAL,
     tdxInputPath: getArgValue(argv, '--tdx-input', '--tdxInput'),
+    requireSourceReview: hasFlag(
+      argv,
+      '--require-source-review',
+      '--requireSourceReview',
+    ),
     requireReady: hasFlag(argv, '--require-ready', '--requireReady'),
     requireSpatial: hasFlag(argv, '--require-spatial', '--requireSpatial'),
     outPath: getArgValue(argv, '--out'),
@@ -702,6 +710,8 @@ export const runTaoyuanExpansionReadiness = async (
     reference.valid &&
     sourceTextReview.approved &&
     spatial.valid
+  const sourceReviewReady =
+    boundary.valid && reference.valid && sourceTextReview.approved
   const needsHumanReview = !sourceTextReview.approved
   const needsExternalInput =
     !spatial.exists && spatial.acquisition === 'blocked'
@@ -723,14 +733,17 @@ export const runTaoyuanExpansionReadiness = async (
                 : 'external-input-required'
   const gatePass =
     automationErrors.length === 0 &&
+    (!options.requireSourceReview || sourceReviewReady) &&
     (!options.requireReady || readyForSpatialReference) &&
     (!options.requireSpatial || spatial.valid)
 
   return {
     status,
     gatePass,
+    requireSourceReview: Boolean(options.requireSourceReview),
     requireReady: Boolean(options.requireReady),
     requireSpatial: Boolean(options.requireSpatial),
+    sourceReviewReady,
     readyForSpatialReference,
     legalAnswerEligible: false,
     boundary,
@@ -765,8 +778,10 @@ export const renderTaoyuanExpansionReadiness = (
   '',
   `- Status: ${result.status}`,
   `- Command gate: ${result.gatePass ? 'PASS' : 'FAIL'}`,
+  `- Source review required: ${yesNo(result.requireSourceReview)}`,
   `- Strict ready required: ${yesNo(result.requireReady)}`,
   `- Spatial reference required: ${yesNo(result.requireSpatial)}`,
+  `- Source review ready: ${yesNo(result.sourceReviewReady)}`,
   `- Ready for spatial reference: ${yesNo(result.readyForSpatialReference)}`,
   `- Eligible for legal parking answers: ${yesNo(result.legalAnswerEligible)}`,
   '',

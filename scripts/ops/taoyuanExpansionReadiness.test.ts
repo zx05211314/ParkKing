@@ -283,7 +283,10 @@ describe('taoyuanExpansionReadiness', () => {
     ).toContain('--all-districts')
     expect(
       packageJson.scripts?.['ops:taoyuan-expansion-readiness:ci'],
-    ).toContain('--require-ready')
+    ).toContain('--require-source-review')
+    expect(
+      packageJson.scripts?.['ops:taoyuan-expansion-readiness:ci'],
+    ).not.toContain('--require-ready')
   })
 
   it('keeps TDX acquisition manual, non-deploying, and artifact-only', async () => {
@@ -347,6 +350,7 @@ describe('taoyuanExpansionReadiness', () => {
         '.tmp/spatial.geojson',
         '--tdx-input',
         '.tmp/tdx.json',
+        '--require-source-review',
         '--require-ready',
         '--require-spatial',
         '--out',
@@ -365,6 +369,7 @@ describe('taoyuanExpansionReadiness', () => {
       requirePinnedReview: false,
       spatialPath: '.tmp/spatial.geojson',
       tdxInputPath: '.tmp/tdx.json',
+      requireSourceReview: true,
       requireReady: true,
       requireSpatial: true,
       outPath: '.tmp/readiness.md',
@@ -598,12 +603,50 @@ describe('taoyuanExpansionReadiness', () => {
     })
   })
 
+  it('passes the source-review gate without an untracked spatial artifact', async () => {
+    const fixture = await createFixture({ approved: true })
+    const result = await runTaoyuanExpansionReadiness({
+      ...fixture,
+      env: {},
+      requireSourceReview: true,
+    })
+
+    expect(result).toMatchObject({
+      status: 'spatial-acquisition-ready',
+      gatePass: true,
+      requireSourceReview: true,
+      sourceReviewReady: true,
+      readyForSpatialReference: false,
+      sourceTextReview: { approved: true },
+      spatial: { exists: false, valid: false },
+    })
+    expect(renderTaoyuanExpansionReadiness(result)).toContain(
+      'Source review required: yes',
+    )
+  })
+
+  it('fails the source-review gate when promoted review evidence is incomplete', async () => {
+    const fixture = await createFixture({ approved: false })
+    const result = await runTaoyuanExpansionReadiness({
+      ...fixture,
+      env: {},
+      requireSourceReview: true,
+    })
+
+    expect(result).toMatchObject({
+      gatePass: false,
+      requireSourceReview: true,
+      sourceReviewReady: false,
+      sourceTextReview: { approved: false },
+    })
+  })
+
   it('requires pinned review evidence for every non-empty Taoyuan district', async () => {
     const fixture = await createCityReviewFixture()
     const result = await runTaoyuanExpansionReadiness({
       ...fixture,
       allDistricts: true,
-      requireReady: true,
+      requireSourceReview: true,
       env: {},
     })
 
@@ -656,6 +699,7 @@ describe('taoyuanExpansionReadiness', () => {
 
     expect(result.status).toBe('human-review-required')
     expect(result.gatePass).toBe(false)
+    expect(result.sourceReviewReady).toBe(false)
     expect(result.sourceTextReview).toMatchObject({
       approved: false,
       reviewRequiredDistrictCount: 2,

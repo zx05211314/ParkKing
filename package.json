@@ -54,7 +54,7 @@
     "ops:promote-taoyuan-spatial-reference": "tsx scripts/ops/promoteTaoyuanSpatialReference.ts",
     "ops:taoyuan-expansion-readiness": "tsx scripts/ops/taoyuanExpansionReadiness.ts",
     "ops:taoyuan-expansion-readiness:report": "tsx scripts/ops/taoyuanExpansionReadiness.ts --all-districts --out .tmp/taoyuan-expansion-readiness.md --json-out .tmp/taoyuan-expansion-readiness.json",
-    "ops:taoyuan-expansion-readiness:ci": "npm run ops:taoyuan-expansion-readiness:report -- --boundary-catalog public/data/coverage.json --require-ready",
+    "ops:taoyuan-expansion-readiness:ci": "npm run ops:taoyuan-expansion-readiness:report -- --boundary-catalog public/data/coverage.json --require-source-review",
     "ops:taoyuan-expansion-readiness:strict": "tsx scripts/ops/taoyuanExpansionReadiness.ts --require-ready",
     "ops:taoyuan-expansion-readiness:strict:all": "tsx scripts/ops/taoyuanExpansionReadiness.ts --all-districts --require-ready",
     "ops:probe-taoyuan-legal-evidence": "tsx scripts/ops/probeTaoyuanLegalEvidence.ts",
