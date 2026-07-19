@@ -1,12 +1,12 @@
 {
-  "baselineCreatedAt": "2026-07-18T17:30:43.096Z",
-  "baselineDatasetHash": "bc0410bf72e838fcf5d27c73b47731bfb728a634bb22443ef17a53839ff1c149",
+  "baselineCreatedAt": "2026-07-19T11:20:31.887Z",
+  "baselineDatasetHash": "78cd940509d61b54d641c59cf3f483f161327da4f665e1496f512a987e1df1fa",
   "baselineSchemaVersion": 1,
-  "baselineSourceMetaSha256": "ceca2abfbf7a0ec67af0ecc0dbe3b363e7d0ff0a57a273fe4b79cdc15cd9cf49",
+  "baselineSourceMetaSha256": "a5c2e5c6f4a7856016e876a1ad83a8ff979fdebed20e9ab38c5b7fdadf6da2b4",
   "baselineDistrictName": "Shilin",
-  "generatedAt": "2026-07-18T17:30:43.097Z",
+  "generatedAt": "2026-07-19T11:20:31.887Z",
   "districtId": "shilin",
-  "datasetHash": "bc0410bf72e838fcf5d27c73b47731bfb728a634bb22443ef17a53839ff1c149",
+  "datasetHash": "78cd940509d61b54d641c59cf3f483f161327da4f665e1496f512a987e1df1fa",
   "counts": {
     "segments": 13534,
     "intersections": 270,
@@ -17,8 +17,7 @@
   "distributions": {
     "day": {
       "RED|NO_STOP": 26454,
-      "YELLOW|TEMP_STOP": 6564,
-      "GREEN|PARK": 2
+      "YELLOW|TEMP_STOP": 6566
     },
     "night": {
       "RED|NO_STOP": 26454,
@@ -29,12 +28,12 @@
   },
   "performance": {
     "day": {
-      "evalFirstMsMedian": 1678,
-      "evalSecondMsMedian": 1708
+      "evalFirstMsMedian": 1738,
+      "evalSecondMsMedian": 1755
     },
     "night": {
-      "evalFirstMsMedian": 1658,
-      "evalSecondMsMedian": 1763
+      "evalFirstMsMedian": 1645,
+      "evalSecondMsMedian": 1635
     }
   },
   "reasonCodes": {
@@ -42,7 +41,7 @@
       "top": {
         "DATA_FRESHNESS_STALE": 20837,
         "RULE_RED_NO_STOP": 19585,
-        "RULE_YELLOW_DAY_NO_PARK": 13390,
+        "RULE_YELLOW_DAY_NO_PARK": 13395,
         "DATA_FRESHNESS_UNKNOWN": 12183,
         "COVERAGE_LOW": 12173,
         "INFERRED_CAPPED": 12173,
@@ -51,11 +50,8 @@
         "ZONE_HYDRANT": 4912,
         "ZONE_INTERSECTION": 1837,
         "ZONE_BUS_STOP": 1604,
-        "PARKING_SPACE_EVIDENCE": 528,
-        "UNKNOWN_MARKING": 40,
-        "OVERRIDE_APPLIED": 5,
-        "OVERRIDE_STATUS_LEGAL": 3,
-        "OVERRIDE_STATUS_ILLEGAL": 2
+        "PARKING_SPACE_EVIDENCE": 530,
+        "UNKNOWN_MARKING": 40
       },
       "other": 0,
       "total": 33020,
@@ -65,7 +61,7 @@
       "top": {
         "DATA_FRESHNESS_STALE": 20837,
         "RULE_RED_NO_STOP": 19585,
-        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 13390,
+        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 13391,
         "DATA_FRESHNESS_UNKNOWN": 12183,
         "COVERAGE_LOW": 12173,
         "INFERRED_CAPPED": 12173,
@@ -76,9 +72,9 @@
         "ZONE_BUS_STOP": 1604,
         "PARKING_SPACE_EVIDENCE": 528,
         "UNKNOWN_MARKING": 40,
-        "OVERRIDE_APPLIED": 5,
-        "OVERRIDE_STATUS_LEGAL": 3,
-        "OVERRIDE_STATUS_ILLEGAL": 2
+        "OVERRIDE_APPLIED": 4,
+        "OVERRIDE_STATUS_ILLEGAL": 2,
+        "OVERRIDE_STATUS_LEGAL": 2
       },
       "other": 0,
       "total": 33020,

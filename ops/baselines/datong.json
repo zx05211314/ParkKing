@@ -1,12 +1,12 @@
 {
-  "baselineCreatedAt": "2026-07-18T17:32:27.470Z",
-  "baselineDatasetHash": "2ea47d68b22526eb71b091673410215bbddf906759bbfa00587b243a5be89dd0",
+  "baselineCreatedAt": "2026-07-19T11:19:27.331Z",
+  "baselineDatasetHash": "0853363627cf26e46fe1d3900209d97afa0f0204e0007ff8fde8d69da93a45c4",
   "baselineSchemaVersion": 1,
-  "baselineSourceMetaSha256": "27ef1b21b3af38f32b01e3caae57bffb7a5dcdc1e203f0fbf3fdb97f6b29dc2e",
+  "baselineSourceMetaSha256": "0dad4fd33243ed292f641c3000332d404a406d0bfd816773814cd36cce32f224",
   "baselineDistrictName": "Datong",
-  "generatedAt": "2026-07-18T17:32:27.471Z",
+  "generatedAt": "2026-07-19T11:19:27.331Z",
   "districtId": "datong",
-  "datasetHash": "2ea47d68b22526eb71b091673410215bbddf906759bbfa00587b243a5be89dd0",
+  "datasetHash": "0853363627cf26e46fe1d3900209d97afa0f0204e0007ff8fde8d69da93a45c4",
   "counts": {
     "segments": 7080,
     "intersections": 160,
@@ -16,33 +16,32 @@
   },
   "distributions": {
     "day": {
-      "RED|NO_STOP": 12748,
-      "YELLOW|TEMP_STOP": 2366,
-      "GREEN|PARK": 2
+      "RED|NO_STOP": 12746,
+      "YELLOW|TEMP_STOP": 2370
     },
     "night": {
-      "RED|NO_STOP": 12748,
+      "RED|NO_STOP": 12746,
       "YELLOW|PARK": 2114,
       "YELLOW|TEMP_STOP": 21,
-      "GREEN|PARK": 233
+      "GREEN|PARK": 235
     }
   },
   "performance": {
     "day": {
-      "evalFirstMsMedian": 207,
-      "evalSecondMsMedian": 210
+      "evalFirstMsMedian": 386,
+      "evalSecondMsMedian": 342
     },
     "night": {
-      "evalFirstMsMedian": 203,
-      "evalSecondMsMedian": 208
+      "evalFirstMsMedian": 325,
+      "evalSecondMsMedian": 234
     }
   },
   "reasonCodes": {
     "day": {
       "top": {
         "DATA_FRESHNESS_STALE": 10699,
-        "RULE_RED_NO_STOP": 9907,
-        "RULE_YELLOW_DAY_NO_PARK": 5165,
+        "RULE_RED_NO_STOP": 9908,
+        "RULE_YELLOW_DAY_NO_PARK": 5172,
         "DATA_FRESHNESS_UNKNOWN": 4417,
         "COVERAGE_LOW": 4378,
         "INFERRED_CAPPED": 4378,
@@ -51,11 +50,8 @@
         "ZONE_HYDRANT": 2555,
         "ZONE_INTERSECTION": 789,
         "ZONE_BUS_STOP": 386,
-        "PARKING_SPACE_EVIDENCE": 369,
-        "UNKNOWN_MARKING": 36,
-        "OVERRIDE_APPLIED": 8,
-        "OVERRIDE_STATUS_ILLEGAL": 5,
-        "OVERRIDE_STATUS_LEGAL": 3
+        "PARKING_SPACE_EVIDENCE": 373,
+        "UNKNOWN_MARKING": 36
       },
       "other": 0,
       "total": 15116,
@@ -65,7 +61,7 @@
       "top": {
         "DATA_FRESHNESS_STALE": 10699,
         "RULE_RED_NO_STOP": 9907,
-        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 5165,
+        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 5169,
         "DATA_FRESHNESS_UNKNOWN": 4417,
         "COVERAGE_LOW": 4378,
         "INFERRED_CAPPED": 4378,
@@ -74,11 +70,11 @@
         "ZONE_HYDRANT": 2555,
         "ZONE_INTERSECTION": 789,
         "ZONE_BUS_STOP": 386,
-        "PARKING_SPACE_EVIDENCE": 369,
+        "PARKING_SPACE_EVIDENCE": 372,
         "UNKNOWN_MARKING": 36,
-        "OVERRIDE_APPLIED": 8,
-        "OVERRIDE_STATUS_ILLEGAL": 5,
-        "OVERRIDE_STATUS_LEGAL": 3
+        "OVERRIDE_APPLIED": 4,
+        "OVERRIDE_STATUS_ILLEGAL": 2,
+        "OVERRIDE_STATUS_LEGAL": 2
       },
       "other": 0,
       "total": 15116,

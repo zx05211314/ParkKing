@@ -1,12 +1,12 @@
 {
-  "baselineCreatedAt": "2026-07-16T13:00:14.324Z",
-  "baselineDatasetHash": "65f757b9972d1a1b37d9ae25e038720e6891e0b2b37d7bedd24001be569bf24a",
+  "baselineCreatedAt": "2026-07-19T11:19:20.671Z",
+  "baselineDatasetHash": "928bd0ec946222325407a27eaedfe232088e9cee73b30cb9cdb78bcd8229b16b",
   "baselineSchemaVersion": 1,
-  "baselineSourceMetaSha256": "279f14c2f03cb8c424e94c8c51be74823f37c5cea50ff64d5ecf1ee9e5d799ae",
+  "baselineSourceMetaSha256": "735827beeb3ed36bfa085790fff1058069b08e321ca7a9bcdef634110be5e0ef",
   "baselineDistrictName": "Daan",
-  "generatedAt": "2026-07-16T13:00:14.325Z",
+  "generatedAt": "2026-07-19T11:19:20.671Z",
   "districtId": "daan",
-  "datasetHash": "65f757b9972d1a1b37d9ae25e038720e6891e0b2b37d7bedd24001be569bf24a",
+  "datasetHash": "928bd0ec946222325407a27eaedfe232088e9cee73b30cb9cdb78bcd8229b16b",
   "counts": {
     "segments": 19507,
     "intersections": 246,
@@ -16,26 +16,24 @@
   },
   "distributions": {
     "day": {
-      "RED|NO_STOP": 30336,
-      "YELLOW|TEMP_STOP": 3901,
-      "GREEN|PARK": 3,
-      "YELLOW|PARK": 4
+      "RED|NO_STOP": 30333,
+      "YELLOW|TEMP_STOP": 3911
     },
     "night": {
-      "RED|NO_STOP": 30336,
+      "RED|NO_STOP": 30333,
       "YELLOW|PARK": 3159,
-      "GREEN|PARK": 735,
+      "GREEN|PARK": 738,
       "YELLOW|TEMP_STOP": 14
     }
   },
   "performance": {
     "day": {
-      "evalFirstMsMedian": 1728,
-      "evalSecondMsMedian": 1677
+      "evalFirstMsMedian": 1748,
+      "evalSecondMsMedian": 1679
     },
     "night": {
-      "evalFirstMsMedian": 1464,
-      "evalSecondMsMedian": 1360
+      "evalFirstMsMedian": 1682,
+      "evalSecondMsMedian": 1570
     }
   },
   "reasonCodes": {
@@ -43,7 +41,7 @@
       "top": {
         "DATA_FRESHNESS_STALE": 27589,
         "RULE_RED_NO_STOP": 26049,
-        "RULE_YELLOW_DAY_NO_PARK": 8150,
+        "RULE_YELLOW_DAY_NO_PARK": 8169,
         "ZONE_CROSSWALK": 7164,
         "DATA_FRESHNESS_UNKNOWN": 6655,
         "COVERAGE_LOW": 6653,
@@ -51,12 +49,9 @@
         "INFERRED_RISK_HIGH_ZONE_DENSITY": 5946,
         "ZONE_HYDRANT": 5125,
         "ZONE_INTERSECTION": 1201,
-        "PARKING_SPACE_EVIDENCE": 1018,
+        "PARKING_SPACE_EVIDENCE": 1024,
         "ZONE_BUS_STOP": 517,
-        "UNKNOWN_MARKING": 26,
-        "OVERRIDE_APPLIED": 19,
-        "OVERRIDE_STATUS_LEGAL": 13,
-        "OVERRIDE_STATUS_ILLEGAL": 6
+        "UNKNOWN_MARKING": 26
       },
       "other": 0,
       "total": 34244,
@@ -66,7 +61,7 @@
       "top": {
         "DATA_FRESHNESS_STALE": 27589,
         "RULE_RED_NO_STOP": 26049,
-        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 8150,
+        "RULE_YELLOW_NIGHT_PARK_POSSIBLE": 8159,
         "ZONE_CROSSWALK": 7164,
         "DATA_FRESHNESS_UNKNOWN": 6655,
         "COVERAGE_LOW": 6653,
@@ -74,12 +69,12 @@
         "INFERRED_RISK_HIGH_ZONE_DENSITY": 5946,
         "ZONE_HYDRANT": 5125,
         "ZONE_INTERSECTION": 1201,
-        "PARKING_SPACE_EVIDENCE": 1018,
+        "PARKING_SPACE_EVIDENCE": 1021,
         "ZONE_BUS_STOP": 517,
         "UNKNOWN_MARKING": 26,
-        "OVERRIDE_APPLIED": 19,
-        "OVERRIDE_STATUS_LEGAL": 13,
-        "OVERRIDE_STATUS_ILLEGAL": 6
+        "OVERRIDE_APPLIED": 10,
+        "OVERRIDE_STATUS_LEGAL": 7,
+        "OVERRIDE_STATUS_ILLEGAL": 3
       },
       "other": 0,
       "total": 34244,
