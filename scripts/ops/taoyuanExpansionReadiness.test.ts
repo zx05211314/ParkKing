@@ -7,6 +7,7 @@ import {
   renderTaoyuanExpansionReadiness,
   runTaoyuanExpansionReadiness,
 } from './taoyuanExpansionReadiness'
+import { sha256TaoyuanReviewCsv } from './validateTaoyuanPaidCurbReview'
 
 const TOWN_CODES = [
   '68000010',
@@ -155,6 +156,105 @@ const createFixture = async (options: {
   }
 }
 
+const createCityReviewFixture = async () => {
+  const fixture = await createFixture({ approved: true, spatial: true })
+  const reference = JSON.parse(
+    await fs.readFile(fixture.referencePath, 'utf-8'),
+  ) as {
+    source: { sha256: string; recordCount: number }
+    districts: Array<Record<string, unknown>>
+  }
+  reference.source.recordCount = 2
+  reference.districts = [
+    {
+      districtId: 'taoyuan-district',
+      districtName: 'Taoyuan District',
+      boundaryFeatureId: '68000010',
+      recordCount: 1,
+      records: [
+        {
+          parkingSegmentId: 'segment-1',
+          description: 'Road A',
+          fareDescription: 'Hourly fee',
+          hasChargingPoint: false,
+          sourceTownName: 'Taoyuan District',
+        },
+      ],
+    },
+    {
+      districtId: 'zhongli',
+      districtName: 'Zhongli',
+      boundaryFeatureId: '68000020',
+      recordCount: 1,
+      records: [
+        {
+          parkingSegmentId: 'segment-2',
+          description: 'Road B',
+          fareDescription: null,
+          hasChargingPoint: false,
+          sourceTownName: 'Zhongli',
+        },
+      ],
+    },
+    {
+      districtId: 'xinwu',
+      districtName: 'Xinwu',
+      boundaryFeatureId: '68000110',
+      recordCount: 0,
+      records: [],
+    },
+  ]
+  await writeJson(fixture.referencePath, reference)
+
+  const reviewDir = path.join(path.dirname(fixture.referencePath), 'reviews')
+  for (const district of [
+    {
+      districtId: 'taoyuan-district',
+      districtName: 'Taoyuan District',
+      parkingSegmentId: 'segment-1',
+      description: 'Road A',
+      fareDescription: 'Hourly fee',
+    },
+    {
+      districtId: 'zhongli',
+      districtName: 'Zhongli',
+      parkingSegmentId: 'segment-2',
+      description: 'Road B',
+      fareDescription: '',
+    },
+  ]) {
+    const csvBuffer = Buffer.from(
+      [
+        'parking_segment_id,district_id,district_name,description,fare_description,has_charging_point,geometry_available,legal_answer_eligible,source_text_review_status,source_text_review_note',
+        `${district.parkingSegmentId},${district.districtId},${district.districtName},${district.description},${district.fareDescription},false,false,false,APPROVED_SOURCE_TEXT,`,
+        '',
+      ].join('\n'),
+      'utf-8',
+    )
+    const baseName = `${district.districtId}-paid-curb-review`
+    await fs.mkdir(reviewDir, { recursive: true })
+    await fs.writeFile(path.join(reviewDir, `${baseName}.csv`), csvBuffer)
+    await writeJson(path.join(reviewDir, `${baseName}.manifest.json`), {
+      schemaVersion: 1,
+      districtId: district.districtId,
+      sourceSha256: reference.source.sha256,
+      sourceRecordCount: 2,
+      reviewRecordCount: 1,
+      geometryAvailable: false,
+      legalAnswerEligible: false,
+      allowedStatuses: [
+        'APPROVED_SOURCE_TEXT',
+        'NEEDS_CORRECTION',
+        'UNCLEAR',
+      ],
+      reviewSha256: sha256TaoyuanReviewCsv(csvBuffer),
+      approvedRecordCount: 1,
+    })
+  }
+
+  return { ...fixture, reviewDir }
+}
+
 describe('taoyuanExpansionReadiness', () => {
   it('runs the real-data report and preserves its artifacts in CI', async () => {
     const workflow = await fs.readFile(
@@ -175,6 +275,18 @@ describe('taoyuanExpansionReadiness', () => {
     expect(summaryIndex).toBeGreaterThan(reportIndex)
     expect(uploadIndex).toBeGreaterThan(summaryIndex)
     expect(workflow).toContain('.tmp/taoyuan-expansion-readiness.json')
+    const packageJson = JSON.parse(
+      await fs.readFile(path.resolve('package.json'), 'utf-8'),
+    ) as { scripts?: Record<string, string> }
+    expect(
+      packageJson.scripts?.['ops:taoyuan-expansion-readiness:report'],
+    ).toContain('--all-districts')
+    expect(
+      packageJson.scripts?.['ops:taoyuan-expansion-readiness:ci'],
+    ).toContain('--require-source-review')
+    expect(
+      packageJson.scripts?.['ops:taoyuan-expansion-readiness:ci'],
+    ).not.toContain('--require-ready')
   })
 
   it('keeps TDX acquisition manual, non-deploying, and artifact-only', async () => {
@@ -238,6 +350,7 @@ describe('taoyuanExpansionReadiness', () => {
         '.tmp/spatial.geojson',
         '--tdx-input',
         '.tmp/tdx.json',
+        '--require-source-review',
         '--require-ready',
         '--require-spatial',
         '--out',
@@ -256,6 +369,7 @@ describe('taoyuanExpansionReadiness', () => {
       requirePinnedReview: false,
       spatialPath: '.tmp/spatial.geojson',
       tdxInputPath: '.tmp/tdx.json',
+      requireSourceReview: true,
       requireReady: true,
       requireSpatial: true,
       outPath: '.tmp/readiness.md',
@@ -292,6 +406,23 @@ describe('taoyuanExpansionReadiness', () => {
       reviewPath: 'review-evidence/taoyuan/zhongli-paid-curb-review.csv',
       reviewManifestPath:
         'review-evidence/taoyuan/zhongli-paid-curb-review.manifest.json',
+      requirePinnedReview: true,
+    })
+  })
+
+  it('parses city-wide review scope independently from district workflows', () => {
+    expect(
+      parseTaoyuanExpansionReadinessArgs([
+        'node',
+        'readiness',
+        '--all-districts',
+        '--review-dir',
+        '.tmp/promoted-reviews',
+      ]),
+    ).toMatchObject({
+      districtId: 'taoyuan-district',
+      allDistricts: true,
+      reviewDir: '.tmp/promoted-reviews',
       requirePinnedReview: true,
     })
   })
@@ -470,6 +601,114 @@ describe('taoyuanExpansionReadiness', () => {
         representativePointCount: 1,
       },
     })
+  })
+
+  it('passes the source-review gate without an untracked spatial artifact', async () => {
+    const fixture = await createFixture({ approved: true })
+    const result = await runTaoyuanExpansionReadiness({
+      ...fixture,
+      env: {},
+      requireSourceReview: true,
+    })
+
+    expect(result).toMatchObject({
+      status: 'spatial-acquisition-ready',
+      gatePass: true,
+      requireSourceReview: true,
+      sourceReviewReady: true,
+      readyForSpatialReference: false,
+      sourceTextReview: { approved: true },
+      spatial: { exists: false, valid: false },
+    })
+    expect(renderTaoyuanExpansionReadiness(result)).toContain(
+      'Source review required: yes',
+    )
+  })
+
+  it('fails the source-review gate when promoted review evidence is incomplete', async () => {
+    const fixture = await createFixture({ approved: false })
+    const result = await runTaoyuanExpansionReadiness({
+      ...fixture,
+      env: {},
+      requireSourceReview: true,
+    })
+
+    expect(result).toMatchObject({
+      gatePass: false,
+      requireSourceReview: true,
+      sourceReviewReady: false,
+      sourceTextReview: { approved: false },
+    })
+  })
+
+  it('requires pinned review evidence for every non-empty Taoyuan district', async () => {
+    const fixture = await createCityReviewFixture()
+    const result = await runTaoyuanExpansionReadiness({
+      ...fixture,
+      allDistricts: true,
+      requireSourceReview: true,
+      env: {},
+    })
+
+    expect(result).toMatchObject({
+      status: 'spatial-reference-ready',
+      gatePass: true,
+      readyForSpatialReference: true,
+      reference: {
+        sourceRecordCount: 2,
+        districtRecordCount: 2,
+        districtCount: 3,
+      },
+      sourceTextReview: {
+        scope: 'all-districts',
+        approved: true,
+        expectedRows: 2,
+        actualRows: 2,
+        pendingRows: 0,
+        reviewRequiredDistrictCount: 2,
+        approvedDistrictCount: 2,
+        emptyDistrictCount: 1,
+      },
+    })
+    expect(result.sourceTextReview.districts).toContainEqual(
+      expect.objectContaining({
+        districtId: 'xinwu',
+        reviewRequired: false,
+        exists: false,
+        approved: true,
+        expectedRows: 0,
+      }),
+    )
+    expect(renderTaoyuanExpansionReadiness(result)).toContain(
+      '| xinwu | 0 | not-required | 0 | 0 |',
+    )
+  })
+
+  it('blocks city-wide readiness when one promoted district review is missing', async () => {
+    const fixture = await createCityReviewFixture()
+    await fs.rm(
+      path.join(fixture.reviewDir, 'zhongli-paid-curb-review.csv'),
+    )
+
+    const result = await runTaoyuanExpansionReadiness({
+      ...fixture,
+      allDistricts: true,
+      requireReady: true,
+      env: {},
+    })
+
+    expect(result.status).toBe('human-review-required')
+    expect(result.gatePass).toBe(false)
+    expect(result.sourceReviewReady).toBe(false)
+    expect(result.sourceTextReview).toMatchObject({
+      approved: false,
+      reviewRequiredDistrictCount: 2,
+      approvedDistrictCount: 1,
+      emptyDistrictCount: 1,
+    })
+    expect(result.blockers).toContain(
+      'zhongli: promoted Taoyuan source-text review evidence is missing.',
+    )
   })
 
   it('rejects a spatial artifact that claims legal-answer eligibility', async () => {
