@@ -55,6 +55,11 @@ jobs:
         run: npm run ops:smoke-api-services -- --start-preview --timeout-ms 25000 --sync-issue-roundtrip
       - name: Inventory generated packs
         run: npm run ops:generated-pack-inventory -- --root public/data/generated
+      - name: Pull durable issue reports
+        env:
+          PARKKING_ISSUE_SINK_ADMIN_URL: ${{ secrets.PARKKING_ISSUE_SINK_ADMIN_URL }}
+          PARKKING_ISSUE_SINK_ADMIN_TOKEN: ${{ secrets.PARKKING_ISSUE_SINK_ADMIN_TOKEN }}
+        run: npm run ops:pull-issue-sink
       - name: Build nightly issue triage artifacts
         run: npm run ops:issue-report-artifacts -- --limit 5 --out-root .tmp/nightly-issue-artifacts --packet-issue-limit 5 --publish-gate-summary public/data/generated/_ops/publish_gate_summary.json
       - name: Summarize sign override preflight

@@ -1,0 +1,17 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "parkking-issue-sink",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-19",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "parkking-issue-reports",
+      "database_id": "__D1_DATABASE_ID__"
+    }
+  ]
+}
