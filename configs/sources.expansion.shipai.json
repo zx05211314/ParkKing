@@ -1,0 +1,11 @@
+{
+  "districtId": "shipai",
+  "sourceOnly": true,
+  "sources": [
+    {
+      "url": "https://data.taipei/api/dataset/6d864ede-c482-4f33-bb89-5be19dc772e1/resource/84e357c9-6157-45e7-aaa2-4fb1e3318644/download",
+      "dest": "../data/sources/shipai/neighborhood_boundaries.zip",
+      "notes": "Official Taipei City Civil Affairs neighborhood boundaries; Shipai subdistrict is the union of 11 Beitou villages defined at https://btdo.gov.taipei/cp.aspx?n=77F1E41835C6552F"
+    }
+  ]
+}

@@ -341,10 +341,13 @@ without changing the production publish glob.
 
 Taipei-wide expansion is tracked in `configs/coverage.expansion.json`. The 12 official
 districts now have either production or expansion configs; Shipai is represented through
-its parent Beitou district and is not treated as a separate administrative district. Its
-current QA bundle is a 1.5 km anchor sample, not an authoritative Shipai boundary, so the
-runtime catalog marks `standaloneBoundaryRequired: true` and the UI does not infer that
-every Beitou match is inside Shipai. Check the contract with `npm run ops:coverage-status`.
+its parent Beitou district and is not treated as a separate administrative district.
+Its standalone display boundary is the clipped union of the 11 official Shipai
+subdistrict villages from the Taipei City neighborhood-boundary dataset. Fetch, unpack,
+and rebuild it with `npm run ops:fetch-shipai-sources`,
+`npm run ops:unpack-shipai-sources`, and `npm run ops:build-shipai-boundary`.
+The boundary only supports location and display; reviewed parking answers remain owned
+by Beitou. Check the contract with `npm run ops:coverage-status`.
 Rebuild the browser-safe 25-district
 boundary/status catalog from the downloaded official sources with
 `npm run ops:build-coverage-catalog`, then verify it against the manifest with

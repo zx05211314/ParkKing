@@ -862,6 +862,7 @@ export const MapView = ({
       data-segment-count={segments.length}
       data-zone-count={zones.length}
       data-coverage-district={coverageBoundary?.districtId ?? undefined}
+      data-coverage-area={coverageBoundary?.areaId ?? undefined}
       data-coverage-stage={coverageBoundary?.publishStage ?? undefined}
       data-paid-curb-reference-count={paidCurbReferenceData.features.length}
       data-paid-curb-reference-selected={
@@ -879,11 +880,11 @@ export const MapView = ({
         {coverageBoundary ? (
           <div
             className={`map-coverage-status ${coverageBoundary.publishStage}`}
-            aria-label={`${coverageBoundary.districtName} coverage boundary: ${coverageBoundary.stageLabel}`}
+            aria-label={`${coverageBoundary.coverageName} coverage boundary: ${coverageBoundary.stageLabel}`}
           >
             <span className="map-coverage-status-dot" aria-hidden="true" />
             <span>
-              <strong>{coverageBoundary.districtName}</strong> boundary -{' '}
+              <strong>{coverageBoundary.coverageName}</strong> boundary -{' '}
               {coverageBoundary.stageLabel}
             </span>
           </div>

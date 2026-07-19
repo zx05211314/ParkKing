@@ -10,6 +10,11 @@ import type {
   Polygon,
 } from 'geojson'
 import {
+  getCoverageAreaBoundaryUrl,
+  parseCoverageAreaBoundaryPack,
+  type CoverageAreaBoundaryPack,
+} from '../../src/data/coverageAreaBoundary'
+import {
   getPaidCurbReferenceUrl,
   parsePaidCurbReferencePack,
 } from '../../src/data/paidCurbReference'
@@ -21,6 +26,7 @@ import {
 import {
   parseRuntimeCoverageCatalog,
   type RuntimeCoverageCatalog,
+  type RuntimeCoverageAliasBoundary,
   type RuntimeCoverageDistrict,
   type RuntimeCoverageReferenceData,
 } from '../../src/data/coverageCatalog'
@@ -38,7 +44,7 @@ const DEFAULT_OUTPUT = 'public/data/coverage.json'
 const DEFAULT_TAOYUAN_REFERENCE =
   'public/data/reference/taoyuan-paid-curb.json'
 const DEFAULT_TAOYUAN_SPATIAL_REFERENCE_DIR = 'public/data/reference'
-const DEFAULT_SIMPLIFY_TOLERANCE = 0.00002
+export const DEFAULT_SIMPLIFY_TOLERANCE = 0.00002
 
 const REGION_BOUNDARY_ID_KEYS: Record<string, string[]> = {
   taipei: ['PERF_ID', 'CPID', 'NPID', 'COUN_ID'],
@@ -52,10 +58,16 @@ interface DistrictConfigSource {
 
 export interface RuntimeCoverageCatalogBuildOptions {
   simplifyTolerance?: number
+  areaBoundariesByAreaId?: ReadonlyMap<string, RuntimeCoverageAreaBoundarySource>
   referencesByBoundaryFeatureId?: ReadonlyMap<
     string,
     RuntimeCoverageReferenceData
   >
+}
+
+export interface RuntimeCoverageAreaBoundarySource {
+  buffer: Buffer
+  pack: CoverageAreaBoundaryPack
 }
 
 const readJson = async <T>(filePath: string): Promise<T> =>
@@ -115,6 +127,28 @@ const normalizeBoundary = (
   return { boundaryBBox, boundaryGeometry }
 }
 
+export const buildRuntimeCoverageAliasBoundary = (
+  source: RuntimeCoverageAreaBoundarySource,
+  tolerance: number,
+): RuntimeCoverageAliasBoundary => {
+  const feature = source.pack.features[0]
+  if (!feature) {
+    throw new Error(
+      `${source.pack.metadata.areaId}: coverage area boundary feature is missing`,
+    )
+  }
+  return {
+    kind: source.pack.metadata.boundaryKind,
+    url: getCoverageAreaBoundaryUrl(source.pack.metadata.areaId),
+    dataSha256: sha256RuntimeReferenceData(source.buffer),
+    sourceSha256: source.pack.metadata.sourceSha256,
+    memberFeatureIds: source.pack.metadata.memberFeatureIds,
+    parkingAnswerOwnerDistrictId:
+      source.pack.metadata.parkingAnswerOwnerDistrictId,
+    ...normalizeBoundary(feature, tolerance),
+  }
+}
+
 export const buildRuntimeCoverageCatalog = (
   manifest: CoverageManifest,
   collectionsByRegion: ReadonlyMap<string, FeatureCollection>,
@@ -151,20 +185,57 @@ export const buildRuntimeCoverageCatalog = (
         answerCapability: region.answerCapability,
         requiresHumanReview: district.requiresHumanReview,
         aliases: region.aliases
-          .filter(({ parentDistrictId }) => parentDistrictId === district.districtId)
-          .map(
-            ({
+          .filter(
+            ({ parentDistrictId }) =>
+              parentDistrictId === district.districtId,
+          )
+          .map(({
+            areaId,
+            areaName,
+            coverageMode,
+            standaloneBoundaryRequired,
+          }) => {
+            const areaBoundary = options.areaBoundariesByAreaId?.get(areaId)
+            if (standaloneBoundaryRequired) {
+              if (areaBoundary) {
+                throw new Error(
+                  `${region.regionId}/${areaId}: boundary data exists while standaloneBoundaryRequired is true`,
+                )
+              }
+              return {
+                areaId,
+                areaName,
+                coverageMode,
+                standaloneBoundaryRequired,
+              }
+            }
+            if (!areaBoundary) {
+              throw new Error(
+                `${region.regionId}/${areaId}: standalone boundary data is missing`,
+              )
+            }
+            const metadata = areaBoundary.pack.metadata
+            if (
+              metadata.areaId !== areaId ||
+              metadata.areaName !== areaName ||
+              metadata.parentDistrictId !== district.districtId ||
+              metadata.parkingAnswerOwnerDistrictId !== district.districtId
+            ) {
+              throw new Error(
+                `${region.regionId}/${areaId}: standalone boundary metadata does not match its parent coverage contract`,
+              )
+            }
+            return {
               areaId,
               areaName,
               coverageMode,
               standaloneBoundaryRequired,
-            }) => ({
-              areaId,
-              areaName,
-              coverageMode,
-              standaloneBoundaryRequired,
-            }),
-          ),
+              boundary: buildRuntimeCoverageAliasBoundary(
+                areaBoundary,
+                simplifyTolerance,
+              ),
+            }
+          }),
         ...(referenceData ? { referenceData } : {}),
         ...normalizeBoundary(source, simplifyTolerance),
       })
@@ -178,6 +249,39 @@ export const sha256RuntimeReferenceData = (buffer: Buffer) =>
   createHash('sha256')
     .update(buffer.toString('utf-8').replace(/\r\n?/g, '\n'), 'utf-8')
     .digest('hex')
+
+export const loadCoverageAreaBoundaries = async (
+  manifest: CoverageManifest,
+  manifestPath: string,
+) => {
+  const rootDir = path.dirname(path.dirname(manifestPath))
+  const boundaries = new Map<string, RuntimeCoverageAreaBoundarySource>()
+  for (const region of manifest.regions) {
+    for (const alias of region.aliases) {
+      if (!alias.boundaryPath) {
+        continue
+      }
+      const buffer = await fs.readFile(path.resolve(rootDir, alias.boundaryPath))
+      const pack = parseCoverageAreaBoundaryPack(
+        JSON.parse(buffer.toString('utf-8')) as unknown,
+      )
+      if (boundaries.has(alias.areaId)) {
+        throw new Error(`Duplicate coverage area boundary ${alias.areaId}`)
+      }
+      if (
+        pack.metadata.areaId !== alias.areaId ||
+        pack.metadata.areaName !== alias.areaName ||
+        pack.metadata.parentDistrictId !== alias.parentDistrictId
+      ) {
+        throw new Error(
+          `${region.regionId}/${alias.areaId}: boundary pack does not match the coverage manifest`,
+        )
+      }
+      boundaries.set(alias.areaId, { buffer, pack })
+    }
+  }
+  return boundaries
+}
 
 export const loadTaoyuanCoverageReferences = async (
   filePath: string,
@@ -335,6 +439,10 @@ const run = async () => {
     getArgValue(process.argv, '--output') ?? DEFAULT_OUTPUT,
   )
   const manifest = await readJson<CoverageManifest>(manifestPath)
+  const areaBoundariesByAreaId = await loadCoverageAreaBoundaries(
+    manifest,
+    manifestPath,
+  )
   const collections = await loadCoverageBoundaryCollections({
     manifest,
     manifestPath,
@@ -373,6 +481,7 @@ const run = async () => {
       ? Number(toleranceArg)
       : DEFAULT_SIMPLIFY_TOLERANCE,
     referencesByBoundaryFeatureId,
+    areaBoundariesByAreaId,
   })
   await fs.mkdir(path.dirname(outputPath), { recursive: true })
   await fs.writeFile(outputPath, `${JSON.stringify(catalog)}\n`, 'utf-8')

@@ -16,8 +16,12 @@ import {
   type PaidCurbSpatialReferencePack,
 } from '../../src/data/paidCurbSpatialReference'
 import {
+  buildRuntimeCoverageAliasBoundary,
+  DEFAULT_SIMPLIFY_TOLERANCE,
   discoverTaoyuanSpatialReferencePaths,
+  loadCoverageAreaBoundaries,
   sha256RuntimeReferenceData,
+  type RuntimeCoverageAreaBoundarySource,
 } from './buildRuntimeCoverageCatalog'
 import type { CoverageManifest } from './coverageStatus'
 
@@ -33,6 +37,11 @@ const readJson = async (filePath: string): Promise<unknown> =>
 export const validateRuntimeCoverageCatalog = (
   manifest: CoverageManifest,
   catalog: RuntimeCoverageCatalog,
+  areaBoundariesByAreaId: ReadonlyMap<
+    string,
+    RuntimeCoverageAreaBoundarySource
+  > = new Map(),
+  simplifyTolerance = DEFAULT_SIMPLIFY_TOLERANCE,
 ) => {
   const errors: string[] = []
   const expected = new Map(
@@ -78,6 +87,19 @@ export const validateRuntimeCoverageCatalog = (
       continue
     }
     const { region, district, aliases } = expectedEntry
+    const actualAliases = actual.aliases.map(
+      ({
+        areaId,
+        areaName,
+        coverageMode,
+        standaloneBoundaryRequired,
+      }) => ({
+        areaId,
+        areaName,
+        coverageMode,
+        standaloneBoundaryRequired,
+      }),
+    )
     const comparisons: Array<[string, unknown, unknown]> = [
       ['regionId', actual.regionId, region.regionId],
       ['regionName', actual.regionName, region.regionName],
@@ -86,7 +108,7 @@ export const validateRuntimeCoverageCatalog = (
       ['publishStage', actual.publishStage, district.publishStage],
       ['answerCapability', actual.answerCapability, region.answerCapability],
       ['requiresHumanReview', actual.requiresHumanReview, district.requiresHumanReview],
-      ['aliases', JSON.stringify(actual.aliases), JSON.stringify(aliases)],
+      ['aliases', JSON.stringify(actualAliases), JSON.stringify(aliases)],
     ]
     comparisons.forEach(([field, actualValue, expectedValue]) => {
       if (actualValue !== expectedValue) {
@@ -107,6 +129,41 @@ export const validateRuntimeCoverageCatalog = (
     ) {
       errors.push(`${actual.districtId}: full-rule district must not declare referenceData`)
     }
+    aliases.forEach((expectedAlias) => {
+      const actualAlias = actual.aliases.find(
+        ({ areaId }) => areaId === expectedAlias.areaId,
+      )
+      if (!actualAlias) {
+        return
+      }
+      if (expectedAlias.standaloneBoundaryRequired) {
+        if (actualAlias.boundary) {
+          errors.push(
+            `${actual.districtId}/${expectedAlias.areaId}: unexpected standalone boundary`,
+          )
+        }
+        return
+      }
+      const source = areaBoundariesByAreaId.get(expectedAlias.areaId)
+      if (!source) {
+        errors.push(
+          `${actual.districtId}/${expectedAlias.areaId}: standalone boundary source is missing`,
+        )
+        return
+      }
+      const expectedBoundary = buildRuntimeCoverageAliasBoundary(
+        source,
+        simplifyTolerance,
+      )
+      if (
+        JSON.stringify(actualAlias.boundary) !==
+        JSON.stringify(expectedBoundary)
+      ) {
+        errors.push(
+          `${actual.districtId}/${expectedAlias.areaId}: standalone boundary does not match its source pack`,
+        )
+      }
+    })
   }
 
   expected.forEach((_entry, districtId) => {
@@ -265,7 +322,15 @@ const run = async () => {
   )
   const manifest = (await readJson(manifestPath)) as CoverageManifest
   const catalog = parseRuntimeCoverageCatalog(await readJson(catalogPath))
-  const result = validateRuntimeCoverageCatalog(manifest, catalog)
+  const areaBoundariesByAreaId = await loadCoverageAreaBoundaries(
+    manifest,
+    manifestPath,
+  )
+  const result = validateRuntimeCoverageCatalog(
+    manifest,
+    catalog,
+    areaBoundariesByAreaId,
+  )
   const explicitSpatialReference = getArgValue(
     process.argv,
     '--taoyuan-spatial-reference',

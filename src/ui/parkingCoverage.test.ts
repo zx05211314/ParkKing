@@ -55,7 +55,27 @@ const catalog: RuntimeCoverageCatalog = {
           areaId: 'shipai',
           areaName: 'Shipai',
           coverageMode: 'parent-district',
-          standaloneBoundaryRequired: true,
+          standaloneBoundaryRequired: false,
+          boundary: {
+            kind: 'OFFICIAL_SUBDISTRICT_UNION',
+            url: '/data/reference/shipai-boundary.geojson',
+            dataSha256: 'a'.repeat(64),
+            sourceSha256: 'b'.repeat(64),
+            memberFeatureIds: ['6301200001'],
+            parkingAnswerOwnerDistrictId: 'beitou',
+            boundaryBBox: [121.42, 25.12, 121.48, 25.18],
+            boundaryGeometry: {
+              type: 'Polygon',
+              coordinates: [
+                [
+                  [121.42, 25.12],
+                  [121.48, 25.12],
+                  [121.42, 25.18],
+                  [121.42, 25.12],
+                ],
+              ],
+            },
+          },
         },
       ],
       boundaryBBox: [121.4, 25.1, 121.6, 25.3],
@@ -181,9 +201,9 @@ describe('parkingCoverage', () => {
 
     expect(state.eligibleLocation).toBeNull()
     expect(state.notice).toContain('Beitou candidate coverage')
-    expect(state.notice).toContain('Shipai is tracked under Beitou')
+    expect(state.notice).toContain('inside the official Shipai boundary')
     expect(state.notice).toContain(
-      'this Beitou match does not confirm the point is inside Shipai',
+      'parking answers are owned by Beitou',
     )
     expect(state.notice).toContain('requires human review')
   })

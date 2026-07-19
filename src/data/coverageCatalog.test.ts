@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  findCoverageAliasByLocation,
   findCoverageDistrictByLocation,
   getRuntimeCoverageCatalogUrl,
+  isLocationInCoverageAlias,
   isLocationInCoverageDistrict,
   parseRuntimeCoverageCatalog,
   type RuntimeCoverageCatalog,
@@ -22,7 +24,27 @@ const district: RuntimeCoverageDistrict = {
       areaId: 'shipai',
       areaName: 'Shipai',
       coverageMode: 'parent-district',
-      standaloneBoundaryRequired: true,
+      standaloneBoundaryRequired: false,
+      boundary: {
+        kind: 'OFFICIAL_SUBDISTRICT_UNION',
+        url: '/data/reference/shipai-boundary.geojson',
+        dataSha256: 'a'.repeat(64),
+        sourceSha256: 'b'.repeat(64),
+        memberFeatureIds: ['6301200001'],
+        parkingAnswerOwnerDistrictId: 'beitou',
+        boundaryBBox: [121.42, 25.12, 121.48, 25.18],
+        boundaryGeometry: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [121.42, 25.12],
+              [121.48, 25.12],
+              [121.42, 25.18],
+              [121.42, 25.12],
+            ],
+          ],
+        },
+      },
     },
   ],
   boundaryBBox: [121.4, 25.1, 121.6, 25.3],
@@ -52,7 +74,11 @@ describe('coverageCatalog', () => {
         areaId: 'shipai',
         areaName: 'Shipai',
         coverageMode: 'parent-district',
-        standaloneBoundaryRequired: true,
+        standaloneBoundaryRequired: false,
+        boundary: expect.objectContaining({
+          kind: 'OFFICIAL_SUBDISTRICT_UNION',
+          parkingAnswerOwnerDistrictId: 'beitou',
+        }),
       },
     ])
   })
@@ -196,6 +222,16 @@ describe('coverageCatalog', () => {
       findCoverageDistrictByLocation(catalog, [121.45, 25.15])?.districtId,
     ).toBe('beitou')
     expect(findCoverageDistrictByLocation(catalog, [120, 24])).toBeNull()
+  })
+
+  it('resolves aliases only inside their standalone geometry', () => {
+    const alias = district.aliases[0]!
+    expect(isLocationInCoverageAlias(alias, [121.44, 25.14])).toBe(true)
+    expect(isLocationInCoverageAlias(alias, [121.55, 25.15])).toBe(false)
+    expect(
+      findCoverageAliasByLocation(catalog, [121.44, 25.14])?.alias.areaId,
+    ).toBe('shipai')
+    expect(findCoverageAliasByLocation(catalog, [121.55, 25.15])).toBeNull()
   })
 
   it('loads coverage metadata from the app deployment', () => {
