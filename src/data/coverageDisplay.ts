@@ -1,5 +1,6 @@
 import type { FeatureCollection, MultiPolygon, Polygon } from 'geojson'
 import {
+  findCoverageAliasByLocation,
   findCoverageDistrictByLocation,
   type CoveragePublishStage,
   type RuntimeCoverageCatalog,
@@ -8,16 +9,20 @@ import {
 export interface CoverageBoundaryProperties {
   districtId: string
   districtName: string
+  coverageName: string
   regionName: string
   publishStage: CoveragePublishStage
+  areaId?: string
 }
 
 export interface PinnedCoverageBoundary {
   districtId: string
   districtName: string
+  coverageName: string
   regionName: string
   publishStage: CoveragePublishStage
   stageLabel: string
+  areaId?: string
   data: FeatureCollection<Polygon | MultiPolygon, CoverageBoundaryProperties>
 }
 
@@ -39,24 +44,39 @@ export const buildPinnedCoverageBoundary = (
   if (!district) {
     return null
   }
+  const aliasMatch = findCoverageAliasByLocation(catalog, location)
+  const alias =
+    aliasMatch?.district.districtId === district.districtId
+      ? aliasMatch.alias
+      : null
+  const coverageName = alias?.areaName ?? district.districtName
+  const boundaryGeometry =
+    alias?.boundary?.boundaryGeometry ?? district.boundaryGeometry
+  const stageLabel = alias
+    ? `${COVERAGE_STAGE_LABELS[district.publishStage]} via ${district.districtName}`
+    : COVERAGE_STAGE_LABELS[district.publishStage]
 
   return {
     districtId: district.districtId,
     districtName: district.districtName,
+    coverageName,
     regionName: district.regionName,
     publishStage: district.publishStage,
-    stageLabel: COVERAGE_STAGE_LABELS[district.publishStage],
+    stageLabel,
+    ...(alias ? { areaId: alias.areaId } : {}),
     data: {
       type: 'FeatureCollection',
       features: [
         {
           type: 'Feature',
-          geometry: district.boundaryGeometry,
+          geometry: boundaryGeometry,
           properties: {
             districtId: district.districtId,
             districtName: district.districtName,
+            coverageName,
             regionName: district.regionName,
             publishStage: district.publishStage,
+            ...(alias ? { areaId: alias.areaId } : {}),
           },
         },
       ],

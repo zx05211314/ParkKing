@@ -1,4 +1,5 @@
 import type { MultiPolygon, Polygon } from 'geojson'
+import { COVERAGE_AREA_BOUNDARY_KIND } from './coverageAreaBoundary'
 
 export type CoveragePublishStage = 'production' | 'candidate' | 'source-only'
 export type CoverageAnswerCapability =
@@ -11,6 +12,18 @@ export interface RuntimeCoverageAlias {
   areaName: string
   coverageMode: 'parent-district'
   standaloneBoundaryRequired: boolean
+  boundary?: RuntimeCoverageAliasBoundary
+}
+
+export interface RuntimeCoverageAliasBoundary {
+  kind: typeof COVERAGE_AREA_BOUNDARY_KIND
+  url: string
+  dataSha256: string
+  sourceSha256: string
+  memberFeatureIds: string[]
+  parkingAnswerOwnerDistrictId: string
+  boundaryBBox: [number, number, number, number]
+  boundaryGeometry: Polygon | MultiPolygon
 }
 
 export interface RuntimeCoverageReferenceData {
@@ -74,8 +87,17 @@ const isFiniteNumber = (value: unknown): value is number =>
 
 const isBoundaryBBox = (
   value: unknown,
-): value is RuntimeCoverageDistrict['boundaryBBox'] =>
-  Array.isArray(value) && value.length === 4 && value.every(isFiniteNumber)
+): value is RuntimeCoverageDistrict['boundaryBBox'] => {
+  if (
+    !Array.isArray(value) ||
+    value.length !== 4 ||
+    !value.every(isFiniteNumber)
+  ) {
+    return false
+  }
+  const [west, south, east, north] = value
+  return west <= east && south <= north
+}
 
 const isBoundaryGeometry = (
   value: unknown,
@@ -84,12 +106,40 @@ const isBoundaryGeometry = (
   (value.type === 'Polygon' || value.type === 'MultiPolygon') &&
   Array.isArray(value.coordinates)
 
-const isAlias = (value: unknown): value is RuntimeCoverageAlias =>
+const isAliasBoundary = (
+  value: unknown,
+): value is RuntimeCoverageAliasBoundary =>
   isRecord(value) &&
-  typeof value.areaId === 'string' &&
-  typeof value.areaName === 'string' &&
-  value.coverageMode === 'parent-district' &&
-  typeof value.standaloneBoundaryRequired === 'boolean'
+  value.kind === COVERAGE_AREA_BOUNDARY_KIND &&
+  typeof value.url === 'string' &&
+  value.url.startsWith('/data/reference/') &&
+  /^[a-f0-9]{64}$/.test(String(value.dataSha256)) &&
+  /^[a-f0-9]{64}$/.test(String(value.sourceSha256)) &&
+  Array.isArray(value.memberFeatureIds) &&
+  value.memberFeatureIds.length > 0 &&
+  value.memberFeatureIds.every(
+    (entry) => typeof entry === 'string' && entry.length > 0,
+  ) &&
+  new Set(value.memberFeatureIds).size === value.memberFeatureIds.length &&
+  typeof value.parkingAnswerOwnerDistrictId === 'string' &&
+  value.parkingAnswerOwnerDistrictId.length > 0 &&
+  isBoundaryBBox(value.boundaryBBox) &&
+  isBoundaryGeometry(value.boundaryGeometry)
+
+const isAlias = (value: unknown): value is RuntimeCoverageAlias => {
+  if (
+    !isRecord(value) ||
+    typeof value.areaId !== 'string' ||
+    typeof value.areaName !== 'string' ||
+    value.coverageMode !== 'parent-district' ||
+    typeof value.standaloneBoundaryRequired !== 'boolean'
+  ) {
+    return false
+  }
+  return value.standaloneBoundaryRequired
+    ? value.boundary === undefined
+    : isAliasBoundary(value.boundary)
+}
 
 const isSpatialReferenceData = (
   value: unknown,
@@ -135,6 +185,11 @@ const isDistrict = (value: unknown): value is RuntimeCoverageDistrict =>
   typeof value.requiresHumanReview === 'boolean' &&
   Array.isArray(value.aliases) &&
   value.aliases.every(isAlias) &&
+  (value.aliases as RuntimeCoverageAlias[]).every(
+    (alias) =>
+      !alias.boundary ||
+      alias.boundary.parkingAnswerOwnerDistrictId === value.districtId,
+  ) &&
   (value.referenceData === undefined || isReferenceData(value.referenceData)) &&
   isBoundaryBBox(value.boundaryBBox) &&
   isBoundaryGeometry(value.boundaryGeometry)
@@ -154,7 +209,7 @@ export const parseRuntimeCoverageCatalog = (
 }
 
 const bboxContainsLocation = (
-  bbox: RuntimeCoverageDistrict['boundaryBBox'],
+  bbox: [number, number, number, number],
   location: [number, number],
 ) => {
   const [longitude, latitude] = location
@@ -249,17 +304,62 @@ const isLocationInPolygon = (
 export const isLocationInCoverageDistrict = (
   district: RuntimeCoverageDistrict,
   location: [number, number],
+) =>
+  isLocationInCoverageGeometry(
+    district.boundaryBBox,
+    district.boundaryGeometry,
+    location,
+  )
+
+const isLocationInCoverageGeometry = (
+  boundaryBBox: [number, number, number, number],
+  boundaryGeometry: Polygon | MultiPolygon,
+  location: [number, number],
 ) => {
-  if (!bboxContainsLocation(district.boundaryBBox, location)) {
+  if (!bboxContainsLocation(boundaryBBox, location)) {
     return false
   }
-  const geometry = district.boundaryGeometry
-  if (geometry.type === 'Polygon') {
-    return isLocationInPolygon(location, geometry.coordinates)
+  if (boundaryGeometry.type === 'Polygon') {
+    return isLocationInPolygon(location, boundaryGeometry.coordinates)
   }
-  return geometry.coordinates.some((polygon) =>
+  return boundaryGeometry.coordinates.some((polygon) =>
     isLocationInPolygon(location, polygon),
   )
+}
+
+export const isLocationInCoverageAlias = (
+  alias: RuntimeCoverageAlias,
+  location: [number, number],
+) =>
+  alias.boundary
+    ? isLocationInCoverageGeometry(
+        alias.boundary.boundaryBBox,
+        alias.boundary.boundaryGeometry,
+        location,
+      )
+    : false
+
+export interface RuntimeCoverageAliasMatch {
+  district: RuntimeCoverageDistrict
+  alias: RuntimeCoverageAlias
+}
+
+export const findCoverageAliasByLocation = (
+  catalog: RuntimeCoverageCatalog,
+  location: [number, number],
+): RuntimeCoverageAliasMatch | null => {
+  for (const district of catalog.districts) {
+    if (!isLocationInCoverageDistrict(district, location)) {
+      continue
+    }
+    const alias = district.aliases.find((candidate) =>
+      isLocationInCoverageAlias(candidate, location),
+    )
+    if (alias) {
+      return { district, alias }
+    }
+  }
+  return null
 }
 
 export const findCoverageDistrictByLocation = (

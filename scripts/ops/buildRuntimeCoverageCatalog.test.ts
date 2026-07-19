@@ -18,6 +18,10 @@ import {
 } from './validateRuntimeCoverageCatalog'
 import type { PaidCurbReferencePack } from '../../src/data/paidCurbReference'
 import type { PaidCurbSpatialReferencePack } from '../../src/data/paidCurbSpatialReference'
+import {
+  COVERAGE_AREA_BOUNDARY_KIND,
+  parseCoverageAreaBoundaryPack,
+} from '../../src/data/coverageAreaBoundary'
 
 const manifest: CoverageManifest = {
   schemaVersion: 1,
@@ -101,6 +105,103 @@ describe('buildRuntimeCoverageCatalog', () => {
       boundaryBBox: [121.4, 25.1, 121.6, 25.3],
       boundaryGeometry: { type: 'Polygon' },
     })
+  })
+
+  it('attaches and verifies a standalone alias boundary with source lineage', () => {
+    const boundaryValue = {
+      type: 'FeatureCollection',
+      metadata: {
+        schemaVersion: 1,
+        areaId: 'shipai',
+        areaName: 'Shipai',
+        parentDistrictId: 'beitou',
+        boundaryKind: COVERAGE_AREA_BOUNDARY_KIND,
+        sourceDataset: 'Official neighborhoods',
+        sourceUrl: 'https://example.test/neighborhoods.zip',
+        sourceSha256: 'a'.repeat(64),
+        definitionSource: 'Official district office',
+        definitionUrl: 'https://example.test/shipai',
+        sourceFeatureCount: 1,
+        selectedFeatureCount: 1,
+        selectedSourceFeatureIds: ['source-feature-1'],
+        memberFeatureIds: ['6301200001'],
+        clippedOutsideSquareMeters: 0,
+        boundaryBBox: [121.42, 25.12, 121.48, 25.18],
+        parkingAnswerOwnerDistrictId: 'beitou',
+      },
+      features: [
+        {
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [
+              [
+                [121.42, 25.12],
+                [121.48, 25.12],
+                [121.42, 25.18],
+                [121.42, 25.12],
+              ],
+            ],
+          },
+          properties: {
+            areaId: 'shipai',
+            areaName: 'Shipai',
+            parentDistrictId: 'beitou',
+            boundaryKind: COVERAGE_AREA_BOUNDARY_KIND,
+            parkingAnswerOwnerDistrictId: 'beitou',
+          },
+        },
+      ],
+    }
+    const pack = parseCoverageAreaBoundaryPack(boundaryValue)
+    const buffer = Buffer.from(`${JSON.stringify(boundaryValue)}\n`)
+    const areaBoundaries = new Map([
+      ['shipai', { buffer, pack }],
+    ])
+    const manifestWithBoundary: CoverageManifest = {
+      ...manifest,
+      regions: [
+        {
+          ...manifest.regions[0]!,
+          aliases: [
+            {
+              ...manifest.regions[0]!.aliases[0]!,
+              standaloneBoundaryRequired: false,
+              boundaryPath: 'public/data/reference/shipai-boundary.geojson',
+            },
+          ],
+        },
+      ],
+    }
+    const catalog = buildRuntimeCoverageCatalog(
+      manifestWithBoundary,
+      boundaries,
+      {
+        simplifyTolerance: 0,
+        areaBoundariesByAreaId: areaBoundaries,
+      },
+    )
+
+    expect(catalog.districts[0]?.aliases[0]?.boundary).toMatchObject({
+      kind: COVERAGE_AREA_BOUNDARY_KIND,
+      sourceSha256: 'a'.repeat(64),
+      memberFeatureIds: ['6301200001'],
+      parkingAnswerOwnerDistrictId: 'beitou',
+    })
+    expect(
+      validateRuntimeCoverageCatalog(
+        manifestWithBoundary,
+        catalog,
+        areaBoundaries,
+        0,
+      ).valid,
+    ).toBe(true)
+
+    expect(() =>
+      buildRuntimeCoverageCatalog(manifestWithBoundary, boundaries, {
+        simplifyTolerance: 0,
+      }),
+    ).toThrow('taipei/shipai: standalone boundary data is missing')
   })
 
   it('fails when a manifest district has no authoritative boundary', () => {

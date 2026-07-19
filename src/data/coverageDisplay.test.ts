@@ -47,7 +47,28 @@ const catalog: RuntimeCoverageCatalog = {
         areaId: 'shipai',
         areaName: 'Shipai',
         coverageMode: 'parent-district',
-        standaloneBoundaryRequired: true,
+        standaloneBoundaryRequired: false,
+        boundary: {
+          kind: 'OFFICIAL_SUBDISTRICT_UNION',
+          url: '/data/reference/shipai-boundary.geojson',
+          dataSha256: 'a'.repeat(64),
+          sourceSha256: 'b'.repeat(64),
+          memberFeatureIds: ['6301200001'],
+          parkingAnswerOwnerDistrictId: 'beitou',
+          boundaryBBox: [121.53, 25.03, 121.57, 25.07],
+          boundaryGeometry: {
+            type: 'Polygon',
+            coordinates: [
+              [
+                [121.53, 25.03],
+                [121.57, 25.03],
+                [121.57, 25.07],
+                [121.53, 25.07],
+                [121.53, 25.03],
+              ],
+            ],
+          },
+        },
       },
     ]),
     buildDistrict('taoyuan', 'source-only', 121.3),
@@ -67,16 +88,20 @@ describe('buildPinnedCoverageBoundary', () => {
     expect(boundary).toMatchObject({
       districtId: 'beitou',
       districtName: 'Beitou',
+      coverageName: 'Shipai',
+      areaId: 'shipai',
       regionName: 'Taipei City',
       publishStage: 'candidate',
-      stageLabel: 'Candidate, not published',
+      stageLabel: 'Candidate, not published via Beitou',
     })
     expect(boundary?.data.features).toHaveLength(1)
     expect(boundary?.data.features[0]?.properties).toEqual({
       districtId: 'beitou',
       districtName: 'Beitou',
+      coverageName: 'Shipai',
       regionName: 'Taipei City',
       publishStage: 'candidate',
+      areaId: 'shipai',
     })
   })
 

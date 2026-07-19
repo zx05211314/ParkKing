@@ -110,7 +110,8 @@
           "areaName": "Shipai",
           "parentDistrictId": "beitou",
           "coverageMode": "parent-district",
-          "standaloneBoundaryRequired": true
+          "standaloneBoundaryRequired": false,
+          "boundaryPath": "public/data/reference/shipai-boundary.geojson"
         }
       ],
       "blockers": []

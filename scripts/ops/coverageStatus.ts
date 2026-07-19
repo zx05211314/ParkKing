@@ -20,6 +20,7 @@ export interface CoverageAlias {
   parentDistrictId: string
   coverageMode: 'parent-district'
   standaloneBoundaryRequired: boolean
+  boundaryPath?: string
 }
 
 export interface CoverageRegion {
@@ -203,6 +204,22 @@ export const validateCoverageManifest = async (
       if (typeof alias.standaloneBoundaryRequired !== 'boolean') {
         errors.push(
           `${region.regionId}/${alias.areaId}: standaloneBoundaryRequired must be boolean`,
+        )
+      } else if (alias.standaloneBoundaryRequired) {
+        if (alias.boundaryPath) {
+          errors.push(
+            `${region.regionId}/${alias.areaId}: boundaryPath must be omitted while standaloneBoundaryRequired is true`,
+          )
+        }
+      } else if (!alias.boundaryPath) {
+        errors.push(
+          `${region.regionId}/${alias.areaId}: boundaryPath is required when a standalone boundary is available`,
+        )
+      } else if (
+        !(await fileExists(path.resolve(rootDir, alias.boundaryPath)))
+      ) {
+        errors.push(
+          `${region.regionId}/${alias.areaId}: boundary is missing at ${alias.boundaryPath}`,
         )
       }
     }

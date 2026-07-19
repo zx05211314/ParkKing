@@ -158,4 +158,54 @@ describe('coverageStatus', () => {
       'taipei/shipai: standaloneBoundaryRequired must be boolean',
     )
   })
+
+  it('requires a real boundary artifact when an alias is marked available', async () => {
+    const root = await fs.mkdtemp(path.join(tmpdir(), 'coverage-alias-boundary-'))
+    await writeConfig(root, 'configs/prod/beitou.json', 'beitou', '63012')
+    const manifest: CoverageManifest = {
+      schemaVersion: 1,
+      regions: [
+        {
+          regionId: 'taipei',
+          regionName: 'Taipei City',
+          expectedDistrictCount: 1,
+          answerCapability: 'full-rule-pipeline',
+          districts: [
+            {
+              districtId: 'beitou',
+              districtName: 'Beitou',
+              boundaryFeatureId: '63012',
+              publishStage: 'production',
+              configPath: 'configs/prod/beitou.json',
+              requiresHumanReview: false,
+            },
+          ],
+          aliases: [
+            {
+              areaId: 'shipai',
+              areaName: 'Shipai',
+              parentDistrictId: 'beitou',
+              coverageMode: 'parent-district',
+              standaloneBoundaryRequired: false,
+              boundaryPath: 'public/data/reference/shipai-boundary.geojson',
+            },
+          ],
+          blockers: [],
+        },
+      ],
+    }
+
+    const missing = await validateCoverageManifest(manifest, root)
+    expect(missing.errors).toContain(
+      'taipei/shipai: boundary is missing at public/data/reference/shipai-boundary.geojson',
+    )
+
+    const boundaryPath = path.join(
+      root,
+      'public/data/reference/shipai-boundary.geojson',
+    )
+    await fs.mkdir(path.dirname(boundaryPath), { recursive: true })
+    await fs.writeFile(boundaryPath, '{}', 'utf-8')
+    expect((await validateCoverageManifest(manifest, root)).valid).toBe(true)
+  })
 })

@@ -1,5 +1,6 @@
 import type { MapBounds } from '../map/bounds'
 import {
+  findCoverageAliasByLocation,
   findCoverageDistrictById,
   findCoverageDistrictByLocation,
   isLocationInCoverageDistrict,
@@ -31,6 +32,7 @@ export const isLocationWithinBounds = (
 const buildKnownDistrictNotice = (
   district: RuntimeCoverageDistrict,
   activeDistrictName: string,
+  areaName?: string,
 ) => {
   if (district.publishStage === 'source-only') {
     const referenceData = district.referenceData
@@ -43,20 +45,19 @@ const buildKnownDistrictNotice = (
   }
 
   if (district.publishStage === 'candidate') {
-    const aliasNotice = district.aliases
-      .map(({ areaName, standaloneBoundaryRequired }) =>
-        standaloneBoundaryRequired
-          ? ` ${areaName} is tracked under ${district.districtName} and still needs a standalone reviewed boundary; this ${district.districtName} match does not confirm the point is inside ${areaName}.`
-          : ` ${areaName} is listed as a parent-district alias.`,
-      )
-      .join('')
+    const aliasNotice = areaName
+      ? ` The point is inside the official ${areaName} boundary, whose parking answers are owned by ${district.districtName}.`
+      : ''
     const reviewNotice = district.requiresHumanReview
       ? ' It still requires human review and has not been published.'
       : ' It has not been published.'
     return `This location is in ${district.districtName} candidate coverage.${aliasNotice}${reviewNotice} ParkKing did not calculate a parking legality answer here.`
   }
 
-  return `This location is in published ${district.districtName} coverage, but the active dataset is ${activeDistrictName}. ParkKing did not calculate a parking legality answer while a different district dataset is active.`
+  const coverageName = areaName
+    ? `${areaName}, using published ${district.districtName} coverage`
+    : `published ${district.districtName} coverage`
+  return `This location is in ${coverageName}, but the active dataset is ${activeDistrictName}. ParkKing did not calculate a parking legality answer while a different district dataset is active.`
 }
 
 export const buildParkingCoverageState = (params: {
@@ -86,11 +87,20 @@ export const buildParkingCoverageState = (params: {
   const matchedDistrict = params.coverageCatalog
     ? findCoverageDistrictByLocation(params.coverageCatalog, params.location)
     : null
+  const matchedAlias = params.coverageCatalog
+    ? findCoverageAliasByLocation(params.coverageCatalog, params.location)
+    : null
 
   return {
     eligibleLocation: null,
     notice: matchedDistrict
-      ? buildKnownDistrictNotice(matchedDistrict, params.districtName)
+      ? buildKnownDistrictNotice(
+          matchedDistrict,
+          params.districtName,
+          matchedAlias?.district.districtId === matchedDistrict.districtId
+            ? matchedAlias.alias.areaName
+            : undefined,
+        )
       : `This location is outside the active ${params.districtName} dataset. ParkKing did not calculate a parking legality answer here. Switch to a published district dataset when coverage becomes available.`,
   }
 }
