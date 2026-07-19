@@ -75,6 +75,7 @@ const REQUIRED_ENV_VALUES: Record<string, string> = {
   PARKKING_SYNC_PATH: '/api/sync',
   PARKKING_SYNC_MODE: 'issue-upload-only',
   PARKKING_SYNC_DURABILITY: 'ephemeral',
+  PARKKING_SYNC_ISSUE_SINK_TIMEOUT_MS: '5000',
 }
 
 const REQUIRED_SYNC_FALSE = [

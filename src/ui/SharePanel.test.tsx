@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { SyncRuntimeResource } from '../api/syncRuntimeStatus'
 import { SharePanel } from './SharePanel'
+import { ISSUE_REPORT_SYNC_UPLOAD_ONLY_NOTE } from './issueReportSyncPresentation'
 import { buildSharePanelSyncModel } from './sharePanelModel'
 
 describe('SharePanel', () => {
@@ -201,9 +202,7 @@ describe('SharePanel', () => {
 
     expect(html).toContain('Issue reports')
     expect(html).toContain('Write-only')
-    expect(html).toContain(
-      'New issue reports upload from this device when sync is available. Shared scopes do not pull them back down.',
-    )
+    expect(html).toContain(ISSUE_REPORT_SYNC_UPLOAD_ONLY_NOTE)
     expect(html).not.toContain('Pull issue reports')
   })
 })

@@ -127,6 +127,38 @@ describe('issueReports persistence', () => {
     expect(fetchImpl.mock.calls[0]?.[0]).toContain('https://api.parkking.test/issues')
     expect(result.remoteSynced).toBe(true)
     expect(result.mode).toBe('remote')
+    expect(result.message).toBe(
+      'Issue uploaded temporarily; the device copy was retained.',
+    )
+    expect(getSyncRuntimeStatusSnapshot().issueReports.message).toBe(
+      'Issue reports were uploaded, but remote storage is temporary.',
+    )
+  })
+
+  it('reports durable remote intake when the server confirms durability', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      createJsonResponse({ durable: true }, 201),
+    )
+
+    const result = await appendIssueReport(
+      {
+        districtId: 'xinyi',
+        segmentId: 'seg-durable',
+        summary: 'Durable issue report',
+        bundle: { debug: true },
+        issueId: 'issue-durable',
+      },
+      {
+        config: { endpoint: 'https://api.parkking.test/issues' },
+        fetchImpl,
+      },
+    )
+
+    expect(result.remoteSynced).toBe(true)
+    expect(result.message).toBe('Issue submitted to durable ParkKing storage.')
+    expect(getSyncRuntimeStatusSnapshot().issueReports.message).toBe(
+      'Issue reports are durably synced.',
+    )
   })
 
   it('keeps issue reports locally when remote submission fails', async () => {

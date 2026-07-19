@@ -98,6 +98,9 @@ PARKKING_SYNC_MAX_ISSUE_REPORTS=1000
 PARKKING_SYNC_CORS_ORIGINS=*
 PARKKING_SYNC_WRITE_RATE_LIMIT_WINDOW_MS=60000
 PARKKING_SYNC_WRITE_RATE_LIMIT_MAX=120
+PARKKING_SYNC_ISSUE_SINK_URL=
+PARKKING_SYNC_ISSUE_SINK_BEARER_TOKEN=
+PARKKING_SYNC_ISSUE_SINK_TIMEOUT_MS=5000
 ```
 
 Basemap env vars:
@@ -193,6 +196,9 @@ Sync service env vars:
 - `PARKKING_SYNC_CORS_ORIGINS`: comma-separated browser origins allowed to call the sync service. Defaults to `*` for local/standalone use. Production deployments must set explicit app origins; the checked-in Render blueprint uses `https://parkking.onrender.com`.
 - `PARKKING_SYNC_WRITE_RATE_LIMIT_WINDOW_MS`: fixed-window rate-limit duration for saved-plan, report, and issue-report writes. Defaults to `60000`.
 - `PARKKING_SYNC_WRITE_RATE_LIMIT_MAX`: max writes per client, route, and scope within the rate-limit window. Defaults to `120`; excess writes return HTTP 429 with `Retry-After`.
+- `PARKKING_SYNC_ISSUE_SINK_URL`: optional durable HTTP intake for issue reports. When configured, the sync service sends a versioned envelope to this URL before acknowledging the browser write.
+- `PARKKING_SYNC_ISSUE_SINK_BEARER_TOKEN`: optional bearer credential for the durable issue sink. It is never exposed through health/readiness responses.
+- `PARKKING_SYNC_ISSUE_SINK_TIMEOUT_MS`: durable sink request timeout. Defaults to `5000`; sink rejection, timeout, or network failure returns HTTP 503 so the browser retains the local report for retry.
 
 Proxy runtime:
 - `npm run dev` and `npm run preview` already mount the proxy route at `/api/geocode`.
@@ -278,7 +284,8 @@ Current issue report strategy:
 1. `Report issue` writes an issue report locally first, including the current debug bundle snapshot: dataset metadata, current mode/time, selected segment geometry, parking-rule reasons, ranking details, and nearby-zone counts.
 2. When an issue-report endpoint is available, the app also sends that issue report to `/api/sync/issues`.
 3. Full-mode development services can read synced issue reports for local triage. The Render production service is intentionally upload-only: clients cannot read issue content back through the API.
-4. Render currently advertises `ephemeral` durability, so remote issue uploads are best-effort telemetry rather than a durable triage source; the browser-local copy remains authoritative until authenticated persistent storage is added.
+4. The issue response includes `durable` and `durability`. The UI distinguishes a confirmed durable sink from temporary remote storage and always retains its browser-local copy.
+5. Render advertises `ephemeral` durability until `PARKKING_SYNC_ISSUE_SINK_URL` is connected. After a sink is configured, every accepted report is delivered with an `Idempotency-Key` before the API returns HTTP 201; failed delivery returns HTTP 503.
 
 Notes:
 - The app and proxy expect a Nominatim-style JSON response with `display_name`, `lat`, `lon`, and optional `boundingbox`.

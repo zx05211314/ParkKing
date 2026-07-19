@@ -137,3 +137,9 @@ services:
         value: "60000"
       - key: PARKKING_SYNC_WRITE_RATE_LIMIT_MAX
         value: "120"
+      - key: PARKKING_SYNC_ISSUE_SINK_URL
+        sync: false
+      - key: PARKKING_SYNC_ISSUE_SINK_BEARER_TOKEN
+        sync: false
+      - key: PARKKING_SYNC_ISSUE_SINK_TIMEOUT_MS
+        value: "5000"

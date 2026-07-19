@@ -61,4 +61,97 @@ describe('syncServiceWriteApi', () => {
     })
     expect(runtime.persistStore).toHaveBeenCalledTimes(1)
   })
+
+  it('delivers issue reports to the durable sink before persisting them', async () => {
+    const store: SyncServiceStore = {
+      schemaVersion: 1,
+      buckets: {
+        default: {
+          savedPlans: [],
+          reports: [],
+          issueReports: [],
+          savedPlansRevision: 0,
+          reportsRevision: 0,
+          issueReportsRevision: 0,
+          savedPlansUpdatedAt: null,
+          reportsUpdatedAt: null,
+          issueReportsUpdatedAt: null,
+        },
+      },
+    }
+    const events: string[] = []
+    const runtime: SyncServiceRuntime = {
+      ensureStore: vi.fn(async () => {
+        events.push('store')
+        return store
+      }),
+      persistStore: vi.fn(async () => {
+        events.push('persist')
+      }),
+      deliverIssueReport: vi.fn(async () => {
+        events.push('sink')
+        return {
+          configured: true,
+          delivered: true,
+          durability: 'external',
+        }
+      }),
+    }
+    const service = createSyncServiceWriteApi(
+      {
+        path: '/api/sync',
+        port: 8789,
+        storageFile: 'sync.json',
+        defaultScope: 'default',
+        durability: 'ephemeral',
+      },
+      runtime,
+    )
+
+    await expect(
+      service.appendIssueReport({ issueId: 'issue-a' }, 'alpha'),
+    ).resolves.toEqual({
+      issue: { issueId: 'issue-a' },
+      revision: 1,
+      durable: true,
+      durability: 'external',
+    })
+    expect(events).toEqual(['sink', 'store', 'persist'])
+  })
+
+  it('marks ephemeral issue storage as non-durable without an external sink', async () => {
+    const store: SyncServiceStore = {
+      schemaVersion: 1,
+      buckets: {
+        default: {
+          savedPlans: [],
+          reports: [],
+          issueReports: [],
+          savedPlansRevision: 0,
+          reportsRevision: 0,
+          issueReportsRevision: 0,
+          savedPlansUpdatedAt: null,
+          reportsUpdatedAt: null,
+          issueReportsUpdatedAt: null,
+        },
+      },
+    }
+    const service = createSyncServiceWriteApi(
+      {
+        path: '/api/sync',
+        port: 8789,
+        storageFile: 'sync.json',
+        defaultScope: 'default',
+        durability: 'ephemeral',
+      },
+      createRuntime(store),
+    )
+
+    await expect(
+      service.appendIssueReport({ issueId: 'issue-ephemeral' }),
+    ).resolves.toMatchObject({
+      durable: false,
+      durability: 'ephemeral',
+    })
+  })
 })

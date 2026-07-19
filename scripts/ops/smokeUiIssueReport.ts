@@ -275,7 +275,12 @@ const waitForIssueSubmission = async (params: {
     const normalizedBody = normalizeText(state.bodyText)
     if (
       state.latestIssueId &&
-      normalizedBody.includes(normalizeText('Issue submitted to ParkKing Sync.'))
+      (normalizedBody.includes(
+        normalizeText('Issue submitted to durable ParkKing storage.'),
+      ) ||
+        normalizedBody.includes(
+          normalizeText('Issue uploaded temporarily; the device copy was retained.'),
+        ))
     ) {
       return state
     }

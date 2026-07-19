@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createSyncServiceMiddleware } from './syncServiceMiddleware'
+import { SyncIssueSinkDeliveryError } from './syncServiceIssueSink'
 import type { SyncService, SyncServiceConfig } from './syncServiceTypes'
 
 const createMockResponse = () => {
@@ -73,6 +74,9 @@ const createConfig = (
   corsOrigins: ['*'],
   writeRateLimitWindowMs: 60000,
   writeRateLimitMax: 120,
+  issueSinkUrl: null,
+  issueSinkBearerToken: null,
+  issueSinkTimeoutMs: 5000,
   ...overrides,
 })
 
@@ -393,6 +397,10 @@ describe('createSyncServiceMiddleware', () => {
       corsOrigins: ['*'],
       writeRateLimitWindowMs: 60000,
       writeRateLimitMax: 120,
+      issueSink: {
+        configured: false,
+        timeoutMs: 5000,
+      },
     })
     expect(service.getSyncStatus).not.toHaveBeenCalled()
   })
@@ -421,6 +429,10 @@ describe('createSyncServiceMiddleware', () => {
     expect(JSON.parse(res.body())).toMatchObject({
       mode: 'issue-upload-only',
       durability: 'ephemeral',
+      issueSink: {
+        configured: false,
+        timeoutMs: 5000,
+      },
       capabilities: {
         savedPlansRead: false,
         savedPlansWrite: false,
@@ -430,6 +442,36 @@ describe('createSyncServiceMiddleware', () => {
         issueReportsWrite: true,
       },
     })
+  })
+
+  it('returns 503 when a configured durable issue sink is unavailable', async () => {
+    const service = createMockService()
+    vi.mocked(service.appendIssueReport).mockRejectedValueOnce(
+      new SyncIssueSinkDeliveryError('Issue sink delivery failed: offline'),
+    )
+    const middleware = createSyncServiceMiddleware(
+      service,
+      '/api/sync',
+      'default',
+      createConfig(),
+    )
+    const res = createMockResponse()
+
+    async function* body() {
+      yield Buffer.from(JSON.stringify({ issue: { issueId: 'issue-offline' } }))
+    }
+
+    await middleware(
+      {
+        method: 'POST',
+        url: '/api/sync/issues',
+        [Symbol.asyncIterator]: body,
+      } as never,
+      res.response as never,
+    )
+
+    expect(res.response.statusCode).toBe(503)
+    expect(res.body()).toContain('Issue sink delivery failed')
   })
 
   it('serves readiness with the scoped sync status snapshot', async () => {
@@ -486,6 +528,30 @@ describe('createSyncServiceMiddleware', () => {
     expect(res.response.statusCode).toBe(503)
     expect(payload.status).toBe('degraded')
     expect(payload.issues).toContain('storage file is empty')
+    expect(service.getSyncStatus).not.toHaveBeenCalled()
+  })
+
+  it('marks readiness degraded when the durable issue sink URL is invalid', async () => {
+    const service = createMockService()
+    const middleware = createSyncServiceMiddleware(
+      service,
+      '/api/sync',
+      'default',
+      createConfig({ issueSinkUrl: 'file:///tmp/issues.json' }),
+    )
+    const res = createMockResponse()
+
+    await middleware(
+      {
+        method: 'GET',
+        url: '/api/sync/ready',
+      } as never,
+      res.response as never,
+    )
+
+    const payload = JSON.parse(res.body())
+    expect(res.response.statusCode).toBe(503)
+    expect(payload.issues).toContain('Issue sink URL must use http or https.')
     expect(service.getSyncStatus).not.toHaveBeenCalled()
   })
 })

@@ -1,6 +1,10 @@
-import { appendSyncIssueReport } from './syncServiceIssueReports'
+import {
+  appendSyncIssueReport,
+  assertSyncIssueReport,
+} from './syncServiceIssueReports'
 import { appendSyncReport } from './syncServiceReports'
 import { replaceSyncSavedPlans } from './syncServiceSavedPlans'
+import { DEFAULT_SYNC_DURABILITY } from './syncServiceConfig'
 import type { SyncService, SyncServiceConfig } from './syncServiceTypes'
 import type { SyncServiceRuntime } from './syncServiceRuntime'
 
@@ -44,6 +48,14 @@ export const createSyncServiceWriteApi = (
     return result.result
   },
   async appendIssueReport(issue, scope) {
+    assertSyncIssueReport(issue)
+    const sinkReceipt = runtime.deliverIssueReport
+      ? await runtime.deliverIssueReport(issue, scope)
+      : {
+          configured: false,
+          delivered: false,
+          durability: config.durability ?? DEFAULT_SYNC_DURABILITY,
+        }
     const store = await runtime.ensureStore()
     const result = appendSyncIssueReport({
       store,
@@ -54,6 +66,11 @@ export const createSyncServiceWriteApi = (
       maxIssueReports: config.maxIssueReports,
     })
     await persistSyncServiceStoreIfChanged(runtime, store, result.changed)
-    return result.result
+    return {
+      ...result.result,
+      durable:
+        sinkReceipt.delivered || sinkReceipt.durability === 'persistent',
+      durability: sinkReceipt.durability,
+    }
   },
 })

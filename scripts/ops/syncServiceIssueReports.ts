@@ -26,6 +26,14 @@ const retainNewestSyncIssueReports = (
     ? issues.slice(issues.length - maxIssueReports)
     : issues
 
+export function assertSyncIssueReport(
+  issue: unknown,
+): asserts issue is object {
+  if (!issue || typeof issue !== 'object') {
+    throw new Error('Issue payload must include an issue object.')
+  }
+}
+
 export const readSyncIssueReportsState = (
   store: SyncServiceStore,
   scope: string | null | undefined,
@@ -54,9 +62,7 @@ export const appendSyncIssueReport = (params: {
     updatedAt,
     maxIssueReports = DEFAULT_SYNC_MAX_ISSUE_REPORTS,
   } = params
-  if (!issue || typeof issue !== 'object') {
-    throw new Error('Issue payload must include an issue object.')
-  }
+  assertSyncIssueReport(issue)
 
   const bucket = ensureSyncServiceBucket(store, scope, defaultScope).bucket
   const nextIssues = retainNewestSyncIssueReports(
