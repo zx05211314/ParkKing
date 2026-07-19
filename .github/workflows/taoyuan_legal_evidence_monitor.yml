@@ -33,7 +33,7 @@ jobs:
           TDX_CLIENT_ID: ${{ secrets.TDX_CLIENT_ID }}
           TDX_CLIENT_SECRET: ${{ secrets.TDX_CLIENT_SECRET }}
           TDX_ALLOW_GUEST: "true"
-        run: npm run ops:monitor-taoyuan-legal-evidence -- --spatial .tmp/taoyuan-legal-evidence/paid_curb_segments.geojson --baseline configs/taoyuan-legal-evidence-baseline.json --probe-out .tmp/taoyuan-legal-evidence/probe.md --probe-json-out .tmp/taoyuan-legal-evidence/probe.json --out .tmp/taoyuan-legal-evidence/monitor.md --json-out .tmp/taoyuan-legal-evidence/monitor.json --timeout-ms 10000
+        run: npm run ops:monitor-taoyuan-legal-evidence -- --spatial .tmp/taoyuan-legal-evidence/paid_curb_segments.geojson --baseline review-evidence/taoyuan/legal-evidence-baseline.json --probe-out .tmp/taoyuan-legal-evidence/probe.md --probe-json-out .tmp/taoyuan-legal-evidence/probe.json --out .tmp/taoyuan-legal-evidence/monitor.md --json-out .tmp/taoyuan-legal-evidence/monitor.json --timeout-ms 10000
       - name: Summarize legal evidence monitor
         if: always() && steps.monitor.outputs.status != ''
         run: npm run ops:append-workflow-summary -- --append-file .tmp/taoyuan-legal-evidence/monitor.md --append-file .tmp/taoyuan-legal-evidence/probe.md

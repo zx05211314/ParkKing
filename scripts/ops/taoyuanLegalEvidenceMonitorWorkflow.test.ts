@@ -18,7 +18,7 @@ describe('Taoyuan legal evidence monitor workflow', () => {
     )
     expect(workflow).toContain('--timeout-ms 10000')
     expect(workflow).toContain(
-      'configs/taoyuan-legal-evidence-baseline.json',
+      'review-evidence/taoyuan/legal-evidence-baseline.json',
     )
     expect(workflow).toContain('actions/upload-artifact@v7')
     expect(workflow).toContain('name: taoyuan-legal-evidence-monitor')

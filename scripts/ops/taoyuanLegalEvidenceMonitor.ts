@@ -6,7 +6,8 @@ import {
   type TaoyuanLegalEvidenceProbeResult,
 } from './probeTaoyuanLegalEvidence'
 
-const DEFAULT_BASELINE = 'configs/taoyuan-legal-evidence-baseline.json'
+const DEFAULT_BASELINE =
+  'review-evidence/taoyuan/legal-evidence-baseline.json'
 const DEFAULT_SPATIAL = '.tmp/taoyuan-legal-evidence/paid_curb_segments.geojson'
 const DEFAULT_PROBE_REPORT = '.tmp/taoyuan-legal-evidence/probe.md'
 const DEFAULT_PROBE_JSON = '.tmp/taoyuan-legal-evidence/probe.json'

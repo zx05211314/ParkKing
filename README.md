@@ -465,7 +465,7 @@ TDX `ParkingSegment` and `ParkingSpot` collection counts with the normalized loc
 artifact. The probe reports data-provider capability changes, source-count drift, and the
 remaining legal-answer blockers to `.tmp/taoyuan-legal-evidence-probe.md/json`.
 `Taoyuan Legal Evidence Monitor` also runs this check daily against the approved baseline
-in `configs/taoyuan-legal-evidence-baseline.json`. It creates or updates one GitHub issue
+in `review-evidence/taoyuan/legal-evidence-baseline.json`. It creates or updates one GitHub issue
 only when the official source drifts, a `ParkingSpot`/curb-line candidate appears, or the
 probe fails, and closes that issue after the baseline state returns. Monitoring never
 changes `legalAnswerEligible`. A successful probe does not promote reference points into

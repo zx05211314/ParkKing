@@ -109,7 +109,7 @@ describe('taoyuanLegalEvidenceMonitor', () => {
     const trackedBaseline = parseTaoyuanLegalEvidenceBaseline(
       JSON.parse(
         await fs.readFile(
-          'configs/taoyuan-legal-evidence-baseline.json',
+          'review-evidence/taoyuan/legal-evidence-baseline.json',
           'utf-8',
         ),
       ) as unknown,
