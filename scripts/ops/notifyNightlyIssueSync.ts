@@ -31,6 +31,7 @@ export const syncNightlyIssue = async (params: {
   token: string
   repo: string
   body: string
+  active: boolean
   requestApi: NightlyGitHubApiRequester
 }) => {
   const issuesUrl = resolveNightlyIssuesUrl(params.repo)
@@ -46,6 +47,27 @@ export const syncNightlyIssue = async (params: {
         LEGACY_NIGHTLY_ALERTS_ISSUE_TITLES.includes(issue.title ?? '')) &&
       !issue.pull_request,
   )
+
+  if (!params.active) {
+    if (!existing) {
+      return { action: 'noop' as const, issueNumber: null }
+    }
+    await params.requestApi(
+      `${issuesUrl}/${existing.number}/comments`,
+      params.token,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          body: `Nightly pipeline returned to a clean state. Closing this alert.\n\n${params.body}`,
+        }),
+      },
+    )
+    await params.requestApi(`${issuesUrl}/${existing.number}`, params.token, {
+      method: 'PATCH',
+      body: JSON.stringify({ state: 'closed' }),
+    })
+    return { action: 'closed' as const, issueNumber: existing.number }
+  }
 
   if (existing) {
     await params.requestApi(`${issuesUrl}/${existing.number}/comments`, params.token, {

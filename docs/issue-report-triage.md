@@ -346,6 +346,12 @@ Nightly additionally forwards publish-gate summary and issue artifact URLs into 
 6. the packet `manifest.json` preferred portable input and the preferred CSV join file for the same bundle
 7. the canonical packet `summary.md` URL when the packet/root URL handoff is present
 
+The triage collector ignores API service roundtrip records only when their generated smoke issue
+identity and smoke source/scope markers agree. Real user reports remain eligible even if their text
+mentions smoke testing. When no diff WARN/FAIL, publish-gate WARN/FAIL, or eligible user report
+remains, the notifier comments with the clean run and closes the existing nightly alert issue.
+It does not close alerts when diff reports are missing.
+
 When the local workflow artifact bundle already includes workflow issue artifacts, `ops:notify-nightly`
 can consume the full `artifact-index.json`, the versioned `index-summary.json`, or the compact
 workflow `manifest.json` or the compact sidecars directly. All of those surfaces now parse

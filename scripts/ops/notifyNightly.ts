@@ -37,7 +37,37 @@ export const runNotifyNightly = async (args: NotifyNightlyArgs) => {
     issueReports.length === 0 &&
     !hasNightlyPublishGateAlerts(publishGateSummary)
   ) {
-    console.log('No WARN/FAIL districts, publish gate alerts, or synced issue reports found.')
+    const message =
+      'No WARN/FAIL districts, publish gate alerts, or synced user issue reports found.'
+    console.log(message)
+    const token = process.env.GITHUB_TOKEN
+    const repo = process.env.GITHUB_REPOSITORY
+    if (!token || !repo) {
+      if (process.env.GITHUB_ACTIONS === 'true') {
+        throw new Error('Missing GITHUB_TOKEN or GITHUB_REPOSITORY')
+      }
+      console.log('Missing GitHub credentials; skipping stale nightly issue cleanup.')
+      return
+    }
+    const runUrl = resolveNightlyRunUrl()
+    const body = [
+      `Date: ${new Date().toISOString()}`,
+      ...(runUrl ? [`Run: ${runUrl}`] : []),
+      '',
+      message,
+    ].join('\n')
+    const result = await syncNightlyIssue({
+      token,
+      repo,
+      body,
+      active: false,
+      requestApi: requestGitHubApi,
+    })
+    if (result.action === 'closed') {
+      console.log(`Closed resolved nightly issue #${result.issueNumber}`)
+      return
+    }
+    console.log('No open nightly issue to close.')
     return
   }
 
@@ -80,6 +110,7 @@ export const runNotifyNightly = async (args: NotifyNightlyArgs) => {
     token,
     repo,
     body,
+    active: true,
     requestApi: requestGitHubApi,
   })
   if (result.action === 'commented') {
