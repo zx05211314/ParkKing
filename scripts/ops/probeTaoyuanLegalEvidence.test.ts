@@ -53,6 +53,9 @@ describe('probeTaoyuanLegalEvidence', () => {
       parkingSpots: endpoint('parking-spots', 0),
       localSpatial: {
         path: 'paid-curb.geojson',
+        contentSha256: 'a'.repeat(64),
+        sourceUpdateTime: '2026-07-18T00:00:00.000Z',
+        versionId: 1,
         sourceRecordCount: 944,
         featureCount: 944,
         segmentGeometryCount: 0,
@@ -124,6 +127,54 @@ describe('probeTaoyuanLegalEvidence', () => {
     await expect(fs.readFile(jsonReportPath, 'utf-8')).resolves.toContain(
       '"probePass": false',
     )
+  })
+
+  it('retries a rate-limited official endpoint before reporting failure', async () => {
+    const root = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'taoyuan-evidence-probe-'),
+    )
+    roots.push(root)
+    const spatialPath = path.join(root, 'paid-curb.geojson')
+    await fs.writeFile(
+      spatialPath,
+      JSON.stringify({
+        type: 'FeatureCollection',
+        metadata: {
+          sourceRecordCount: 3,
+          legalAnswerEligible: false,
+        },
+        features: [],
+      }),
+    )
+    let parkingSpotAttempts = 0
+    const rateLimitedFetch = async (input: string | URL | Request) => {
+      const isSpot = String(input).includes('/ParkingSpot/')
+      if (isSpot) {
+        parkingSpotAttempts += 1
+        if (parkingSpotAttempts === 1) {
+          return new Response('', {
+            status: 429,
+            headers: { 'retry-after': '0' },
+          })
+        }
+      }
+      return officialFetch(input)
+    }
+
+    const result = await runTaoyuanLegalEvidenceProbe({
+      spatialPath,
+      reportPath: path.join(root, 'probe.md'),
+      jsonReportPath: path.join(root, 'probe.json'),
+      env: { TDX_ALLOW_GUEST: 'true' },
+      fetchImpl: rateLimitedFetch as typeof fetch,
+    })
+
+    expect(parkingSpotAttempts).toBe(2)
+    expect(result.endpoints.parkingSpots).toMatchObject({
+      status: 200,
+      count: 0,
+      error: null,
+    })
   })
 
   it('rejects a local artifact whose collection safety flag is not false', async () => {

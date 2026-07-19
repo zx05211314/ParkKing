@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -12,6 +13,9 @@ const DEFAULT_SPATIAL = 'data/sources/taoyuan/paid_curb_segments.geojson'
 const DEFAULT_REPORT = '.tmp/taoyuan-legal-evidence-probe.md'
 const DEFAULT_JSON_REPORT = '.tmp/taoyuan-legal-evidence-probe.json'
 const DEFAULT_TIMEOUT_MS = 30_000
+const DEFAULT_RETRY_DELAY_MS = 1_000
+const MAX_RETRY_DELAY_MS = 10_000
+const MAX_REQUEST_ATTEMPTS = 3
 const DEFAULT_USER_AGENT =
   'Mozilla/5.0 (compatible; ParkKing/1.0; +https://github.com/zx05211314/ParkKing)'
 
@@ -26,6 +30,9 @@ interface TdxCollectionProbe {
 
 interface LocalSpatialProbe {
   path: string
+  contentSha256: string
+  sourceUpdateTime: string | null
+  versionId: number | null
   sourceRecordCount: number | null
   featureCount: number
   segmentGeometryCount: number
@@ -84,6 +91,33 @@ const getObject = (value: unknown): Record<string, unknown> | null =>
     ? (value as Record<string, unknown>)
     : null
 
+const toNullableString = (value: unknown) =>
+  typeof value === 'string' && value.trim() ? value.trim() : null
+
+export const hashTaoyuanLocalSpatialContent = (params: {
+  features: unknown[]
+  metadata: Record<string, unknown> | null
+}) =>
+  createHash('sha256')
+    .update(
+      JSON.stringify({
+        features: params.features,
+        metadata: {
+          sourceDataset: params.metadata?.sourceDataset ?? null,
+          sourceUpdateTime: params.metadata?.sourceUpdateTime ?? null,
+          authorityCode: params.metadata?.authorityCode ?? null,
+          versionId: params.metadata?.versionId ?? null,
+          sourceRecordCount: params.metadata?.sourceRecordCount ?? null,
+          featureCount: params.metadata?.featureCount ?? null,
+          coordinateCorrectionCount:
+            params.metadata?.coordinateCorrectionCount ?? null,
+          droppedRecordCount: params.metadata?.droppedRecordCount ?? null,
+          legalAnswerEligible: false,
+        },
+      }),
+    )
+    .digest('hex')
+
 const probeTdxCollection = async (params: {
   definition: TdxCollectionDefinition
   baseUrl: string
@@ -91,6 +125,7 @@ const probeTdxCollection = async (params: {
   timeoutMs: number
   userAgent: string
   fetchImpl: typeof fetch
+  retryDelayMs: number
 }): Promise<TdxCollectionProbe> => {
   const url = new URL(
     `${params.baseUrl}/v1/Parking/OnStreet/${params.definition.path}/City/${DEFAULT_CITY}`,
@@ -106,20 +141,48 @@ const probeTdxCollection = async (params: {
     headers.authorization = `Bearer ${params.token}`
   }
 
-  let response: Response
-  try {
-    response = await params.fetchImpl(url, {
-      headers,
-      signal: AbortSignal.timeout(params.timeoutMs),
-    })
-  } catch (error) {
+  let response: Response | null = null
+  let requestError: unknown = null
+  for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
+    try {
+      response = await params.fetchImpl(url, {
+        headers,
+        signal: AbortSignal.timeout(params.timeoutMs),
+      })
+      requestError = null
+    } catch (error) {
+      requestError = error
+    }
+    if (
+      response?.ok ||
+      (response &&
+        response.status !== 429 &&
+        (response.status < 500 || response.status > 599)) ||
+      attempt === MAX_REQUEST_ATTEMPTS
+    ) {
+      break
+    }
+    const retryAfterSeconds = Number(response?.headers.get('retry-after'))
+    const retryDelayMs = Math.min(
+      Number.isFinite(retryAfterSeconds) && retryAfterSeconds >= 0
+        ? retryAfterSeconds * 1_000
+        : params.retryDelayMs * 2 ** (attempt - 1),
+      MAX_RETRY_DELAY_MS,
+    )
+    await new Promise((resolve) => setTimeout(resolve, retryDelayMs))
+    response = null
+  }
+  if (!response) {
     return {
       id: params.definition.id,
       url: url.toString(),
       status: 0,
       count: null,
       sampleFields: [],
-      error: error instanceof Error ? error.message : String(error),
+      error:
+        requestError instanceof Error
+          ? requestError.message
+          : String(requestError ?? 'request failed'),
     }
   }
   if (!response.ok) {
@@ -206,6 +269,9 @@ const readLocalSpatial = async (
 
   return {
     path: spatialPath,
+    contentSha256: hashTaoyuanLocalSpatialContent({ features, metadata }),
+    sourceUpdateTime: toNullableString(metadata?.sourceUpdateTime),
+    versionId: toNonNegativeInteger(metadata?.versionId),
     sourceRecordCount: toNonNegativeInteger(metadata?.sourceRecordCount),
     featureCount: features.length,
     segmentGeometryCount,
@@ -291,6 +357,7 @@ export const runTaoyuanLegalEvidenceProbe = async (options: {
   reportPath?: string
   jsonReportPath?: string
   timeoutMs?: number
+  retryDelayMs?: number
   env?: NodeJS.ProcessEnv
   fetchImpl?: typeof fetch
   now?: Date
@@ -316,6 +383,7 @@ export const runTaoyuanLegalEvidenceProbe = async (options: {
         timeoutMs,
         userAgent: env.TDX_USER_AGENT?.trim() || DEFAULT_USER_AGENT,
         fetchImpl,
+        retryDelayMs: options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS,
       }),
     ),
   )
@@ -366,6 +434,9 @@ export const renderTaoyuanLegalEvidenceProbe = (
     '## Local normalized spatial evidence',
     '',
     `- Path: ${result.localSpatial.path}`,
+    `- Content SHA-256: ${result.localSpatial.contentSha256}`,
+    `- Source update time: ${result.localSpatial.sourceUpdateTime ?? '-'}`,
+    `- Version ID: ${result.localSpatial.versionId ?? '-'}`,
     `- Source records: ${result.localSpatial.sourceRecordCount ?? '-'}`,
     `- Features: ${result.localSpatial.featureCount}`,
     `- Segment geometries: ${result.localSpatial.segmentGeometryCount}`,

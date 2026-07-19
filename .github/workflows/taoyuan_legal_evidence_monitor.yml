@@ -1,0 +1,54 @@
+name: Taoyuan Legal Evidence Monitor
+
+on:
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+      - name: Install
+        run: npm ci
+      - name: Acquire current TDX spatial reference
+        env:
+          TDX_CLIENT_ID: ${{ secrets.TDX_CLIENT_ID }}
+          TDX_CLIENT_SECRET: ${{ secrets.TDX_CLIENT_SECRET }}
+          TDX_ALLOW_GUEST: "true"
+        run: npm run ops:fetch-taoyuan-paid-curb -- --out .tmp/taoyuan-legal-evidence/paid_curb_segments.geojson
+      - name: Monitor official legal evidence
+        id: monitor
+        env:
+          TDX_CLIENT_ID: ${{ secrets.TDX_CLIENT_ID }}
+          TDX_CLIENT_SECRET: ${{ secrets.TDX_CLIENT_SECRET }}
+          TDX_ALLOW_GUEST: "true"
+        run: npm run ops:monitor-taoyuan-legal-evidence -- --spatial .tmp/taoyuan-legal-evidence/paid_curb_segments.geojson --baseline configs/taoyuan-legal-evidence-baseline.json --probe-out .tmp/taoyuan-legal-evidence/probe.md --probe-json-out .tmp/taoyuan-legal-evidence/probe.json --out .tmp/taoyuan-legal-evidence/monitor.md --json-out .tmp/taoyuan-legal-evidence/monitor.json --timeout-ms 10000
+      - name: Summarize legal evidence monitor
+        if: always() && steps.monitor.outputs.status != ''
+        run: npm run ops:append-workflow-summary -- --append-file .tmp/taoyuan-legal-evidence/monitor.md --append-file .tmp/taoyuan-legal-evidence/probe.md
+      - name: Upload legal evidence monitor
+        id: upload
+        if: always() && steps.monitor.outputs.status != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: taoyuan-legal-evidence-monitor
+          path: .tmp/taoyuan-legal-evidence/**
+          if-no-files-found: error
+          retention-days: 30
+      - name: Sync legal evidence issue
+        if: always() && steps.monitor.outputs.status != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAOYUAN_LEGAL_EVIDENCE_ARTIFACT_URL: ${{ steps.upload.outputs['artifact-url'] }}
+        run: npm run ops:notify-taoyuan-legal-evidence -- --input .tmp/taoyuan-legal-evidence/monitor.json

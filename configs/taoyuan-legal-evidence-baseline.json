@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "regionId": "taoyuan",
+  "approvedSourceSha256": "fb2a71771da7d21ee7d3fd689d1748c2669b2bc10113cec04d4a47a5b62a2d4a",
+  "approvedSpatialSha256": "885faab1b1d536096f1458bd1b65de1544ddd01e6deb4cb291121322ee6002eb",
+  "sourceUpdatedAt": "2026-07-18T19:30:02+08:00",
+  "sourceVersionId": 1472,
+  "parkingSegmentCount": 944,
+  "parkingSpotCount": 0,
+  "spatialFeatureCount": 944,
+  "segmentGeometryCount": 0,
+  "representativePointCount": 944,
+  "legalAnswerEligible": false
+}

@@ -462,11 +462,15 @@ to the unpacked official shapefile instead of silently falling back.
 Even strict readiness only approves a spatial reference layer; legal-answer eligibility
 remains false. Run `npm run ops:probe-taoyuan-legal-evidence` to compare the live official
 TDX `ParkingSegment` and `ParkingSpot` collection counts with the normalized local
-artifact. The probe is intentionally manual rather than a CI dependency; it reports data
-provider capability changes, source-count drift, and the remaining legal-answer blockers
-to `.tmp/taoyuan-legal-evidence-probe.md/json`. A successful probe does not promote
-reference points into legal evidence. If an authority supplies exact marked-space and
-curb-rule geometry, normalize it through the
+artifact. The probe reports data-provider capability changes, source-count drift, and the
+remaining legal-answer blockers to `.tmp/taoyuan-legal-evidence-probe.md/json`.
+`Taoyuan Legal Evidence Monitor` also runs this check daily against the approved baseline
+in `configs/taoyuan-legal-evidence-baseline.json`. It creates or updates one GitHub issue
+only when the official source drifts, a `ParkingSpot`/curb-line candidate appears, or the
+probe fails, and closes that issue after the baseline state returns. Monitoring never
+changes `legalAnswerEligible`. A successful probe does not promote reference points into
+legal evidence. If an authority supplies exact marked-space and curb-rule geometry,
+normalize it through the
 [Taoyuan legal evidence intake contract](docs/taoyuan-legal-evidence-intake.md) and run
 `npm run ops:validate-taoyuan-legal-candidate -- --manifest <path> --require-complete`.
 Passing that gate means ready for human review, not ready for production. The credential-free
