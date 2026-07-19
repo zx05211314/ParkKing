@@ -31,6 +31,7 @@ const startJsonServer = async (
     parkingReadyFailureStatuses?: number[]
     parkingReadyDelayMs?: number
     insecureSyncBoundary?: boolean
+    durableIssueSink?: boolean
   } = {},
 ) => {
   const issues: unknown[] = []
@@ -131,6 +132,9 @@ const startJsonServer = async (
           issueReportsRead: Boolean(options.insecureSyncBoundary),
           issueReportsWrite: true,
         },
+        issueSink: {
+          configured: Boolean(options.durableIssueSink),
+        },
       })
       return
     }
@@ -166,7 +170,12 @@ const startJsonServer = async (
         issue?: unknown
       }
       issues.push(body.issue)
-      sendJson(response, 201, { issue: body.issue, revision: issues.length })
+      sendJson(response, 201, {
+        issue: body.issue,
+        revision: issues.length,
+        durable: Boolean(options.durableIssueSink),
+        durability: options.durableIssueSink ? 'external' : 'ephemeral',
+      })
       return
     }
     if (url.pathname === '/api/sync/issues' && request.method === 'OPTIONS') {
@@ -228,6 +237,36 @@ describe('renderDeploymentVerify', () => {
     }
   })
 
+  it('requires an advertised durable issue sink when requested', async () => {
+    const ephemeralServer = await startJsonServer({})
+    const durableServer = await startJsonServer({}, 200, {
+      durableIssueSink: true,
+    })
+    try {
+      const ephemeral = await verifyRenderSyncBoundary({
+        appUrl: ephemeralServer.baseUrl,
+        timeoutMs: 1000,
+        requireDurableIssueSink: true,
+      })
+      const durable = await verifyRenderSyncBoundary({
+        appUrl: durableServer.baseUrl,
+        timeoutMs: 1000,
+        requireDurableIssueSink: true,
+      })
+
+      expect(ephemeral.pass).toBe(false)
+      expect(ephemeral.issueSinkConfigured).toBe(false)
+      expect(ephemeral.errors).toContain(
+        'sync issue sink expected configured=true, got false',
+      )
+      expect(durable.pass).toBe(true)
+      expect(durable.issueSinkConfigured).toBe(true)
+    } finally {
+      await ephemeralServer.close()
+      await durableServer.close()
+    }
+  })
+
   it('defaults readiness to a longer cold-start budget', () => {
     const options = parseRenderDeploymentVerifyArgs([
       'node',
@@ -274,6 +313,7 @@ describe('renderDeploymentVerify', () => {
       skipApiServices: true,
       apiServices: ['geocode', 'routing'],
       syncIssueRoundtrip: false,
+      requireDurableIssueSink: false,
       syncCorsCheck: false,
       answerCasesDir: 'configs/prod',
       skipParkingAnswerCases: true,
@@ -281,6 +321,28 @@ describe('renderDeploymentVerify', () => {
       outPath: '.tmp/verify.md',
       jsonOutPath: '.tmp/verify.json',
     })
+  })
+
+  it('parses durable issue sink acceptance mode', () => {
+    expect(
+      parseRenderDeploymentVerifyArgs([
+        '--require-durable-issue-sink',
+      ]),
+    ).toMatchObject({
+      syncIssueRoundtrip: true,
+      requireDurableIssueSink: true,
+    })
+  })
+
+  it('rejects contradictory durable sink and skipped roundtrip flags', () => {
+    expect(() =>
+      parseRenderDeploymentVerifyArgs([
+        '--require-durable-issue-sink',
+        '--skip-sync-issue-roundtrip',
+      ]),
+    ).toThrow(
+      '--require-durable-issue-sink cannot be combined with --skip-sync-issue-roundtrip',
+    )
   })
 
   it('keeps the npm shortcut from forcing local handoff mode', async () => {
@@ -443,6 +505,7 @@ describe('renderDeploymentVerify', () => {
         pass: true,
         mode: 'issue-upload-only',
         durability: 'ephemeral',
+        issueSinkConfigured: false,
       })
       expect(result.proxyRuntime).toEqual([
         expect.objectContaining({

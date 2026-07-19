@@ -24,6 +24,11 @@ on:
         required: false
         type: boolean
         default: true
+      requireDurableIssueSink:
+        description: Require configured durable issue intake and durable external confirmation
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -45,7 +50,7 @@ jobs:
           PARKKING_RENDER_APP_URL: ${{ inputs.appUrl }}
           PARKKING_RELEASE_MANIFEST_URL: ${{ inputs.manifestUrl }}
           PARKKING_RELEASE_DOWNLOAD_TOKEN: ${{ inputs.useGithubToken && github.token || '' }}
-        run: npm run ops:render-deployment-verify -- ${{ inputs.skipSyncIssueRoundtrip && '--skip-sync-issue-roundtrip' || '' }} ${{ inputs.allParkingAnswerCases && '--all-parking-answer-cases' || '' }}
+        run: npm run ops:render-deployment-verify -- ${{ inputs.skipSyncIssueRoundtrip && '--skip-sync-issue-roundtrip' || '' }} ${{ inputs.allParkingAnswerCases && '--all-parking-answer-cases' || '' }} ${{ inputs.requireDurableIssueSink && '--require-durable-issue-sink' || '' }}
       - name: Smoke live all Taoyuan paid-curb reference UIs
         run: npm run ops:smoke-ui-paid-curb-reference -- --app-url "${{ inputs.appUrl }}" --district xinyi --all-reference-districts --timeout-ms 90000
       - name: Summarize verification
