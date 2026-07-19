@@ -28,6 +28,7 @@ const startJsonServer = async (
     omitProxyTimeouts?: boolean
     parkingAnswerFailureStatuses?: number[]
     parkingReadyFailureStatuses?: number[]
+    parkingReadyDelayMs?: number
   } = {},
 ) => {
   const issues: unknown[] = []
@@ -54,6 +55,11 @@ const startJsonServer = async (
       return
     }
     if (url.pathname === '/api/parking-answer/ready') {
+      if (options.parkingReadyDelayMs) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, options.parkingReadyDelayMs),
+        )
+      }
       const failureStatus = parkingReadyFailureStatuses.shift()
       if (failureStatus !== undefined) {
         sendJson(response, failureStatus, { status: 'error' })
@@ -163,6 +169,16 @@ const startJsonServer = async (
 }
 
 describe('renderDeploymentVerify', () => {
+  it('defaults readiness to a longer cold-start budget', () => {
+    const options = parseRenderDeploymentVerifyArgs([
+      'node',
+      'renderDeploymentVerify.ts',
+    ])
+
+    expect(options.timeoutMs).toBe(15000)
+    expect(options.readinessTimeoutMs).toBe(30000)
+  })
+
   it('parses CLI args', () => {
     expect(
       parseRenderDeploymentVerifyArgs([
@@ -176,6 +192,8 @@ describe('renderDeploymentVerify', () => {
         'https://example.test/release_manifest.json',
         '--timeout-ms',
         '1000',
+        '--readiness-timeout-ms',
+        '2000',
         '--skip-api-services',
         '--api-services',
         'geocode,routing',
@@ -193,6 +211,7 @@ describe('renderDeploymentVerify', () => {
       handoffJsonPath: '.tmp/handoff.json',
       manifestUrl: 'https://example.test/release_manifest.json',
       timeoutMs: 1000,
+      readinessTimeoutMs: 2000,
       skipApiServices: true,
       apiServices: ['geocode', 'routing'],
       syncIssueRoundtrip: false,
@@ -259,6 +278,59 @@ describe('renderDeploymentVerify', () => {
       expect(result.readinessAttempts).toBe(2)
       expect(renderRenderDeploymentVerify(result)).toContain(
         '- Readiness attempts: 2',
+      )
+    } finally {
+      await server.close()
+    }
+  })
+
+  it('uses a separate timeout budget for cold-start readiness', async () => {
+    const base = await fs.mkdtemp(path.join(tmpdir(), 'render-verify-cold-start-'))
+    const manifestPath = path.join(base, 'release_manifest.json')
+    await writeJson(manifestPath, {
+      releaseId: 'release-a',
+      districts: [
+        {
+          districtId: 'xinyi',
+          datasetHash: 'hash-xinyi',
+          publishedAt: PUBLISHED_AT,
+        },
+      ],
+      files: [],
+    })
+    const server = await startJsonServer(
+      {
+        status: 'ok',
+        districts: [
+          {
+            district: 'xinyi',
+            ready: true,
+            datasetHash: 'hash-xinyi',
+            publishedAt: PUBLISHED_AT,
+            latestDatasetHash: 'hash-xinyi',
+            latestPublishedAt: PUBLISHED_AT,
+          },
+        ],
+      },
+      200,
+      { parkingReadyDelayMs: 50 },
+    )
+
+    try {
+      const result = await verifyRenderDeployment({
+        appUrl: server.baseUrl,
+        manifestPath,
+        timeoutMs: 10,
+        readinessTimeoutMs: 100,
+        skipApiServices: true,
+        skipParkingAnswerCases: true,
+      })
+
+      expect(result.pass).toBe(true)
+      expect(result.readinessTimeoutMs).toBe(100)
+      expect(result.readinessAttempts).toBe(1)
+      expect(renderRenderDeploymentVerify(result)).toContain(
+        '- Readiness timeout per attempt: 100ms',
       )
     } finally {
       await server.close()
@@ -967,6 +1039,7 @@ describe('renderDeploymentVerify', () => {
         releaseTag: 'data-release-a',
         status: 200,
         serviceStatus: 'ok',
+        readinessTimeoutMs: 30000,
         readinessAttempts: 1,
         expectedDatasets: [
           {
