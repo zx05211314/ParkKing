@@ -2,10 +2,12 @@ import * as fs from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
+import type { RuntimeCoverageCatalog } from '../../src/data/coverageCatalog'
 import type { SmokeExactParkingAnswerCaseFile } from './smokeExactParkingAnswers'
 import {
   parseValidateAnswerCasesArgs,
   renderValidateAnswerCasesResult,
+  validateAnswerCaseCoverageAreas,
   validateAnswerCaseFile,
   validateAnswerCases,
 } from './validateAnswerCases'
@@ -26,6 +28,65 @@ const validCaseFile: SmokeExactParkingAnswerCaseFile = {
       expectedPrimarySegmentId: 'seg-1',
       expectedFinalConfidence: 'HIGH',
       minParkingSpaceCount: 1,
+    },
+  ],
+}
+
+const boundaryHash = 'a'.repeat(64)
+const coverageCatalog: RuntimeCoverageCatalog = {
+  schemaVersion: 1,
+  districts: [
+    {
+      regionId: 'taipei',
+      regionName: 'Taipei City',
+      districtId: 'beitou',
+      districtName: 'Beitou',
+      boundaryFeatureId: '63012',
+      publishStage: 'production',
+      answerCapability: 'full-rule-pipeline',
+      requiresHumanReview: false,
+      aliases: [
+        {
+          areaId: 'shipai',
+          areaName: 'Shipai',
+          coverageMode: 'parent-district',
+          standaloneBoundaryRequired: false,
+          boundary: {
+            kind: 'OFFICIAL_SUBDISTRICT_UNION',
+            url: '/data/reference/shipai-boundary.geojson',
+            dataSha256: boundaryHash,
+            sourceSha256: boundaryHash,
+            memberFeatureIds: ['A01'],
+            parkingAnswerOwnerDistrictId: 'beitou',
+            boundaryBBox: [121.5, 25.1, 121.52, 25.12],
+            boundaryGeometry: {
+              type: 'Polygon',
+              coordinates: [
+                [
+                  [121.5, 25.1],
+                  [121.52, 25.1],
+                  [121.52, 25.12],
+                  [121.5, 25.12],
+                  [121.5, 25.1],
+                ],
+              ],
+            },
+          },
+        },
+      ],
+      boundaryBBox: [121.48, 25.08, 121.54, 25.16],
+      boundaryGeometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [121.48, 25.08],
+            [121.54, 25.08],
+            [121.54, 25.16],
+            [121.48, 25.16],
+            [121.48, 25.08],
+          ],
+        ],
+      },
     },
   ],
 }
@@ -143,6 +204,52 @@ describe('validateAnswerCases', () => {
 
     expect(issue.errors).toEqual([
       'case xinyi-reviewed-legal-seg-1: includeInferred=true is not allowed by this validation mode',
+    ])
+  })
+
+  it('requires coverage-area cases to be inside their owned standalone boundary', () => {
+    const caseFile: SmokeExactParkingAnswerCaseFile = {
+      ...validCaseFile,
+      districtId: 'beitou',
+      cases: [
+        {
+          ...validCaseFile.cases[0],
+          id: 'shipai-inside',
+          coverageAreaId: 'shipai',
+          lng: 121.51,
+          lat: 25.11,
+        },
+        {
+          ...validCaseFile.cases[0],
+          id: 'shipai-outside',
+          coverageAreaId: 'shipai',
+          lng: 121.53,
+          lat: 25.13,
+        },
+      ],
+    }
+
+    expect(validateAnswerCaseCoverageAreas(caseFile, coverageCatalog)).toEqual([
+      'case shipai-outside: location is outside coverage area shipai',
+    ])
+  })
+
+  it('rejects coverage areas not owned by the answer district', () => {
+    expect(
+      validateAnswerCaseCoverageAreas(
+        {
+          ...validCaseFile,
+          cases: [
+            {
+              ...validCaseFile.cases[0],
+              coverageAreaId: 'shipai',
+            },
+          ],
+        },
+        coverageCatalog,
+      ),
+    ).toEqual([
+      'case xinyi-reviewed-legal-seg-1: coverage area shipai is not owned by district xinyi',
     ])
   })
 

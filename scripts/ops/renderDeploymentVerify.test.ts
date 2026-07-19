@@ -789,6 +789,7 @@ describe('renderDeploymentVerify', () => {
       cases: [
         {
           id: 'xinyi-live-case',
+          coverageAreaId: 'shipai',
           lng: 121.56,
           lat: 25.03,
           hhmm: '21:00',
@@ -838,6 +839,7 @@ describe('renderDeploymentVerify', () => {
         expect.objectContaining({
           districtId: 'xinyi',
           id: 'xinyi-live-case',
+          coverageAreaId: 'shipai',
           pass: true,
           status: 200,
           answerKind: 'PARK',
@@ -847,6 +849,9 @@ describe('renderDeploymentVerify', () => {
       ])
       expect(renderRenderDeploymentVerify(result)).toContain(
         '## Reviewed Live Parking Answers',
+      )
+      expect(renderRenderDeploymentVerify(result)).toContain(
+        '| PASS | xinyi | shipai | xinyi-live-case |',
       )
 
       const allResult = await verifyRenderDeployment({

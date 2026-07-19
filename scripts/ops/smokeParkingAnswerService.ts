@@ -33,6 +33,7 @@ export interface SmokeParkingAnswerServiceOptions {
 
 export interface SmokeParkingAnswerServiceCaseResult {
   id: string
+  coverageAreaId?: string | null
   status: number
   pass: boolean
   errors: string[]
@@ -264,6 +265,7 @@ export const buildSmokeParkingAnswerServiceCaseResult = (params: {
 
   return {
     id: answerCase.id,
+    coverageAreaId: answerCase.coverageAreaId ?? null,
     status: responseStatus,
     pass: errors.length === 0,
     errors,

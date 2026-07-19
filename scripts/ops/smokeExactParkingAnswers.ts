@@ -42,6 +42,7 @@ export interface SmokeExactParkingAnswerSample {
 export interface SmokeExactParkingAnswerCase {
   id: string
   label?: string
+  coverageAreaId?: string
   lng: number
   lat: number
   hhmm?: string
@@ -314,6 +315,7 @@ const parseCase = (
   return {
     id,
     label: getString(record, 'label') ?? undefined,
+    coverageAreaId: getString(record, 'coverageAreaId') ?? undefined,
     lng,
     lat,
     hhmm: getString(record, 'hhmm') ?? undefined,

@@ -620,6 +620,7 @@ export const verifyRenderParkingAnswers = async (params: {
         pass: false,
         errors: [error instanceof Error ? error.message : String(error)],
         expectedKind: '',
+        coverageAreaId: null,
         answerKind: null,
         expectedEvidenceKind: null,
         evidenceKind: null,
@@ -680,6 +681,7 @@ export const verifyRenderParkingAnswers = async (params: {
           pass: false,
           errors: [error instanceof Error ? error.message : String(error)],
           expectedKind: answerCase.expectedKind,
+          coverageAreaId: answerCase.coverageAreaId ?? null,
           answerKind: null,
           expectedEvidenceKind: answerCase.expectedEvidenceKind ?? null,
           evidenceKind: null,
@@ -1192,11 +1194,11 @@ export const renderRenderDeploymentVerify = (
           '',
           `- Cases: ${result.parkingAnswers.length}; passed=${result.parkingAnswers.filter((entry) => entry.pass).length}; failed=${result.parkingAnswers.filter((entry) => !entry.pass).length}`,
           '',
-          '| Status | District | Case | HTTP | Answer | Evidence | Primary | Dataset hash | Attempts | Elapsed | Error |',
-          '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+          '| Status | District | Coverage area | Case | HTTP | Answer | Evidence | Primary | Dataset hash | Attempts | Elapsed | Error |',
+          '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
           ...result.parkingAnswers.map(
             (entry) =>
-              `| ${entry.pass ? 'PASS' : 'FAIL'} | ${entry.districtId} | ${entry.id} | ${entry.status} | ${entry.answerKind ?? '-'} | ${entry.evidenceKind ?? '-'} | ${entry.primarySegmentId ?? '-'} | ${shortHash(entry.datasetHash)} | ${entry.attempts} | ${entry.elapsedMs}ms | ${entry.errors.join('; ')} |`,
+              `| ${entry.pass ? 'PASS' : 'FAIL'} | ${entry.districtId} | ${entry.coverageAreaId ?? '-'} | ${entry.id} | ${entry.status} | ${entry.answerKind ?? '-'} | ${entry.evidenceKind ?? '-'} | ${entry.primarySegmentId ?? '-'} | ${shortHash(entry.datasetHash)} | ${entry.attempts} | ${entry.elapsedMs}ms | ${entry.errors.join('; ')} |`,
           ),
         ]
       : []),
