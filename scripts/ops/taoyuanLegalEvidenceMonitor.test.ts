@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto'
 import * as fs from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
@@ -93,18 +92,26 @@ const makeProbe = (
 })
 
 describe('taoyuanLegalEvidenceMonitor', () => {
-  it('pins the approved source and tracked spatial artifact to the baseline', async () => {
-    const approvedSource = await fs.readFile(
-      'data/sources/taoyuan/paid_curb_segments.xml',
+  it('pins the approved review evidence and public reference to the baseline', async () => {
+    const reviewManifestNames = (
+      await fs.readdir('review-evidence/taoyuan')
+    ).filter((name) => name.endsWith('-paid-curb-review.manifest.json'))
+    const reviewSourceSha256 = await Promise.all(
+      reviewManifestNames.map(async (name) => {
+        const manifest = JSON.parse(
+          await fs.readFile(`review-evidence/taoyuan/${name}`, 'utf-8'),
+        ) as { sourceSha256?: unknown }
+        return manifest.sourceSha256
+      }),
     )
-    const spatial = JSON.parse(
+    const publicReference = JSON.parse(
       await fs.readFile(
-        'data/sources/taoyuan/paid_curb_segments.geojson',
+        'public/data/reference/taoyuan-paid-curb.json',
         'utf-8',
       ),
     ) as {
-      features: unknown[]
-      metadata: Record<string, unknown>
+      source: { sha256: string; recordCount: number }
+      districts: unknown[]
     }
     const trackedBaseline = parseTaoyuanLegalEvidenceBaseline(
       JSON.parse(
@@ -115,18 +122,16 @@ describe('taoyuanLegalEvidenceMonitor', () => {
       ) as unknown,
     )
 
-    expect(trackedBaseline.approvedSourceSha256).toBe(
-      createHash('sha256').update(approvedSource).digest('hex'),
-    )
-    expect(trackedBaseline.approvedSpatialSha256).toBe(
-      hashTaoyuanLocalSpatialContent(spatial),
+    expect(reviewManifestNames).toHaveLength(11)
+    expect(new Set(reviewSourceSha256)).toEqual(
+      new Set([trackedBaseline.approvedSourceSha256]),
     )
     expect(trackedBaseline).toMatchObject({
-      sourceUpdatedAt: spatial.metadata.sourceUpdateTime,
-      sourceVersionId: spatial.metadata.versionId,
-      parkingSegmentCount: spatial.metadata.sourceRecordCount,
-      spatialFeatureCount: spatial.features.length,
+      approvedSourceSha256: publicReference.source.sha256,
+      parkingSegmentCount: publicReference.source.recordCount,
+      spatialFeatureCount: publicReference.source.recordCount,
     })
+    expect(publicReference.districts).toHaveLength(13)
   })
 
   it('accepts a safe pinned baseline and rejects unsafe eligibility', () => {
