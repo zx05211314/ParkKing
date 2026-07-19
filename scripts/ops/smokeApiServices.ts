@@ -38,6 +38,7 @@ export interface SmokeApiServicesOptions {
   startPreview?: boolean
   previewPort?: number
   syncIssueRoundtrip?: boolean
+  requireDurableIssueSink?: boolean
 }
 
 export interface SmokeApiServicesProbeResult {
@@ -63,6 +64,8 @@ export interface SmokeApiServicesActionResult {
   status: number
   ok: boolean
   detail: string
+  durable?: boolean | null
+  durability?: string | null
 }
 
 interface StartedService {
@@ -157,7 +160,16 @@ export const parseSmokeApiServicesArgs = (
     '--sync-issue-roundtrip',
     '--syncIssueRoundtrip',
   )
-  assertSyncIssueRoundtripServices(services, syncIssueRoundtrip)
+  const requireDurableIssueSink = hasFlag(
+    argv,
+    '--require-durable-issue-sink',
+    '--requireDurableIssueSink',
+  )
+  assertSyncIssueRoundtripServices(
+    services,
+    syncIssueRoundtrip,
+    requireDurableIssueSink,
+  )
   return {
     services,
     timeoutMs: parsePositiveNumber(
@@ -170,15 +182,22 @@ export const parseSmokeApiServicesArgs = (
       getArgValue(argv, '--preview-port', '--previewPort'),
     ),
     syncIssueRoundtrip,
+    requireDurableIssueSink,
   }
 }
 
 const assertSyncIssueRoundtripServices = (
   services: SmokeApiServiceId[],
   syncIssueRoundtrip: boolean,
+  requireDurableIssueSink = false,
 ) => {
   if (syncIssueRoundtrip && !services.includes('sync')) {
     throw new Error('--sync-issue-roundtrip requires the sync service')
+  }
+  if (requireDurableIssueSink && !syncIssueRoundtrip) {
+    throw new Error(
+      '--require-durable-issue-sink requires --sync-issue-roundtrip',
+    )
   }
 }
 
@@ -506,6 +525,7 @@ export const runSyncIssueReportRoundtrip = async (params: {
   timeoutMs: number
   issueId?: string
   createdAt?: string
+  requireDurable?: boolean
 }): Promise<SmokeApiServicesActionResult> => {
   const issueId = params.issueId ?? makeSmokeIssueId()
   const issue = makeSmokeIssueReport(
@@ -538,6 +558,16 @@ export const runSyncIssueReportRoundtrip = async (params: {
       }
     }
 
+    const durable =
+      isRecord(post.payload) && typeof post.payload.durable === 'boolean'
+        ? post.payload.durable
+        : null
+    const durability =
+      isRecord(post.payload) && typeof post.payload.durability === 'string'
+        ? post.payload.durability
+        : null
+    const durableConfirmed =
+      durable === true && durability === 'external'
     const postedRevision = readFiniteNumber(post.payload, 'revision')
     const statusUrl = buildSyncStatusUrl(params.url)
     const status = await fetchJsonWithTimeout(statusUrl, params.timeoutMs)
@@ -555,10 +585,19 @@ export const runSyncIssueReportRoundtrip = async (params: {
     return {
       ...actionBase,
       status: status.response.status,
-      ok: status.response.ok && persisted,
+      ok:
+        status.response.ok &&
+        persisted &&
+        (!params.requireDurable || durableConfirmed),
+      durable,
+      durability,
       detail:
-        status.response.ok && persisted
-          ? `POST 201 and status ${status.response.status} confirmed revision ${storedRevision}, count ${storedCount}`
+        status.response.ok &&
+        persisted &&
+        (!params.requireDurable || durableConfirmed)
+          ? `POST 201 and status ${status.response.status} confirmed revision ${storedRevision}, count ${storedCount}, durable ${String(durable)}, durability ${durability ?? 'missing'}`
+          : params.requireDurable && !durableConfirmed
+            ? `POST did not confirm durable external storage: durable ${String(durable)}, durability ${durability ?? 'missing'}`
           : `status expected revision >= ${postedRevision ?? 'missing'} and positive count, got HTTP ${status.response.status}, revision ${storedRevision ?? 'missing'}, count ${storedCount ?? 'missing'}`,
     }
   } catch (error) {
@@ -578,7 +617,12 @@ export const runSmokeApiServices = async (
   const services = options.services ?? DEFAULT_SERVICES
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const syncIssueRoundtrip = Boolean(options.syncIssueRoundtrip)
-  assertSyncIssueRoundtripServices(services, syncIssueRoundtrip)
+  const requireDurableIssueSink = Boolean(options.requireDurableIssueSink)
+  assertSyncIssueRoundtripServices(
+    services,
+    syncIssueRoundtrip,
+    requireDurableIssueSink,
+  )
   const launchedPreview = options.startPreview
     ? await launchPreview(
         await chooseAvailablePort(options.previewPort),
@@ -620,6 +664,7 @@ export const runSmokeApiServices = async (
             makeSmokeScope(),
           ),
           timeoutMs,
+          requireDurable: requireDurableIssueSink,
         }),
       )
     }

@@ -109,6 +109,17 @@ npm run ops:issue-report-artifacts
 6. `npm run ops:pull-issue-sink -- --require` writes the receipt into the
    expected sync scope.
 
+Run the production durable acceptance gate:
+
+```powershell
+npm run ops:smoke-api-services -- --base-url https://parkking.onrender.com --services sync --timeout-ms 25000 --sync-issue-roundtrip --require-durable-issue-sink
+```
+
+For the full release contract, add `--require-durable-issue-sink` to
+`ops:render-deployment-verify`, or enable `requireDurableIssueSink` in the
+manual `Render Live Verify` workflow. Before D1 is connected, this gate must
+fail with `durable false, durability ephemeral`.
+
 ## Recovery
 
 - Export D1 periodically with

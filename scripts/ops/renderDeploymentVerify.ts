@@ -40,6 +40,7 @@ export interface RenderDeploymentVerifyOptions {
   skipApiServices?: boolean | null
   apiServices?: SmokeApiServiceId[] | null
   syncIssueRoundtrip?: boolean | null
+  requireDurableIssueSink?: boolean | null
   syncCorsCheck?: boolean | null
   answerCasesDir?: string | null
   skipParkingAnswerCases?: boolean | null
@@ -99,6 +100,7 @@ export interface RenderDeploymentVerifySyncBoundaryResult {
   healthUrl: string
   mode: string | null
   durability: string | null
+  issueSinkConfigured: boolean | null
   capabilities: Record<string, boolean> | null
   protectedResources: Array<{
     resource: 'saved-plans' | 'reports' | 'issues'
@@ -211,6 +213,21 @@ export const parseRenderDeploymentVerifyArgs = (
       getArgValue(argv, '--readiness-timeout-ms', '--readinessTimeoutMs'),
       'readiness-timeout-ms',
     ) ?? Math.max(DEFAULT_READINESS_TIMEOUT_MS, timeoutMs)
+  const syncIssueRoundtrip = !hasFlag(
+    argv,
+    '--skip-sync-issue-roundtrip',
+    '--skipSyncIssueRoundtrip',
+  )
+  const requireDurableIssueSink = hasFlag(
+    argv,
+    '--require-durable-issue-sink',
+    '--requireDurableIssueSink',
+  )
+  if (requireDurableIssueSink && !syncIssueRoundtrip) {
+    throw new Error(
+      '--require-durable-issue-sink cannot be combined with --skip-sync-issue-roundtrip',
+    )
+  }
 
   return {
     appUrl:
@@ -239,8 +256,8 @@ export const parseRenderDeploymentVerifyArgs = (
     apiServices: parseApiServices(
       getArgValue(argv, '--api-services', '--apiServices'),
     ),
-    syncIssueRoundtrip:
-      !hasFlag(argv, '--skip-sync-issue-roundtrip', '--skipSyncIssueRoundtrip'),
+    syncIssueRoundtrip,
+    requireDurableIssueSink,
     syncCorsCheck: !hasFlag(argv, '--skip-sync-cors-check', '--skipSyncCorsCheck'),
     answerCasesDir:
       getArgValue(argv, '--answer-cases-dir', '--answerCasesDir') ??
@@ -583,6 +600,7 @@ const readBooleanRecord = (value: unknown) => {
 export const verifyRenderSyncBoundary = async (params: {
   appUrl: string
   timeoutMs: number
+  requireDurableIssueSink?: boolean
 }): Promise<RenderDeploymentVerifySyncBoundaryResult> => {
   const healthUrl = new URL('/api/sync/health', `${params.appUrl}/`).toString()
   const scope = `render-boundary-${Date.now()}-${Math.random().toString(16).slice(2)}`
@@ -611,6 +629,10 @@ export const verifyRenderSyncBoundary = async (params: {
         ? healthPayload.durability
         : null
     const capabilities = readBooleanRecord(healthPayload?.capabilities)
+    const issueSinkConfigured = getBoolean(
+      toRecord(healthPayload?.issueSink),
+      'configured',
+    )
     const probes = protectedResources.map((resource, index) => ({
       ...resource,
       status: resourceResponses[index]?.status ?? 0,
@@ -639,6 +661,11 @@ export const verifyRenderSyncBoundary = async (params: {
       )
         ? []
         : ['sync health capabilities do not match the upload-only contract']),
+      ...(params.requireDurableIssueSink && issueSinkConfigured !== true
+        ? [
+            `sync issue sink expected configured=true, got ${String(issueSinkConfigured)}`,
+          ]
+        : []),
       ...probes
         .filter((probe) => probe.status !== 403)
         .map(
@@ -651,6 +678,7 @@ export const verifyRenderSyncBoundary = async (params: {
       healthUrl,
       mode,
       durability,
+      issueSinkConfigured,
       capabilities,
       protectedResources: probes,
       errors,
@@ -661,6 +689,7 @@ export const verifyRenderSyncBoundary = async (params: {
       healthUrl,
       mode: null,
       durability: null,
+      issueSinkConfigured: null,
       capabilities: null,
       protectedResources: protectedResources.map((resource) => ({
         ...resource,
@@ -1170,6 +1199,8 @@ export const verifyRenderDeployment = async (
         services: selectedApiServices,
         timeoutMs,
         syncIssueRoundtrip: shouldRunSyncIssueRoundtrip,
+        requireDurableIssueSink:
+          options.requireDurableIssueSink ?? false,
       })
       if (apiServices.failed > 0) {
         const total = apiServices.results.length + apiServices.actions.length
@@ -1189,7 +1220,12 @@ export const verifyRenderDeployment = async (
       }
     }
     if (syncSelected) {
-      syncBoundary = await verifyRenderSyncBoundary({ appUrl, timeoutMs })
+      syncBoundary = await verifyRenderSyncBoundary({
+        appUrl,
+        timeoutMs,
+        requireDurableIssueSink:
+          options.requireDurableIssueSink ?? false,
+      })
       if (!syncBoundary.pass) {
         errors.push(
           `sync production boundary failed: ${syncBoundary.errors.join('; ')}`,
@@ -1359,6 +1395,7 @@ export const renderRenderDeploymentVerify = (
           `- Health URL: ${result.syncBoundary.healthUrl}`,
           `- Mode: ${result.syncBoundary.mode ?? '-'}`,
           `- Durability: ${result.syncBoundary.durability ?? '-'}`,
+          `- Durable issue sink configured: ${String(result.syncBoundary.issueSinkConfigured)}`,
           `- Capabilities: ${result.syncBoundary.capabilities ? JSON.stringify(result.syncBoundary.capabilities) : '-'}`,
           `- Protected reads: ${result.syncBoundary.protectedResources.map((entry) => `${entry.resource}=${entry.status}`).join(', ')}`,
           `- Errors: ${result.syncBoundary.errors.join('; ') || 'none'}`,

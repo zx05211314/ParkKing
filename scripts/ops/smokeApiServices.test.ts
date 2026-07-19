@@ -27,6 +27,7 @@ describe('smokeApiServices', () => {
       startPreview: false,
       previewPort: undefined,
       syncIssueRoundtrip: false,
+      requireDurableIssueSink: false,
     })
   })
 
@@ -43,6 +44,34 @@ describe('smokeApiServices', () => {
       services: ['sync'],
       syncIssueRoundtrip: true,
     })
+  })
+
+  it('parses durable issue sink acceptance mode', () => {
+    expect(
+      parseSmokeApiServicesArgs([
+        'node',
+        'script',
+        '--services',
+        'sync',
+        '--sync-issue-roundtrip',
+        '--require-durable-issue-sink',
+      ]),
+    ).toMatchObject({
+      syncIssueRoundtrip: true,
+      requireDurableIssueSink: true,
+    })
+  })
+
+  it('requires an issue roundtrip when durable intake is required', () => {
+    expect(() =>
+      parseSmokeApiServicesArgs([
+        'node',
+        'script',
+        '--require-durable-issue-sink',
+      ]),
+    ).toThrow(
+      '--require-durable-issue-sink requires --sync-issue-roundtrip',
+    )
   })
 
   it('rejects issue-report roundtrip mode when sync is not selected', () => {
@@ -170,7 +199,14 @@ describe('smokeApiServices', () => {
           issues.push(body.issue)
           res.setHeader('content-type', 'application/json')
           res.statusCode = 201
-          res.end(JSON.stringify({ issue: body.issue, revision: issues.length }))
+          res.end(
+            JSON.stringify({
+              issue: body.issue,
+              revision: issues.length,
+              durable: true,
+              durability: 'external',
+            }),
+          )
           return
         }
 
@@ -204,6 +240,7 @@ describe('smokeApiServices', () => {
         timeoutMs: 2_000,
         issueId: 'smoke-sync-issue-test',
         createdAt: '2026-04-02T00:00:00.000Z',
+        requireDurable: true,
       })
 
       expect(result).toMatchObject({
@@ -211,6 +248,8 @@ describe('smokeApiServices', () => {
         action: 'issue-report-roundtrip',
         status: 200,
         ok: true,
+        durable: true,
+        durability: 'external',
       })
       expect(issues).toEqual([
         expect.objectContaining({
