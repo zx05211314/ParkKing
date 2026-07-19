@@ -61,6 +61,8 @@
     "ops:taoyuan-expansion-readiness:strict": "tsx scripts/ops/taoyuanExpansionReadiness.ts --require-ready",
     "ops:taoyuan-expansion-readiness:strict:all": "tsx scripts/ops/taoyuanExpansionReadiness.ts --all-districts --require-ready",
     "ops:probe-taoyuan-legal-evidence": "tsx scripts/ops/probeTaoyuanLegalEvidence.ts",
+    "ops:monitor-taoyuan-legal-evidence": "tsx scripts/ops/taoyuanLegalEvidenceMonitor.ts",
+    "ops:notify-taoyuan-legal-evidence": "tsx scripts/ops/taoyuanLegalEvidenceMonitorIssue.ts",
     "ops:validate-taoyuan-legal-candidate": "tsx scripts/ops/validateTaoyuanLegalEvidenceCandidate.ts",
     "ops:sync-public-data": "tsx scripts/ops/syncPublicData.ts",
     "ops:smoke-public-data": "tsx scripts/ops/smokePublicData.ts",
