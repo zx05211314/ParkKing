@@ -325,7 +325,7 @@ export const resolveTdxAcquisitionMode = (
   )
 }
 
-const requestTdxAccessToken = async (env: NodeJS.ProcessEnv) => {
+export const requestTdxAccessToken = async (env: NodeJS.ProcessEnv) => {
   const acquisitionMode = resolveTdxAcquisitionMode(env)
   if (acquisitionMode === 'guest') {
     return { acquisitionMode, token: null }

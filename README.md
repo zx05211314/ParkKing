@@ -452,7 +452,12 @@ until source text is fully approved and a valid TDX spatial-reference artifact e
 CI uses the tracked runtime coverage catalog as explicit derived boundary evidence; local
 and strict runs default to the unpacked official shapefile instead of silently falling back.
 Even strict readiness only approves a spatial reference layer; legal-answer eligibility
-remains false. The credential-free
+remains false. Run `npm run ops:probe-taoyuan-legal-evidence` to compare the live official
+TDX `ParkingSegment` and `ParkingSpot` collection counts with the normalized local
+artifact. The probe is intentionally manual rather than a CI dependency; it reports data
+provider capability changes, source-count drift, and the remaining legal-answer blockers
+to `.tmp/taoyuan-legal-evidence-probe.md/json`. A successful probe does not promote
+reference points into legal evidence. The credential-free
 [Taoyuan roadside fee dataset](https://data.gov.tw/dataset/149456) exposes text/fare fields
 but no coordinates, so address text must not be converted into synthetic geometry.
 When a source-only Taoyuan address is pinned, the app can filter this official text by
