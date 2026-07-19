@@ -45,6 +45,9 @@ describe('syncRenderRuntimeEnv', () => {
     expect(calls).toEqual([])
     expect(result.updates.map((update) => update.key)).toEqual([
       'PARKKING_SYNC_CORS_ORIGINS',
+      'PARKKING_SYNC_MODE',
+      'PARKKING_SYNC_DURABILITY',
+      'VITE_SYNC_MODE',
       'PARKKING_GEOCODER_REQUEST_TIMEOUT_MS',
       'PARKKING_ROUTING_REQUEST_TIMEOUT_MS',
     ])
@@ -91,6 +94,9 @@ describe('syncRenderRuntimeEnv', () => {
       'PARKKING_RELEASE_PACKAGE_URL',
       'PARKKING_RELEASE_MANIFEST_URL',
       'PARKKING_SYNC_CORS_ORIGINS',
+      'PARKKING_SYNC_MODE',
+      'PARKKING_SYNC_DURABILITY',
+      'VITE_SYNC_MODE',
       'PARKKING_GEOCODER_REQUEST_TIMEOUT_MS',
       'PARKKING_ROUTING_REQUEST_TIMEOUT_MS',
     ])
@@ -149,17 +155,13 @@ describe('syncRenderRuntimeEnv', () => {
           body: init?.body as string | null | undefined,
           auth: headers.get('authorization'),
         })
-        return new Response('{}', { status: calls.length === 4 ? 202 : 200 })
+        return new Response('{}', { status: calls.length === 7 ? 202 : 200 })
       }) as typeof fetch,
     )
 
     expect(result.pass).toBe(true)
-    expect(calls).toHaveLength(4)
-    expect(calls.slice(0, 3).map((call) => call.method)).toEqual([
-      'PUT',
-      'PUT',
-      'PUT',
-    ])
+    expect(calls).toHaveLength(7)
+    expect(calls.slice(0, 6).every((call) => call.method === 'PUT')).toBe(true)
     expect(calls[0]?.url).toBe(
       'https://api.render.com/v1/services/srv-test/env-vars/PARKKING_SYNC_CORS_ORIGINS',
     )
@@ -167,7 +169,7 @@ describe('syncRenderRuntimeEnv', () => {
       JSON.stringify({ value: 'https://parkking.onrender.com' }),
     )
     expect(calls.every((call) => call.auth === 'Bearer token')).toBe(true)
-    expect(calls[3]).toMatchObject({
+    expect(calls[6]).toMatchObject({
       url: 'https://api.render.com/v1/services/srv-test/deploys',
       method: 'POST',
       body: JSON.stringify({ deployMode: 'build_and_deploy' }),
@@ -232,13 +234,15 @@ describe('syncRenderRuntimeEnv', () => {
       (async (input) => {
         calls.push(String(input))
         return new Response('bad request', {
-          status: calls.length === 2 ? 400 : 200,
+          status: String(input).includes('PARKKING_GEOCODER_REQUEST_TIMEOUT_MS')
+            ? 400
+            : 200,
         })
       }) as typeof fetch,
     )
 
     expect(result.pass).toBe(false)
-    expect(calls).toHaveLength(3)
+    expect(calls).toHaveLength(6)
     expect(calls.some((url) => url.endsWith('/deploys'))).toBe(false)
     expect(result.errors.join('\n')).toContain(
       'PARKKING_GEOCODER_REQUEST_TIMEOUT_MS: bad request',

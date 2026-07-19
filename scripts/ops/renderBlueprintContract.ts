@@ -61,6 +61,7 @@ const REQUIRED_ENV_VALUES: Record<string, string> = {
   VITE_ROUTING_URL: '/api/route',
   VITE_PARKING_ANSWER_URL: '/api/parking-answer',
   VITE_SYNC_BASE_URL: '/api/sync',
+  VITE_SYNC_MODE: 'issue-upload-only',
   PARKKING_GEOCODER_REQUEST_TIMEOUT_MS: '5000',
   PARKKING_GEOCODER_PATH: '/api/geocode',
   PARKKING_ROUTING_REQUEST_TIMEOUT_MS: '8000',
@@ -72,6 +73,8 @@ const REQUIRED_ENV_VALUES: Record<string, string> = {
   PARKKING_PARKING_ANSWER_INDEX_ROOT: '.tmp/parking-answer-index',
   PARKKING_PARKING_ANSWER_CACHE_MAX_DISTRICTS: '1',
   PARKKING_SYNC_PATH: '/api/sync',
+  PARKKING_SYNC_MODE: 'issue-upload-only',
+  PARKKING_SYNC_DURABILITY: 'ephemeral',
 }
 
 const REQUIRED_SYNC_FALSE = [

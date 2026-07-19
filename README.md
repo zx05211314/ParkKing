@@ -35,6 +35,7 @@ VITE_ROUTING_URL=/api/route
 VITE_ROUTING_FALLBACK_URL=
 VITE_PARKING_ANSWER_URL=
 VITE_SYNC_BASE_URL=
+VITE_SYNC_MODE=
 VITE_SYNC_BOOTSTRAP_PATH=bootstrap
 VITE_SYNC_STATUS_PATH=status
 VITE_SYNC_READINESS_PATH=ready
@@ -88,6 +89,8 @@ PARKKING_PARKING_ANSWER_ALLOW_DATASET_DIR=false
 
 PARKKING_SYNC_PORT=8789
 PARKKING_SYNC_PATH=/api/sync
+PARKKING_SYNC_MODE=full
+PARKKING_SYNC_DURABILITY=persistent
 PARKKING_SYNC_FILE=.tmp/sync-service.json
 PARKKING_SYNC_DEFAULT_SCOPE=default
 PARKKING_SYNC_MAX_BODY_BYTES=1048576
@@ -119,6 +122,7 @@ Parking answer env vars:
 
 ParkKing sync env vars:
 - `VITE_SYNC_BASE_URL`: first-party sync service base URL used for both trip-board plans and reports.
+- `VITE_SYNC_MODE`: client sync capability mode. Defaults to `full`; `issue-upload-only` keeps plans and legality reports device-local while retaining issue-report uploads.
 - `VITE_SYNC_BOOTSTRAP_PATH`: bootstrap resource path appended to `VITE_SYNC_BASE_URL`. Defaults to `bootstrap`.
 - `VITE_SYNC_STATUS_PATH`: metadata/status resource path appended to `VITE_SYNC_BASE_URL`. Defaults to `status`.
 - `VITE_SYNC_READINESS_PATH`: readiness resource path appended to `VITE_SYNC_BASE_URL`. Defaults to `ready`.
@@ -180,6 +184,8 @@ Parking answer service env vars:
 Sync service env vars:
 - `PARKKING_SYNC_PORT`: standalone sync service port.
 - `PARKKING_SYNC_PATH`: sync route path. Defaults to `/api/sync`.
+- `PARKKING_SYNC_MODE`: server capability mode. Defaults to `full`; `issue-upload-only` rejects bootstrap, saved-plan, legality-report, and issue-report reads while allowing issue-report POST plus health/readiness/status metadata.
+- `PARKKING_SYNC_DURABILITY`: storage durability advertised by health/readiness. Defaults to `persistent`; use `ephemeral` when the backing file is lost on restart or deploy.
 - `PARKKING_SYNC_FILE`: file-backed sync store path.
 - `PARKKING_SYNC_DEFAULT_SCOPE`: fallback scope used when the request does not include a `scope` query param.
 - `PARKKING_SYNC_MAX_BODY_BYTES`: max JSON request body accepted by saved-plan, report, and issue-report write endpoints. Defaults to `1048576`; oversized requests return HTTP 413.
@@ -206,7 +212,7 @@ Proxy runtime:
 - Exact pinned-location answers default to `/api/parking-answer` in local dev/preview. Static deployments without that endpoint fall back to the loaded client dataset.
 - `npm run dev` and `npm run preview` now also mount the first-party sync service at `/api/sync`.
 - For a standalone process, run `npm run ops:sync-service`.
-- The sync service exposes liveness at `/api/sync/health` and store readiness at `/api/sync/ready`; readiness includes the configured max request body size.
+- The sync service exposes liveness at `/api/sync/health` and store readiness at `/api/sync/ready`; both responses advertise capability mode and storage durability, and readiness includes the configured max request body size.
 
 Current geocoder strategy:
 1. Browser sends address requests to `/api/geocode` or the configured client endpoint.
@@ -253,6 +259,7 @@ Current saved-plan sync strategy:
 9. Trip-board edits always update the local cache first, then attempt a best-effort `PUT` sync to the configured endpoint.
 10. First-party saved-plan sync is revision-aware: bootstrap/load responses cache the current server revision, and `409` conflicts trigger one merge-and-retry pass instead of blindly overwriting newer remote plans.
 11. The first-party sync service also exposes readiness and status resources so the UI can detect degraded sync storage and remote changes without auto-overwriting local state.
+12. The checked-in Render production blueprint uses `issue-upload-only`, so production saved plans remain device-local until authenticated, durable per-user storage exists.
 
 Current report sync strategy:
 1. Segment reports load from browser storage immediately.
@@ -265,12 +272,13 @@ Current report sync strategy:
 8. Remote failures or malformed payloads fall back to the local cache without clearing it.
 9. New legality reports always write locally first, then attempt a best-effort `POST` sync to the configured endpoint.
 10. First-party report sync also tracks remote revisions so the UI can tell when newer shared reports exist.
+11. The checked-in Render production blueprint uses `issue-upload-only`, so production legality reports remain device-local and cannot collide through the shared default scope.
 
 Current issue report strategy:
 1. `Report issue` writes an issue report locally first, including the current debug bundle snapshot: dataset metadata, current mode/time, selected segment geometry, parking-rule reasons, ranking details, and nearby-zone counts.
-2. When the first-party sync service is available, the app also sends that issue report to `/api/sync/issues`.
-3. Synced issue reports are stored alongside saved plans and legality reports in the file-backed sync store.
-4. Nightly ops, manual triage CLI runs, and workflow artifacts all read from that same synced issue report store.
+2. When an issue-report endpoint is available, the app also sends that issue report to `/api/sync/issues`.
+3. Full-mode development services can read synced issue reports for local triage. The Render production service is intentionally upload-only: clients cannot read issue content back through the API.
+4. Render currently advertises `ephemeral` durability, so remote issue uploads are best-effort telemetry rather than a durable triage source; the browser-local copy remains authoritative until authenticated persistent storage is added.
 
 Notes:
 - The app and proxy expect a Nominatim-style JSON response with `display_name`, `lat`, `lon`, and optional `boundingbox`.
@@ -588,7 +596,7 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
   `npm run ops:smoke-parking-answer-apis -- --root data/generated --report data/generated/ingest_all_report_dry.json --fixture-thresholds --timeout-ms 25000`
 - Same-origin service health/readiness smoke check for geocode, route, sync, and parking-answer services:
   `npm run ops:smoke-api-services -- --timeout-ms 25000`
-- Add `--sync-issue-roundtrip` when the gate must also prove `POST /api/sync/issues` followed by `GET /api/sync/issues` works for production feedback capture.
+- Add `--sync-issue-roundtrip` when the gate must prove `POST /api/sync/issues` followed by non-content `/api/sync/status` revision/count confirmation works for production feedback capture.
 - Vite-preview-mounted service health/readiness plus sync issue-report roundtrip smoke check after `npm run build`:
   `npm run ops:smoke-api-services -- --start-preview --timeout-ms 25000 --sync-issue-roundtrip`
 - Production bundle budget check after `npm run build`; this keeps MapLibre/Turf, `rbush`/zone-index, and geospatial fallback chunks out of the initial modulepreload path:
@@ -610,7 +618,7 @@ Runtime loading uses `public/data/generated/<districtId>/...`.
 - Current-product P1 release readiness gate for the Xinyi flow:
   `npm run build`
   `npm run ops:p1-release-readiness`
-  This fails on Xinyi P0 readiness, production bundle budget, API service probes including the sync issue-report write/read roundtrip, parking-answer API smoke, reviewed UI answer smoke, MAP-mode reviewed-answer smoke, MAP-mode UI regressions, Taoyuan paid-curb source-to-map safety regressions, or issue-report UI submission regressions. It also reports Daan/Zhongshan district blockers without failing the current-product gate unless `--strict-matrix` is supplied.
+  This fails on Xinyi P0 readiness, production bundle budget, API service probes including the sync issue-report upload/status-confirmation roundtrip, parking-answer API smoke, reviewed UI answer smoke, MAP-mode reviewed-answer smoke, MAP-mode UI regressions, Taoyuan paid-curb source-to-map safety regressions, or issue-report UI submission regressions. It also reports Daan/Zhongshan district blockers without failing the current-product gate unless `--strict-matrix` is supplied.
   The production publish workflow runs this automatically when `configsGlob` is `configs/prod/*.json`.
 - P1 release data package:
   `npm run ops:package-release:xinyi`
@@ -836,7 +844,7 @@ files for `datasetHash`, district/file-name consistency, duplicate ids, UI-compa
 primary segment pins, evidence kind, and final confidence. CI, nightly, publish, and ingest-dry-run
 workflows now also run parking-answer API smoke plus same-origin API service probes so geocode,
 routing, sync, and parking-answer `/health` and `/ready` routes are exercised before merge or
-release. Those gates also run the sync issue-report write/read roundtrip, so the production
+release. Those gates also run the sync issue-report upload/status-confirmation roundtrip, so the production
 feedback capture endpoint is exercised before merge or release.
 
 `datasetHash` is content-addressed from the district boundary and runtime GeoJSON layers. Metadata

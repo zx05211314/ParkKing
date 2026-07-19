@@ -61,6 +61,8 @@ services:
         value: /api/parking-answer
       - key: VITE_SYNC_BASE_URL
         value: /api/sync
+      - key: VITE_SYNC_MODE
+        value: issue-upload-only
       - key: VITE_SYNC_BOOTSTRAP_PATH
         value: bootstrap
       - key: VITE_SYNC_STATUS_PATH
@@ -117,6 +119,10 @@ services:
         value: "1"
       - key: PARKKING_SYNC_PATH
         value: /api/sync
+      - key: PARKKING_SYNC_MODE
+        value: issue-upload-only
+      - key: PARKKING_SYNC_DURABILITY
+        value: ephemeral
       - key: PARKKING_SYNC_FILE
         value: .tmp/sync-service.json
       - key: PARKKING_SYNC_DEFAULT_SCOPE

@@ -78,6 +78,7 @@ export interface RenderDeploymentVerifyResult {
   apiServices?: SmokeApiServicesSummary | null
   parkingAnswers?: RenderDeploymentVerifyParkingAnswerResult[] | null
   syncCors?: RenderDeploymentVerifySyncCorsResult | null
+  syncBoundary?: RenderDeploymentVerifySyncBoundaryResult | null
   proxyRuntime?: RenderDeploymentVerifyProxyRuntimeResult[] | null
   releasePackageRemediation: RenderDeploymentVerifyRemediation | null
   remediation: RenderDeploymentVerifyRemediation | null
@@ -90,6 +91,20 @@ export interface RenderDeploymentVerifySyncCorsResult {
   untrustedOrigin: string
   status: number
   allowOrigin: string | null
+  errors: string[]
+}
+
+export interface RenderDeploymentVerifySyncBoundaryResult {
+  pass: boolean
+  healthUrl: string
+  mode: string | null
+  durability: string | null
+  capabilities: Record<string, boolean> | null
+  protectedResources: Array<{
+    resource: 'saved-plans' | 'reports' | 'issues'
+    url: string
+    status: number
+  }>
   errors: string[]
 }
 
@@ -554,6 +569,108 @@ export const buildRenderProxyReadyUrl = (
 export const buildRenderSyncIssuesUrl = (appUrl: string) =>
   new URL('/api/sync/issues', `${appUrl}/`).toString()
 
+const readBooleanRecord = (value: unknown) => {
+  const record = toRecord(value)
+  if (!record) {
+    return null
+  }
+  const entries = Object.entries(record)
+  return entries.every(([, entry]) => typeof entry === 'boolean')
+    ? Object.fromEntries(entries) as Record<string, boolean>
+    : null
+}
+
+export const verifyRenderSyncBoundary = async (params: {
+  appUrl: string
+  timeoutMs: number
+}): Promise<RenderDeploymentVerifySyncBoundaryResult> => {
+  const healthUrl = new URL('/api/sync/health', `${params.appUrl}/`).toString()
+  const scope = `render-boundary-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  const protectedResources = (
+    ['saved-plans', 'reports', 'issues'] as const
+  ).map((resource) => ({
+    resource,
+    url: new URL(
+      `/api/sync/${resource}?scope=${encodeURIComponent(scope)}`,
+      `${params.appUrl}/`,
+    ).toString(),
+  }))
+
+  try {
+    const [health, ...resourceResponses] = await Promise.all([
+      fetchJsonWithTimeout(healthUrl, params.timeoutMs),
+      ...protectedResources.map((resource) =>
+        fetchJsonWithTimeout(resource.url, params.timeoutMs),
+      ),
+    ])
+    const healthPayload = toRecord(health.payload)
+    const mode =
+      typeof healthPayload?.mode === 'string' ? healthPayload.mode : null
+    const durability =
+      typeof healthPayload?.durability === 'string'
+        ? healthPayload.durability
+        : null
+    const capabilities = readBooleanRecord(healthPayload?.capabilities)
+    const probes = protectedResources.map((resource, index) => ({
+      ...resource,
+      status: resourceResponses[index]?.status ?? 0,
+    }))
+    const expectedCapabilities = {
+      savedPlansRead: false,
+      savedPlansWrite: false,
+      reportsRead: false,
+      reportsWrite: false,
+      issueReportsRead: false,
+      issueReportsWrite: true,
+    }
+    const errors = [
+      ...(health.status === 200
+        ? []
+        : [`sync health expected HTTP 200, got ${health.status}`]),
+      ...(mode === 'issue-upload-only'
+        ? []
+        : [`sync mode expected issue-upload-only, got ${mode ?? 'missing'}`]),
+      ...(durability === 'ephemeral'
+        ? []
+        : [`sync durability expected ephemeral, got ${durability ?? 'missing'}`]),
+      ...(capabilities &&
+      Object.entries(expectedCapabilities).every(
+        ([key, value]) => capabilities[key] === value,
+      )
+        ? []
+        : ['sync health capabilities do not match the upload-only contract']),
+      ...probes
+        .filter((probe) => probe.status !== 403)
+        .map(
+          (probe) =>
+            `${probe.resource} content endpoint expected HTTP 403, got ${probe.status}`,
+        ),
+    ]
+    return {
+      pass: errors.length === 0,
+      healthUrl,
+      mode,
+      durability,
+      capabilities,
+      protectedResources: probes,
+      errors,
+    }
+  } catch (error) {
+    return {
+      pass: false,
+      healthUrl,
+      mode: null,
+      durability: null,
+      capabilities: null,
+      protectedResources: protectedResources.map((resource) => ({
+        ...resource,
+        status: 0,
+      })),
+      errors: [error instanceof Error ? error.message : String(error)],
+    }
+  }
+}
+
 const buildRenderParkingAnswerUrl = (params: {
   appUrl: string
   districtId: string
@@ -818,12 +935,18 @@ const buildRuntimeRemediation = (params: {
   contract: ExpectedDatasetContract
   allParkingAnswerCases: boolean
   syncCors: RenderDeploymentVerifySyncCorsResult | null
+  syncBoundary: RenderDeploymentVerifySyncBoundaryResult | null
   proxyRuntime: RenderDeploymentVerifyProxyRuntimeResult[] | null
 }): RenderDeploymentVerifyRemediation | null => {
   const reasons: string[] = []
   if (params.syncCors && !params.syncCors.pass) {
     reasons.push(
       `Sync CORS rejected-origin check failed at ${params.syncCors.url}; set PARKKING_SYNC_CORS_ORIGINS to the deployed app origin instead of wildcard.`,
+    )
+  }
+  if (params.syncBoundary && !params.syncBoundary.pass) {
+    reasons.push(
+      `Production sync boundary check failed at ${params.syncBoundary.healthUrl}; enforce issue-upload-only mode with ephemeral durability and block content reads.`,
     )
   }
   const proxyTimeoutFailures =
@@ -1031,6 +1154,7 @@ export const verifyRenderDeployment = async (
   let apiServices: SmokeApiServicesSummary | null = null
   let parkingAnswers: RenderDeploymentVerifyParkingAnswerResult[] | null = null
   let syncCors: RenderDeploymentVerifySyncCorsResult | null = null
+  let syncBoundary: RenderDeploymentVerifySyncBoundaryResult | null = null
   const selectedApiServices = options.apiServices ?? undefined
   const syncSelected = selectedApiServices?.includes('sync') ?? true
   const parkingAnswerSelected =
@@ -1061,6 +1185,14 @@ export const verifyRenderDeployment = async (
       if (!syncCors.pass) {
         errors.push(
           `sync CORS smoke failed: ${syncCors.errors.join('; ')}`,
+        )
+      }
+    }
+    if (syncSelected) {
+      syncBoundary = await verifyRenderSyncBoundary({ appUrl, timeoutMs })
+      if (!syncBoundary.pass) {
+        errors.push(
+          `sync production boundary failed: ${syncBoundary.errors.join('; ')}`,
         )
       }
     }
@@ -1114,12 +1246,14 @@ export const verifyRenderDeployment = async (
     (apiServices?.failed ?? 0) === 0 &&
     (parkingAnswers?.every((result) => result.pass) ?? true) &&
     (syncCors?.pass ?? true) &&
+    (syncBoundary?.pass ?? true) &&
     (proxyRuntime?.every((result) => result.pass) ?? true)
   const remediation = buildRuntimeRemediation({
     appUrl,
     contract,
     allParkingAnswerCases: options.allParkingAnswerCases ?? false,
     syncCors,
+    syncBoundary,
     proxyRuntime,
   })
   const releasePackageRemediation = buildReleasePackageRemediation({
@@ -1147,6 +1281,7 @@ export const verifyRenderDeployment = async (
     apiServices,
     parkingAnswers,
     syncCors,
+    syncBoundary,
     proxyRuntime,
     releasePackageRemediation,
     remediation,
@@ -1213,6 +1348,20 @@ export const renderRenderDeploymentVerify = (
           `- HTTP status: ${result.syncCors.status}`,
           `- Access-Control-Allow-Origin: ${result.syncCors.allowOrigin ?? '-'}`,
           `- Errors: ${result.syncCors.errors.join('; ') || 'none'}`,
+        ]
+      : []),
+    ...(result.syncBoundary
+      ? [
+          '',
+          '## Sync Production Boundary',
+          '',
+          `- Status: ${result.syncBoundary.pass ? 'PASS' : 'FAIL'}`,
+          `- Health URL: ${result.syncBoundary.healthUrl}`,
+          `- Mode: ${result.syncBoundary.mode ?? '-'}`,
+          `- Durability: ${result.syncBoundary.durability ?? '-'}`,
+          `- Capabilities: ${result.syncBoundary.capabilities ? JSON.stringify(result.syncBoundary.capabilities) : '-'}`,
+          `- Protected reads: ${result.syncBoundary.protectedResources.map((entry) => `${entry.resource}=${entry.status}`).join(', ')}`,
+          `- Errors: ${result.syncBoundary.errors.join('; ') || 'none'}`,
         ]
       : []),
     ...(result.proxyRuntime && result.proxyRuntime.length > 0

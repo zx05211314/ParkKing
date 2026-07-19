@@ -126,12 +126,37 @@ const startDriftServer = async () => {
       sendJson(response, 200, { status: 'ok' })
       return
     }
+    if (url.pathname === '/api/sync/health') {
+      sendJson(response, 200, {
+        status: 'ok',
+        mode: 'issue-upload-only',
+        durability: 'ephemeral',
+        capabilities: {
+          savedPlansRead: false,
+          savedPlansWrite: false,
+          reportsRead: false,
+          reportsWrite: false,
+          issueReportsRead: false,
+          issueReportsWrite: true,
+        },
+      })
+      return
+    }
     if (
-      ['/api/sync/health', '/api/sync/ready', '/api/parking-answer/health'].includes(
-        url.pathname,
-      )
+      ['/api/sync/ready', '/api/parking-answer/health'].includes(url.pathname)
     ) {
       sendJson(response, 200, { status: 'ok' })
+      return
+    }
+    if (
+      ['/api/sync/saved-plans', '/api/sync/reports', '/api/sync/issues'].includes(
+        url.pathname,
+      ) &&
+      request.method === 'GET'
+    ) {
+      sendJson(response, 403, {
+        error: 'Sync resource is disabled in issue-upload-only mode.',
+      })
       return
     }
     if (url.pathname === '/api/sync/issues' && request.method === 'POST') {
@@ -144,8 +169,11 @@ const startDriftServer = async () => {
       response.end()
       return
     }
-    if (url.pathname === '/api/sync/issues' && request.method === 'GET') {
-      sendJson(response, 200, { issues: [], revision: 1 })
+    if (url.pathname === '/api/sync/status' && request.method === 'GET') {
+      sendJson(response, 200, {
+        issueReportsCount: 1,
+        issueReportsRevision: 1,
+      })
       return
     }
     response.statusCode = 404

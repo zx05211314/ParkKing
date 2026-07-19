@@ -1,10 +1,17 @@
-import type { SyncBootstrapResource, SyncServiceConfig } from './syncServiceTypes'
+import type {
+  SyncBootstrapResource,
+  SyncServiceConfig,
+  SyncServiceDurability,
+  SyncServiceMode,
+} from './syncServiceTypes'
 import { resolveCompat } from './pathCompat'
 
 export const DEFAULT_SYNC_PATH = '/api/sync'
 export const DEFAULT_SYNC_PORT = 8789
 export const DEFAULT_SYNC_FILE = '.tmp/sync-service.json'
 export const DEFAULT_SYNC_SCOPE = 'default'
+export const DEFAULT_SYNC_MODE: SyncServiceMode = 'full'
+export const DEFAULT_SYNC_DURABILITY: SyncServiceDurability = 'persistent'
 export const DEFAULT_SYNC_MAX_BODY_BYTES = 1_048_576
 export const DEFAULT_SYNC_MAX_ISSUE_REPORTS = 1_000
 export const DEFAULT_SYNC_CORS_ORIGINS = ['*']
@@ -29,6 +36,20 @@ export const normalizeScope = (
   scope?: string | null,
   fallback = DEFAULT_SYNC_SCOPE,
 ) => normalizeSyncText(scope) ?? fallback
+
+export const normalizeSyncMode = (
+  value?: string | null,
+): SyncServiceMode =>
+  normalizeSyncText(value) === 'issue-upload-only'
+    ? 'issue-upload-only'
+    : DEFAULT_SYNC_MODE
+
+export const normalizeSyncDurability = (
+  value?: string | null,
+): SyncServiceDurability =>
+  normalizeSyncText(value) === 'ephemeral'
+    ? 'ephemeral'
+    : DEFAULT_SYNC_DURABILITY
 
 export const normalizeSyncCorsOrigins = (value?: string | null): string[] => {
   const origins = (value ?? DEFAULT_SYNC_CORS_ORIGINS.join(','))
@@ -66,6 +87,8 @@ export const resolveSyncServiceConfig = (
   port: parsePositiveInteger(env.PARKKING_SYNC_PORT, DEFAULT_SYNC_PORT),
   storageFile: resolveCompat(cwd, env.PARKKING_SYNC_FILE ?? DEFAULT_SYNC_FILE),
   defaultScope: normalizeScope(env.PARKKING_SYNC_DEFAULT_SCOPE),
+  mode: normalizeSyncMode(env.PARKKING_SYNC_MODE),
+  durability: normalizeSyncDurability(env.PARKKING_SYNC_DURABILITY),
   maxBodyBytes: parsePositiveInteger(
     env.PARKKING_SYNC_MAX_BODY_BYTES,
     DEFAULT_SYNC_MAX_BODY_BYTES,

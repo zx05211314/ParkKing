@@ -527,6 +527,7 @@ export const renderProductionRolloutStatus = (
       ? [
           `- Dataset districts: ${result.liveVerify.result.districts.filter((district) => district.pass).length}/${result.liveVerify.result.districts.length} pass`,
           `- Sync CORS: ${statusText(result.liveVerify.result.syncCors?.pass ?? null)}`,
+          `- Sync boundary: ${statusText(result.liveVerify.result.syncBoundary?.pass ?? null)}`,
           `- Proxy runtime: ${statusText(result.liveVerify.result.proxyRuntime?.every((entry) => entry.pass) ?? null)}`,
         ]
       : []),

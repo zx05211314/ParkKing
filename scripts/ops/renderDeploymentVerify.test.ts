@@ -9,6 +9,7 @@ import {
   renderRenderDeploymentVerify,
   verifyRenderDeployment,
   verifyRenderParkingAnswers,
+  verifyRenderSyncBoundary,
   writeRenderDeploymentVerifyOutputs,
 } from './renderDeploymentVerify'
 
@@ -29,6 +30,7 @@ const startJsonServer = async (
     parkingAnswerFailureStatuses?: number[]
     parkingReadyFailureStatuses?: number[]
     parkingReadyDelayMs?: number
+    insecureSyncBoundary?: boolean
   } = {},
 ) => {
   const issues: unknown[] = []
@@ -116,12 +118,43 @@ const startJsonServer = async (
       })
       return
     }
+    if (url.pathname === '/api/sync/health') {
+      sendJson(response, 200, {
+        status: 'ok',
+        mode: options.insecureSyncBoundary ? 'full' : 'issue-upload-only',
+        durability: options.insecureSyncBoundary ? 'persistent' : 'ephemeral',
+        capabilities: {
+          savedPlansRead: Boolean(options.insecureSyncBoundary),
+          savedPlansWrite: Boolean(options.insecureSyncBoundary),
+          reportsRead: Boolean(options.insecureSyncBoundary),
+          reportsWrite: Boolean(options.insecureSyncBoundary),
+          issueReportsRead: Boolean(options.insecureSyncBoundary),
+          issueReportsWrite: true,
+        },
+      })
+      return
+    }
     if (
-      ['/api/sync/health', '/api/sync/ready', '/api/parking-answer/health'].includes(
-        url.pathname,
-      )
+      ['/api/sync/ready', '/api/parking-answer/health'].includes(url.pathname)
     ) {
       sendJson(response, 200, { status: 'ok' })
+      return
+    }
+    if (
+      ['/api/sync/saved-plans', '/api/sync/reports', '/api/sync/issues'].includes(
+        url.pathname,
+      ) &&
+      request.method === 'GET'
+    ) {
+      sendJson(
+        response,
+        options.insecureSyncBoundary ? 200 : 403,
+        options.insecureSyncBoundary
+          ? { items: [] }
+          : {
+              error: 'Sync resource is disabled in issue-upload-only mode.',
+            },
+      )
       return
     }
     if (url.pathname === '/api/sync/issues' && request.method === 'POST') {
@@ -150,8 +183,11 @@ const startJsonServer = async (
       })
       return
     }
-    if (url.pathname === '/api/sync/issues' && request.method === 'GET') {
-      sendJson(response, 200, { issues, revision: issues.length })
+    if (url.pathname === '/api/sync/status' && request.method === 'GET') {
+      sendJson(response, 200, {
+        issueReportsCount: issues.length,
+        issueReportsRevision: issues.length,
+      })
       return
     }
     response.statusCode = 404
@@ -169,6 +205,29 @@ const startJsonServer = async (
 }
 
 describe('renderDeploymentVerify', () => {
+  it('rejects a full-mode production sync boundary', async () => {
+    const server = await startJsonServer({}, 200, {
+      insecureSyncBoundary: true,
+    })
+    try {
+      const result = await verifyRenderSyncBoundary({
+        appUrl: server.baseUrl,
+        timeoutMs: 1000,
+      })
+
+      expect(result.pass).toBe(false)
+      expect(result.mode).toBe('full')
+      expect(result.errors.join('\n')).toContain(
+        'sync mode expected issue-upload-only',
+      )
+      expect(result.errors.join('\n')).toContain(
+        'saved-plans content endpoint expected HTTP 403',
+      )
+    } finally {
+      await server.close()
+    }
+  })
+
   it('defaults readiness to a longer cold-start budget', () => {
     const options = parseRenderDeploymentVerifyArgs([
       'node',
@@ -380,6 +439,11 @@ describe('renderDeploymentVerify', () => {
       expect(result.releasePackageRemediation).toBeNull()
       expect(result.remediation).toBeNull()
       expect(result.syncCors).toMatchObject({ pass: true, status: 403 })
+      expect(result.syncBoundary).toMatchObject({
+        pass: true,
+        mode: 'issue-upload-only',
+        durability: 'ephemeral',
+      })
       expect(result.proxyRuntime).toEqual([
         expect.objectContaining({
           service: 'geocode',

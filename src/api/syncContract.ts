@@ -12,6 +12,7 @@ const DEFAULT_BOOTSTRAP_RESOURCE_PATH = 'bootstrap'
 const DEFAULT_STATUS_RESOURCE_PATH = 'status'
 const DEFAULT_READINESS_RESOURCE_PATH = 'ready'
 const LOCAL_SYNC_PROXY_PATH = '/api/sync'
+const ISSUE_UPLOAD_ONLY_MODE = 'issue-upload-only'
 
 export interface ParkKingSyncServiceConfig {
   baseUrl: string | null
@@ -46,6 +47,27 @@ export const resolveParkKingSyncServiceConfig = (
   const reportsLegacyEndpoint = normalizeOptionalText(env.VITE_REPORTS_URL)
   const issueReportsLegacyEndpoint = normalizeOptionalText(env.VITE_ISSUE_REPORTS_URL)
   const configuredBaseUrl = normalizeOptionalText(env.VITE_SYNC_BASE_URL)
+  const issueUploadOnly =
+    normalizeOptionalText(env.VITE_SYNC_MODE) === ISSUE_UPLOAD_ONLY_MODE
+  const scope = normalizeOptionalText(env.VITE_SYNC_SCOPE)
+  if (issueUploadOnly) {
+    const issueEndpoint = configuredBaseUrl
+      ? joinEndpointPath(
+          configuredBaseUrl,
+          normalizeOptionalText(env.VITE_SYNC_ISSUES_PATH) ??
+            DEFAULT_ISSUES_RESOURCE_PATH,
+        )
+      : issueReportsLegacyEndpoint
+    return {
+      baseUrl: null,
+      bootstrapEndpoint: null,
+      statusEndpoint: null,
+      readinessEndpoint: null,
+      savedPlansEndpoint: null,
+      reportsEndpoint: null,
+      issueReportsEndpoint: appendScopeParam(issueEndpoint, scope),
+    }
+  }
   const implicitLocalBaseUrl =
     configuredBaseUrl ||
     savedPlansLegacyEndpoint ||
@@ -54,7 +76,6 @@ export const resolveParkKingSyncServiceConfig = (
       ? null
       : resolveLocalhostProxyEndpoint(LOCAL_SYNC_PROXY_PATH)
   const baseUrl = configuredBaseUrl ?? implicitLocalBaseUrl
-  const scope = normalizeOptionalText(env.VITE_SYNC_SCOPE)
 
   if (!baseUrl) {
     return {

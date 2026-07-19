@@ -209,9 +209,14 @@ describe('runSmokeAppServer', () => {
               res.end(JSON.stringify({ issue: body.issue, revision: issues.length }))
               return true
             }
-            if (url.pathname === '/api/sync/issues' && req.method === 'GET') {
+            if (url.pathname === '/api/sync/status' && req.method === 'GET') {
               res.statusCode = 200
-              res.end(JSON.stringify({ issues, revision: issues.length }))
+              res.end(
+                JSON.stringify({
+                  issueReportsCount: issues.length,
+                  issueReportsRevision: issues.length,
+                }),
+              )
               return true
             }
             next?.()

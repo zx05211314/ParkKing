@@ -66,6 +66,8 @@ const createConfig = (
   port: 8789,
   storageFile: '.tmp/sync-service.json',
   defaultScope: 'default',
+  mode: 'full',
+  durability: 'persistent',
   maxBodyBytes: 1048576,
   maxIssueReports: 1000,
   corsOrigins: ['*'],
@@ -152,6 +154,62 @@ describe('createSyncServiceMiddleware', () => {
     )
     expect(res.response.statusCode).toBe(201)
     expect(res.body()).toContain('"issueId":"issue-a"')
+  })
+
+  it('limits upload-only mode to issue POST and metadata routes', async () => {
+    const service = createMockService()
+    const middleware = createSyncServiceMiddleware(
+      service,
+      '/api/sync',
+      'default',
+      createConfig({
+        mode: 'issue-upload-only',
+        durability: 'ephemeral',
+      }),
+    )
+
+    for (const request of [
+      { method: 'GET', url: '/api/sync/bootstrap?scope=alpha' },
+      { method: 'GET', url: '/api/sync/saved-plans?scope=alpha' },
+      { method: 'PUT', url: '/api/sync/saved-plans?scope=alpha' },
+      { method: 'GET', url: '/api/sync/reports?scope=alpha' },
+      { method: 'POST', url: '/api/sync/reports?scope=alpha' },
+      { method: 'GET', url: '/api/sync/issues?scope=alpha' },
+    ]) {
+      const res = createMockResponse()
+      await middleware(request as never, res.response as never)
+      expect(res.response.statusCode, `${request.method} ${request.url}`).toBe(403)
+      expect(res.body()).toContain('issue-upload-only')
+    }
+
+    const statusResponse = createMockResponse()
+    await middleware(
+      {
+        method: 'GET',
+        url: '/api/sync/status?scope=alpha',
+      } as never,
+      statusResponse.response as never,
+    )
+    expect(statusResponse.response.statusCode).toBe(200)
+    expect(service.getSyncStatus).toHaveBeenCalledWith('alpha')
+
+    const issueResponse = createMockResponse()
+    async function* body() {
+      yield Buffer.from(JSON.stringify({ issue: { issueId: 'issue-upload' } }))
+    }
+    await middleware(
+      {
+        method: 'POST',
+        url: '/api/sync/issues?scope=alpha',
+        [Symbol.asyncIterator]: body,
+      } as never,
+      issueResponse.response as never,
+    )
+    expect(issueResponse.response.statusCode).toBe(201)
+    expect(service.appendIssueReport).toHaveBeenCalledWith(
+      { issueId: 'issue-upload' },
+      'alpha',
+    )
   })
 
   it('returns 413 before writing oversized issue reports', async () => {
@@ -322,11 +380,56 @@ describe('createSyncServiceMiddleware', () => {
       readinessPath: '/api/sync/ready',
       statusPath: '/api/sync/status',
       maxIssueReports: 1000,
+      mode: 'full',
+      durability: 'persistent',
+      capabilities: {
+        savedPlansRead: true,
+        savedPlansWrite: true,
+        reportsRead: true,
+        reportsWrite: true,
+        issueReportsRead: true,
+        issueReportsWrite: true,
+      },
       corsOrigins: ['*'],
       writeRateLimitWindowMs: 60000,
       writeRateLimitMax: 120,
     })
     expect(service.getSyncStatus).not.toHaveBeenCalled()
+  })
+
+  it('advertises restricted and ephemeral production capabilities', async () => {
+    const service = createMockService()
+    const middleware = createSyncServiceMiddleware(
+      service,
+      '/api/sync',
+      'default',
+      createConfig({
+        mode: 'issue-upload-only',
+        durability: 'ephemeral',
+      }),
+    )
+    const res = createMockResponse()
+
+    await middleware(
+      {
+        method: 'GET',
+        url: '/api/sync/health',
+      } as never,
+      res.response as never,
+    )
+
+    expect(JSON.parse(res.body())).toMatchObject({
+      mode: 'issue-upload-only',
+      durability: 'ephemeral',
+      capabilities: {
+        savedPlansRead: false,
+        savedPlansWrite: false,
+        reportsRead: false,
+        reportsWrite: false,
+        issueReportsRead: false,
+        issueReportsWrite: true,
+      },
+    })
   })
 
   it('serves readiness with the scoped sync status snapshot', async () => {

@@ -40,6 +40,7 @@ export const readViteEnv = (): ViteEnvLike => {
     VITE_SYNC_BASE_URL: import.meta.env.VITE_SYNC_BASE_URL,
     VITE_SYNC_BOOTSTRAP_PATH: import.meta.env.VITE_SYNC_BOOTSTRAP_PATH,
     VITE_SYNC_ISSUES_PATH: import.meta.env.VITE_SYNC_ISSUES_PATH,
+    VITE_SYNC_MODE: import.meta.env.VITE_SYNC_MODE,
     VITE_SYNC_READINESS_PATH: import.meta.env.VITE_SYNC_READINESS_PATH,
     VITE_SYNC_REPORTS_PATH: import.meta.env.VITE_SYNC_REPORTS_PATH,
     VITE_SYNC_SAVED_PLANS_PATH: import.meta.env.VITE_SYNC_SAVED_PLANS_PATH,

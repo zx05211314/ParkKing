@@ -1,8 +1,13 @@
+export type SyncServiceMode = 'full' | 'issue-upload-only'
+export type SyncServiceDurability = 'persistent' | 'ephemeral'
+
 export interface SyncServiceConfig {
   path: string
   port: number
   storageFile: string
   defaultScope: string
+  mode?: SyncServiceMode
+  durability?: SyncServiceDurability
   maxBodyBytes?: number
   maxIssueReports?: number
   corsOrigins?: string[]

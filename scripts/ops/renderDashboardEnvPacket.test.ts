@@ -43,6 +43,9 @@ describe('renderDashboardEnvPacket', () => {
       PARKKING_RELEASE_MANIFEST_URL:
         'https://github.com/zx05211314/ParkKing/releases/download/data-1/release_manifest_1.json',
       PARKKING_SYNC_CORS_ORIGINS: 'https://parkking.onrender.com',
+      PARKKING_SYNC_MODE: 'issue-upload-only',
+      PARKKING_SYNC_DURABILITY: 'ephemeral',
+      VITE_SYNC_MODE: 'issue-upload-only',
       PARKKING_GEOCODER_REQUEST_TIMEOUT_MS: '5000',
       PARKKING_ROUTING_REQUEST_TIMEOUT_MS: '8000',
     })
@@ -50,6 +53,9 @@ describe('renderDashboardEnvPacket', () => {
       'PARKKING_RELEASE_PACKAGE_URL',
       'PARKKING_RELEASE_MANIFEST_URL',
       'PARKKING_SYNC_CORS_ORIGINS',
+      'PARKKING_SYNC_MODE',
+      'PARKKING_SYNC_DURABILITY',
+      'VITE_SYNC_MODE',
       'PARKKING_GEOCODER_REQUEST_TIMEOUT_MS',
       'PARKKING_ROUTING_REQUEST_TIMEOUT_MS',
     ])

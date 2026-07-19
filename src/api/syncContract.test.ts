@@ -61,6 +61,24 @@ describe('syncContract', () => {
     })
   })
 
+  it('exposes only issue upload when the client is in upload-only mode', () => {
+    expect(
+      resolveParkKingSyncServiceConfig({
+        VITE_SYNC_BASE_URL: '/api/sync',
+        VITE_SYNC_MODE: 'issue-upload-only',
+        VITE_SYNC_SCOPE: 'feedback',
+      }),
+    ).toEqual({
+      baseUrl: null,
+      bootstrapEndpoint: null,
+      statusEndpoint: null,
+      readinessEndpoint: null,
+      savedPlansEndpoint: null,
+      reportsEndpoint: null,
+      issueReportsEndpoint: '/api/sync/issues?scope=feedback',
+    })
+  })
+
   it('defaults to the local first-party sync service on localhost', () => {
     ;(globalThis as { window?: { location: { hostname: string } } }).window = {
       location: {
