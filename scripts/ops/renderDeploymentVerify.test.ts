@@ -355,6 +355,17 @@ describe('renderDeploymentVerify', () => {
     expect(script).not.toContain('--handoff-json')
   })
 
+  it('rejects implicit local handoff selection', async () => {
+    await expect(
+      verifyRenderDeployment({
+        appUrl: 'https://parkking.onrender.com',
+        timeoutMs: 1000,
+      }),
+    ).rejects.toThrow(
+      'A dataset identity contract is required. Pass --manifest-url <published manifest URL>, --manifest <manifest path>, or --handoff-json .tmp/render-deployment-handoff.json.',
+    )
+  })
+
   it('retries transient readiness failures before evaluating dataset hashes', async () => {
     const base = await fs.mkdtemp(path.join(tmpdir(), 'render-verify-ready-retry-'))
     const manifestPath = path.join(base, 'release_manifest.json')
