@@ -38,9 +38,11 @@ type SpatialAcquisition =
 
 export interface TaoyuanExpansionReadinessOptions {
   districtId?: string
+  allDistricts?: boolean
   boundaryPath?: string
   boundaryCatalogPath?: string | null
   referencePath?: string
+  reviewDir?: string
   reviewPath?: string
   reviewManifestPath?: string
   requirePinnedReview?: boolean
@@ -67,10 +69,14 @@ interface ReferenceSummary {
   valid: boolean
   sourceRecordCount: number | null
   districtRecordCount: number | null
+  districtCount: number | null
   errors: string[]
 }
 
-interface SourceTextReviewSummary {
+interface SourceTextReviewDistrictSummary {
+  districtId: string
+  districtName: string
+  reviewRequired: boolean
   path: string
   manifestPath: string
   exists: boolean
@@ -80,6 +86,24 @@ interface SourceTextReviewSummary {
   pendingRows: number | null
   expectedRows: number | null
   actualRows: number | null
+  errors: string[]
+}
+
+interface SourceTextReviewSummary {
+  scope: 'single-district' | 'all-districts'
+  path: string
+  manifestPath: string
+  exists: boolean
+  structureValid: boolean
+  complete: boolean
+  approved: boolean
+  pendingRows: number | null
+  expectedRows: number | null
+  actualRows: number | null
+  reviewRequiredDistrictCount: number
+  approvedDistrictCount: number
+  emptyDistrictCount: number
+  districts: SourceTextReviewDistrictSummary[]
   errors: string[]
 }
 
@@ -137,6 +161,7 @@ export const parseTaoyuanExpansionReadinessArgs = (
   argv: string[],
 ): TaoyuanExpansionReadinessOptions => {
   const districtId = getArgValue(argv, '--district') ?? DEFAULT_DISTRICT
+  const allDistricts = hasFlag(argv, '--all-districts', '--allDistricts')
   const reviewPath = getArgValue(argv, '--review')
   const reviewManifestPath = getArgValue(
     argv,
@@ -146,6 +171,7 @@ export const parseTaoyuanExpansionReadinessArgs = (
   const defaultReviewPaths = resolveTaoyuanExpansionReviewPaths(districtId)
   return {
     districtId,
+    allDistricts,
     boundaryPath: getArgValue(argv, '--boundary') ?? DEFAULT_BOUNDARY,
     boundaryCatalogPath: getArgValue(
       argv,
@@ -153,6 +179,9 @@ export const parseTaoyuanExpansionReadinessArgs = (
       '--boundaryCatalog',
     ),
     referencePath: getArgValue(argv, '--reference') ?? DEFAULT_REFERENCE,
+    reviewDir:
+      getArgValue(argv, '--review-dir', '--reviewDir') ??
+      DEFAULT_REVIEW_DIR,
     reviewPath: reviewPath ?? defaultReviewPaths.reviewPath,
     reviewManifestPath:
       reviewManifestPath ?? defaultReviewPaths.reviewManifestPath,
@@ -315,16 +344,81 @@ export const validateTaoyuanSpatialReference = (value: unknown) => {
 
 const quoteArg = (value: string) => `"${value.replace(/"/g, '\\"')}"`
 
+const validateSourceTextReviewDistrict = async (params: {
+  pack: ReturnType<typeof parsePaidCurbReferencePack>
+  district: ReturnType<
+    typeof parsePaidCurbReferencePack
+  >['districts'][number]
+  reviewPath: string
+  reviewManifestPath: string
+  requirePinnedReview: boolean
+}): Promise<SourceTextReviewDistrictSummary> => {
+  const reviewRequired = params.district.recordCount > 0
+  const exists =
+    reviewRequired &&
+    (await fileExists(params.reviewPath)) &&
+    (await fileExists(params.reviewManifestPath))
+  const summary: SourceTextReviewDistrictSummary = {
+    districtId: params.district.districtId,
+    districtName: params.district.districtName,
+    reviewRequired,
+    path: params.reviewPath,
+    manifestPath: params.reviewManifestPath,
+    exists,
+    structureValid: !reviewRequired,
+    complete: !reviewRequired,
+    approved: !reviewRequired,
+    pendingRows: reviewRequired ? null : 0,
+    expectedRows: params.district.recordCount,
+    actualRows: reviewRequired ? null : 0,
+    errors: [],
+  }
+  if (!reviewRequired || !exists) {
+    return summary
+  }
+
+  try {
+    const reviewBuffer = await fs.readFile(params.reviewPath)
+    const rows = parseCsv(reviewBuffer, {
+      bom: true,
+      columns: true,
+      skip_empty_lines: true,
+    }) as CsvRow[]
+    const result = validateTaoyuanPaidCurbReview({
+      pack: params.pack,
+      manifest: await readJson<ReviewManifest>(params.reviewManifestPath),
+      rows,
+      districtId: params.district.districtId,
+      reviewSha256: sha256TaoyuanReviewCsv(reviewBuffer),
+      requirePinnedReview: params.requirePinnedReview,
+    })
+    summary.structureValid = result.structureValid
+    summary.complete = result.complete
+    summary.approved = result.approved
+    summary.pendingRows = result.statusCounts.PENDING
+    summary.expectedRows = result.expectedRows
+    summary.actualRows = result.actualRows
+    summary.errors.push(...result.errors)
+  } catch (error) {
+    summary.errors.push(
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+  return summary
+}
+
 export const runTaoyuanExpansionReadiness = async (
   options: TaoyuanExpansionReadinessOptions = {},
 ): Promise<TaoyuanExpansionReadinessResult> => {
   const districtId = options.districtId ?? DEFAULT_DISTRICT
+  const allDistricts = options.allDistricts ?? false
   const defaultReviewPaths = resolveTaoyuanExpansionReviewPaths(districtId)
   const boundaryPath = path.resolve(options.boundaryPath ?? DEFAULT_BOUNDARY)
   const boundaryCatalogPath = options.boundaryCatalogPath
     ? path.resolve(options.boundaryCatalogPath)
     : null
   const referencePath = path.resolve(options.referencePath ?? DEFAULT_REFERENCE)
+  const reviewDir = path.resolve(options.reviewDir ?? DEFAULT_REVIEW_DIR)
   const reviewPath = path.resolve(
     options.reviewPath ?? defaultReviewPaths.reviewPath,
   )
@@ -338,8 +432,9 @@ export const runTaoyuanExpansionReadiness = async (
   const env = options.env ?? process.env
   const requirePinnedReview =
     options.requirePinnedReview ??
-    (options.reviewPath === undefined &&
-      options.reviewManifestPath === undefined)
+    (allDistricts ||
+      (options.reviewPath === undefined &&
+        options.reviewManifestPath === undefined))
   const credentialsConfigured = Boolean(
     env.TDX_ACCESS_TOKEN?.trim() ||
       (env.TDX_CLIENT_ID?.trim() && env.TDX_CLIENT_SECRET?.trim()),
@@ -409,19 +504,33 @@ export const runTaoyuanExpansionReadiness = async (
     valid: false,
     sourceRecordCount: null,
     districtRecordCount: null,
+    districtCount: null,
     errors: [],
   }
+  let referenceDistricts: ReturnType<
+    typeof parsePaidCurbReferencePack
+  >['districts'] = []
   try {
     referencePack = parsePaidCurbReferencePack(await readJson(referencePath))
-    const district = referencePack.districts.find(
-      (candidate) => candidate.districtId === districtId,
-    )
-    if (!district) {
-      throw new Error(`Reference pack is missing district ${districtId}.`)
+    referenceDistricts = allDistricts
+      ? referencePack.districts
+      : referencePack.districts.filter(
+          (candidate) => candidate.districtId === districtId,
+        )
+    if (referenceDistricts.length === 0) {
+      throw new Error(
+        allDistricts
+          ? 'Reference pack has no Taoyuan districts.'
+          : `Reference pack is missing district ${districtId}.`,
+      )
     }
     reference.valid = true
     reference.sourceRecordCount = referencePack.source.recordCount
-    reference.districtRecordCount = district.recordCount
+    reference.districtRecordCount = referenceDistricts.reduce(
+      (total, district) => total + district.recordCount,
+      0,
+    )
+    reference.districtCount = referenceDistricts.length
   } catch (error) {
     reference.errors.push(error instanceof Error ? error.message : String(error))
   }
@@ -429,68 +538,103 @@ export const runTaoyuanExpansionReadiness = async (
     ...reference.errors.map((error) => `Reference: ${error}`),
   )
 
-  const reviewExists =
-    (await fileExists(reviewPath)) && (await fileExists(reviewManifestPath))
-  const sourceTextReview: SourceTextReviewSummary = {
-    path: reviewPath,
-    manifestPath: reviewManifestPath,
-    exists: reviewExists,
-    structureValid: false,
-    complete: false,
-    approved: false,
-    pendingRows: null,
-    expectedRows: reference.districtRecordCount,
-    actualRows: null,
-    errors: [],
-  }
-  if (!reviewExists) {
-    blockers.push('Promoted Taoyuan source-text review evidence is missing.')
-    nextActions.push('npm run ops:build-taoyuan-review-all')
-    nextActions.push(
-      `npm run ops:promote-taoyuan-review -- --district ${districtId}`,
-    )
-  } else if (referencePack) {
-    try {
-      const reviewBuffer = await fs.readFile(reviewPath)
-      const rows = parseCsv(reviewBuffer, {
-        bom: true,
-        columns: true,
-        skip_empty_lines: true,
-      }) as CsvRow[]
-      const result = validateTaoyuanPaidCurbReview({
-        pack: referencePack,
-        manifest: await readJson<ReviewManifest>(reviewManifestPath),
-        rows,
-        districtId,
-        reviewSha256: sha256TaoyuanReviewCsv(reviewBuffer),
-        requirePinnedReview,
-      })
-      sourceTextReview.structureValid = result.structureValid
-      sourceTextReview.complete = result.complete
-      sourceTextReview.approved = result.approved
-      sourceTextReview.pendingRows = result.statusCounts.PENDING
-      sourceTextReview.expectedRows = result.expectedRows
-      sourceTextReview.actualRows = result.actualRows
-      sourceTextReview.errors.push(...result.errors)
-    } catch (error) {
-      sourceTextReview.errors.push(
-        error instanceof Error ? error.message : String(error),
+  const sourceTextReviewDistricts: SourceTextReviewDistrictSummary[] = []
+  if (referencePack) {
+    for (const district of referenceDistricts) {
+      const paths = allDistricts
+        ? resolveTaoyuanExpansionReviewPaths(district.districtId)
+        : {
+            reviewPath,
+            reviewManifestPath,
+          }
+      sourceTextReviewDistricts.push(
+        await validateSourceTextReviewDistrict({
+          pack: referencePack,
+          district,
+          reviewPath: allDistricts
+            ? path.resolve(reviewDir, path.basename(paths.reviewPath))
+            : paths.reviewPath,
+          reviewManifestPath: allDistricts
+            ? path.resolve(
+                reviewDir,
+                path.basename(paths.reviewManifestPath),
+              )
+            : paths.reviewManifestPath,
+          requirePinnedReview,
+        }),
       )
     }
-    automationErrors.push(
-      ...sourceTextReview.errors.map((error) => `Source-text review: ${error}`),
-    )
-    if (sourceTextReview.structureValid && !sourceTextReview.approved) {
+  }
+  const requiredReviewDistricts = sourceTextReviewDistricts.filter(
+    ({ reviewRequired }) => reviewRequired,
+  )
+  const reviewErrors = sourceTextReviewDistricts.flatMap((district) =>
+    district.errors.map((error) => `${district.districtId}: ${error}`),
+  )
+  const sourceTextReview: SourceTextReviewSummary = {
+    scope: allDistricts ? 'all-districts' : 'single-district',
+    path: allDistricts ? reviewDir : reviewPath,
+    manifestPath: allDistricts ? reviewDir : reviewManifestPath,
+    exists:
+      referenceDistricts.length > 0 &&
+      requiredReviewDistricts.every(({ exists }) => exists),
+    structureValid:
+      referenceDistricts.length > 0 &&
+      requiredReviewDistricts.every(({ structureValid }) => structureValid),
+    complete:
+      referenceDistricts.length > 0 &&
+      requiredReviewDistricts.every(({ complete }) => complete),
+    approved:
+      referenceDistricts.length > 0 &&
+      requiredReviewDistricts.every(({ approved }) => approved),
+    pendingRows:
+      referenceDistricts.length > 0
+        ? requiredReviewDistricts.reduce(
+            (total, district) => total + (district.pendingRows ?? 0),
+            0,
+          )
+        : null,
+    expectedRows: reference.districtRecordCount,
+    actualRows:
+      referenceDistricts.length > 0
+        ? sourceTextReviewDistricts.reduce(
+            (total, district) => total + (district.actualRows ?? 0),
+            0,
+          )
+        : null,
+    reviewRequiredDistrictCount: requiredReviewDistricts.length,
+    approvedDistrictCount: requiredReviewDistricts.filter(
+      ({ approved }) => approved,
+    ).length,
+    emptyDistrictCount: sourceTextReviewDistricts.filter(
+      ({ reviewRequired }) => !reviewRequired,
+    ).length,
+    districts: sourceTextReviewDistricts,
+    errors: reviewErrors,
+  }
+  automationErrors.push(
+    ...sourceTextReview.errors.map((error) => `Source-text review: ${error}`),
+  )
+  for (const district of requiredReviewDistricts) {
+    if (!district.exists) {
       blockers.push(
-        `${sourceTextReview.pendingRows ?? 'Unknown'} source-text review rows remain pending or unresolved.`,
+        `${district.districtId}: promoted Taoyuan source-text review evidence is missing.`,
+      )
+      nextActions.push('npm run ops:build-taoyuan-review-all')
+      nextActions.push(
+        `npm run ops:promote-taoyuan-review -- --district ${district.districtId}`,
+      )
+    } else if (district.structureValid && !district.approved) {
+      blockers.push(
+        `${district.districtId}: source-text review is not fully approved (${district.pendingRows ?? 'unknown'} pending).`,
       )
       const reviewArgs = [
         '--district',
-        districtId,
+        district.districtId,
         '--input',
-        quoteArg(reviewPath),
+        quoteArg(district.path),
         '--manifest',
-        quoteArg(reviewManifestPath),
+        quoteArg(district.manifestPath),
       ].join(' ')
       nextActions.push(
         `npm run ops:taoyuan-review-status -- ${reviewArgs}`,
@@ -601,6 +745,19 @@ export const runTaoyuanExpansionReadiness = async (
 
 const yesNo = (value: boolean) => (value ? 'yes' : 'no')
 
+const sourceTextReviewStatus = (
+  district: SourceTextReviewDistrictSummary,
+) =>
+  !district.reviewRequired
+    ? 'not-required'
+    : district.approved
+      ? 'approved'
+      : district.structureValid
+        ? 'pending'
+        : district.exists
+          ? 'invalid'
+          : 'missing'
+
 export const renderTaoyuanExpansionReadiness = (
   result: TaoyuanExpansionReadinessResult,
 ) => [
@@ -616,10 +773,23 @@ export const renderTaoyuanExpansionReadiness = (
   '## Evidence layers',
   '',
   `- Boundary: ${result.boundary.valid ? 'valid' : 'invalid'}; source=${result.boundary.source}; districts=${result.boundary.districtCount}; ${result.boundary.path}`,
-  `- Text reference: ${result.reference.valid ? 'valid' : 'invalid'}; source rows=${result.reference.sourceRecordCount ?? '-'}; district rows=${result.reference.districtRecordCount ?? '-'}; ${result.reference.path}`,
-  `- Source-text review: ${result.sourceTextReview.approved ? 'approved' : result.sourceTextReview.structureValid ? 'pending' : result.sourceTextReview.exists ? 'invalid' : 'missing'}; rows=${result.sourceTextReview.actualRows ?? '-'}/${result.sourceTextReview.expectedRows ?? '-'}; pending=${result.sourceTextReview.pendingRows ?? '-'}; ${result.sourceTextReview.path}`,
+  `- Text reference: ${result.reference.valid ? 'valid' : 'invalid'}; source rows=${result.reference.sourceRecordCount ?? '-'}; selected rows=${result.reference.districtRecordCount ?? '-'}; selected districts=${result.reference.districtCount ?? '-'}; ${result.reference.path}`,
+  `- Source-text review: ${result.sourceTextReview.approved ? 'approved' : result.sourceTextReview.structureValid ? 'pending' : result.sourceTextReview.exists ? 'invalid' : 'missing'}; scope=${result.sourceTextReview.scope}; reviewed districts=${result.sourceTextReview.approvedDistrictCount}/${result.sourceTextReview.reviewRequiredDistrictCount}; zero-row districts=${result.sourceTextReview.emptyDistrictCount}; rows=${result.sourceTextReview.actualRows ?? '-'}/${result.sourceTextReview.expectedRows ?? '-'}; pending=${result.sourceTextReview.pendingRows ?? '-'}; ${result.sourceTextReview.path}`,
   `- TDX spatial reference: ${result.spatial.valid ? 'valid' : result.spatial.exists ? 'invalid' : 'missing'}; acquisition=${result.spatial.acquisition}; features=${result.spatial.featureCount}; segment geometries=${result.spatial.segmentGeometryCount}; representative points=${result.spatial.representativePointCount}; ${result.spatial.path}`,
   '- Safety: paid-curb text and geometry remain reference-only; legalAnswerEligible is always false.',
+  ...(result.sourceTextReview.scope === 'all-districts'
+    ? [
+        '',
+        '## Source-text districts',
+        '',
+        '| District | Source rows | Review | Reviewed rows | Pending |',
+        '| --- | ---: | --- | ---: | ---: |',
+        ...result.sourceTextReview.districts.map(
+          (district) =>
+            `| ${district.districtId} | ${district.expectedRows ?? '-'} | ${sourceTextReviewStatus(district)} | ${district.actualRows ?? '-'} | ${district.pendingRows ?? '-'} |`,
+        ),
+      ]
+    : []),
   ...(result.blockers.length > 0
     ? ['', '## Blockers', '', ...result.blockers.map((blocker) => `- ${blocker}`)]
     : []),

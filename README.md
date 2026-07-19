@@ -445,13 +445,16 @@ source records, but they are not curb-line geometry, parking-space inventory, or
 that parking is legal. The runtime parser, coverage catalog, and UI all keep
 `legalAnswerEligible: false`.
 Run `npm run ops:taoyuan-expansion-readiness:report` to verify the 13 official boundaries,
-944-row text pack, 270-row source-text review, optional saved/guest/credentialed TDX geometry,
-and the non-legal safety contract in one report. The report exits successfully when the
-only blockers are expected human or external inputs. Use
-`npm run ops:taoyuan-expansion-readiness:strict` when a milestone must remain non-zero
-until source text is fully approved and a valid TDX spatial-reference artifact exists.
-CI uses the tracked runtime coverage catalog as explicit derived boundary evidence; local
-and strict runs default to the unpacked official shapefile instead of silently falling back.
+944-row text pack, all 11 non-empty districts' pinned source-text reviews, the two
+zero-row districts that require no review artifact, optional saved/guest/credentialed TDX
+geometry, and the non-legal safety contract in one report. Any missing, stale, or
+unapproved non-empty district now blocks the strict city-wide CI gate. Use
+`npm run ops:taoyuan-expansion-readiness:strict:all` when a city milestone must remain
+non-zero until every source-text review is approved and a valid TDX spatial-reference
+artifact exists. `npm run ops:taoyuan-expansion-readiness:strict -- --district zhongli`
+retains the isolated district workflow. CI runs the all-district scope with the tracked
+runtime coverage catalog as explicit derived boundary evidence; local strict runs default
+to the unpacked official shapefile instead of silently falling back.
 Even strict readiness only approves a spatial reference layer; legal-answer eligibility
 remains false. Run `npm run ops:probe-taoyuan-legal-evidence` to compare the live official
 TDX `ParkingSegment` and `ParkingSpot` collection counts with the normalized local
