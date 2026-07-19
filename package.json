@@ -176,6 +176,7 @@
     "ops:package-release:reviewed": "tsx scripts/ops/packageRelease.ts --reviewed",
     "ops:validate-release-package": "tsx scripts/ops/validateReleasePackage.ts",
     "ops:install-release-package": "tsx scripts/ops/installReleasePackage.ts",
+    "ops:reconcile-release-evidence": "tsx scripts/ops/reconcileReleaseEvidence.ts",
     "ops:deploy-readiness": "tsx scripts/ops/deployReadiness.ts --out .tmp/deploy-readiness.md --json-out .tmp/deploy-readiness.json",
     "ops:release-data-meta": "tsx scripts/ops/releaseDataWorkflow.ts --mode resolve-meta",
     "ops:release-data-publish": "tsx scripts/ops/releaseDataWorkflow.ts --mode publish",
