@@ -37,6 +37,7 @@ describe('notifyNightlyIssueSync', () => {
       token: 'token',
       repo: 'openai/parkking',
       body: 'body',
+      active: true,
       requestApi,
     })
 
@@ -58,11 +59,65 @@ describe('notifyNightlyIssueSync', () => {
       token: 'token',
       repo: 'openai/parkking',
       body: 'body',
+      active: true,
       requestApi,
     })
 
     expect(result).toEqual({ action: 'created', issueNumber: 55 })
     expect(calls[1]?.url).toBe('https://api.github.com/repos/openai/parkking/issues')
     expect(calls[1]?.init?.body).toContain(NIGHTLY_ALERTS_ISSUE_TITLE)
+  })
+
+  it('closes an existing nightly issue when the pipeline returns clean', async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = []
+    const requestApi: NightlyGitHubApiRequester = async (url, _token, init) => {
+      calls.push({ url, init })
+      return createJsonResponse(
+        calls.length === 1
+          ? [{ number: 56, title: NIGHTLY_ALERTS_ISSUE_TITLE }]
+          : { ok: true },
+      )
+    }
+
+    const result = await syncNightlyIssue({
+      token: 'token',
+      repo: 'openai/parkking',
+      body: 'No active nightly alerts.',
+      active: false,
+      requestApi,
+    })
+
+    expect(result).toEqual({ action: 'closed', issueNumber: 56 })
+    expect(calls[1]).toMatchObject({
+      url: 'https://api.github.com/repos/openai/parkking/issues/56/comments',
+      init: { method: 'POST' },
+    })
+    expect(calls[1]?.init?.body).toContain('returned to a clean state')
+    expect(calls[2]).toMatchObject({
+      url: 'https://api.github.com/repos/openai/parkking/issues/56',
+      init: {
+        method: 'PATCH',
+        body: JSON.stringify({ state: 'closed' }),
+      },
+    })
+  })
+
+  it('does nothing on a clean pipeline when no nightly issue is open', async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = []
+    const requestApi: NightlyGitHubApiRequester = async (url, _token, init) => {
+      calls.push({ url, init })
+      return createJsonResponse([])
+    }
+
+    await expect(
+      syncNightlyIssue({
+        token: 'token',
+        repo: 'openai/parkking',
+        body: 'No active nightly alerts.',
+        active: false,
+        requestApi,
+      }),
+    ).resolves.toEqual({ action: 'noop', issueNumber: null })
+    expect(calls).toHaveLength(1)
   })
 })

@@ -3,6 +3,7 @@ import {
   collectSyncIssueReportDistrictSummaries,
   collectSyncIssueReportEntries,
   filterSyncIssueReportEntries,
+  isSyntheticSyncIssueReport,
   summarizeSyncIssueReportEntries,
   summarizeSyncIssueReportReasons,
   summarizeSyncIssueReportSegments,
@@ -10,6 +11,40 @@ import {
 import { createLegacySyncServiceStore } from './syncServiceStoreState'
 
 describe('issueReportSummaryState', () => {
+  it('excludes API smoke roundtrips without hiding similar user reports', () => {
+    const smoke = {
+      issueId: 'smoke-sync-issue-1234-abcd',
+      districtId: 'xinyi',
+      summary: 'Smoke sync issue report roundtrip',
+      createdAt: '2026-04-02T12:00:00.000Z',
+      bundle: {
+        source: 'smoke-api-services',
+      },
+    }
+    const userReport = {
+      ...smoke,
+      issueId: 'user-issue-1',
+      summary: 'User saw the smoke test text in the UI',
+    }
+    const store = createLegacySyncServiceStore([], [], 'workspace')
+    store.buckets['smoke-api-services-1234-abcd'] = {
+      ...store.buckets.workspace,
+      issueReports: [smoke],
+    }
+    store.buckets.workspace.issueReports = [userReport]
+
+    expect(
+      isSyntheticSyncIssueReport('smoke-api-services-1234-abcd', smoke),
+    ).toBe(true)
+    expect(isSyntheticSyncIssueReport('workspace', userReport)).toBe(false)
+    expect(collectSyncIssueReportEntries(store)).toEqual([
+      expect.objectContaining({
+        scope: 'workspace',
+        issueId: 'user-issue-1',
+      }),
+    ])
+  })
+
   it('collects normalized issue reports across scoped buckets', () => {
     const store = createLegacySyncServiceStore([], [], 'workspace')
     store.buckets.workspace.issueReports = [

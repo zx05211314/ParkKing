@@ -1054,6 +1054,11 @@ user issue reports exist. The issue/comment now includes:
 - links to downloadable publish-gate and issue-triage artifacts, including the packet root,
   packet root URL, packet `manifest.json` preferred portable input, and preferred CSV join file
 
+API service smoke roundtrips are excluded from user issue triage by their source and generated
+issue identity. When diff reports, publish-gate totals, and real synced user reports are all clean,
+nightly closes the existing alert issue instead of posting another comment. Missing diff reports
+remain an unknown state and never trigger automatic closure.
+
 Manual run:
 - `npm run ops:notify-nightly-from-registry -- --registry public/data/generated/registry.json --root public/data/generated`
 - `npm run ops:notify-nightly -- --diff public/data/generated/<districtId>/diff_report.json`

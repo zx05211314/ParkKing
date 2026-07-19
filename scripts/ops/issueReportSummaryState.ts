@@ -26,6 +26,39 @@ const issueReportStoreExists = async (storageFile: string) => {
 const normalizeOptionalText = (value: unknown) =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 
+const SMOKE_ISSUE_REPORT_SOURCE = 'smoke-api-services'
+const SMOKE_ISSUE_REPORT_SCOPE_PREFIX = 'smoke-api-services-'
+const SMOKE_ISSUE_REPORT_ID_PREFIX = 'smoke-sync-issue-'
+const SMOKE_ISSUE_REPORT_SUMMARY = 'Smoke sync issue report roundtrip'
+
+export const isSyntheticSyncIssueReport = (
+  scope: string,
+  issue: unknown,
+) => {
+  if (!issue || typeof issue !== 'object') {
+    return false
+  }
+
+  const issueId =
+    'issueId' in issue ? normalizeOptionalText(issue.issueId) : null
+  const summary =
+    'summary' in issue ? normalizeOptionalText(issue.summary) : null
+  const bundle =
+    'bundle' in issue && issue.bundle && typeof issue.bundle === 'object'
+      ? issue.bundle
+      : null
+  const source =
+    bundle && 'source' in bundle ? normalizeOptionalText(bundle.source) : null
+  const hasSmokeIdentity = issueId?.startsWith(SMOKE_ISSUE_REPORT_ID_PREFIX)
+
+  return Boolean(
+    hasSmokeIdentity &&
+      (source === SMOKE_ISSUE_REPORT_SOURCE ||
+        (scope.startsWith(SMOKE_ISSUE_REPORT_SCOPE_PREFIX) &&
+          summary === SMOKE_ISSUE_REPORT_SUMMARY)),
+  )
+}
+
 const compareNullableDescending = (left: string | null, right: string | null) => {
   if (left && right) {
     return right.localeCompare(left)
@@ -144,7 +177,11 @@ export const collectSyncIssueReportEntries = (
   Object.entries(store.buckets)
     .flatMap(([scope, bucket]) =>
       bucket.issueReports
-        .map((issue, index) => normalizeIssueReportEntry(issue, scope, index))
+        .map((issue, index) =>
+          isSyntheticSyncIssueReport(scope, issue)
+            ? null
+            : normalizeIssueReportEntry(issue, scope, index),
+        )
         .filter((issue): issue is SyncIssueReportRawIssue => Boolean(issue)),
     )
     .sort((left, right) => {
