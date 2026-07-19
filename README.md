@@ -457,7 +457,11 @@ TDX `ParkingSegment` and `ParkingSpot` collection counts with the normalized loc
 artifact. The probe is intentionally manual rather than a CI dependency; it reports data
 provider capability changes, source-count drift, and the remaining legal-answer blockers
 to `.tmp/taoyuan-legal-evidence-probe.md/json`. A successful probe does not promote
-reference points into legal evidence. The credential-free
+reference points into legal evidence. If an authority supplies exact marked-space and
+curb-rule geometry, normalize it through the
+[Taoyuan legal evidence intake contract](docs/taoyuan-legal-evidence-intake.md) and run
+`npm run ops:validate-taoyuan-legal-candidate -- --manifest <path> --require-complete`.
+Passing that gate means ready for human review, not ready for production. The credential-free
 [Taoyuan roadside fee dataset](https://data.gov.tw/dataset/149456) exposes text/fare fields
 but no coordinates, so address text must not be converted into synthetic geometry.
 When a source-only Taoyuan address is pinned, the app can filter this official text by
