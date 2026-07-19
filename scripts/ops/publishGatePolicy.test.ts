@@ -20,6 +20,7 @@ describe('publishGatePolicy', () => {
 
     expect(parseSchemaVersion(1)).toBe(1)
     expect(parseSchemaVersion('1')).toBe(1)
+    expect(parseSchemaVersion(2)).toBe(2)
     expect(parseSchemaVersion('x')).toBeNull()
 
     expect(parseDiffSchemaVersion(1)).toBe(1)

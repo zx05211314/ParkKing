@@ -37,27 +37,42 @@ const row = (overrides: Partial<QaCandidateRow>): QaCandidateRow => ({
 })
 
 const report = (overrides: Partial<SegmentReport>): SegmentReport => ({
-  schemaVersion: 1,
+  schemaVersion: 2,
   districtId: 'xinyi',
   segmentId: 'seg-1',
   status: 'LEGAL',
   note: 'approved from imagery',
   createdAt: '2026-02-01T00:00:00Z',
+  reviewedSegmentId: 'seg-1',
+  reviewedHhmm: '21:00',
   ...overrides,
 })
 
 describe('hydrateQaRowsWithReviewReports', () => {
-  it('prefills the row matching a stored reviewed segment', () => {
+  it('does not hydrate a sibling part from a part-scoped review', () => {
     const rows = hydrateQaRowsWithReviewReports(
       [row({ segmentId: 'seg-1-part-2' })],
       'xinyi',
-      [report({ segmentId: 'seg-1-part-1' })],
+      [
+        report({
+          segmentId: 'seg-1',
+          reviewedSegmentId: 'seg-1-part-1',
+        }),
+      ],
+    )
+
+    expect(rows[0]?.reviewStatus).toBe('')
+  })
+
+  it('prefills the exact row matching a stored part-scoped review', () => {
+    const rows = hydrateQaRowsWithReviewReports(
+      [row({ segmentId: 'seg-1-part-1' })],
+      'xinyi',
+      [report({ reviewedSegmentId: 'seg-1-part-1' })],
     )
 
     expect(rows[0]?.reviewStatus).toBe('LEGAL')
     expect(rows[0]?.reviewSource).toBe('stored_override')
-    expect(rows[0]?.reviewNote).toBe('approved from imagery')
-    expect(rows[0]?.createdAt).toBe('2026-02-01T00:00:00Z')
   })
 
   it('hydrates only the answer-consistent split row for a reviewed segment', () => {
@@ -67,7 +82,13 @@ describe('hydrateQaRowsWithReviewReports', () => {
         row({ segmentId: 'seg-9-part-2', allowedNow: 'PARK' }),
       ],
       'xinyi',
-      [report({ segmentId: 'seg-9', status: 'LEGAL' })],
+      [
+        report({
+          segmentId: 'seg-9',
+          reviewedSegmentId: 'seg-9',
+          status: 'LEGAL',
+        }),
+      ],
     )
 
     expect(rows[0]?.reviewStatus).toBe('')

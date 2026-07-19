@@ -21,7 +21,14 @@ const readJson = async <T>(targetPath: string): Promise<T> => {
 
 const writeAdjacentManifest = async (inputPath: string, payload: unknown) => {
   const manifestPath = inputPath.replace(/\.csv$/i, '.manifest.json')
-  await writeJson(manifestPath, payload)
+  const record = payload as Record<string, unknown>
+  await writeJson(manifestPath, {
+    ...record,
+    params: {
+      hhmm: '21:00',
+      ...((record.params as Record<string, unknown> | undefined) ?? {}),
+    },
+  })
   return manifestPath
 }
 
@@ -47,6 +54,14 @@ const buildFixture = async () => {
       publicDir: path.join(base, 'public'),
     },
     crs: { default: 'EPSG:4326' },
+  })
+  await writeAdjacentManifest(inputPath, {
+    schemaVersion: 1,
+    districtId: 'xinyi',
+    csvPath: inputPath,
+    dataset: {},
+    params: { hhmm: '21:00' },
+    rows: { total: 1 },
   })
 
   return { base, configPath, inputPath, outDir }
@@ -569,17 +584,21 @@ describe('buildQaReviewGate', () => {
       inputPath,
       [
         JSON.stringify({
-          schemaVersion: 1,
+          schemaVersion: 2,
           districtId: 'xinyi',
           segmentId: 'seg-1',
+          reviewedSegmentId: 'seg-1',
+          reviewedHhmm: '21:00',
           status: 'LEGAL',
           note: 'field checked',
           createdAt: '2026-04-20T00:00:00.000Z',
         }),
         JSON.stringify({
-          schemaVersion: 1,
+          schemaVersion: 2,
           districtId: 'xinyi',
           segmentId: 'seg-2',
+          reviewedSegmentId: 'seg-2',
+          reviewedHhmm: '21:00',
           status: 'MAYBE',
           note: 'invalid status check',
           createdAt: '2026-04-20T00:00:00.000Z',
@@ -610,17 +629,21 @@ describe('buildQaReviewGate', () => {
       inputPath,
       [
         JSON.stringify({
-          schemaVersion: 1,
+          schemaVersion: 2,
           districtId: 'xinyi',
           segmentId: 'seg-1',
+          reviewedSegmentId: 'seg-1',
+          reviewedHhmm: '21:00',
           status: 'LEGAL',
           note: 'first check',
           createdAt: '2026-04-20T00:00:00.000Z',
         }),
         JSON.stringify({
-          schemaVersion: 1,
+          schemaVersion: 2,
           districtId: 'xinyi',
-          segmentId: 'seg-1-part-1',
+          segmentId: 'seg-1',
+          reviewedSegmentId: 'seg-1-part-1',
+          reviewedHhmm: '21:00',
           status: 'ILLEGAL',
           note: 'second check',
           createdAt: '2026-04-21T00:00:00.000Z',
@@ -671,9 +694,11 @@ describe('buildQaReviewGate', () => {
     await fs.writeFile(
       inputPath,
       `${JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 2,
         districtId: 'xinyi',
         segmentId: 'seg-1',
+        reviewedSegmentId: 'seg-1',
+        reviewedHhmm: '21:00',
         status: 'LEGAL',
         note: 'reported in app',
         createdAt: '2026-04-20T00:00:00.000Z',
@@ -704,9 +729,11 @@ describe('buildQaReviewGate', () => {
     await fs.writeFile(
       inputPath,
       `${JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 2,
         districtId: 'xinyi',
         segmentId: 'seg-1',
+        reviewedSegmentId: 'seg-1',
+        reviewedHhmm: '21:00',
         status: 'LEGAL',
         note: 'field checked',
         createdAt: '2026-04-20T00:00:00.000Z',
@@ -734,9 +761,11 @@ describe('buildQaReviewGate', () => {
     await fs.writeFile(
       inputPath,
       `${JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 2,
         districtId: 'xinyi',
         segmentId: 'seg-1',
+        reviewedSegmentId: 'seg-1',
+        reviewedHhmm: '21:00',
         status: 'LEGAL',
         note: 'field checked',
         createdAt: '2026-04-20T00:00:00.000Z',

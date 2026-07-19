@@ -392,6 +392,14 @@ const parseSignOverride = (
           timeWindows: windows,
           status: normalizeOverrideStatus(override.status),
           verifiedAt: override.verifiedAt,
+          reviewedSegmentId:
+            typeof override.reviewedSegmentId === 'string'
+              ? override.reviewedSegmentId
+              : undefined,
+          reviewedHhmm:
+            typeof override.reviewedHhmm === 'string'
+              ? override.reviewedHhmm
+              : undefined,
         }
       }
     }
@@ -421,6 +429,14 @@ const parseSignOverride = (
         verifiedAt:
           typeof properties.sign_override_verified_at === 'string'
             ? properties.sign_override_verified_at
+            : undefined,
+        reviewedSegmentId:
+          typeof properties.sign_override_reviewed_segment_id === 'string'
+            ? properties.sign_override_reviewed_segment_id
+            : undefined,
+        reviewedHhmm:
+          typeof properties.sign_override_reviewed_hhmm === 'string'
+            ? properties.sign_override_reviewed_hhmm
             : undefined,
       }
     }
@@ -676,6 +692,16 @@ const parseOverrideProperties = (
       properties.overrideStatus ??
       properties.sign_override_status,
   )
+  const reviewedSegmentId =
+    properties.reviewedSegmentId ??
+    properties.reviewed_segment_id ??
+    properties.override_reviewed_segment_id ??
+    properties.sign_override_reviewed_segment_id
+  const reviewedHhmm =
+    properties.reviewedHhmm ??
+    properties.reviewed_hhmm ??
+    properties.override_reviewed_hhmm ??
+    properties.sign_override_reviewed_hhmm
 
   return {
     note: note ? String(note) : 'Sign override',
@@ -683,6 +709,14 @@ const parseOverrideProperties = (
     timeWindows,
     status,
     verifiedAt: verifiedAt ? String(verifiedAt) : undefined,
+    reviewedSegmentId:
+      typeof reviewedSegmentId === 'string' && reviewedSegmentId.trim()
+        ? reviewedSegmentId.trim()
+        : undefined,
+    reviewedHhmm:
+      typeof reviewedHhmm === 'string' && reviewedHhmm.trim()
+        ? reviewedHhmm.trim()
+        : undefined,
   }
 }
 

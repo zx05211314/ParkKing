@@ -247,6 +247,7 @@ export const runP3ReleaseReadiness = async (
         publicRoot: inputs.root,
         registryPath: inputs.registryPath,
         answerCasesGlob: inputs.answerCasesGlob,
+        allowAnswerCaseReviewFallback: true,
       }),
     (summary) => !summary.hasBlockers,
   )

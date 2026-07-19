@@ -20,6 +20,8 @@ export interface SignOverride {
   status?: SignOverrideStatus
   source?: 'segmentId' | 'spatial' | 'dataset'
   verifiedAt?: string
+  reviewedSegmentId?: string
+  reviewedHhmm?: string
 }
 
 export interface Segment {

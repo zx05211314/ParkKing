@@ -3,6 +3,7 @@ import {
   formatOverrideDate,
   formatOverrideSource,
 } from './segmentSheetFormatting'
+import { isDaytime } from '../domain/rules/time'
 
 interface SegmentSheetOverrideSectionProps {
   signOverride: EvaluatedSegment['signOverride']
@@ -28,8 +29,19 @@ export function SegmentSheetOverrideSection({
           Verified: {formatOverrideDate(signOverride.verifiedAt)}
         </div>
       ) : null}
+      {signOverride.reviewedSegmentId ? (
+        <div className="segment-sheet-value">
+          Reviewed target: {signOverride.reviewedSegmentId}
+        </div>
+      ) : null}
+      {signOverride.reviewedHhmm ? (
+        <div className="segment-sheet-value">
+          Review context: {isDaytime(signOverride.reviewedHhmm) ? 'Day' : 'Night'} (
+          {signOverride.reviewedHhmm})
+        </div>
+      ) : null}
       {signOverride.timeWindows.length === 0 ? (
-        <div className="segment-sheet-value">-</div>
+        <div className="segment-sheet-value">No additional sign hours recorded.</div>
       ) : (
         <div className="time-windows">
           {signOverride.timeWindows.map((window) => (

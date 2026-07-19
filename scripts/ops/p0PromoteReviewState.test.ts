@@ -65,7 +65,15 @@ describe('buildP0PromoteReview', () => {
     await fs.writeFile(sourcePath, sourceRows, 'utf-8')
     await fs.writeFile(
       sourcePath.replace(/\.csv$/i, '.manifest.json'),
-      `${JSON.stringify({ csvPath: sourcePath, rows: { total: 7 } }, null, 2)}\n`,
+      `${JSON.stringify(
+        {
+          csvPath: sourcePath,
+          params: { hhmm: '21:00' },
+          rows: { total: 7 },
+        },
+        null,
+        2,
+      )}\n`,
       'utf-8',
     )
     await fs.writeFile(

@@ -65,9 +65,11 @@ describe('ingestSignOverrides overrides merge', () => {
     await fs.mkdir(overridesDir, { recursive: true })
     const overridesPath = path.join(overridesDir, 'xinyi.jsonl')
     const overrideLine = JSON.stringify({
-      schemaVersion: 1,
+      schemaVersion: 2,
       districtId: 'xinyi',
-      segmentId: 'seg-1-part-1',
+      segmentId: 'seg-1',
+      reviewedSegmentId: 'seg-1-part-1',
+      reviewedHhmm: '21:00',
       status: 'LEGAL',
       note: 'User says ok',
       createdAt: '2026-02-01T00:00:00Z',
@@ -155,9 +157,11 @@ describe('ingestSignOverrides overrides merge', () => {
     await fs.writeFile(
       path.join(overridesDir, 'xinyi.jsonl'),
       `${JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 2,
         districtId: 'xinyi',
-        segmentId: 'seg-1-part-1',
+        segmentId: 'seg-1',
+        reviewedSegmentId: 'seg-1-part-1',
+        reviewedHhmm: '21:00',
         status: 'LEGAL',
         note: 'field checked',
         createdAt: '2026-02-01T00:00:00Z',
@@ -244,9 +248,11 @@ describe('ingestSignOverrides overrides merge', () => {
     await fs.writeFile(
       path.join(overridesDir, 'xinyi.jsonl'),
       `${JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 2,
         districtId: 'xinyi',
-        segmentId: 'candidate-1-L-part-3',
+        segmentId: 'candidate-1-L',
+        reviewedSegmentId: 'candidate-1-L-part-3',
+        reviewedHhmm: '21:00',
         status: 'LEGAL',
         note: 'field checked inferred candidate',
         createdAt: '2026-02-01T00:00:00Z',
@@ -339,24 +345,30 @@ describe('ingestSignOverrides overrides merge', () => {
       path.join(overridesDir, 'xinyi.jsonl'),
       [
         JSON.stringify({
-          schemaVersion: 1,
+          schemaVersion: 2,
           districtId: 'xinyi',
           segmentId: 'seg-1',
+          reviewedSegmentId: 'seg-1',
+          reviewedHhmm: '21:00',
           status: 'LEGAL',
           note: 'field checked',
           createdAt: '2026-02-01T00:00:00Z',
         }),
         JSON.stringify({
-          schemaVersion: 1,
+          schemaVersion: 2,
           districtId: 'xinyi',
           segmentId: 'seg-2',
+          reviewedSegmentId: 'seg-2',
+          reviewedHhmm: '21:00',
           status: 'ILLEGAL',
           createdAt: '2026-02-02T00:00:00Z',
         }),
         JSON.stringify({
-          schemaVersion: 1,
+          schemaVersion: 2,
           districtId: 'xinyi',
           segmentId: 'seg-3',
+          reviewedSegmentId: 'seg-3',
+          reviewedHhmm: '21:00',
           status: 'UNCLEAR',
           note: 'missing timestamp',
         }),

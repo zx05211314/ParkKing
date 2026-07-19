@@ -11,11 +11,13 @@ describe('exportOverrides', () => {
     const outDir = path.join(base, 'out')
 
     const payload = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       reports: [
         {
           districtId: 'xinyi',
           segmentId: 'seg-2-part-1',
+          reviewedSegmentId: 'seg-2-part-1',
+          reviewedHhmm: '21:00',
           status: 'ILLEGAL',
           note: 'first check',
           createdAt: '2026-02-02T00:00:00Z',
@@ -23,6 +25,8 @@ describe('exportOverrides', () => {
         {
           districtId: 'xinyi',
           segmentId: 'seg-2-part-1',
+          reviewedSegmentId: 'seg-2-part-1',
+          reviewedHhmm: '21:00',
           status: 'LEGAL',
           note: 'second check',
           createdAt: '2026-02-03T00:00:00Z',
@@ -30,6 +34,8 @@ describe('exportOverrides', () => {
         {
           districtId: 'xinyi',
           segmentId: 'seg-1-part-2',
+          reviewedSegmentId: 'seg-1-part-2',
+          reviewedHhmm: '21:00',
           status: 'LEGAL',
           note: '  ok  ',
           createdAt: '2026-02-01T00:00:00Z',
@@ -37,6 +43,8 @@ describe('exportOverrides', () => {
         {
           districtId: 'daan',
           segmentId: 'seg-9',
+          reviewedSegmentId: 'seg-9',
+          reviewedHhmm: '21:00',
           status: 'UNCLEAR',
           note: 'unclear sign',
           createdAt: '2026-02-01T00:00:00Z',
@@ -57,13 +65,15 @@ describe('exportOverrides', () => {
     expect(xinyiLines[0].note).toBe('ok')
     expect(xinyiLines[1].segmentId).toBe('seg-2')
     expect(xinyiLines[1].status).toBe('LEGAL')
-    expect(xinyiLines[1].schemaVersion).toBe(1)
+    expect(xinyiLines[1].schemaVersion).toBe(2)
+    expect(xinyiLines[1].reviewedSegmentId).toBe('seg-2-part-1')
+    expect(xinyiLines[1].reviewedHhmm).toBe('21:00')
 
     const daanRaw = await fs.readFile(path.join(outDir, 'daan.jsonl'), 'utf-8')
     const daanLines = daanRaw.trim().split(/\r?\n/).map((line) => JSON.parse(line))
     expect(daanLines).toHaveLength(1)
     expect(daanLines[0].segmentId).toBe('seg-9')
-    expect(daanLines[0].schemaVersion).toBe(1)
+    expect(daanLines[0].schemaVersion).toBe(2)
   })
 
   it('exports completed QA review CSV rows and ignores blank review rows', async () => {
@@ -74,9 +84,9 @@ describe('exportOverrides', () => {
     await fs.writeFile(
       inputPath,
       [
-        'districtId,segmentId,lat,lon,score,tier,allowedNow,parkingSpaceCount,topReasons[],flags,mapsUrl,reviewStatus,reviewNote,createdAt',
-        'xinyi,seg-1,25.050000,121.500000,1.0000,GREEN,PARK,2,[],[],https://example.test,LEGAL,field checked,2026-04-20T00:00:00.000Z',
-        'xinyi,seg-2,25.050000,121.500000,0.5000,RED,NO_STOP,0,[],[],https://example.test,,,',
+        'districtId,segmentId,lat,lon,score,tier,allowedNow,parkingSpaceCount,topReasons[],flags,mapsUrl,reviewStatus,reviewNote,createdAt,reviewedHhmm',
+        'xinyi,seg-1,25.050000,121.500000,1.0000,GREEN,PARK,2,[],[],https://example.test,LEGAL,field checked,2026-04-20T00:00:00.000Z,21:00',
+        'xinyi,seg-2,25.050000,121.500000,0.5000,RED,NO_STOP,0,[],[],https://example.test,,,,',
       ].join('\n'),
       'utf-8',
     )
@@ -105,8 +115,8 @@ describe('exportOverrides', () => {
     await fs.writeFile(
       inputPath,
       [
-        'districtId,segmentId,reviewStatus,reviewNote,createdAt',
-        'xinyi,seg-1,LEGAL,field checked,2026-04-20T00:00:00.000Z',
+        'districtId,segmentId,reviewStatus,reviewNote,createdAt,reviewedHhmm',
+        'xinyi,seg-1,LEGAL,field checked,2026-04-20T00:00:00.000Z,21:00',
       ].join('\n'),
       'utf-8',
     )
@@ -131,8 +141,8 @@ describe('exportOverrides', () => {
     await fs.writeFile(
       inputPath,
       [
-        'districtId,segmentId,signOverrideStatus,reviewStatus,reviewNote,createdAt',
-        'xinyi,seg-1,LEGAL,,,',
+        'districtId,segmentId,signOverrideStatus,reviewStatus,reviewNote,createdAt,reviewedHhmm',
+        'xinyi,seg-1,LEGAL,,,,21:00',
       ].join('\n'),
       'utf-8',
     )
@@ -150,9 +160,9 @@ describe('exportOverrides', () => {
     await fs.writeFile(
       inputPath,
       [
-        'districtId,segmentId,reviewBucket,reviewStatus,reviewNote,createdAt',
-        'xinyi,seg-1,marked_space_park,MAYBE,bad status,2026-04-20T00:00:00.000Z',
-        'xinyi,,no_stop,LEGAL,missing segment,2026-04-20T00:00:00.000Z',
+        'districtId,segmentId,reviewBucket,reviewStatus,reviewNote,createdAt,reviewedHhmm',
+        'xinyi,seg-1,marked_space_park,MAYBE,bad status,2026-04-20T00:00:00.000Z,21:00',
+        'xinyi,,no_stop,LEGAL,missing segment,2026-04-20T00:00:00.000Z,21:00',
       ].join('\n'),
       'utf-8',
     )
@@ -170,8 +180,8 @@ describe('exportOverrides', () => {
     await fs.writeFile(
       inputPath,
       [
-        'districtId,segmentId,reviewBucket,reviewStatus,reviewNote,createdAt',
-        'xinyi,seg-1,marked_space_park,LEGAL,,',
+        'districtId,segmentId,reviewBucket,reviewStatus,reviewNote,createdAt,reviewedHhmm',
+        'xinyi,seg-1,marked_space_park,LEGAL,,,21:00',
       ].join('\n'),
       'utf-8',
     )
@@ -189,8 +199,8 @@ describe('exportOverrides', () => {
     await fs.writeFile(
       inputPath,
       [
-        'districtId,segmentId,reviewBucket,reviewStatus,reviewNote,createdAt',
-        'xinyi,seg-1,marked_space_park,LEGAL,field checked,not-a-date',
+        'districtId,segmentId,reviewBucket,reviewStatus,reviewNote,createdAt,reviewedHhmm',
+        'xinyi,seg-1,marked_space_park,LEGAL,field checked,not-a-date,21:00',
       ].join('\n'),
       'utf-8',
     )
@@ -212,6 +222,8 @@ describe('exportOverrides', () => {
           {
             districtId: 'xinyi',
             segmentId: 'seg-1',
+            reviewedSegmentId: 'seg-1',
+            reviewedHhmm: '21:00',
             status: 'LEGAL',
             createdAt: '2026-04-20T00:00:00.000Z',
           },
@@ -233,8 +245,8 @@ describe('exportOverrides', () => {
     await fs.writeFile(
       inputPath,
       [
-        'districtId,segmentId,reviewStatus,reviewNote,createdAt',
-        'xinyi,seg-1,LEGAL,field checked,2026-04-20T00:00:00.000Z',
+        'districtId,segmentId,reviewStatus,reviewNote,createdAt,reviewedHhmm',
+        'xinyi,seg-1,LEGAL,field checked,2026-04-20T00:00:00.000Z,21:00',
       ].join('\n'),
       'utf-8',
     )

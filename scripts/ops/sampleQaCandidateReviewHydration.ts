@@ -19,7 +19,7 @@ const latestReportBySegment = (reports: SegmentReport[], districtId: string) => 
     .filter((report): report is SegmentReport => Boolean(report))
     .filter((report) => report.districtId === districtId)
     .forEach((report) => {
-      const key = normalizeSegmentId(report.segmentId)
+      const key = report.reviewedSegmentId ?? report.segmentId
       const existing = bySegment.get(key)
       if (!existing || parseTimestamp(report.createdAt) >= parseTimestamp(existing.createdAt)) {
         bySegment.set(key, report)
@@ -50,7 +50,9 @@ const findHydrationCandidate = (
   rows.find(
     (row) =>
       !row.reviewStatus &&
-      normalizeSegmentId(row.segmentId) === segmentId &&
+      (/-part-\d+$/i.test(segmentId)
+        ? row.segmentId === segmentId
+        : normalizeSegmentId(row.segmentId) === normalizeSegmentId(segmentId)) &&
       isAllowedNowConsistentWithStatus(row, report.status),
   ) ?? null
 

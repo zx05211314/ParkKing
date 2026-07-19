@@ -3,6 +3,7 @@ import {
   type ReportStatus,
   type SegmentReport,
 } from './exportOverrideTypes'
+import { isValidHHMM } from '../../src/domain/rules/time'
 import { normalizeReviewTimestamp } from './reviewTimestamp'
 
 export const normalizeDistrictId = (value: string) => {
@@ -40,7 +41,22 @@ export const sanitizeSegmentReport = (report: SegmentReport): SegmentReport | nu
   const status = typeof report.status === 'string' ? report.status.trim().toUpperCase() : ''
   const createdAt = normalizeReviewTimestamp(report.createdAt) ?? ''
   const note = normalizeNote(report.note)
-  if (!districtId || !segmentId || !createdAt || !note || !isReportStatus(status)) {
+  const reviewedSegmentId =
+    typeof report.reviewedSegmentId === 'string'
+      ? report.reviewedSegmentId.trim()
+      : ''
+  const reviewedHhmm =
+    typeof report.reviewedHhmm === 'string' ? report.reviewedHhmm.trim() : ''
+  if (
+    !districtId ||
+    !segmentId ||
+    !createdAt ||
+    !note ||
+    !reviewedSegmentId ||
+    normalizeSegmentId(reviewedSegmentId) !== normalizeSegmentId(segmentId) ||
+    !isValidHHMM(reviewedHhmm) ||
+    !isReportStatus(status)
+  ) {
     return null
   }
   const parsedSchema =
@@ -49,10 +65,12 @@ export const sanitizeSegmentReport = (report: SegmentReport): SegmentReport | nu
       : typeof report.schemaVersion === 'string'
         ? Number(report.schemaVersion)
         : NaN
-  const schemaVersion =
+  const schemaVersion = Math.max(
+    REPORT_SCHEMA_VERSION,
     Number.isFinite(parsedSchema) && parsedSchema >= 1
       ? parsedSchema
-      : REPORT_SCHEMA_VERSION
+      : REPORT_SCHEMA_VERSION,
+  )
   return {
     schemaVersion,
     districtId,
@@ -60,5 +78,7 @@ export const sanitizeSegmentReport = (report: SegmentReport): SegmentReport | nu
     status,
     note,
     createdAt,
+    reviewedSegmentId,
+    reviewedHhmm,
   }
 }

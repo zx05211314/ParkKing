@@ -42,9 +42,11 @@ describe('runSignOverridePreflight', () => {
     await fs.writeFile(
       inputPath,
       `${JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 2,
         districtId: 'xinyi',
         segmentId: 'seg-1',
+        reviewedSegmentId: 'seg-1',
+        reviewedHhmm: '21:00',
         status: 'LEGAL',
         note: 'field checked',
         createdAt: '2026-04-01T00:00:00Z',
@@ -86,9 +88,11 @@ describe('runSignOverridePreflight', () => {
     await fs.writeFile(
       inputPath,
       `${JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 2,
         districtId: 'xinyi',
         segmentId: 'seg-1',
+        reviewedSegmentId: 'seg-1',
+        reviewedHhmm: '21:00',
         status: 'LEGAL',
         note: 'field checked',
         createdAt: 'not-a-date',

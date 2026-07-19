@@ -15,12 +15,48 @@ export const toMinutes = (hhmm: string): number => {
   return hh * 60 + mm
 }
 
+export const isValidHHMM = (hhmm: string): boolean => {
+  if (!/^\d{2}:\d{2}$/.test(hhmm)) {
+    return false
+  }
+  const [hours, minutes] = hhmm.split(':').map(Number)
+  return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59
+}
+
 export const DAY_START_MINUTES = toMinutes(DAY_START_HHMM)
 export const DAY_END_MINUTES = toMinutes(DAY_END_HHMM)
 
 export const isDaytime = (hhmm: string): boolean => {
   const minutes = toMinutes(hhmm)
   return minutes >= DAY_START_MINUTES && minutes < DAY_END_MINUTES
+}
+
+export const isSameParkingTimeMode = (leftHHMM: string, rightHHMM: string): boolean =>
+  isValidHHMM(leftHHMM) &&
+  isValidHHMM(rightHHMM) &&
+  isDaytime(leftHHMM) === isDaytime(rightHHMM)
+
+export const isTimeWithinWindow = (
+  hhmm: string,
+  window: TimeWindow,
+): boolean => {
+  if (
+    !isValidHHMM(hhmm) ||
+    !isValidHHMM(window.startHHMM) ||
+    !isValidHHMM(window.endHHMM)
+  ) {
+    return false
+  }
+
+  const current = toMinutes(hhmm)
+  const start = toMinutes(window.startHHMM)
+  const end = toMinutes(window.endHHMM)
+  if (start === end) {
+    return true
+  }
+  return start < end
+    ? current >= start && current < end
+    : current >= start || current < end
 }
 
 export const formatHHMM = (date: Date): string => {
