@@ -4,7 +4,10 @@ import * as path from 'node:path'
 import { resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { ZONE_PARAMS_VERSION } from '../../src/domain/zones/makeZones'
-import { REQUIRED_PARKING_ANSWER_DATASET_FILES } from './parkingAnswerServiceHealth'
+import {
+  inspectParkingAnswerSpatialRuntime,
+  REQUIRED_PARKING_ANSWER_DATASET_FILES,
+} from './parkingAnswerServiceHealth'
 import { createParkingAnswerServiceMiddleware } from './parkingAnswerServiceMiddleware'
 import type {
   ParkingAnswerService,
@@ -69,6 +72,17 @@ const createDatasetDir = async (district = 'xinyi') => {
 }
 
 describe('createParkingAnswerServiceMiddleware', () => {
+  it('checks that the spatial index runtime can initialize', () => {
+    expect(inspectParkingAnswerSpatialRuntime()).toEqual([])
+    expect(
+      inspectParkingAnswerSpatialRuntime(() => {
+        throw new TypeError('RBush constructor unavailable')
+      }),
+    ).toEqual([
+      'runtime/spatial-index: RBush constructor unavailable',
+    ])
+  })
+
   it('returns liveness health without calling the answer service', async () => {
     const service: ParkingAnswerService = {
       answer: vi.fn(),
